@@ -381,6 +381,7 @@
       "source_count": 3,
       "verified_at": "2026-06-06T07:43:55.513Z"
     },
+    "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/23",
     "docs_url": "https://pm2.io/docs/runtime/guide/installation",
     "gaps": {

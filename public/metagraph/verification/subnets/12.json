@@ -1,0 +1,125 @@
+{
+  "candidate_count": 3,
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "Compute Horde",
+  "netuid": 12,
+  "results": [
+    {
+      "candidate_id": "sn-12-taomarketcap-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 164,
+      "method_tested": "HEAD",
+      "name": "Compute Horde TaoMarketCap dashboard",
+      "netuid": 12,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/12",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/12"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://taomarketcap.com/subnets/12",
+      "verified_at": "2026-06-06T07:43:53.600Z"
+    },
+    {
+      "candidate_id": "sn-12-taomarketcap-source-repo",
+      "classification": "live",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 403,
+      "github_api_url": "https://api.github.com/repos/backend-developers-ltd/ComputeHorde",
+      "kind": "source-repo",
+      "latency_ms": 457,
+      "method_tested": "HEAD",
+      "name": "Compute Horde source repository",
+      "netuid": 12,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/12",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/12"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/backend-developers-ltd/ComputeHorde",
+      "verified_at": "2026-06-06T07:43:53.608Z"
+    },
+    {
+      "candidate_id": "sn-12-tensorplex-docs",
+      "classification": "live",
+      "confidence_score": 73,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 330,
+      "method_tested": "HEAD",
+      "name": "Compute Horde Tensorplex subnet docs",
+      "netuid": 12,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/12/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/12/subnet.json"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/12",
+      "verified_at": "2026-06-06T07:43:53.668Z"
+    }
+  ],
+  "schema_version": 1,
+  "slug": "sn-12",
+  "summary": {
+    "by_classification": {
+      "live": 3
+    },
+    "by_kind": {
+      "dashboard": 1,
+      "docs": 1,
+      "source-repo": 1
+    },
+    "by_provider": {
+      "taomarketcap": 2,
+      "tensorplex-subnet-docs": 1
+    }
+  }
+}

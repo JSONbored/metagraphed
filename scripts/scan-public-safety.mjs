@@ -31,7 +31,12 @@ const patterns = [
   },
   {
     name: "wallet/key wording",
-    regex: /\b(coldkey|hotkey|wallet path|private key|seed phrase|mnemonic)\b/i,
+    regex: /\b(coldkey|wallet path|private key|seed phrase|mnemonic)\b/i,
+  },
+  {
+    name: "sensitive hotkey wording",
+    regex:
+      /\b(?:private|secret|wallet|validator|miner)\s+hotkey\b|\bhotkey\s+(?:path|private key|seed|seed phrase|mnemonic)\b/i,
   },
 ];
 

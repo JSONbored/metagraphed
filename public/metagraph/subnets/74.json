@@ -258,6 +258,7 @@
       "source_count": 5,
       "verified_at": null
     },
+    "curation_level": "adapter-backed",
     "dashboard_url": null,
     "docs_url": "https://docs.gittensor.io/",
     "gaps": {

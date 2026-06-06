@@ -1,0 +1,15 @@
+{
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "provider": {
+    "authority": "provider-claimed",
+    "docs_url": "https://docs.gittensor.io/",
+    "id": "gittensor",
+    "kind": "subnet-team",
+    "name": "Gittensor",
+    "notes": "Seed provider entry for the Gittensor SN74 pilot.",
+    "schema_version": 1,
+    "website_url": "https://gittensor.io"
+  },
+  "schema_version": 1
+}

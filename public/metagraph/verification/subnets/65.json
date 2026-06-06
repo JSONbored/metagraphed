@@ -1,0 +1,159 @@
+{
+  "candidate_count": 4,
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "TAO Private Network",
+  "netuid": 65,
+  "results": [
+    {
+      "candidate_id": "sn-65-taomarketcap-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 207,
+      "method_tested": "HEAD",
+      "name": "TAO Private Network TaoMarketCap dashboard",
+      "netuid": 65,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/65",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/65"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://taomarketcap.com/subnets/65",
+      "verified_at": "2026-06-06T07:44:02.617Z"
+    },
+    {
+      "candidate_id": "sn-65-taomarketcap-source-repo",
+      "classification": "live",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 403,
+      "github_api_url": "https://api.github.com/repos/taofu-labs/tpn-subnet",
+      "kind": "source-repo",
+      "latency_ms": 521,
+      "method_tested": "HEAD",
+      "name": "TAO Private Network source repository",
+      "netuid": 65,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/65",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/65"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/taofu-labs/tpn-subnet",
+      "verified_at": "2026-06-06T07:44:02.621Z"
+    },
+    {
+      "candidate_id": "sn-65-taomarketcap-website",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 147,
+      "method_tested": "HEAD",
+      "name": "TAO Private Network website",
+      "netuid": 65,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/65",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/65"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://tpn.taofu.xyz/",
+      "verified_at": "2026-06-06T07:44:02.632Z"
+    },
+    {
+      "candidate_id": "sn-65-tensorplex-docs",
+      "classification": "live",
+      "confidence_score": 73,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 341,
+      "method_tested": "HEAD",
+      "name": "TAO Private Network Tensorplex subnet docs",
+      "netuid": 65,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/65/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/65/subnet.json"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/65",
+      "verified_at": "2026-06-06T07:44:02.657Z"
+    }
+  ],
+  "schema_version": 1,
+  "slug": "sn-65",
+  "summary": {
+    "by_classification": {
+      "live": 4
+    },
+    "by_kind": {
+      "dashboard": 1,
+      "docs": 1,
+      "source-repo": 1,
+      "website": 1
+    },
+    "by_provider": {
+      "taomarketcap": 3,
+      "tensorplex-subnet-docs": 1
+    }
+  }
+}

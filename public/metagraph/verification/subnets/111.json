@@ -1,0 +1,125 @@
+{
+  "candidate_count": 3,
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "oneoneone",
+  "netuid": 111,
+  "results": [
+    {
+      "candidate_id": "sn-111-taomarketcap-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 159,
+      "method_tested": "HEAD",
+      "name": "oneoneone TaoMarketCap dashboard",
+      "netuid": 111,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/111",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/111"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://taomarketcap.com/subnets/111",
+      "verified_at": "2026-06-06T07:44:08.728Z"
+    },
+    {
+      "candidate_id": "sn-111-taomarketcap-source-repo",
+      "classification": "live",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 429,
+      "github_api_url": "https://api.github.com/repos/oneoneone-io/subnet-111",
+      "kind": "source-repo",
+      "latency_ms": 408,
+      "method_tested": "HEAD",
+      "name": "oneoneone source repository",
+      "netuid": 111,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/111",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/111"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/oneoneone-io/subnet-111",
+      "verified_at": "2026-06-06T07:44:08.745Z"
+    },
+    {
+      "candidate_id": "sn-111-tensorplex-docs",
+      "classification": "live",
+      "confidence_score": 73,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 335,
+      "method_tested": "HEAD",
+      "name": "oneoneone Tensorplex subnet docs",
+      "netuid": 111,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/111/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/111/subnet.json"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/111",
+      "verified_at": "2026-06-06T07:44:08.773Z"
+    }
+  ],
+  "schema_version": 1,
+  "slug": "sn-111",
+  "summary": {
+    "by_classification": {
+      "live": 3
+    },
+    "by_kind": {
+      "dashboard": 1,
+      "docs": 1,
+      "source-repo": 1
+    },
+    "by_provider": {
+      "taomarketcap": 2,
+      "tensorplex-subnet-docs": 1
+    }
+  }
+}

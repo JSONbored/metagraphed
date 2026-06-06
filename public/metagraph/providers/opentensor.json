@@ -1,0 +1,15 @@
+{
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "provider": {
+    "authority": "official",
+    "docs_url": "https://docs.learnbittensor.org/concepts/bittensor-networks",
+    "id": "opentensor",
+    "kind": "infrastructure-provider",
+    "name": "OpenTensor",
+    "notes": "Official Bittensor network and Subtensor endpoint documentation source.",
+    "schema_version": 1,
+    "website_url": "https://bittensor.com"
+  },
+  "schema_version": 1
+}

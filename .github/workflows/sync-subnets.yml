@@ -82,6 +82,15 @@ jobs:
       - name: Validate Worker API
         run: npm run validate:api
 
+      - name: Validate OpenAPI
+        run: npm run validate:openapi
+
+      - name: Validate generated API types
+        run: npm run validate:types
+
+      - name: Validate artifact size budgets
+        run: npm run validate:artifact-budgets
+
       - name: Validate intake templates
         run: npm run validate:intake
 

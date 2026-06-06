@@ -11,6 +11,7 @@ import {
   buildOpenApiArtifact,
   compileRoutePattern,
 } from "../src/contracts.mjs";
+import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 
 describe("public contract registry", () => {
   test("keeps API routes and artifacts unique", () => {
@@ -64,14 +65,18 @@ describe("public contract registry", () => {
     );
   });
 
-  test("builds contracts, API index, and OpenAPI from one route table", () => {
+  test("builds contracts, API index, and OpenAPI from one route table", async () => {
     const generatedAt = "1970-01-01T00:00:00.000Z";
     const contracts = buildContractsArtifact(generatedAt);
     const apiIndex = buildApiIndexArtifact(generatedAt, contracts);
-    const openapi = buildOpenApiArtifact(generatedAt);
+    const openapi = buildOpenApiArtifact(
+      generatedAt,
+      await loadOpenApiComponentSchemas(generatedAt),
+    );
 
     assert.equal(contracts.primary_domain, "metagraph.sh");
     assert.equal(contracts.openapi_url, "/metagraph/openapi.json");
+    assert.equal(contracts.type_definitions_url, "/metagraph/types.d.ts");
     assert.equal(apiIndex.openapi_url, "/api/v1/openapi.json");
     assert.equal(apiIndex.routes.length, API_ROUTES.length);
     assert.equal(openapi.openapi, "3.1.0");
@@ -79,6 +84,36 @@ describe("public contract registry", () => {
     assert.equal(Object.keys(openapi.paths).length, API_ROUTES.length);
     assert.equal(Boolean(openapi.components.schemas.SuccessEnvelope), true);
     assert.equal(Boolean(openapi.components.schemas.ErrorEnvelope), true);
+    assert.equal(Boolean(openapi.components.schemas.Surface), true);
+    assert.equal(Boolean(openapi.components.schemas.CandidateSurface), true);
     assert.equal(openapi["x-metagraphed"].generated_at, generatedAt);
+  });
+
+  test("keeps public API route payloads on typed artifact schemas", async () => {
+    const generatedAt = "1970-01-01T00:00:00.000Z";
+    const openapi = buildOpenApiArtifact(
+      generatedAt,
+      await loadOpenApiComponentSchemas(generatedAt),
+    );
+    const genericAliases = Object.entries(openapi.components.schemas)
+      .filter(
+        ([name, schema]) =>
+          name.endsWith("Artifact") &&
+          JSON.stringify(schema) ===
+            JSON.stringify({
+              $ref: "#/components/schemas/GenericArtifact",
+            }),
+      )
+      .map(([name]) => name);
+
+    assert.deepEqual(genericAliases, []);
+
+    for (const route of API_ROUTES) {
+      const dataRef =
+        openapi.paths[route.path][route.method.toLowerCase()].responses["200"]
+          .content["application/json"].schema.allOf[1].properties.data.$ref;
+      assert.notEqual(dataRef, "#/components/schemas/JsonObject");
+      assert.notEqual(dataRef, "#/components/schemas/GenericArtifact");
+    }
   });
 });

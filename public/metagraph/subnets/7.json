@@ -253,6 +253,7 @@
       "source_count": 3,
       "verified_at": null
     },
+    "curation_level": "adapter-backed",
     "dashboard_url": null,
     "docs_url": "https://docs.all-ways.io/how-it-works.html",
     "gaps": {

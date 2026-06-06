@@ -3,40 +3,16 @@
     "added": [],
     "modified": [
       {
-        "hash": "3c28706131196b2a3e7366b84c6e936c4c668a6a238621c47d0989b9f54a5d29",
-        "path": "candidates.json"
+        "hash": "af963adfb2c2e488c66d13957d57af3964b5b09fccca99d425fe0822f4c3e8c0",
+        "path": "api-index.json"
       },
       {
-        "hash": "525af5e5275d22989ed7236f7c1c8f2db78f2eb59d89d3071c9a56a42b3a0d0b",
-        "path": "health/latest.json"
+        "hash": "df0846444b852b270f6a0c066a222f5e34e65321251368210603c2f013fb94b6",
+        "path": "contracts.json"
       },
       {
-        "hash": "469997e52cb32d6d2b947953b99a8d6129ee2f8ae50ad0949aa5b86c85f54942",
-        "path": "health/subnets/14.json"
-      },
-      {
-        "hash": "0e02c5be0f5d1d9047f6ae106e9645f2c8af1c4c6b2c9bdd80b9a975a66d87a4",
-        "path": "review-queue.json"
-      },
-      {
-        "hash": "b3489fe864164019a86fd5e11c902972189bd8270a8e5ba3677baed1771220c2",
-        "path": "search.json"
-      },
-      {
-        "hash": "1f5036069db0603947ace77861ff7b5ec656620c62c528db1b5c3df671c95b09",
-        "path": "source-snapshots.json"
-      },
-      {
-        "hash": "55bf4911ce90c261df79f73c9dee19bdc756e8ff77dac3aacae25e45ce17c832",
-        "path": "subnets/14.json"
-      },
-      {
-        "hash": "69d8f6f8c7e720143e7e8b81fd54397dfbed3d1e3ee0c1eda1300f64bb8870b8",
-        "path": "surfaces.json"
-      },
-      {
-        "hash": "32fdf17e1b3ead49e448fb09e3fcd6a4fcf8c953a6aae4a7d4a2fb9c1b847542",
-        "path": "verification/latest.json"
+        "hash": "7a411a3c03f448199086c2f6d3a97a61ef03df79510ea92bdb35655f126fcb6a",
+        "path": "openapi.json"
       }
     ],
     "removed": []
@@ -56,7 +32,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 9,
+    "artifact_modified_count": 3,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {

@@ -15,7 +15,7 @@
   },
   "scripts": {
     "validate": "node scripts/validate.mjs",
-    "build": "node scripts/build-artifacts.mjs",
+    "build": "node scripts/build-artifacts.mjs && node scripts/generate-types.mjs && node scripts/r2-manifest.mjs --write",
     "build:artifacts": "node scripts/build-artifacts.mjs",
     "pipeline:check": "node scripts/pipeline.mjs --check",
     "pipeline:refresh": "node scripts/pipeline.mjs --refresh",
@@ -39,10 +39,13 @@
     "validate:schemas": "node scripts/validate-schemas.mjs",
     "validate:api": "node scripts/validate-api.mjs",
     "validate:openapi": "node scripts/validate-openapi.mjs",
+    "validate:types": "node scripts/validate-types.mjs",
+    "validate:artifact-budgets": "node scripts/validate-artifact-budgets.mjs",
     "validate:intake": "node scripts/validate-intake.mjs",
     "validate:workflows": "node scripts/validate-workflows.mjs",
     "openapi:generate": "node scripts/generate-openapi.mjs --write",
     "openapi:generate:dry-run": "node scripts/generate-openapi.mjs",
+    "types:generate": "node scripts/generate-types.mjs",
     "intake:dry-run": "node scripts/intake-dry-run.mjs",
     "intake:import": "node scripts/intake-dry-run.mjs --write",
     "r2:manifest": "node scripts/r2-manifest.mjs --write",
@@ -68,6 +71,7 @@
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "eslint": "^10.4.1",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.8.3",
     "vitest": "^4.1.8"
   }

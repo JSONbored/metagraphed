@@ -1,0 +1,32 @@
+import { spawnSync } from "node:child_process";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { repoRoot } from "./lib.mjs";
+
+const generatedOutputPath = path.join(
+  repoRoot,
+  "generated/metagraphed-api.d.ts",
+);
+const publicOutputPath = path.join(repoRoot, "public/metagraph/types.d.ts");
+const result = spawnSync(
+  "npx",
+  ["openapi-typescript", "public/metagraph/openapi.json"],
+  {
+    cwd: repoRoot,
+    encoding: "utf8",
+    stdio: "pipe",
+  },
+);
+
+if (result.status !== 0) {
+  process.stdout.write(result.stdout || "");
+  process.stderr.write(result.stderr || "");
+  process.exit(result.status || 1);
+}
+
+await fs.mkdir(path.dirname(generatedOutputPath), { recursive: true });
+await fs.mkdir(path.dirname(publicOutputPath), { recursive: true });
+await fs.writeFile(generatedOutputPath, result.stdout, "utf8");
+await fs.writeFile(publicOutputPath, result.stdout, "utf8");
+
+console.log("Generated Metagraphed API TypeScript definitions.");

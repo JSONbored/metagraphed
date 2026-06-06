@@ -255,6 +255,7 @@
       "source_count": 2,
       "verified_at": "2026-06-06T07:43:56.705Z"
     },
+    "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/37",
     "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/37",
     "gaps": {

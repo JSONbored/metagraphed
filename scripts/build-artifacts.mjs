@@ -22,8 +22,12 @@ import {
   CONTRACT_VERSION,
   buildApiIndexArtifact,
   buildContractsArtifact,
-  buildOpenApiArtifact,
 } from "../src/contracts.mjs";
+import {
+  evaluateArtifactBudgets,
+  summarizeArtifactBudgets,
+} from "./artifact-budgets.mjs";
+import { buildCanonicalOpenApiArtifact } from "./openapi-components.mjs";
 
 const providers = await loadProviders();
 const overlays = await loadSubnets();
@@ -148,7 +152,7 @@ const curationReview = buildCurationReview(
 );
 const schemaDriftPlaceholder = buildSchemaDriftPlaceholder(surfaces);
 const contracts = buildContractsArtifact(generatedAt);
-const openApi = buildOpenApiArtifact(generatedAt);
+const openApi = await buildCanonicalOpenApiArtifact(generatedAt);
 
 const adapterArtifacts = Object.fromEntries(
   activeOverlays
@@ -252,6 +256,18 @@ await writeJson(path.join(outputRoot, "providers.json"), {
   generated_at: generatedAt,
   providers,
 });
+await fs.rm(path.join(outputRoot, "providers"), {
+  recursive: true,
+  force: true,
+});
+for (const provider of providers) {
+  await writeJson(path.join(outputRoot, `providers/${provider.id}.json`), {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    provider,
+  });
+}
 
 await writeJson(path.join(outputRoot, "subnets.json"), {
   schema_version: 1,
@@ -287,6 +303,21 @@ await writeJson(path.join(outputRoot, "surfaces.json"), {
     "Curated and verified public interface surfaces only. Native-only subnet stubs do not invent surfaces.",
   surfaces,
 });
+await fs.rm(path.join(outputRoot, "surfaces"), {
+  recursive: true,
+  force: true,
+});
+for (const subnet of mergedSubnets) {
+  await writeJson(path.join(outputRoot, `surfaces/${subnet.netuid}.json`), {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    netuid: subnet.netuid,
+    slug: subnet.slug,
+    name: subnet.name,
+    surfaces: surfaces.filter((surface) => surface.netuid === subnet.netuid),
+  });
+}
 
 await writeJson(path.join(outputRoot, "candidates.json"), {
   schema_version: 1,
@@ -295,6 +326,23 @@ await writeJson(path.join(outputRoot, "candidates.json"), {
     "Unverified candidate surfaces from public source discovery and community intake. Candidates are not verified registry surfaces.",
   candidates: candidateIndex,
 });
+await fs.rm(path.join(outputRoot, "candidates"), {
+  recursive: true,
+  force: true,
+});
+for (const subnet of mergedSubnets) {
+  await writeJson(path.join(outputRoot, `candidates/${subnet.netuid}.json`), {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    netuid: subnet.netuid,
+    slug: subnet.slug,
+    name: subnet.name,
+    candidates: candidateIndex.filter(
+      (candidate) => candidate.netuid === subnet.netuid,
+    ),
+  });
+}
 
 await writeJson(path.join(outputRoot, "review-queue.json"), {
   schema_version: 1,
@@ -324,6 +372,36 @@ await writeJson(path.join(outputRoot, "verification/latest.json"), {
   ...verification,
   generated_at: verification.generated_at || generatedAt,
 });
+await fs.rm(path.join(outputRoot, "verification/subnets"), {
+  recursive: true,
+  force: true,
+});
+for (const subnet of mergedSubnets) {
+  const results = (verification.results || []).filter(
+    (result) => result.netuid === subnet.netuid,
+  );
+  await writeJson(
+    path.join(outputRoot, `verification/subnets/${subnet.netuid}.json`),
+    {
+      schema_version: 1,
+      contract_version: contractVersion,
+      generated_at: verification.generated_at || generatedAt,
+      candidate_count: results.length,
+      netuid: subnet.netuid,
+      slug: subnet.slug,
+      name: subnet.name,
+      summary: {
+        by_classification: countBy(
+          results,
+          (result) => result.classification || "unknown",
+        ),
+        by_kind: countBy(results, (result) => result.kind || "unknown"),
+        by_provider: countBy(results, (result) => result.provider || "unknown"),
+      },
+      results,
+    },
+  );
+}
 
 await writeJson(
   path.join(outputRoot, "metagraph/latest.json"),
@@ -479,6 +557,7 @@ await writeJson(
 );
 
 const artifactSizes = await collectArtifactSizes(outputRoot);
+const artifactBudgets = evaluateArtifactBudgets(artifactSizes);
 await writeJson(path.join(outputRoot, "build-summary.json"), {
   schema_version: 1,
   contract_version: contractVersion,
@@ -490,6 +569,12 @@ await writeJson(path.join(outputRoot, "build-summary.json"), {
     0,
   ),
   artifacts: artifactSizes.slice(0, 250),
+  artifact_budget_summary: summarizeArtifactBudgets(artifactBudgets),
+  artifact_budgets: artifactBudgets
+    .filter((budget) => budget.status !== "ok")
+    .sort(
+      (a, b) => b.size_bytes - a.size_bytes || a.path.localeCompare(b.path),
+    ),
   candidate_count: candidates.length,
   coverage,
   provider_count: providers.length,
@@ -524,6 +609,8 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
       overlay?.categories ||
       (nativeSubnet.netuid === 0 ? ["root", "system"] : ["native-only"]),
     coverage_level: coverageLevel,
+    curation_level:
+      overlay?.curation?.level || (overlay ? "candidate-discovered" : "native"),
     dashboard_url: overlay?.dashboard_url || null,
     docs_url: overlay?.docs_url || null,
     gaps: buildGaps(overlay?.surfaces || [], overlay),

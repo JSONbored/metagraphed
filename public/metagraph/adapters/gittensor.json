@@ -36,11 +36,11 @@
         "status": "docs-only"
       },
       "master_repositories": {
-        "captured_at": "2026-06-06T08:24:33.677Z",
+        "captured_at": "2026-06-06T09:16:53.492Z",
         "config_hash": "d61ad080861bcb00f3418313cf146fdee6faefa821df2f4adbcae2684ee4ebf7",
         "content_type": "text/plain; charset=utf-8",
         "issue_discovery_enabled_count": 3,
-        "latency_ms": 127,
+        "latency_ms": 848,
         "maintainer_cut_repo_count": 9,
         "max_maintainer_cut": 0.5,
         "repository_count": 18,
@@ -113,10 +113,10 @@
         "zero_emission_count": 1
       },
       "mirror_freshness": {
-        "captured_at": "2026-06-06T08:24:34.017Z",
+        "captured_at": "2026-06-06T09:16:53.858Z",
         "error": "API rate limit exceeded for 98.97.112.120. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)",
         "full_name": "entrius/das-github-mirror",
-        "latency_ms": 79,
+        "latency_ms": 72,
         "status": "rate-limited-or-forbidden",
         "status_code": 403
       },

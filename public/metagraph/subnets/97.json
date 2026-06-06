@@ -549,6 +549,7 @@
       "source_count": 3,
       "verified_at": "2026-06-06T07:44:07.205Z"
     },
+    "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/97",
     "docs_url": "https://docs.flamewire.io/docs/miners/registration",
     "gaps": {

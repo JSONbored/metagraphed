@@ -1,0 +1,15 @@
+{
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "provider": {
+    "authority": "provider-claimed",
+    "docs_url": "https://api.taomarketcap.com/developer/documentation/",
+    "id": "taomarketcap",
+    "kind": "data-provider",
+    "name": "TaoMarketCap",
+    "notes": "Third-party Bittensor market and subnet API. Used only as enrichment and candidate discovery, not canonical subnet existence authority.",
+    "schema_version": 1,
+    "website_url": "https://taomarketcap.com"
+  },
+  "schema_version": 1
+}

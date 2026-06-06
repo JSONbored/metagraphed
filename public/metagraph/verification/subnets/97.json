@@ -1,0 +1,426 @@
+{
+  "candidate_count": 12,
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "Albedo",
+  "netuid": 97,
+  "results": [
+    {
+      "candidate_id": "sn-97-github-readme-unitone-labs-flamewire-docs-1",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 198,
+      "method_tested": "HEAD",
+      "name": "Albedo docs",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/unitone-labs/FlameWire/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/unitone-labs/FlameWire/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.flamewire.io/docs/miners/registration",
+      "verified_at": "2026-06-06T07:44:06.962Z"
+    },
+    {
+      "candidate_id": "sn-97-github-readme-unitone-labs-flamewire-docs-3",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 170,
+      "method_tested": "HEAD",
+      "name": "Albedo docs",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/unitone-labs/FlameWire/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/unitone-labs/FlameWire/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.flamewire.io/docs/validators/guide",
+      "verified_at": "2026-06-06T07:44:06.982Z"
+    },
+    {
+      "candidate_id": "sn-97-github-readme-unitone-labs-flamewire-subnet-api-5",
+      "classification": "redirected",
+      "confidence_score": 53,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 980,
+      "method_tested": "HEAD",
+      "name": "Albedo API surface",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": "https://app-dev.flamewire.io/api-keys?create=true&role=validator",
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/unitone-labs/FlameWire/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/unitone-labs/FlameWire/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://app.flamewire.io/api-keys?create=true&role=validator",
+      "verified_at": "2026-06-06T07:44:07.008Z"
+    },
+    {
+      "candidate_id": "sn-97-github-readme-unitone-labs-flamewire-website-2",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 379,
+      "method_tested": "HEAD",
+      "name": "Albedo website page",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/unitone-labs/FlameWire/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/unitone-labs/FlameWire/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/paritytech/polkadot-sdk",
+      "verified_at": "2026-06-06T07:44:07.021Z"
+    },
+    {
+      "candidate_id": "sn-97-github-readme-unitone-labs-flamewire-website-4",
+      "classification": "redirected",
+      "confidence_score": 61,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 632,
+      "method_tested": "HEAD",
+      "name": "Albedo website page",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/unitone-labs/FlameWire",
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/unitone-labs/FlameWire/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/unitone-labs/FlameWire/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/unitone-labs/FlameWire.git",
+      "verified_at": "2026-06-06T07:44:07.074Z"
+    },
+    {
+      "candidate_id": "sn-97-taomarketcap-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 244,
+      "method_tested": "HEAD",
+      "name": "Albedo TaoMarketCap dashboard",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/97",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/97"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://taomarketcap.com/subnets/97",
+      "verified_at": "2026-06-06T07:44:07.099Z"
+    },
+    {
+      "candidate_id": "sn-97-taomarketcap-source-repo",
+      "classification": "live",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 429,
+      "github_api_url": "https://api.github.com/repos/unarbos/albedo",
+      "kind": "source-repo",
+      "latency_ms": 534,
+      "method_tested": "HEAD",
+      "name": "Albedo source repository",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/97",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/97"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/unarbos/albedo",
+      "verified_at": "2026-06-06T07:44:07.138Z"
+    },
+    {
+      "candidate_id": "sn-97-taomarketcap-website",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 358,
+      "method_tested": "HEAD",
+      "name": "Albedo website",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/97",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/97"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://us-east-1.hippius.com/albedo/index.html",
+      "verified_at": "2026-06-06T07:44:07.152Z"
+    },
+    {
+      "candidate_id": "sn-97-tensorplex-docs",
+      "classification": "live",
+      "confidence_score": 73,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 470,
+      "method_tested": "HEAD",
+      "name": "Albedo Tensorplex subnet docs",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/97/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/97/subnet.json"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/97",
+      "verified_at": "2026-06-06T07:44:07.160Z"
+    },
+    {
+      "candidate_id": "sn-97-tensorplex-source-repo-1",
+      "classification": "live",
+      "confidence_score": 55,
+      "error": null,
+      "github_api_status": 429,
+      "github_api_url": "https://api.github.com/repos/unitone-labs/FlameWire",
+      "kind": "source-repo",
+      "latency_ms": 752,
+      "method_tested": "HEAD",
+      "name": "Albedo source repository",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs-github",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/97/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/97/subnet.json"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/unitone-labs/FlameWire",
+      "verified_at": "2026-06-06T07:44:07.205Z"
+    },
+    {
+      "candidate_id": "sn-97-website-link-github-com-website-2-10ekrtt",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 152,
+      "method_tested": "HEAD",
+      "name": "Albedo website page",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://github.com/paritytech/polkadot-sdk",
+      "source_urls": [
+        "https://github.com/paritytech/polkadot-sdk"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fparitytech%2Fpolkadot-sdk",
+      "verified_at": "2026-06-06T07:44:07.225Z"
+    },
+    {
+      "candidate_id": "sn-97-website-link-github-com-website-2-b7ivfc",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 149,
+      "method_tested": "HEAD",
+      "name": "Albedo website page",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://github.com/unitone-labs/FlameWire.git",
+      "source_urls": [
+        "https://github.com/unitone-labs/FlameWire.git"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Funitone-labs%2FFlameWire",
+      "verified_at": "2026-06-06T07:44:07.276Z"
+    }
+  ],
+  "schema_version": 1,
+  "slug": "sn-97",
+  "summary": {
+    "by_classification": {
+      "live": 10,
+      "redirected": 2
+    },
+    "by_kind": {
+      "dashboard": 1,
+      "docs": 3,
+      "source-repo": 2,
+      "subnet-api": 1,
+      "website": 5
+    },
+    "by_provider": {
+      "taomarketcap": 3,
+      "tensorplex-subnet-docs": 9
+    }
+  }
+}

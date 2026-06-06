@@ -1,0 +1,161 @@
+{
+  "candidate_count": 4,
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "deprecated",
+  "netuid": 39,
+  "results": [
+    {
+      "candidate_id": "sn-39-taomarketcap-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 220,
+      "method_tested": "HEAD",
+      "name": "deprecated TaoMarketCap dashboard",
+      "netuid": 39,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/39",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/39"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://taomarketcap.com/subnets/39",
+      "verified_at": "2026-06-06T07:43:56.815Z"
+    },
+    {
+      "candidate_id": "sn-39-taomarketcap-source-repo",
+      "classification": "dead",
+      "confidence_score": 0,
+      "error": null,
+      "github_api_status": 403,
+      "github_api_url": "https://api.github.com/repos/deprecated/deprecated",
+      "kind": "source-repo",
+      "latency_ms": 208,
+      "method_tested": "HEAD",
+      "name": "deprecated source repository",
+      "netuid": 39,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/39",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/39"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://github.com/deprecated/deprecated",
+      "verified_at": "2026-06-06T07:43:56.825Z"
+    },
+    {
+      "candidate_id": "sn-39-tensorplex-docs",
+      "classification": "live",
+      "confidence_score": 73,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 275,
+      "method_tested": "HEAD",
+      "name": "deprecated Tensorplex subnet docs",
+      "netuid": 39,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/39/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/39/subnet.json"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/39",
+      "verified_at": "2026-06-06T07:43:56.829Z"
+    },
+    {
+      "candidate_id": "sn-39-tensorplex-source-repo-1",
+      "classification": "redirected",
+      "confidence_score": 50,
+      "error": null,
+      "github_api_status": 403,
+      "github_api_url": "https://api.github.com/repos/tplr-ai/basilica",
+      "kind": "source-repo",
+      "latency_ms": 1084,
+      "method_tested": "HEAD",
+      "name": "deprecated source repository",
+      "netuid": 39,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": "https://github.com/one-covenant/basilica",
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs-github",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/39/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/39/subnet.json"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/tplr-ai/basilica",
+      "verified_at": "2026-06-06T07:43:56.876Z"
+    }
+  ],
+  "schema_version": 1,
+  "slug": "sn-39",
+  "summary": {
+    "by_classification": {
+      "dead": 1,
+      "live": 2,
+      "redirected": 1
+    },
+    "by_kind": {
+      "dashboard": 1,
+      "docs": 1,
+      "source-repo": 2
+    },
+    "by_provider": {
+      "taomarketcap": 2,
+      "tensorplex-subnet-docs": 2
+    }
+  }
+}

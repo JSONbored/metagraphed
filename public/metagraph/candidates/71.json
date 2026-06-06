@@ -1,0 +1,231 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-71-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "Leadpoet TaoMarketCap dashboard",
+      "netuid": 71,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/71",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/71"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Leadpoet",
+      "url": "https://taomarketcap.com/subnets/71",
+      "verification": {
+        "candidate_id": "sn-71-taomarketcap-dashboard",
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "dashboard",
+        "latency_ms": 228,
+        "method_tested": "HEAD",
+        "name": "Leadpoet TaoMarketCap dashboard",
+        "netuid": 71,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "third-party-index",
+        "source_type": "taomarketcap-dashboard",
+        "source_url": "https://api.taomarketcap.com/public/v1/subnets/71",
+        "source_urls": [
+          "https://api.taomarketcap.com/public/v1/subnets/71"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://taomarketcap.com/subnets/71",
+        "verified_at": "2026-06-06T07:44:03.204Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-71-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "Leadpoet source repository",
+      "netuid": 71,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/71",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/71"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Leadpoet",
+      "url": "https://github.com/leadpoet/leadpoet",
+      "verification": {
+        "candidate_id": "sn-71-taomarketcap-source-repo",
+        "classification": "live",
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
+        "github_api_url": "https://api.github.com/repos/leadpoet/leadpoet",
+        "kind": "source-repo",
+        "latency_ms": 476,
+        "method_tested": "HEAD",
+        "name": "Leadpoet source repository",
+        "netuid": 71,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "third-party-index",
+        "source_type": "taomarketcap-subnet-identity-v3",
+        "source_url": "https://api.taomarketcap.com/public/v1/subnets/71",
+        "source_urls": [
+          "https://api.taomarketcap.com/public/v1/subnets/71"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://github.com/leadpoet/leadpoet",
+        "verified_at": "2026-06-06T07:44:03.208Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-71-taomarketcap-website",
+      "kind": "website",
+      "name": "Leadpoet website",
+      "netuid": 71,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/71",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/71"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Leadpoet",
+      "url": "https://leadpoet.com/",
+      "verification": {
+        "candidate_id": "sn-71-taomarketcap-website",
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 519,
+        "method_tested": "HEAD",
+        "name": "Leadpoet website",
+        "netuid": 71,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "third-party-index",
+        "source_type": "taomarketcap-subnet-identity-v3",
+        "source_url": "https://api.taomarketcap.com/public/v1/subnets/71",
+        "source_urls": [
+          "https://api.taomarketcap.com/public/v1/subnets/71"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://leadpoet.com/",
+        "verified_at": "2026-06-06T07:44:03.213Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-71-tensorplex-docs",
+      "kind": "docs",
+      "name": "Leadpoet Tensorplex subnet docs",
+      "netuid": 71,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/71/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/71/subnet.json"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Leadpoet",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/71",
+      "verification": {
+        "candidate_id": "sn-71-tensorplex-docs",
+        "classification": "live",
+        "confidence_score": 73,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 428,
+        "method_tested": "HEAD",
+        "name": "Leadpoet Tensorplex subnet docs",
+        "netuid": 71,
+        "private_redirect_blocked": false,
+        "provider": "tensorplex-subnet-docs",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "tensorplex-subnet-docs",
+        "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/71/subnet.json",
+        "source_urls": [
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/71/subnet.json"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/71",
+        "verified_at": "2026-06-06T07:44:03.229Z"
+      }
+    }
+  ],
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "Leadpoet",
+  "netuid": 71,
+  "schema_version": 1,
+  "slug": "sn-71"
+}

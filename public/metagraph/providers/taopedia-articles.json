@@ -1,0 +1,15 @@
+{
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "provider": {
+    "authority": "community",
+    "docs_url": "https://github.com/e35ventura/taopedia-articles",
+    "id": "taopedia-articles",
+    "kind": "docs-provider",
+    "name": "Taopedia Articles",
+    "notes": "Public article source for Taopedia. Used to discover documentation candidates, not verified operational surfaces.",
+    "schema_version": 1,
+    "website_url": "https://github.com/e35ventura/taopedia-articles"
+  },
+  "schema_version": 1
+}

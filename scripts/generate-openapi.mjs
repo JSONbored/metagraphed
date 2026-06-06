@@ -1,15 +1,10 @@
 import path from "node:path";
-import { buildOpenApiArtifact } from "../src/contracts.mjs";
-import {
-  buildTimestamp,
-  repoRoot,
-  stableStringify,
-  writeJson,
-} from "./lib.mjs";
+import { buildCanonicalOpenApiArtifact } from "./openapi-components.mjs";
+import { repoRoot, stableStringify, writeJson } from "./lib.mjs";
 
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
-const openapi = buildOpenApiArtifact(buildTimestamp());
+const openapi = await buildCanonicalOpenApiArtifact();
 const outputPath = path.join(repoRoot, "public/metagraph/openapi.json");
 
 if (shouldWrite) {

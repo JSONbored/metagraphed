@@ -1,1007 +1,1271 @@
 {
   "adapter_count": 2,
-  "artifact_count": 420,
-  "artifact_size_bytes": 12030070,
+  "artifact_budget_summary": {
+    "fail_count": 0,
+    "ok_count": 820,
+    "warn_count": 1
+  },
+  "artifact_budgets": [
+    {
+      "fail_bytes": 1000000,
+      "path": "health/history/2026-06-06.json",
+      "size_bytes": 485629,
+      "status": "warn",
+      "warn_bytes": 250000
+    }
+  ],
+  "artifact_count": 821,
+  "artifact_size_bytes": 15899021,
   "artifacts": [
     {
       "path": "adapters/allways.json",
+      "sha256": "692f3e3ba18340fbec1ba2ef8b446ec87f2fb338088f5e43ad47a175be8eb4d8",
       "size_bytes": 8278
     },
     {
       "path": "adapters/gittensor.json",
+      "sha256": "f49d140680b920221af529bc8eb559b209692a5f5e1f07f7cac35d517150c86c",
       "size_bytes": 4993
     },
     {
       "path": "api-index.json",
-      "size_bytes": 16843
+      "sha256": "3c673161f6bd58db16943b674df6be239e9a881171544738915c587609adbc9b",
+      "size_bytes": 28920
     },
     {
       "path": "candidates.json",
+      "sha256": "ab108deb0ef853ee49b1049c2ca70551cff3d4fdaf19054a9cf96378af2446ce",
       "size_bytes": 1845740
     },
     {
+      "path": "candidates/0.json",
+      "sha256": "1ad0502e0b691ff792c4238b89101d6f21c736af6eca59393b730e4cfcfaa6b2",
+      "size_bytes": 4541
+    },
+    {
+      "path": "candidates/1.json",
+      "sha256": "1556847efff2b1d3d95c12df6b1584a6534d144e141c204bae1dbd176ce9d0eb",
+      "size_bytes": 13445
+    },
+    {
+      "path": "candidates/10.json",
+      "sha256": "b0c5ea195ab22f836e5a0f4955b1a85e03e6f0df87306bbca244814f971e7993",
+      "size_bytes": 8756
+    },
+    {
+      "path": "candidates/100.json",
+      "sha256": "632aa9005330c2c5c19c7294edf4a923ac8343bd84679e077fa5d2af6c5f0f4d",
+      "size_bytes": 13538
+    },
+    {
+      "path": "candidates/101.json",
+      "sha256": "94734383120804c71181a0b0deb009077d86d78f4aaa510edddf13bb2259e545",
+      "size_bytes": 4577
+    },
+    {
+      "path": "candidates/102.json",
+      "sha256": "e330278d013dadd6cb31f19346f3eeade681368e5142abaf05ed2253e560aa28",
+      "size_bytes": 8830
+    },
+    {
+      "path": "candidates/103.json",
+      "sha256": "4e54a2dc935ff2d00a6f120a6ffc494a131433c95f67ce688568f8e859bcd5e7",
+      "size_bytes": 8789
+    },
+    {
+      "path": "candidates/104.json",
+      "sha256": "4aad37883d5af8801345c54b655998307938574fe622bc9d5a31deb0ecedca53",
+      "size_bytes": 4717
+    },
+    {
+      "path": "candidates/105.json",
+      "sha256": "3540bf9e9fcd156758e969c168752ee03f8947b5a40fc908ff0106dce820be7e",
+      "size_bytes": 8780
+    },
+    {
+      "path": "candidates/106.json",
+      "sha256": "3f8573faacf901ed9c75d09ee66b253fe8c1b8437c72e143009ccedb2457f9e3",
+      "size_bytes": 8773
+    },
+    {
+      "path": "candidates/107.json",
+      "sha256": "6029a54f0422986dec0c5b76d0066d8b281f77a95cfd45344ca6abd050ac0ecc",
+      "size_bytes": 20113
+    },
+    {
+      "path": "candidates/108.json",
+      "sha256": "1e4a403e15c6dbc98b34541996cdb7862839b8efda470a71ac07d8288721eecd",
+      "size_bytes": 8851
+    },
+    {
+      "path": "candidates/109.json",
+      "sha256": "a45a2c3638d2d19056320e8d52baf6fdd53a2faa4f33258598441e0065b33c3e",
+      "size_bytes": 6786
+    },
+    {
+      "path": "candidates/11.json",
+      "sha256": "d2ed33ea02c82b43f203d3be0fc5bfd6a0285cfb669c154bed8244f8ce9da7cb",
+      "size_bytes": 8852
+    },
+    {
+      "path": "candidates/110.json",
+      "sha256": "bae309199af1f297931d65eae4786553aee1a98333c23f0e56e3f0ef827d4900",
+      "size_bytes": 9094
+    },
+    {
+      "path": "candidates/111.json",
+      "sha256": "84ef3ce5beb97f90a3c3e9876f4dc596085a5d5b177739be77f861685d3993da",
+      "size_bytes": 6805
+    },
+    {
+      "path": "candidates/112.json",
+      "sha256": "1e362ccc4706e28236c63c0ddb9b1c22a0b7dc38eff426608f3eb766311171a2",
+      "size_bytes": 8854
+    },
+    {
+      "path": "candidates/113.json",
+      "sha256": "f15c81e8127e7f051dab093574d4433dfdabe8b4ae94734095d145905850acf8",
+      "size_bytes": 8830
+    },
+    {
+      "path": "candidates/114.json",
+      "sha256": "ef21884edb8cf00c2945684d368d62aaf5ad6fbd3259a7f0cc272cda9e4c68f7",
+      "size_bytes": 15623
+    },
+    {
+      "path": "candidates/115.json",
+      "sha256": "8489f9c2b455826f0b9dd7707ddc09cc8b1215561b5b85e616be28606c548b37",
+      "size_bytes": 6803
+    },
+    {
+      "path": "candidates/116.json",
+      "sha256": "8ffe51c7344af7eea8b934727db9ee48510a882d69771d488ece32c1d86276bd",
+      "size_bytes": 6947
+    },
+    {
+      "path": "candidates/117.json",
+      "sha256": "66f285127d899b2453a86e9d118a4b12e450025914c1139bd0fc9d1ac94a964a",
+      "size_bytes": 46296
+    },
+    {
+      "path": "candidates/118.json",
+      "sha256": "b9f72353bcdebf9ba54be5139f8df5405b4af9cae7779f7fac6f2583b9a0a018",
+      "size_bytes": 63675
+    },
+    {
+      "path": "candidates/119.json",
+      "sha256": "d874b091e2359a0eb66cdce0e49361ad914e9282bdd7b29d62190665ffe23fe7",
+      "size_bytes": 6757
+    },
+    {
+      "path": "candidates/12.json",
+      "sha256": "1ff1756c7ed888c72d5bf64c5bb8af156cdc59d9ea2f9c9870d547eac6e9b732",
+      "size_bytes": 6851
+    },
+    {
+      "path": "candidates/120.json",
+      "sha256": "3bcd9b2b54d1d269b17b606b6a0179b7f665669942b7539bd4ac1740c99880e3",
+      "size_bytes": 8864
+    },
+    {
+      "path": "candidates/121.json",
+      "sha256": "1681ad1a5cbdfa6b0d3f42677c11617ac7ae3e3bec7bb838c3829100a4bb1d3e",
+      "size_bytes": 8882
+    },
+    {
+      "path": "candidates/122.json",
+      "sha256": "c5ea8b7a4cb75f586377727439c7f15e08758deff11a5d0bebdfd83de1df60f3",
+      "size_bytes": 9305
+    },
+    {
+      "path": "candidates/123.json",
+      "sha256": "f4d280b34fcde5d48f17302d6592ae2a9df3523a22a1498e9d9ac58234175bba",
+      "size_bytes": 6763
+    },
+    {
+      "path": "candidates/124.json",
+      "sha256": "341e75e46ad698bda3aec3c01945e7de733cc45fc28f76538b0ec4904d79fbaf",
+      "size_bytes": 8815
+    },
+    {
+      "path": "candidates/125.json",
+      "sha256": "52136911c144a22c16569ea2b3236704d44e0cf0b228d68fc5b78e70f9dd115b",
+      "size_bytes": 4598
+    },
+    {
+      "path": "candidates/126.json",
+      "sha256": "6fb9b4fd7b63e58d31544f631c7af2a35026cafb32766e6617fdc7bcb4bc772c",
+      "size_bytes": 8818
+    },
+    {
+      "path": "candidates/127.json",
+      "sha256": "e5ad115c0988ee0c156d7b8876ff3e4a6bfe61546fa8300445fd329e9584412e",
+      "size_bytes": 8851
+    },
+    {
+      "path": "candidates/128.json",
+      "sha256": "d100450331456eec7c042a93cbd5d344b5335d953c9f5bfeb113a670788d10b9",
+      "size_bytes": 11189
+    },
+    {
+      "path": "candidates/13.json",
+      "sha256": "afb67f8439c4d5738ee207ee05bacf266aa82484245d8c96dbde44c0c17104fd",
+      "size_bytes": 8937
+    },
+    {
+      "path": "candidates/14.json",
+      "sha256": "e609f5649d39f4caa9f80f37ece0cf326f592bafaf353e733c93b4f51b16f154",
+      "size_bytes": 62429
+    },
+    {
+      "path": "candidates/15.json",
+      "sha256": "3b112bf3d92cfb78f77963efbf62a43f84d371f3708da5265825953445294144",
+      "size_bytes": 8696
+    },
+    {
+      "path": "candidates/16.json",
+      "sha256": "5d84014f3e29e502e85e51fa03503827b064e9d4bd3c4d35103002c6b4625ed1",
+      "size_bytes": 8748
+    },
+    {
+      "path": "candidates/17.json",
+      "sha256": "e22f5bd3d0e5c01e35016d6c791d10b64d9acbc9489733dff6c0d3b0d198976b",
+      "size_bytes": 59650
+    },
+    {
+      "path": "candidates/18.json",
+      "sha256": "ec8a5714497ce2950de579b21517c6be8736dc37b49b3dcf23f231179c02425c",
+      "size_bytes": 8734
+    },
+    {
+      "path": "candidates/19.json",
+      "sha256": "ae1adc2c756b5f53473543d1b394478f2ae940538404e3b5f72abe7731f5899e",
+      "size_bytes": 8847
+    },
+    {
+      "path": "candidates/2.json",
+      "sha256": "a9af752fbc5d5c1fcaf7202437a51b140dee0b125d7c78234c0979a7bc428af8",
+      "size_bytes": 11153
+    },
+    {
+      "path": "candidates/20.json",
+      "sha256": "2b89a403459a005c3778a0996c9586b803a3370e958b44250ce0bb7de925d827",
+      "size_bytes": 8874
+    },
+    {
+      "path": "candidates/21.json",
+      "sha256": "f885dd7ed3c8ba0a728099144694c021b1a500fc98be5625510f16552c05b215",
+      "size_bytes": 6621
+    },
+    {
+      "path": "candidates/22.json",
+      "sha256": "25a9adf0675e279901ab5ece7dda873666f80130a162ddf672f1c96e40fd96ea",
+      "size_bytes": 8851
+    },
+    {
+      "path": "candidates/23.json",
+      "sha256": "906582966020db6310c219bba448d717e6021b5fca4df634f7f0a4bfd12fd274",
+      "size_bytes": 17901
+    },
+    {
+      "path": "candidates/24.json",
+      "sha256": "c05f37bd5b6d16c21c95f0e13bea9e6b2c6384ee1889652644ea50f993773a4d",
+      "size_bytes": 8770
+    },
+    {
+      "path": "candidates/25.json",
+      "sha256": "334bbdd2cb9984046fb6cffb354d2d6169da99d0b6785d5065f85b571d73b9b2",
+      "size_bytes": 8850
+    },
+    {
+      "path": "candidates/26.json",
+      "sha256": "bf773f543449a51ecfbfd6f0a01138b4db9091c8097ea756a3d481fd0a24e5a4",
+      "size_bytes": 11089
+    },
+    {
+      "path": "candidates/27.json",
+      "sha256": "f400d3581140e5cccd371acfd173d8dee5891f45b1bccf5632d276920cd0ff48",
+      "size_bytes": 8752
+    },
+    {
+      "path": "candidates/28.json",
+      "sha256": "b9961fa7243a3bfad9bf51e6352b0f749e5b84cc696bd94d31f771e2b2302800",
+      "size_bytes": 4548
+    },
+    {
+      "path": "candidates/29.json",
+      "sha256": "e97c4378eb8685b9eefa4182dfe773ef2bb7b3aae6d13abbab8e9cbc8390b8df",
+      "size_bytes": 13471
+    },
+    {
+      "path": "candidates/3.json",
+      "sha256": "92810c78047178d392f17f2593ce8a70fdcb45ef80c86e90f0c90a0a76514677",
+      "size_bytes": 65580
+    },
+    {
+      "path": "candidates/30.json",
+      "sha256": "52827899b91242a42d11631962c84f65844d5b1bdcbc40890dcb20f1db4c23cf",
+      "size_bytes": 6687
+    },
+    {
+      "path": "candidates/31.json",
+      "sha256": "221edd8cb1ef207e92624d3efbda59041d7794163533d4483a025fd90dd97391",
+      "size_bytes": 4576
+    },
+    {
+      "path": "candidates/32.json",
+      "sha256": "2efe981b1a85b083cc415f339f5a63d89e6d1566aeb6b833e7d81b32d43db554",
+      "size_bytes": 8753
+    },
+    {
+      "path": "candidates/33.json",
+      "sha256": "dd4d25e2857b48d9b23582435dd6a7b239c77d20a0e320190b07bc2ffa849f15",
+      "size_bytes": 6836
+    },
+    {
+      "path": "candidates/34.json",
+      "sha256": "bd9f5dc888b48d75f9b139a55dd4b1a345410cb8539c57433958e2d959514162",
+      "size_bytes": 6761
+    },
+    {
+      "path": "candidates/35.json",
+      "sha256": "301301547ad48a81f052aa7763285855d50c8b26f56227df1d9d2d99718d10e4",
+      "size_bytes": 13499
+    },
+    {
+      "path": "candidates/36.json",
+      "sha256": "1dad8b39a42e661608d123489c8b65e7f3a5104120e8335882c22ea0d2d86e45",
+      "size_bytes": 8772
+    },
+    {
+      "path": "candidates/37.json",
+      "sha256": "2aada7407997f8166822d3f9d217c79010ed7d01ada079868f3e7c1a30318c39",
+      "size_bytes": 11093
+    },
+    {
+      "path": "candidates/38.json",
+      "sha256": "9c85233a27c26fc98053ad05945af546f37ff14d3f490f8401bcb469880b0a11",
+      "size_bytes": 8845
+    },
+    {
+      "path": "candidates/39.json",
+      "sha256": "d67d75b1e960a5589962ef77c751135549e5427c5efdb353818bafed75b58c9f",
+      "size_bytes": 9149
+    },
+    {
+      "path": "candidates/4.json",
+      "sha256": "c672e6c4abe38ccb3ce0b9c544feba5b494d87a4a52fd2b9140ab6ae1d5679bc",
+      "size_bytes": 13324
+    },
+    {
+      "path": "candidates/40.json",
+      "sha256": "b738429b37efd6d7428c05c3a80933a09c824653499c2e00d26652398529520f",
+      "size_bytes": 6777
+    },
+    {
+      "path": "candidates/41.json",
+      "sha256": "72ab69d39187adaa7f4441e196180dce8405440edace7a89c47fe8611d49ce35",
+      "size_bytes": 8772
+    },
+    {
+      "path": "candidates/42.json",
+      "sha256": "1cd112b45b654ba279d2a82c8b17a88489f8c8591d6db0f31c7bb9096c98ce48",
+      "size_bytes": 4583
+    },
+    {
+      "path": "candidates/43.json",
+      "sha256": "bba3b0760acdcdb6cdb20073804f9e727e69b991c9b27d57cd8218154a8551ed",
+      "size_bytes": 6774
+    },
+    {
+      "path": "candidates/44.json",
+      "sha256": "42727fc39f3eb91e119f4dbc209ab7e7cf8100e5916071781ec1a354e342549f",
+      "size_bytes": 11145
+    },
+    {
+      "path": "candidates/45.json",
+      "sha256": "56f422b5ecc5c257f6362dcfe23c288a12b6d2f1103007d89643eb822a4d2a8f",
+      "size_bytes": 8840
+    },
+    {
+      "path": "candidates/46.json",
+      "sha256": "e017e941a67507f86e971993f4ba7130d1dbcc924219c19185eb604548867792",
+      "size_bytes": 91115
+    },
+    {
+      "path": "candidates/47.json",
+      "sha256": "9cdf65e7d6c063e109f7e1728df0b4b8e8215199c9f7ec78062ce2a804592e60",
+      "size_bytes": 15797
+    },
+    {
+      "path": "candidates/48.json",
+      "sha256": "e13c6a9f6c8ccb11d40ad4e020f260fbfd8aa3476f2f35acf3291aa6fc14b013",
+      "size_bytes": 11295
+    },
+    {
+      "path": "candidates/49.json",
+      "sha256": "7bf29974af76e3509f04a7ef51440cbb2f4016bfe80b8f07fc54de665b533d56",
+      "size_bytes": 8857
+    },
+    {
+      "path": "candidates/5.json",
+      "sha256": "d5d8d9bc710cb26b07b1b24cfe0febaf5d72640a2edc22d6903723dc12c6fd86",
+      "size_bytes": 11060
+    },
+    {
+      "path": "candidates/50.json",
+      "sha256": "9499aa99efc2a70f759963f6dff06b064af55b70ca8e8dacb81ec898509852fb",
+      "size_bytes": 8811
+    },
+    {
+      "path": "candidates/51.json",
+      "sha256": "1ad3296cf0b6d66dcaee88b3b1b64c6337aa301562ee808c358555871875e587",
+      "size_bytes": 8758
+    },
+    {
+      "path": "candidates/52.json",
+      "sha256": "7b0cba35fe59ed97dbf20f07872ab9ca78fef7c8cf1fff2bcdbcaa7ec00a84f2",
+      "size_bytes": 78497
+    },
+    {
+      "path": "candidates/53.json",
+      "sha256": "bc9224c3cecbbc1eaf2e4287385cdfa05c41dac0da2a0bfdbb99ad32f19b6942",
+      "size_bytes": 6927
+    },
+    {
+      "path": "candidates/54.json",
+      "sha256": "adee26071c1fc10d2d46b7a95295a98a1014f9de46c7d4faaa6a46bd9be11892",
+      "size_bytes": 8839
+    },
+    {
+      "path": "candidates/55.json",
+      "sha256": "2f2d984575e89b50b47de2b5df427a11a50a13dba2fd6dc335a3ea0ab0edf392",
+      "size_bytes": 8764
+    },
+    {
+      "path": "candidates/56.json",
+      "sha256": "c27efd47573c0f55c6fbf1b85a6190f02ff1794518e49bee861073f768d0ee36",
+      "size_bytes": 11146
+    },
+    {
+      "path": "candidates/57.json",
+      "sha256": "dc1b0d55f0d2dc53440076b091a1b4145ff1131af9c9d8311598c4009dda9b70",
+      "size_bytes": 6882
+    },
+    {
+      "path": "candidates/58.json",
+      "sha256": "e540b9aeb6ed9d7b36d5d5c4591e153d5eb172aae15fbb4823c833072bcda3fd",
+      "size_bytes": 62720
+    },
+    {
+      "path": "candidates/59.json",
+      "sha256": "e8be781c309e22016a399ea46d80942ff8778034a7d81936b93fd426953cd8e6",
+      "size_bytes": 8799
+    },
+    {
+      "path": "candidates/6.json",
+      "sha256": "a1694d34da78e9e4b2bceb6ce0823a61baede8d0bfbe42db1bc3b5acf8225fde",
+      "size_bytes": 11118
+    },
+    {
+      "path": "candidates/60.json",
+      "sha256": "03bdc04635e254dc7b3a2cf14c8bda689be8e3ed8d396ec18c83470bb2b3fadb",
+      "size_bytes": 15502
+    },
+    {
+      "path": "candidates/61.json",
+      "sha256": "d5878c8bd044cca7b6571a11b1c43725330c108ec97a8b858e1782b686c34a58",
+      "size_bytes": 8789
+    },
+    {
+      "path": "candidates/62.json",
+      "sha256": "8fc6d40c47e287e3d29c7ce6ffb9a3b217b6d28fd242b84d898fe77002cd3d46",
+      "size_bytes": 8759
+    },
+    {
+      "path": "candidates/63.json",
+      "sha256": "9ed59da933ea020552d10c0b3115f72063a22ad92c614c2c65b422ab5422bfdd",
+      "size_bytes": 11122
+    },
+    {
+      "path": "candidates/64.json",
+      "sha256": "7f9fd655a08f6b4e59f7f0fbdb7da1d13c80d378d64168eb05c4da26c8c6fd3d",
+      "size_bytes": 35751
+    },
+    {
+      "path": "candidates/65.json",
+      "sha256": "f5f28624aece6c7cbba13e25a52f1f257da39f131e08d3b405ff07f84c79e878",
+      "size_bytes": 8937
+    },
+    {
+      "path": "candidates/66.json",
+      "sha256": "634e3c345c89f4eab450b6ff5b9e9e1623bdc0873ad708da742ff5dcb043036f",
+      "size_bytes": 8716
+    },
+    {
+      "path": "candidates/67.json",
+      "sha256": "f8f74b36af9ed519c2e2ed1893013545ce0696dc159ca23fbf67163ae052b4cf",
+      "size_bytes": 11037
+    },
+    {
+      "path": "candidates/68.json",
+      "sha256": "cc6affe54a2b81216561702eab729a63a3a03ea69cd9a05dba19d63e95aacb34",
+      "size_bytes": 8732
+    },
+    {
+      "path": "candidates/69.json",
+      "sha256": "5a8d236ff3278e1793fe7360326acbc0f981ed683946a6d924f949f7b34a2a37",
+      "size_bytes": 4555
+    },
+    {
+      "path": "candidates/7.json",
+      "sha256": "13cacf1c10321a0b6b0a3f62dcd26cd4784a3d7a4fc7f4f875bead79d4ffc9e8",
+      "size_bytes": 11079
+    },
+    {
+      "path": "candidates/70.json",
+      "sha256": "0408143fb5477b3d34be229031609530d7587f3d1369344068d9f5d1736b8d8a",
+      "size_bytes": 8820
+    },
+    {
+      "path": "candidates/71.json",
+      "sha256": "72b5b760bd0568751ab72a1852b3c5135e17f49ea90aa76006184c9e623b967b",
+      "size_bytes": 8780
+    },
+    {
+      "path": "candidates/72.json",
+      "sha256": "9d646724b74732ac57a95a420b7ea9a7cae6322e64c0d8299572305908671a94",
+      "size_bytes": 9046
+    },
+    {
+      "path": "candidates/73.json",
+      "sha256": "025b24378a25234682b92c9d4940cad55017b1ad4a0b642efeed5dd034966cdc",
+      "size_bytes": 6902
+    },
+    {
+      "path": "candidates/74.json",
+      "sha256": "ea95ec8c3dccc80043e240c86442d1e41bfea0621b19ee211f67da859ae36f8c",
+      "size_bytes": 11125
+    },
+    {
+      "path": "candidates/75.json",
+      "sha256": "69159dfd6dde58f849b46afd9f42e1b547e9da47ca795b326ededc638c02cbac",
+      "size_bytes": 50797
+    },
+    {
+      "path": "candidates/76.json",
+      "sha256": "9a7a914d82e17e615d49d149e5798dfb94143ec3ede790bd0d6a169826e82191",
+      "size_bytes": 4597
+    },
+    {
+      "path": "candidates/77.json",
+      "sha256": "1626d061923846b0207bfa73d4e1d21dd4cc5440453a6f8bdb24c080c01b1cc7",
+      "size_bytes": 8776
+    },
+    {
+      "path": "candidates/78.json",
+      "sha256": "4238c2cde1ccb822890da83f494149e76408e95b3fc14d2c6ff370013af9ae00",
+      "size_bytes": 13386
+    },
+    {
+      "path": "candidates/79.json",
+      "sha256": "0707f588c2471451554e708def4345cca58c50cad5d58c701ec152ded47d7857",
+      "size_bytes": 66052
+    },
+    {
+      "path": "candidates/8.json",
+      "sha256": "69528b6b38c2d590d79d350ae5b0f0bf9601c92313ddcb79bdc2de5f10eda9a8",
+      "size_bytes": 11096
+    },
+    {
+      "path": "candidates/80.json",
+      "sha256": "575b9add764e0259658b468eea8b4e8349dbf5c4fa97d3b8a058fb23ed7a1238",
+      "size_bytes": 8834
+    },
+    {
+      "path": "candidates/81.json",
+      "sha256": "afde803bb9e3f2a9749aa169d3842c321b30350fb0fed8b93f62e0f33301d957",
+      "size_bytes": 54418
+    },
+    {
+      "path": "candidates/82.json",
+      "sha256": "009b075a6763818633023f70e2e208aa5b7e03b1b290fafb4affd45059881152",
+      "size_bytes": 15536
+    },
+    {
+      "path": "candidates/83.json",
+      "sha256": "b98c0ae60497c67b39def50dc1fcbc871705a9da220399d383b5ed338ae19cbc",
+      "size_bytes": 8786
+    },
+    {
+      "path": "candidates/84.json",
+      "sha256": "b479ef5ca1bfb29f37f4ae930a65fc3e9cf13a4df8b9f04c2030939ee1d9eaa1",
+      "size_bytes": 57180
+    },
+    {
+      "path": "candidates/85.json",
+      "sha256": "b7410a91db04c553c85f6f0201ad35880c765937fb54422c25e52704f08b911f",
+      "size_bytes": 8778
+    },
+    {
+      "path": "candidates/86.json",
+      "sha256": "a1abcbb56b8101f6527ba175ce95525ed3d782212ed46802f953026f384e2ac3",
+      "size_bytes": 4555
+    },
+    {
+      "path": "candidates/87.json",
+      "sha256": "8ac059362a5f81da0ead1b0010df793f5828200a00a1f6ea34217176cd113129",
+      "size_bytes": 6684
+    },
+    {
+      "path": "candidates/88.json",
+      "sha256": "86719303b644e6ab239842b87efd5379e9d801a504f8382d24c87f3ffe6ca3c7",
+      "size_bytes": 8806
+    },
+    {
+      "path": "candidates/89.json",
+      "sha256": "2edec12c4f7d74df2c2b04e9150a8ca8f10087a21321c0ab0037789663fe34e5",
+      "size_bytes": 8903
+    },
+    {
+      "path": "candidates/9.json",
+      "sha256": "722ef78eb1d9e2e3ad634d623a538d73578747e7faa33ae315b8da87fcd9005c",
+      "size_bytes": 11062
+    },
+    {
+      "path": "candidates/90.json",
+      "sha256": "45d17b68521eb23ed75ea13aa13cddfa895d5d977cc9a04b7da1c6a113934fca",
+      "size_bytes": 4569
+    },
+    {
+      "path": "candidates/91.json",
+      "sha256": "b3ace68e9b8e605550cad5b345b0b4194ea00af97a6cbae721b27e60cdec1674",
+      "size_bytes": 6704
+    },
+    {
+      "path": "candidates/92.json",
+      "sha256": "d539b19bc94846b26ae43d985cbdff4864d68367243061ec0483296cdcf0cb91",
+      "size_bytes": 8828
+    },
+    {
+      "path": "candidates/93.json",
+      "sha256": "b1f0ffc0c844875461c2734f4e460a248a698ee744fcad1fa97b53506a779329",
+      "size_bytes": 8803
+    },
+    {
+      "path": "candidates/94.json",
+      "sha256": "59d523bd9efd061abc3abeb5cb89c07c1581cb8a380ea69e8562f5dee35614dc",
+      "size_bytes": 8781
+    },
+    {
+      "path": "candidates/95.json",
+      "sha256": "7964d584749f56735536c845b77104cde006b815a23e21b1fc97b1dda7d4540e",
+      "size_bytes": 4562
+    },
+    {
+      "path": "candidates/96.json",
+      "sha256": "8ece766b603047d5a0989c549c89969f6493cae4d52adc686ce68a25e869e2e8",
+      "size_bytes": 15621
+    },
+    {
+      "path": "candidates/97.json",
+      "sha256": "4139b899b44fef81613d791ec17553226fa978fdab40ddc00386f5c89adac702",
+      "size_bytes": 26804
+    },
+    {
+      "path": "candidates/98.json",
+      "sha256": "5db8bfb12b5017f17539047fa7272d58735f10f052a6d3ae969fad44b8a7d1f7",
+      "size_bytes": 11253
+    },
+    {
+      "path": "candidates/99.json",
+      "sha256": "1c20905b180ca5956e2d13667ca0b15e88d71279d15dca09c383b8c1a710aeb0",
+      "size_bytes": 11038
+    },
+    {
       "path": "changelog.json",
-      "size_bytes": 2447
+      "sha256": "52e520bc8811aa08c05bd7e79fbea1f4b32141a08d6adf68d48cda1c5552fc84",
+      "size_bytes": 1611
     },
     {
       "path": "contracts.json",
-      "size_bytes": 10730
+      "sha256": "2514f070def9a169090fce1889097dc855dac079264b40f7d15da8345252bf08",
+      "size_bytes": 12663
     },
     {
       "path": "coverage.json",
+      "sha256": "d1606de241b77dde05481fb1dcee520efb0c8f90f99ad5965f1598611014a30b",
       "size_bytes": 981
     },
     {
       "path": "curation.json",
+      "sha256": "e01b9e1b246081cca2b4532d40ff2113253179157576ce789345f6f860c9428f",
       "size_bytes": 151847
     },
     {
       "path": "evidence-ledger.json",
+      "sha256": "44f761eefc04a1afde1da5f7d7eec08e5e1f37dcd23a35082508b3952106be00",
       "size_bytes": 572789
     },
     {
       "path": "freshness.json",
+      "sha256": "9ae051dfd430ed40162b6845db1f157fef8350ef071714d81f77154667069485",
       "size_bytes": 1572
     },
     {
       "path": "gaps.json",
+      "sha256": "250cd6678535db3f5723e097643dbfa13d7cc3c1e0c4ba71e784b3c7c0912e6c",
       "size_bytes": 88072
     },
     {
       "path": "health/badges/0.json",
+      "sha256": "cf24e5c86ae12adc471dcf3af02965060931803ca07155510f6c4840fda8118b",
       "size_bytes": 298
     },
     {
       "path": "health/badges/1.json",
+      "sha256": "58e1f2ce44dd0d2ece833529de6a532bc532b1e77a995d9166d50412f1e2c11d",
       "size_bytes": 296
     },
     {
       "path": "health/badges/10.json",
+      "sha256": "2dad966595192761de73ebd26e1fbf2b3f465997da98aa7ef5f634912cc3a318",
       "size_bytes": 298
     },
     {
       "path": "health/badges/100.json",
+      "sha256": "08b537f7d23de8365437d41aae696bcf9539e696bcc540abd882628a06baca53",
       "size_bytes": 300
     },
     {
       "path": "health/badges/101.json",
+      "sha256": "8859d2e024b0159b37b911577dc5dfa01af4de7a91b01bb997539e183285feb9",
       "size_bytes": 300
     },
     {
       "path": "health/badges/102.json",
+      "sha256": "7c24a9b9c8ea1fa440354bb7aa299393910b03b74476c97b64cd9d5f4f79519c",
       "size_bytes": 300
     },
     {
       "path": "health/badges/103.json",
+      "sha256": "6467617c98a97a8167faa8cc1839ba9d4274b01d16be8f221e52b6e4def99e56",
       "size_bytes": 300
     },
     {
       "path": "health/badges/104.json",
+      "sha256": "b82943fa714b82646b655254a9d1a2aad358ff200bec3c21e0879e0d095a614d",
       "size_bytes": 300
     },
     {
       "path": "health/badges/105.json",
+      "sha256": "d4314ceb0d298bac56954d1ecaa6810581a6c286fdff49bf1afa50a9a5426fa7",
       "size_bytes": 300
     },
     {
       "path": "health/badges/106.json",
+      "sha256": "c205f40f3f700dcf7164602c8cdfb409dfc65c3c09fa400a9283b4f4969da26e",
       "size_bytes": 300
     },
     {
       "path": "health/badges/107.json",
+      "sha256": "099133db224ab663d26bc22b01c7543adfd714dc566674b8fd39d086b569bf58",
       "size_bytes": 300
     },
     {
       "path": "health/badges/108.json",
+      "sha256": "e81e10faa651c7c548dc4f519378e1fd2556b08677ef4f975d623e1c8f62a1f0",
       "size_bytes": 300
     },
     {
       "path": "health/badges/109.json",
+      "sha256": "c96e9d1a9b6a749f4a3d551400799cc4a774c3aba9b247ac3e8314e8eed3fd2b",
       "size_bytes": 300
     },
     {
       "path": "health/badges/11.json",
+      "sha256": "78e6909ece670b584aa9be1d3049097315504a014c55198caa886fd630292b4f",
       "size_bytes": 298
     },
     {
       "path": "health/badges/110.json",
+      "sha256": "b8f7bf4dd47ceb26ce8b7cc9f05001fa44e0acea87535d7a78035f4caa1afeb2",
       "size_bytes": 300
     },
     {
       "path": "health/badges/111.json",
+      "sha256": "1063cb9ad2519c3656e56e2b5561c125ab742d4864f0f540f62c98b4c5c1a49e",
       "size_bytes": 300
     },
     {
       "path": "health/badges/112.json",
+      "sha256": "2db8927fd45044e14d95de8b79a6ebe236de487cc6e5832b787d356147fd499c",
       "size_bytes": 300
     },
     {
       "path": "health/badges/113.json",
+      "sha256": "70895aa2a866bb4be2874a7448c2b0d9d47946e318485a5f1536bc3e9b97d6e8",
       "size_bytes": 300
     },
     {
       "path": "health/badges/114.json",
+      "sha256": "345d0cd1f3a5717327424c9a919322280755be236382145b8ff7e09a478495ca",
       "size_bytes": 300
     },
     {
       "path": "health/badges/115.json",
+      "sha256": "ab42e233faa5cd3341a3f62125b656b23b5fccabb1e60e40c14365a01b860f6a",
       "size_bytes": 300
     },
     {
       "path": "health/badges/116.json",
+      "sha256": "ea6726f9fb120ee8be93f1eaece6648b93782ebcc8161d92925c66c047af822b",
       "size_bytes": 300
     },
     {
       "path": "health/badges/117.json",
+      "sha256": "9711b0a64f098431da9b29f3ec28ab830251b79853e5ed1370efce08c535e4a6",
       "size_bytes": 300
     },
     {
       "path": "health/badges/118.json",
+      "sha256": "95643ebfd58fe61a68b912e57effeafbf62a2e63c6cf06cd4a9b32ddc8ddb03c",
       "size_bytes": 300
     },
     {
       "path": "health/badges/119.json",
+      "sha256": "00cc46cae461e35c83fc908c319fd652f9003e463ffb89fc4a6abfbd220a761f",
       "size_bytes": 300
     },
     {
       "path": "health/badges/12.json",
+      "sha256": "1f26a251c56f06d65584c5144591d82f808cedf2c02f7b37b0d376df406ca5f3",
       "size_bytes": 298
     },
     {
       "path": "health/badges/120.json",
+      "sha256": "885d45ae2b56f3e7fbd0e3856aaebfa9502de07f34402dec74cb3e6cd3cedca5",
       "size_bytes": 300
     },
     {
       "path": "health/badges/121.json",
+      "sha256": "6c739fbbb604c35c7e25cb6e4500c392463239c0ad200c74539dadf3d7d75554",
       "size_bytes": 300
     },
     {
       "path": "health/badges/122.json",
+      "sha256": "32bfeea404420be40b8bf0c98cd33992cfec3d86828f7da9d5f4c5fd06d15bd4",
       "size_bytes": 300
     },
     {
       "path": "health/badges/123.json",
+      "sha256": "ac563819a32d5ce0813d9abc7ed802d01a86631c8bdc2f4fd1fa4bb8fae6b656",
       "size_bytes": 300
     },
     {
       "path": "health/badges/124.json",
+      "sha256": "82c239aa7cf9f2af60113ca39fcb1b88aaca2bc6a4b677420df473313ad84a1f",
       "size_bytes": 300
     },
     {
       "path": "health/badges/125.json",
+      "sha256": "7bd0377429df37f743d03fafba346172f1f9965d3bd57ac824753c0be59cbe7c",
       "size_bytes": 300
     },
     {
       "path": "health/badges/126.json",
+      "sha256": "b14f6766f5474d4d2d0a417f49b3729a18805c7df51a7de2a3216186e4517609",
       "size_bytes": 300
     },
     {
       "path": "health/badges/127.json",
+      "sha256": "826185ad236076410cbeb53577828ee23cde27a5bee0e5862e89874636601a9f",
       "size_bytes": 300
     },
     {
       "path": "health/badges/128.json",
+      "sha256": "dac5f2db20b0da7626b61dbc6dd225302c7957e73fd15b2a289b5c22f36189e6",
       "size_bytes": 300
     },
     {
       "path": "health/badges/13.json",
+      "sha256": "3de2bf6dfa31325e328652dbded50f71a6474dd62756c01d8d79876a1b81124d",
       "size_bytes": 298
     },
     {
       "path": "health/badges/14.json",
+      "sha256": "f874a1fce20f4709ff54d9dad9d372c9df5be3f9ed139dc5838c46446f382f2a",
       "size_bytes": 300
     },
     {
       "path": "health/badges/15.json",
+      "sha256": "00dea513240f10165c80ef68d2fbdd16aa2dbca6c2ebab3c65d03a07ffd315c5",
       "size_bytes": 298
     },
     {
       "path": "health/badges/16.json",
+      "sha256": "b29ccfed8b489e9f7f2fad8ec2bfae49e4d227a210e0df65ee9e6d099cb0d0b0",
       "size_bytes": 298
     },
     {
       "path": "health/badges/17.json",
+      "sha256": "6afd384c6e03031fddde22473957730ad6ad5b7dbf727ce7d8e2b3b8a17a7ed4",
       "size_bytes": 298
     },
     {
       "path": "health/badges/18.json",
+      "sha256": "c89db1c96a66dd6374836d5a650766e2baacb9b1262ff5fbf9eb260514c7ed19",
       "size_bytes": 298
     },
     {
       "path": "health/badges/19.json",
+      "sha256": "4faf70b19c1e74dab03217d4ffd6d2f9bbe3f5724aed15a5db8b8b7f04bed1cf",
       "size_bytes": 298
     },
     {
       "path": "health/badges/2.json",
+      "sha256": "7e198a80072abff9130fc612ddbe739692c50d31ef21222fec6586795ece7e67",
       "size_bytes": 296
     },
     {
       "path": "health/badges/20.json",
+      "sha256": "ec421653db2072fbed347b2ed8b3fb855016d1e6ff60b9bf6ea6224206140e38",
       "size_bytes": 298
     },
     {
       "path": "health/badges/21.json",
+      "sha256": "e853afba132c4793516c6b2f482ce84c72c8777ae35b68f25d2ef9741055036f",
       "size_bytes": 298
     },
     {
       "path": "health/badges/22.json",
+      "sha256": "3992c0ec6e992397e48ae3894400b0fc4a90f14fa4f279129a4f37ec85fc87e8",
       "size_bytes": 298
     },
     {
       "path": "health/badges/23.json",
+      "sha256": "22f1255aee9556bfb390c77a4217ab41d5948c26ae2e15b892f7d062e8b0e479",
       "size_bytes": 298
     },
     {
       "path": "health/badges/24.json",
+      "sha256": "739df3aed8feb324da3613cdd9cb3aa99461b7ad5a2d425a2ed4bcfede3b9d02",
       "size_bytes": 298
     },
     {
       "path": "health/badges/25.json",
+      "sha256": "2f9d1feb43e6239ba28368b7084b96ede2613fda8f7e81dcf2503996e13db04f",
       "size_bytes": 298
     },
     {
       "path": "health/badges/26.json",
+      "sha256": "c5d0bc72eb1ea6394f7984404711334a831083a6a3ccd2b0272b4da2532e18a0",
       "size_bytes": 298
     },
     {
       "path": "health/badges/27.json",
+      "sha256": "922bead96b0fc552965573d40f308d9d7bc12f2dcf4df814996a347e458368b8",
       "size_bytes": 298
     },
     {
       "path": "health/badges/28.json",
+      "sha256": "bfc12da7f876e64112f91fed380f92078830481dbb044dac8527274f6a306c09",
       "size_bytes": 298
     },
     {
       "path": "health/badges/29.json",
+      "sha256": "441e1f388efb62d3cffabb5706f220824a73745509169c9cceada98604799a05",
       "size_bytes": 298
     },
     {
       "path": "health/badges/3.json",
+      "sha256": "156985efdbf4e715d9e301cf1c4bbb5387b070e99eb16c10fd2e3d42a4bb9617",
       "size_bytes": 296
     },
     {
       "path": "health/badges/30.json",
+      "sha256": "21870cfb3eeace7d2cc88ef233aabd20ef365f3ff700ebda576b146079bcd67d",
       "size_bytes": 298
     },
     {
       "path": "health/badges/31.json",
+      "sha256": "840dbf4fedacb33c0de039a5b5333e07f603e92e5e6ae9694c79b5c2ed181913",
       "size_bytes": 298
     },
     {
       "path": "health/badges/32.json",
+      "sha256": "1c8c50d039d370a4af0d882e20e6dea23bc93546edb0ccdb274d2d8ae9b27e93",
       "size_bytes": 298
     },
     {
       "path": "health/badges/33.json",
+      "sha256": "48fb20686cb987b980c531b31cc8d3ad6fe0bcf4fd3d798184ed9f1464a341d2",
       "size_bytes": 298
     },
     {
       "path": "health/badges/34.json",
+      "sha256": "411dec1de903deec6e5fabf4ac7a7a8cc5c6a9d5133a501672834859e55a3eba",
       "size_bytes": 298
     },
     {
       "path": "health/badges/35.json",
+      "sha256": "f43e81bad3e548fd35f7f11291b980d9b046a62498ac6e54e9a3a82116a6b2ce",
       "size_bytes": 298
     },
     {
       "path": "health/badges/36.json",
+      "sha256": "319bd364ae53ed2f8cf251fe9d2dca8d923e01a0dec547d5771b7c8f3d21678f",
       "size_bytes": 298
     },
     {
       "path": "health/badges/37.json",
+      "sha256": "ac13c3c5c7fba5782dfb43b3f8f7e70dba7367755215694935a849a1765b55d6",
       "size_bytes": 298
     },
     {
       "path": "health/badges/38.json",
+      "sha256": "9573342d94511d3492805eba1824558e166e86481b08f29c463ad583ff4c0e9a",
       "size_bytes": 298
     },
     {
       "path": "health/badges/39.json",
+      "sha256": "aac598922ab17d7f8dd5741755d27cb202c835533f67b1bd8d3c176738299bce",
       "size_bytes": 298
     },
     {
       "path": "health/badges/4.json",
+      "sha256": "5880e910f277bcc10f3419467e8c7b0b183efe9f5a46a8b1fb7cb851eb2eed37",
       "size_bytes": 296
     },
     {
       "path": "health/badges/40.json",
+      "sha256": "1212ab505dac56cc7116fc64cd50b3ddf88c04651d0a692827586c8351a3785f",
       "size_bytes": 298
     },
     {
       "path": "health/badges/41.json",
+      "sha256": "8c13c57b15acad04fb58f7fd0a9deff3fdb94be923fee7b63ea755b358bcee5e",
       "size_bytes": 298
     },
     {
       "path": "health/badges/42.json",
+      "sha256": "24248cfc3bb05996efc3da2631a0d503d0c0157a237dafea229b924e4a545171",
       "size_bytes": 298
     },
     {
       "path": "health/badges/43.json",
+      "sha256": "cd4b5c9d61a789148e33c47804c963ab97f8f2f189fa50f19ed15d28ca36709a",
       "size_bytes": 298
     },
     {
       "path": "health/badges/44.json",
+      "sha256": "009c46741d2f27facbc9c7ad2da06a270ff858f6d130496f3b2c1e0e300d4019",
       "size_bytes": 298
     },
     {
       "path": "health/badges/45.json",
+      "sha256": "b4e16dc9fd057ab5edd0cc9097aead8e62ccb504f6d50fd6269cb72c255b61f0",
       "size_bytes": 298
     },
     {
       "path": "health/badges/46.json",
+      "sha256": "825ecfd5a4743880d0f25e436240b2b6122281a64d14425a28aa1ccbd64e1edd",
       "size_bytes": 298
     },
     {
       "path": "health/badges/47.json",
+      "sha256": "a580039ca6d225286a7a029540ec2f613e17059379d000f715834b6d5846d532",
       "size_bytes": 298
     },
     {
       "path": "health/badges/48.json",
+      "sha256": "27b026e5f30e6c4190ff6be8b83ad7c2a37cccea7ae6364005a0dc5ef030dd5b",
       "size_bytes": 298
     },
     {
       "path": "health/badges/49.json",
+      "sha256": "c21b34e55754830f3d3ba8dccbea1e820532ab4a320310a7421e9803a4da7395",
       "size_bytes": 298
     },
     {
       "path": "health/badges/5.json",
+      "sha256": "1fd8ca75e7ac9e60042e1867f557b5a0e61db0161d9b2751de05d63e318176dd",
       "size_bytes": 296
     },
     {
       "path": "health/badges/50.json",
+      "sha256": "0b39fe6b64200364b857f66a8fe0a0c8e7450ef1bb72e961dd5510ee7c849723",
       "size_bytes": 298
     },
     {
       "path": "health/badges/51.json",
+      "sha256": "d81e0a887f574d4a10cc7dcc91a3f4a25c36c70c310c95a83fd98f471d5dface",
       "size_bytes": 298
     },
     {
       "path": "health/badges/52.json",
+      "sha256": "32d9e2cf2f26a63c478f3c2a3d0a6bb1cfa536ef2b64eae2e1648155d9fb698e",
       "size_bytes": 300
     },
     {
       "path": "health/badges/53.json",
+      "sha256": "03cab0855a3e5f5c2390d992af2e2ca015cb45b264df760d93730cecae755e77",
       "size_bytes": 298
     },
     {
       "path": "health/badges/54.json",
+      "sha256": "5953aac3605f6688d640e8d42dc1e2bb6a847a14417bc3463afbd98a8de338b9",
       "size_bytes": 298
     },
     {
       "path": "health/badges/55.json",
+      "sha256": "91907368e1854d7a13d2f5d6e3aeca3e4567205da8463c3a54444434e9ddda9e",
       "size_bytes": 298
     },
     {
       "path": "health/badges/56.json",
+      "sha256": "9c58006039951f253bcfdb8cf53c24fdd2adcf8e59ff711d3201b0a936f28f2d",
       "size_bytes": 298
     },
     {
       "path": "health/badges/57.json",
+      "sha256": "a8d12118ed0ffce958f09082246011221cc1198492fcf297e1296cacc6943aca",
       "size_bytes": 298
     },
     {
       "path": "health/badges/58.json",
+      "sha256": "ce7871aedf93769765d2aaaa04b1f3af29ceb1fea294ae351b7df3ea4a0d23bd",
       "size_bytes": 300
     },
     {
       "path": "health/badges/59.json",
+      "sha256": "1232268c183e94392c870994e10468905756ae434ef6504c12ca9fb48b465b83",
       "size_bytes": 298
     },
     {
       "path": "health/badges/6.json",
+      "sha256": "db1a57e738bf59d06b2f5f86cd5d68cd814b2d35ab011bc5d266948900eb140d",
       "size_bytes": 296
     },
     {
       "path": "health/badges/60.json",
+      "sha256": "0c42b1104b0747b229ccd56e8ae2a2534a0476d75f51656a2b1752a90b1ee471",
       "size_bytes": 298
     },
     {
       "path": "health/badges/61.json",
+      "sha256": "27c988919321e76faf7b7078232d62887eb71decc1235e645d5569fff6439db8",
       "size_bytes": 298
     },
     {
       "path": "health/badges/62.json",
+      "sha256": "8a42b5b18a00d09b30dcba6e79902ba6c32b9dc3844609fb242463cf437eccfd",
       "size_bytes": 298
     },
     {
       "path": "health/badges/63.json",
+      "sha256": "ca6752b632bb936beb1b179e5ce90f01e1df8f94a979646b18ff9c82c1881ebe",
       "size_bytes": 298
     },
     {
       "path": "health/badges/64.json",
+      "sha256": "98cc6fded893ce27a12ae93d8d761f362cdf38acfadb871eca309edda3a8a5a2",
       "size_bytes": 298
     },
     {
       "path": "health/badges/65.json",
+      "sha256": "aa0fa6c387ed3b6e3e91b595b49ae4f95d7ea56f7de3bc19cf19adafbbd4a262",
       "size_bytes": 298
     },
     {
       "path": "health/badges/66.json",
+      "sha256": "937cf83c78cf8329896a4002838a055fdcca8ffa2c6222031a04201b1d3ce2c8",
       "size_bytes": 298
     },
     {
       "path": "health/badges/67.json",
+      "sha256": "94682a86c62dcf4c4de6d281cb92906f5c0a0c266e73c8815fe3f97a0349a3d3",
       "size_bytes": 298
     },
     {
       "path": "health/badges/68.json",
+      "sha256": "a485f548aebb06c1ce10d33268f2070b56c82d6e91291b8c686d214712701ede",
       "size_bytes": 298
     },
     {
       "path": "health/badges/69.json",
+      "sha256": "a503e9e9dfe934cfbaa9b374aea7da769bdde4b1a155c485d6b8b145fb10afba",
       "size_bytes": 298
     },
     {
       "path": "health/badges/7.json",
+      "sha256": "3a7eccc15b1a466c5b09cbb2a1c5aadf1e5240a21c21da014ccd25688151ac49",
       "size_bytes": 298
     },
     {
       "path": "health/badges/70.json",
+      "sha256": "a307a067217d3c3dd69c30efb7b0af4baf9db0f0358992d1e4e54413318c2f5e",
       "size_bytes": 298
     },
     {
       "path": "health/badges/71.json",
+      "sha256": "e4c11e276525a433d8d78940cee12a11e5731659b6263c3d8e3d8e6b4105af1d",
       "size_bytes": 298
     },
     {
       "path": "health/badges/72.json",
+      "sha256": "820ebd28f3cc46b06cb5c8e91cdc7360c218edb43da6dd5a04afc6ba566a41da",
       "size_bytes": 298
     },
     {
       "path": "health/badges/73.json",
+      "sha256": "f1fa5aaa9c9f4b235b6159ab0bf92d3fdd6bd3631c257bc35bb4336c844d3bdd",
       "size_bytes": 298
     },
     {
       "path": "health/badges/74.json",
+      "sha256": "7deffe496b05a7ef5200f73d236f29a23e4c1014fd35f908288fac3825fb64a7",
       "size_bytes": 298
     },
     {
       "path": "health/badges/75.json",
+      "sha256": "379484734df7341e95780d9445f8e44141db301192b8f98144f6450af9a181d9",
       "size_bytes": 298
     },
     {
       "path": "health/badges/76.json",
+      "sha256": "77dbf5af705ef488f91b584e68d6304e69c5786995976cfb504940dd77c4828e",
       "size_bytes": 298
     },
     {
       "path": "health/badges/77.json",
+      "sha256": "221fbaa13fccc78746287705ab25c35334f3d848cdf7971ea70ed16fc10bace4",
       "size_bytes": 298
     },
     {
       "path": "health/badges/78.json",
+      "sha256": "361f0b27473558c3537bee3b479a581edc23d1d8c7ed3c3d78a1fa14251c5f79",
       "size_bytes": 298
     },
     {
       "path": "health/badges/79.json",
+      "sha256": "ef69d4b8ae84a09dcff00b81a88f69158038e1768208c80a1bffc23813bb00e6",
       "size_bytes": 298
     },
     {
       "path": "health/badges/8.json",
+      "sha256": "78bf111b7c3bbcf35e8f3256330509e600c6fc85ab03dcffc8fc7dd45f91e643",
       "size_bytes": 296
     },
     {
       "path": "health/badges/80.json",
+      "sha256": "bb2a99b71962e6c4c9387c79d57e0cf6a9958090867919043dd55335677e0ecd",
       "size_bytes": 298
     },
     {
       "path": "health/badges/81.json",
+      "sha256": "39652aea99f638b326d08a0b2ff93a176749a9882b8b655b6e40490f2940ae08",
       "size_bytes": 298
-    },
-    {
-      "path": "health/badges/82.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/83.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/84.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/85.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/86.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/87.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/88.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/89.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/9.json",
-      "size_bytes": 296
-    },
-    {
-      "path": "health/badges/90.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/91.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/92.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/93.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/94.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/95.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/96.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/97.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/98.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/badges/99.json",
-      "size_bytes": 298
-    },
-    {
-      "path": "health/history/2026-06-06.json",
-      "size_bytes": 485662
-    },
-    {
-      "path": "health/latest.json",
-      "size_bytes": 330022
-    },
-    {
-      "path": "health/subnets/0.json",
-      "size_bytes": 7019
-    },
-    {
-      "path": "health/subnets/1.json",
-      "size_bytes": 3255
-    },
-    {
-      "path": "health/subnets/10.json",
-      "size_bytes": 2681
-    },
-    {
-      "path": "health/subnets/100.json",
-      "size_bytes": 3863
-    },
-    {
-      "path": "health/subnets/101.json",
-      "size_bytes": 1601
-    },
-    {
-      "path": "health/subnets/102.json",
-      "size_bytes": 2717
-    },
-    {
-      "path": "health/subnets/103.json",
-      "size_bytes": 2688
-    },
-    {
-      "path": "health/subnets/104.json",
-      "size_bytes": 1681
-    },
-    {
-      "path": "health/subnets/105.json",
-      "size_bytes": 2695
-    },
-    {
-      "path": "health/subnets/106.json",
-      "size_bytes": 2693
-    },
-    {
-      "path": "health/subnets/107.json",
-      "size_bytes": 4470
-    },
-    {
-      "path": "health/subnets/108.json",
-      "size_bytes": 2724
-    },
-    {
-      "path": "health/subnets/109.json",
-      "size_bytes": 2181
-    },
-    {
-      "path": "health/subnets/11.json",
-      "size_bytes": 2724
-    },
-    {
-      "path": "health/subnets/110.json",
-      "size_bytes": 2771
-    },
-    {
-      "path": "health/subnets/111.json",
-      "size_bytes": 2189
-    },
-    {
-      "path": "health/subnets/112.json",
-      "size_bytes": 2726
-    },
-    {
-      "path": "health/subnets/113.json",
-      "size_bytes": 2718
-    },
-    {
-      "path": "health/subnets/114.json",
-      "size_bytes": 3848
-    },
-    {
-      "path": "health/subnets/115.json",
-      "size_bytes": 2190
-    },
-    {
-      "path": "health/subnets/116.json",
-      "size_bytes": 1625
-    },
-    {
-      "path": "health/subnets/117.json",
-      "size_bytes": 3902
-    },
-    {
-      "path": "health/subnets/118.json",
-      "size_bytes": 5612
-    },
-    {
-      "path": "health/subnets/119.json",
-      "size_bytes": 1613
-    },
-    {
-      "path": "health/subnets/12.json",
-      "size_bytes": 2206
-    },
-    {
-      "path": "health/subnets/120.json",
-      "size_bytes": 2707
-    },
-    {
-      "path": "health/subnets/121.json",
-      "size_bytes": 2738
-    },
-    {
-      "path": "health/subnets/122.json",
-      "size_bytes": 2208
-    },
-    {
-      "path": "health/subnets/123.json",
-      "size_bytes": 2170
-    },
-    {
-      "path": "health/subnets/124.json",
-      "size_bytes": 2699
-    },
-    {
-      "path": "health/subnets/125.json",
-      "size_bytes": 1613
-    },
-    {
-      "path": "health/subnets/126.json",
-      "size_bytes": 2710
-    },
-    {
-      "path": "health/subnets/127.json",
-      "size_bytes": 2713
-    },
-    {
-      "path": "health/subnets/128.json",
-      "size_bytes": 3298
-    },
-    {
-      "path": "health/subnets/13.json",
-      "size_bytes": 2746
-    },
-    {
-      "path": "health/subnets/14.json",
-      "size_bytes": 6712
-    },
-    {
-      "path": "health/subnets/15.json",
-      "size_bytes": 2658
-    },
-    {
-      "path": "health/subnets/16.json",
-      "size_bytes": 2684
-    },
-    {
-      "path": "health/subnets/17.json",
-      "size_bytes": 5738
-    },
-    {
-      "path": "health/subnets/18.json",
-      "size_bytes": 2674
-    },
-    {
-      "path": "health/subnets/19.json",
-      "size_bytes": 2724
-    },
-    {
-      "path": "health/subnets/2.json",
-      "size_bytes": 3287
-    },
-    {
-      "path": "health/subnets/20.json",
-      "size_bytes": 2158
-    },
-    {
-      "path": "health/subnets/21.json",
-      "size_bytes": 2125
-    },
-    {
-      "path": "health/subnets/22.json",
-      "size_bytes": 2694
-    },
-    {
-      "path": "health/subnets/23.json",
-      "size_bytes": 4456
-    },
-    {
-      "path": "health/subnets/24.json",
-      "size_bytes": 2687
-    },
-    {
-      "path": "health/subnets/25.json",
-      "size_bytes": 2711
-    },
-    {
-      "path": "health/subnets/26.json",
-      "size_bytes": 2691
-    },
-    {
-      "path": "health/subnets/27.json",
-      "size_bytes": 1601
-    },
-    {
-      "path": "health/subnets/28.json",
-      "size_bytes": 1585
-    },
-    {
-      "path": "health/subnets/29.json",
-      "size_bytes": 3303
-    },
-    {
-      "path": "health/subnets/3.json",
-      "size_bytes": 5702
-    },
-    {
-      "path": "health/subnets/30.json",
-      "size_bytes": 2172
-    },
-    {
-      "path": "health/subnets/31.json",
-      "size_bytes": 1601
-    },
-    {
-      "path": "health/subnets/32.json",
-      "size_bytes": 2680
-    },
-    {
-      "path": "health/subnets/33.json",
-      "size_bytes": 2191
-    },
-    {
-      "path": "health/subnets/34.json",
-      "size_bytes": 2166
-    },
-    {
-      "path": "health/subnets/35.json",
-      "size_bytes": 3907
-    },
-    {
-      "path": "health/subnets/36.json",
-      "size_bytes": 2677
-    },
-    {
-      "path": "health/subnets/37.json",
-      "size_bytes": 3282
-    },
-    {
-      "path": "health/subnets/38.json",
-      "size_bytes": 2725
-    },
-    {
-      "path": "health/subnets/39.json",
-      "size_bytes": 2182
-    },
-    {
-      "path": "health/subnets/4.json",
-      "size_bytes": 3811
-    },
-    {
-      "path": "health/subnets/40.json",
-      "size_bytes": 1609
-    },
-    {
-      "path": "health/subnets/41.json",
-      "size_bytes": 2690
-    },
-    {
-      "path": "health/subnets/42.json",
-      "size_bytes": 1605
-    },
-    {
-      "path": "health/subnets/43.json",
-      "size_bytes": 2172
-    },
-    {
-      "path": "health/subnets/44.json",
-      "size_bytes": 3270
-    },
-    {
-      "path": "health/subnets/45.json",
-      "size_bytes": 2720
-    },
-    {
-      "path": "health/subnets/46.json",
-      "size_bytes": 5601
-    },
-    {
-      "path": "health/subnets/47.json",
-      "size_bytes": 3897
-    },
-    {
-      "path": "health/subnets/48.json",
-      "size_bytes": 2760
-    },
-    {
-      "path": "health/subnets/49.json",
-      "size_bytes": 2204
-    },
-    {
-      "path": "health/subnets/5.json",
-      "size_bytes": 3248
-    },
-    {
-      "path": "health/subnets/50.json",
-      "size_bytes": 2684
-    },
-    {
-      "path": "health/subnets/51.json",
-      "size_bytes": 2683
-    },
-    {
-      "path": "health/subnets/52.json",
-      "size_bytes": 6201
-    },
-    {
-      "path": "health/subnets/53.json",
-      "size_bytes": 1645
-    },
-    {
-      "path": "health/subnets/54.json",
-      "size_bytes": 2717
-    },
-    {
-      "path": "health/subnets/55.json",
-      "size_bytes": 2685
-    },
-    {
-      "path": "health/subnets/56.json",
-      "size_bytes": 3268
-    },
-    {
-      "path": "health/subnets/57.json",
-      "size_bytes": 2157
-    },
-    {
-      "path": "health/subnets/58.json",
-      "size_bytes": 6236
-    },
-    {
-      "path": "health/subnets/59.json",
-      "size_bytes": 2700
-    },
-    {
-      "path": "health/subnets/6.json",
-      "size_bytes": 3278
-    },
-    {
-      "path": "health/subnets/60.json",
-      "size_bytes": 3829
-    },
-    {
-      "path": "health/subnets/61.json",
-      "size_bytes": 2697
-    },
-    {
-      "path": "health/subnets/62.json",
-      "size_bytes": 2151
-    },
-    {
-      "path": "health/subnets/63.json",
-      "size_bytes": 2697
-    },
-    {
-      "path": "health/subnets/64.json",
-      "size_bytes": 5017
-    },
-    {
-      "path": "health/subnets/65.json",
-      "size_bytes": 2765
-    },
-    {
-      "path": "health/subnets/66.json",
-      "size_bytes": 2674
-    },
-    {
-      "path": "health/subnets/67.json",
-      "size_bytes": 3261
-    },
-    {
-      "path": "health/subnets/68.json",
-      "size_bytes": 2679
-    },
-    {
-      "path": "health/subnets/69.json",
-      "size_bytes": 1589
-    },
-    {
-      "path": "health/subnets/7.json",
-      "size_bytes": 7962
-    },
-    {
-      "path": "health/subnets/70.json",
-      "size_bytes": 2698
-    },
-    {
-      "path": "health/subnets/71.json",
-      "size_bytes": 2694
-    },
-    {
-      "path": "health/subnets/72.json",
-      "size_bytes": 2813
-    },
-    {
-      "path": "health/subnets/73.json",
-      "size_bytes": 1601
-    },
-    {
-      "path": "health/subnets/74.json",
-      "size_bytes": 4394
-    },
-    {
-      "path": "health/subnets/75.json",
-      "size_bytes": 5001
-    },
-    {
-      "path": "health/subnets/76.json",
-      "size_bytes": 1613
-    },
-    {
-      "path": "health/subnets/77.json",
-      "size_bytes": 2698
-    },
-    {
-      "path": "health/subnets/78.json",
-      "size_bytes": 3826
-    },
-    {
-      "path": "health/subnets/79.json",
-      "size_bytes": 5577
-    },
-    {
-      "path": "health/subnets/8.json",
-      "size_bytes": 3263
     }
   ],
   "candidate_count": 845,

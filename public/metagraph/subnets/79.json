@@ -1347,6 +1347,7 @@
       "source_count": 4,
       "verified_at": "2026-06-06T07:44:04.600Z"
     },
+    "curation_level": "machine-verified",
     "dashboard_url": "https://img.shields.io/badge/dashboard-white?logo=grafana",
     "docs_url": "https://simulate.trading/taos-im-paper",
     "gaps": {

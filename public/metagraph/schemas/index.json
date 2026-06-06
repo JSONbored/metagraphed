@@ -1,52 +1,8 @@
 {
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
-  "notes": "Machine-readable OpenAPI/Swagger JSON snapshots only. HTML Swagger UI pages are not treated as schema-backed.",
+  "notes": "Run npm run schemas:snapshot to capture machine-readable OpenAPI/Swagger schema snapshots.",
   "schema_version": 1,
-  "schemas": [
-    {
-      "content_type": "application/json; charset=utf-8",
-      "drift_status": "new",
-      "hash": "ab1d7071f1e9b54eb689b305aa3b37111ba4f8882293d58d88ff998f43c9dc33",
-      "netuid": 7,
-      "previous_hash": null,
-      "schema_url": "https://api.all-ways.io/swagger-json",
-      "snapshot": {
-        "component_schema_count": 0,
-        "contract_version": "2026-06-06.1",
-        "drift_status": "new",
-        "generated_at": "1970-01-01T00:00:00.000Z",
-        "hash": "ab1d7071f1e9b54eb689b305aa3b37111ba4f8882293d58d88ff998f43c9dc33",
-        "netuid": 7,
-        "openapi_version": "3.0.0",
-        "path_count": 30,
-        "previous_hash": null,
-        "schema_url": "https://api.all-ways.io/swagger-json",
-        "schema_version": 1,
-        "server_count": 0,
-        "subnet_name": "Allways",
-        "subnet_slug": "allways",
-        "surface_id": "allways-swagger",
-        "surface_url": "https://api.all-ways.io/swagger",
-        "tag_count": 0,
-        "title": "Allways DAS",
-        "version": "1.0"
-      },
-      "status": "captured",
-      "subnet_slug": "allways",
-      "surface_id": "allways-swagger",
-      "url": "https://api.all-ways.io/swagger"
-    }
-  ],
-  "source": "openapi-snapshot",
-  "summary": {
-    "by_drift_status": {
-      "new": 1
-    },
-    "by_status": {
-      "captured": 1
-    },
-    "schema_count": 1,
-    "surface_count": 1
-  }
+  "schemas": [],
+  "source": "artifact-build"
 }

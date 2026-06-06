@@ -382,6 +382,55 @@ describe("Worker runtime", () => {
     };
 
     try {
+      const proxyEnv = {
+        ...env,
+        METAGRAPH_ENABLE_RPC_PROXY: "true",
+        ASSETS: {
+          async fetch(request) {
+            const url = new URL(request.url);
+            if (url.pathname === "/metagraph/rpc/pools.json") {
+              return new Response(
+                JSON.stringify({
+                  schema_version: 1,
+                  contract_version: "2026-06-06.1",
+                  generated_at: "1970-01-01T00:00:00.000Z",
+                  pools: [
+                    {
+                      id: "finney-rpc",
+                      endpoints: [
+                        {
+                          id: "fixture-rpc",
+                          pool_eligible: true,
+                          provider: "fixture",
+                          status: "ok",
+                          url: "https://rpc.example.test",
+                        },
+                      ],
+                    },
+                    {
+                      id: "finney-wss",
+                      endpoints: [
+                        {
+                          id: "fixture-wss",
+                          pool_eligible: true,
+                          provider: "fixture",
+                          status: "ok",
+                          url: "https://wss.example.test",
+                        },
+                      ],
+                    },
+                  ],
+                }),
+                {
+                  status: 200,
+                  headers: { "content-type": "application/json" },
+                },
+              );
+            }
+            return env.ASSETS.fetch(request);
+          },
+        },
+      };
       const response = await handleRequest(
         new Request("https://metagraph.sh/rpc/v1/finney", {
           method: "POST",
@@ -392,7 +441,7 @@ describe("Worker runtime", () => {
             params: [],
           }),
         }),
-        { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" },
+        proxyEnv,
         {},
       );
       assert.equal(response.status, 200);
@@ -409,7 +458,7 @@ describe("Worker runtime", () => {
             params: [],
           }),
         }),
-        { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" },
+        proxyEnv,
         {},
       );
       assert.equal(wssResponse.status, 200);
@@ -461,6 +510,39 @@ describe("Worker runtime", () => {
       [
         "https://metagraph.sh/api/v1/search?q=allways",
         (body) => body.data.documents.length > 0,
+      ],
+      [
+        "https://metagraph.sh/api/v1/subnets?limit=2&sort=netuid&order=desc",
+        (body) =>
+          body.data.subnets.length === 2 &&
+          body.meta.pagination.returned === 2 &&
+          body.meta.pagination.next_cursor === 2 &&
+          body.data.subnets[0].netuid > body.data.subnets[1].netuid,
+      ],
+      [
+        "https://metagraph.sh/api/v1/subnets/7/surfaces?kind=subnet-api&limit=3",
+        (body) =>
+          body.data.surfaces.length <= 3 &&
+          body.data.surfaces.every(
+            (surface) => surface.netuid === 7 && surface.kind === "subnet-api",
+          ),
+      ],
+      [
+        "https://metagraph.sh/api/v1/subnets/7/candidates?limit=2",
+        (body) =>
+          body.data.candidates.length <= 2 &&
+          body.data.candidates.every((candidate) => candidate.netuid === 7),
+      ],
+      [
+        "https://metagraph.sh/api/v1/subnets/7/health?status=ok",
+        (body) =>
+          body.data.surfaces.every(
+            (surface) => surface.netuid === 7 && surface.status === "ok",
+          ),
+      ],
+      [
+        "https://metagraph.sh/api/v1/providers/allways",
+        (body) => body.data.provider.id === "allways",
       ],
     ];
 

@@ -686,6 +686,18 @@ async function validateGeneratedArtifacts(
     contractsArtifact.contract_version,
     "contracts artifact: contract_version is required",
   );
+  const typeDefinitionsStat = await fs
+    .stat(path.join(repoRoot, "public/metagraph/types.d.ts"))
+    .catch((error) => {
+      if (error.code === "ENOENT") {
+        return null;
+      }
+      throw error;
+    });
+  assert(
+    typeDefinitionsStat?.isFile(),
+    "type definitions artifact: public/metagraph/types.d.ts is required",
+  );
   assert(
     contractsArtifact.primary_domain === "metagraph.sh",
     "contracts artifact: primary_domain must be metagraph.sh",
@@ -714,6 +726,7 @@ async function validateGeneratedArtifacts(
     "source-snapshots",
     "rpc-pools",
     "r2-manifest",
+    "type-definitions",
   ]) {
     assert(
       contractsArtifact.artifacts.some(
@@ -833,6 +846,14 @@ async function validateGeneratedArtifacts(
       (artifact) => artifact.path === "/metagraph/source-snapshots.json",
     ),
     "R2 manifest: source snapshots must be uploaded",
+  );
+  assert(
+    r2ManifestArtifact.artifacts.some(
+      (artifact) =>
+        artifact.path === "/metagraph/types.d.ts" &&
+        artifact.content_type === "text/plain; charset=utf-8",
+    ),
+    "R2 manifest: generated type definitions must be uploaded",
   );
   assert(
     (schemaDriftArtifact.openapi_surface_count ??

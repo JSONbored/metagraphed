@@ -35,6 +35,17 @@ const openapi = await readJson(
 for (const schema of [providerSchema, subnetSchema, candidateSchema]) {
   ajv.addSchema(schema, schema.$id);
 }
+const explicitlyRegisteredSchemaIds = new Set([
+  providerSchema.$id,
+  subnetSchema.$id,
+  candidateSchema.$id,
+]);
+for (const schemaPath of await listJsonFiles(path.join(repoRoot, "schemas"))) {
+  const schema = await readJson(schemaPath);
+  if (!explicitlyRegisteredSchemaIds.has(schema.$id)) {
+    ajv.compile(schema);
+  }
+}
 ajv.addSchema(
   {
     $id: "https://metagraph.sh/openapi-components.schema.json",
@@ -88,13 +99,12 @@ console.log("JSON Schema validation passed.");
 async function artifactValidationTargets() {
   const targets = [];
   for (const artifact of PUBLIC_ARTIFACTS) {
+    if (!artifact.schema_ref) {
+      continue;
+    }
+
     if (artifact.path.includes("{netuid}")) {
-      const directory =
-        artifact.id === "subnet-detail"
-          ? path.join(repoRoot, "public/metagraph/subnets")
-          : artifact.id === "health-subnet"
-            ? path.join(repoRoot, "public/metagraph/health/subnets")
-            : path.join(repoRoot, "public/metagraph/health/badges");
+      const directory = netuidArtifactDirectory(artifact.id);
       for (const filePath of await listJsonFiles(directory)) {
         targets.push({
           file_path: filePath,
@@ -107,7 +117,7 @@ async function artifactValidationTargets() {
 
     if (artifact.path.includes("{slug}")) {
       for (const filePath of await listJsonFiles(
-        path.join(repoRoot, "public/metagraph/adapters"),
+        slugArtifactDirectory(artifact.id),
       )) {
         targets.push({
           file_path: filePath,
@@ -129,6 +139,26 @@ async function artifactValidationTargets() {
     });
   }
   return targets.sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function netuidArtifactDirectory(artifactId) {
+  const directories = {
+    "candidates-subnet": "candidates",
+    "health-badge": "health/badges",
+    "health-subnet": "health/subnets",
+    "subnet-detail": "subnets",
+    "surfaces-subnet": "surfaces",
+    "verification-subnet": "verification/subnets",
+  };
+  return path.join(repoRoot, "public/metagraph", directories[artifactId]);
+}
+
+function slugArtifactDirectory(artifactId) {
+  const directories = {
+    adapter: "adapters",
+    "provider-detail": "providers",
+  };
+  return path.join(repoRoot, "public/metagraph", directories[artifactId]);
 }
 
 function compileComponentValidator(schemaRef) {

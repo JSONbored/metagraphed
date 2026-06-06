@@ -1,0 +1,260 @@
+{
+  "candidate_count": 7,
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "Compelle",
+  "netuid": 82,
+  "results": [
+    {
+      "candidate_id": "sn-82-github-readme-sn-hermes-hermes-subnet-dashboard-1",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 223,
+      "method_tested": "HEAD",
+      "name": "Compelle dashboard",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/SN-Hermes/hermes-subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/SN-Hermes/hermes-subnet/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://taostats.io/",
+      "verified_at": "2026-06-06T07:44:05.250Z"
+    },
+    {
+      "candidate_id": "sn-82-github-readme-sn-hermes-hermes-subnet-docs-2",
+      "classification": "redirected",
+      "confidence_score": 61,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 83,
+      "method_tested": "HEAD",
+      "name": "Compelle docs",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": "https://docs.learnbittensor.org/",
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/SN-Hermes/hermes-subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/SN-Hermes/hermes-subnet/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.bittensor.com/",
+      "verified_at": "2026-06-06T07:44:05.261Z"
+    },
+    {
+      "candidate_id": "sn-82-taomarketcap-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 138,
+      "method_tested": "HEAD",
+      "name": "Compelle TaoMarketCap dashboard",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/82",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/82"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://taomarketcap.com/subnets/82",
+      "verified_at": "2026-06-06T07:44:05.271Z"
+    },
+    {
+      "candidate_id": "sn-82-taomarketcap-source-repo",
+      "classification": "live",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 429,
+      "github_api_url": "https://api.github.com/repos/compelle/compelle-validator",
+      "kind": "source-repo",
+      "latency_ms": 436,
+      "method_tested": "HEAD",
+      "name": "Compelle source repository",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/82",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/82"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/compelle/compelle-validator",
+      "verified_at": "2026-06-06T07:44:05.272Z"
+    },
+    {
+      "candidate_id": "sn-82-taomarketcap-website",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 620,
+      "method_tested": "HEAD",
+      "name": "Compelle website",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/82",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/82"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://compelle.com/",
+      "verified_at": "2026-06-06T07:44:05.285Z"
+    },
+    {
+      "candidate_id": "sn-82-tensorplex-docs",
+      "classification": "live",
+      "confidence_score": 73,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 395,
+      "method_tested": "HEAD",
+      "name": "Compelle Tensorplex subnet docs",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/82/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/82/subnet.json"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/82",
+      "verified_at": "2026-06-06T07:44:05.298Z"
+    },
+    {
+      "candidate_id": "sn-82-tensorplex-source-repo-1",
+      "classification": "live",
+      "confidence_score": 55,
+      "error": null,
+      "github_api_status": 429,
+      "github_api_url": "https://api.github.com/repos/SN-Hermes/hermes-subnet",
+      "kind": "source-repo",
+      "latency_ms": 751,
+      "method_tested": "HEAD",
+      "name": "Compelle source repository",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs-github",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/82/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/82/subnet.json"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/SN-Hermes/hermes-subnet",
+      "verified_at": "2026-06-06T07:44:05.298Z"
+    }
+  ],
+  "schema_version": 1,
+  "slug": "sn-82",
+  "summary": {
+    "by_classification": {
+      "live": 6,
+      "redirected": 1
+    },
+    "by_kind": {
+      "dashboard": 2,
+      "docs": 2,
+      "source-repo": 2,
+      "website": 1
+    },
+    "by_provider": {
+      "taomarketcap": 3,
+      "tensorplex-subnet-docs": 4
+    }
+  }
+}

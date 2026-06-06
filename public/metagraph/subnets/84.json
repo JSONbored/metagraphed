@@ -1137,6 +1137,7 @@
       "source_count": 5,
       "verified_at": "2026-06-06T07:44:05.597Z"
     },
+    "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/84",
     "docs_url": "https://docs.learnbittensor.org/btcli",
     "gaps": {

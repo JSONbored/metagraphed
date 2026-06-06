@@ -1,0 +1,90 @@
+{
+  "candidate_count": 2,
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "ogham",
+  "netuid": 90,
+  "results": [
+    {
+      "candidate_id": "sn-90-taomarketcap-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 166,
+      "method_tested": "HEAD",
+      "name": "ogham TaoMarketCap dashboard",
+      "netuid": 90,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/90",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/90"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://taomarketcap.com/subnets/90",
+      "verified_at": "2026-06-06T07:44:06.241Z"
+    },
+    {
+      "candidate_id": "sn-90-tensorplex-docs",
+      "classification": "live",
+      "confidence_score": 73,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 377,
+      "method_tested": "HEAD",
+      "name": "ogham Tensorplex subnet docs",
+      "netuid": 90,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/90/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/90/subnet.json"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/90",
+      "verified_at": "2026-06-06T07:44:06.245Z"
+    }
+  ],
+  "schema_version": 1,
+  "slug": "sn-90",
+  "summary": {
+    "by_classification": {
+      "live": 2
+    },
+    "by_kind": {
+      "dashboard": 1,
+      "docs": 1
+    },
+    "by_provider": {
+      "taomarketcap": 1,
+      "tensorplex-subnet-docs": 1
+    }
+  }
+}

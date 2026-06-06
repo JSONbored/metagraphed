@@ -1,5 +1,6 @@
 node_modules
 public/metagraph
+generated
 registry/native
 registry/candidates/generated
 registry/subnets/generated

@@ -1,0 +1,231 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-38-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "colosseum TaoMarketCap dashboard",
+      "netuid": 38,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/38"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "colosseum",
+      "url": "https://taomarketcap.com/subnets/38",
+      "verification": {
+        "candidate_id": "sn-38-taomarketcap-dashboard",
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "dashboard",
+        "latency_ms": 264,
+        "method_tested": "HEAD",
+        "name": "colosseum TaoMarketCap dashboard",
+        "netuid": 38,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "third-party-index",
+        "source_type": "taomarketcap-dashboard",
+        "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
+        "source_urls": [
+          "https://api.taomarketcap.com/public/v1/subnets/38"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://taomarketcap.com/subnets/38",
+        "verified_at": "2026-06-06T07:43:56.755Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-38-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "colosseum source repository",
+      "netuid": 38,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/38"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "colosseum",
+      "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
+      "verification": {
+        "candidate_id": "sn-38-taomarketcap-source-repo",
+        "classification": "live",
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
+        "github_api_url": "https://api.github.com/repos/TAO-Colosseum/tao-colosseum-subnet",
+        "kind": "source-repo",
+        "latency_ms": 433,
+        "method_tested": "HEAD",
+        "name": "colosseum source repository",
+        "netuid": 38,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "third-party-index",
+        "source_type": "taomarketcap-subnet-identity-v3",
+        "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
+        "source_urls": [
+          "https://api.taomarketcap.com/public/v1/subnets/38"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
+        "verified_at": "2026-06-06T07:43:56.785Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-38-taomarketcap-website",
+      "kind": "website",
+      "name": "colosseum website",
+      "netuid": 38,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/38"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "colosseum",
+      "url": "https://www.taocolosseum.com/",
+      "verification": {
+        "candidate_id": "sn-38-taomarketcap-website",
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 531,
+        "method_tested": "HEAD",
+        "name": "colosseum website",
+        "netuid": 38,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "third-party-index",
+        "source_type": "taomarketcap-subnet-identity-v3",
+        "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
+        "source_urls": [
+          "https://api.taomarketcap.com/public/v1/subnets/38"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.taocolosseum.com/",
+        "verified_at": "2026-06-06T07:43:56.791Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-38-tensorplex-docs",
+      "kind": "docs",
+      "name": "colosseum Tensorplex subnet docs",
+      "netuid": 38,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "colosseum",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/38",
+      "verification": {
+        "candidate_id": "sn-38-tensorplex-docs",
+        "classification": "live",
+        "confidence_score": 73,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 325,
+        "method_tested": "HEAD",
+        "name": "colosseum Tensorplex subnet docs",
+        "netuid": 38,
+        "private_redirect_blocked": false,
+        "provider": "tensorplex-subnet-docs",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "tensorplex-subnet-docs",
+        "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json",
+        "source_urls": [
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/38",
+        "verified_at": "2026-06-06T07:43:56.808Z"
+      }
+    }
+  ],
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "colosseum",
+  "netuid": 38,
+  "schema_version": 1,
+  "slug": "sn-38"
+}

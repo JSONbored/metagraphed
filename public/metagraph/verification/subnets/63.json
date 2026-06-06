@@ -1,0 +1,194 @@
+{
+  "candidate_count": 5,
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "Enigma",
+  "netuid": 63,
+  "results": [
+    {
+      "candidate_id": "sn-63-taomarketcap-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 130,
+      "method_tested": "HEAD",
+      "name": "Enigma TaoMarketCap dashboard",
+      "netuid": 63,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/63",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/63"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://taomarketcap.com/subnets/63",
+      "verified_at": "2026-06-06T07:44:02.045Z"
+    },
+    {
+      "candidate_id": "sn-63-taomarketcap-source-repo",
+      "classification": "live",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 403,
+      "github_api_url": "https://api.github.com/repos/qbittensor-labs/enigma",
+      "kind": "source-repo",
+      "latency_ms": 498,
+      "method_tested": "HEAD",
+      "name": "Enigma source repository",
+      "netuid": 63,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/63",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/63"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/qbittensor-labs/enigma",
+      "verified_at": "2026-06-06T07:44:02.089Z"
+    },
+    {
+      "candidate_id": "sn-63-taomarketcap-website",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 99,
+      "method_tested": "HEAD",
+      "name": "Enigma website",
+      "netuid": 63,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/63",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/63"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.qbittensorlabs.com/",
+      "verified_at": "2026-06-06T07:44:02.109Z"
+    },
+    {
+      "candidate_id": "sn-63-tensorplex-docs",
+      "classification": "live",
+      "confidence_score": 73,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 371,
+      "method_tested": "HEAD",
+      "name": "Enigma Tensorplex subnet docs",
+      "netuid": 63,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/63/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/63/subnet.json"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/63",
+      "verified_at": "2026-06-06T07:44:02.154Z"
+    },
+    {
+      "candidate_id": "sn-63-tensorplex-source-repo-1",
+      "classification": "dead",
+      "confidence_score": 0,
+      "error": null,
+      "github_api_status": 403,
+      "github_api_url": "https://api.github.com/repos/qbittensor-labs/quantum",
+      "kind": "source-repo",
+      "latency_ms": 89,
+      "method_tested": "HEAD",
+      "name": "Enigma source repository",
+      "netuid": 63,
+      "private_redirect_blocked": false,
+      "provider": "tensorplex-subnet-docs",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs-github",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/63/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/63/subnet.json"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://github.com/qbittensor-labs/quantum",
+      "verified_at": "2026-06-06T07:44:02.169Z"
+    }
+  ],
+  "schema_version": 1,
+  "slug": "sn-63",
+  "summary": {
+    "by_classification": {
+      "dead": 1,
+      "live": 4
+    },
+    "by_kind": {
+      "dashboard": 1,
+      "docs": 1,
+      "source-repo": 2,
+      "website": 1
+    },
+    "by_provider": {
+      "taomarketcap": 3,
+      "tensorplex-subnet-docs": 2
+    }
+  }
+}

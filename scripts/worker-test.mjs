@@ -195,6 +195,49 @@ globalThis.fetch = async (url, init) => {
 };
 
 try {
+  const proxyEnv = {
+    ...env,
+    METAGRAPH_ENABLE_RPC_PROXY: "true",
+    ASSETS: {
+      async fetch(request) {
+        const url = new URL(request.url);
+        if (url.pathname === "/metagraph/rpc/pools.json") {
+          return new Response(
+            JSON.stringify({
+              schema_version: 1,
+              contract_version: "2026-06-06.1",
+              generated_at: "1970-01-01T00:00:00.000Z",
+              pools: [
+                {
+                  id: "finney-rpc",
+                  kind: "subtensor-rpc",
+                  endpoint_count: 1,
+                  eligible_count: 1,
+                  endpoints: [
+                    {
+                      id: "fixture-rpc",
+                      provider: "fixture",
+                      pool_eligible: true,
+                      score: 100,
+                      status: "ok",
+                      url: "https://rpc.example.test",
+                    },
+                  ],
+                },
+              ],
+            }),
+            {
+              status: 200,
+              headers: {
+                "content-type": "application/json",
+              },
+            },
+          );
+        }
+        return env.ASSETS.fetch(request);
+      },
+    },
+  };
   const proxied = await handleRequest(
     new Request("https://metagraph.sh/rpc/v1/finney", {
       method: "POST",
@@ -205,7 +248,7 @@ try {
         params: [],
       }),
     }),
-    { ...env, METAGRAPH_ENABLE_RPC_PROXY: "true" },
+    proxyEnv,
     {},
   );
   assert.equal(

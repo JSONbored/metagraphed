@@ -2,9 +2,21 @@
   "artifact_contracts": [
     {
       "contract_version": "2026-06-06.1",
+      "id": "contracts",
+      "path": "/metagraph/contracts.json",
+      "schema_ref": "#/components/schemas/ContractsArtifact"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "providers",
       "path": "/metagraph/providers.json",
       "schema_ref": "#/components/schemas/ProvidersArtifact"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "provider-detail",
+      "path": "/metagraph/providers/{slug}.json",
+      "schema_ref": "#/components/schemas/ProviderArtifact"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -17,6 +29,12 @@
       "id": "openapi",
       "path": "/metagraph/openapi.json",
       "schema_ref": "#/components/schemas/OpenApiArtifact"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "type-definitions",
+      "path": "/metagraph/types.d.ts",
+      "schema_ref": null
     },
     {
       "contract_version": "2026-06-06.1",
@@ -44,9 +62,21 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "surfaces-subnet",
+      "path": "/metagraph/surfaces/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetSurfacesArtifact"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "candidates",
       "path": "/metagraph/candidates.json",
       "schema_ref": "#/components/schemas/CandidatesArtifact"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "candidates-subnet",
+      "path": "/metagraph/candidates/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetCandidatesArtifact"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -83,6 +113,12 @@
       "id": "verification",
       "path": "/metagraph/verification/latest.json",
       "schema_ref": "#/components/schemas/VerificationArtifact"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "verification-subnet",
+      "path": "/metagraph/verification/subnets/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetVerificationArtifact"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -266,6 +302,36 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
         }
       ]
     },
@@ -318,6 +384,101 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/surfaces/{netuid}.json",
+      "cache": "standard",
+      "description": "List curated public surfaces for one subnet.",
+      "id": "subnet-surfaces",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/surfaces",
+      "public": true,
+      "query_parameters": [
+        {
+          "name": "kind",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "status",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "classification",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
         }
       ]
     },
@@ -354,6 +515,95 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/candidates/{netuid}.json",
+      "cache": "standard",
+      "description": "List unpromoted candidate surfaces for one subnet.",
+      "id": "subnet-candidates",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/candidates",
+      "public": true,
+      "query_parameters": [
+        {
+          "name": "kind",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "state",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
         }
       ]
     },
@@ -383,8 +633,48 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/providers/{slug}.json",
+      "cache": "standard",
+      "description": "Fetch per-provider detail.",
+      "id": "provider-detail",
+      "method": "GET",
+      "path": "/api/v1/providers/{slug}",
+      "public": true,
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/coverage.json",
@@ -417,6 +707,36 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
         }
       ]
     },
@@ -447,6 +767,36 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
         }
       ]
     },
@@ -458,7 +808,116 @@
       "method": "GET",
       "path": "/api/v1/health",
       "public": true,
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "status",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/health/subnets/{netuid}.json",
+      "cache": "short",
+      "description": "Fetch health detail for one subnet.",
+      "id": "subnet-health",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/health",
+      "public": true,
+      "query_parameters": [
+        {
+          "name": "kind",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "status",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "classification",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/freshness.json",
@@ -494,6 +953,36 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
         }
       ]
     },
@@ -520,6 +1009,36 @@
           "name": "q",
           "schema": {
             "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
           }
         }
       ]
@@ -549,6 +1068,36 @@
           "name": "status",
           "schema": {
             "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
           }
         }
       ]
@@ -597,6 +1146,36 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
         }
       ]
     },
@@ -631,5 +1210,6 @@
       "query_parameters": []
     }
   ],
-  "schema_version": 1
+  "schema_version": 1,
+  "type_definitions_url": "/metagraph/types.d.ts"
 }

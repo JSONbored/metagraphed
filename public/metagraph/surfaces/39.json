@@ -1,0 +1,137 @@
+{
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "deprecated",
+  "netuid": 39,
+  "schema_version": 1,
+  "slug": "sn-39",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-39-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "deprecated TaoMarketCap dashboard",
+      "netuid": 39,
+      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/39"
+      ],
+      "subnet_name": "deprecated",
+      "subnet_slug": "sn-39",
+      "url": "https://taomarketcap.com/subnets/39",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 220,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T07:43:56.815Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-39-tensorplex-docs",
+      "kind": "docs",
+      "name": "deprecated Tensorplex subnet docs",
+      "netuid": 39,
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/39/subnet.json"
+      ],
+      "subnet_name": "deprecated",
+      "subnet_slug": "sn-39",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/39",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 73,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 275,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T07:43:56.829Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-39-tensorplex-source-repo-1",
+      "kind": "source-repo",
+      "name": "deprecated source repository",
+      "netuid": 39,
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/39/subnet.json"
+      ],
+      "subnet_name": "deprecated",
+      "subnet_slug": "sn-39",
+      "url": "https://github.com/tplr-ai/basilica",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 50,
+        "content_type": null,
+        "github_api_url": "https://api.github.com/repos/tplr-ai/basilica",
+        "latency_ms": 1084,
+        "method_tested": "HEAD",
+        "redirect_target": "https://github.com/one-covenant/basilica",
+        "status_code": 200,
+        "verified_at": "2026-06-06T07:43:56.876Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,1945 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/api-components.schema.json",
+  "title": "Metagraphed API Component Schemas",
+  "description": "Canonical reusable JSON Schema components embedded into the generated OpenAPI contract.",
+  "type": "object",
+  "required": ["components"],
+  "properties": {
+    "components": {
+      "type": "object",
+      "required": ["schemas"],
+      "properties": {
+        "schemas": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "components": {
+    "schemas": {
+      "JsonObject": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ArtifactBase": {
+        "type": "object",
+        "required": ["schema_version", "generated_at"],
+        "properties": {
+          "schema_version": { "const": 1 },
+          "contract_version": { "type": "string" },
+          "generated_at": { "type": "string" },
+          "notes": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "array", "items": { "type": "string" } }
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "SuccessEnvelope": {
+        "type": "object",
+        "required": ["ok", "schema_version", "data", "meta"],
+        "properties": {
+          "ok": { "const": true },
+          "schema_version": { "const": 1 },
+          "data": { "type": "object", "additionalProperties": true },
+          "meta": { "$ref": "#/components/schemas/ResponseMeta" }
+        },
+        "additionalProperties": false
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "required": ["ok", "schema_version", "data", "error", "meta"],
+        "properties": {
+          "ok": { "const": false },
+          "schema_version": { "const": 1 },
+          "data": { "type": "null" },
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          "meta": { "$ref": "#/components/schemas/ResponseMeta" }
+        },
+        "additionalProperties": false
+      },
+      "ResponseMeta": {
+        "type": "object",
+        "required": ["contract_version"],
+        "properties": {
+          "artifact_path": { "type": "string" },
+          "cache": { "$ref": "#/components/schemas/CacheProfile" },
+          "contract_version": { "type": "string" },
+          "generated_at": { "type": ["string", "null"] },
+          "pagination": { "$ref": "#/components/schemas/PaginationMeta" },
+          "source": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "required": [
+          "collection",
+          "total",
+          "returned",
+          "limit",
+          "cursor",
+          "next_cursor"
+        ],
+        "properties": {
+          "collection": { "type": "string" },
+          "total": { "type": "integer", "minimum": 0 },
+          "returned": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer", "minimum": 0 },
+          "cursor": { "type": "integer", "minimum": 0 },
+          "next_cursor": { "type": ["integer", "null"], "minimum": 0 },
+          "sort": { "type": ["string", "null"] },
+          "order": { "enum": ["asc", "desc"] }
+        },
+        "additionalProperties": false
+      },
+      "CacheProfile": {
+        "enum": ["short", "standard", "static"]
+      },
+      "Authority": {
+        "enum": [
+          "official",
+          "provider-claimed",
+          "community",
+          "registry-observed"
+        ]
+      },
+      "ProviderKind": {
+        "enum": [
+          "subnet-team",
+          "infrastructure-provider",
+          "data-provider",
+          "docs-provider",
+          "registry"
+        ]
+      },
+      "SurfaceKind": {
+        "enum": [
+          "subtensor-rpc",
+          "subtensor-wss",
+          "subnet-api",
+          "openapi",
+          "sse",
+          "website",
+          "source-repo",
+          "dashboard",
+          "repo-registry",
+          "docs",
+          "data-artifact"
+        ]
+      },
+      "CoverageLevel": {
+        "enum": ["native-only", "manifested", "probed"]
+      },
+      "CurationLevel": {
+        "enum": [
+          "native",
+          "candidate-discovered",
+          "machine-verified",
+          "maintainer-reviewed",
+          "adapter-backed"
+        ]
+      },
+      "ReviewState": {
+        "enum": [
+          "unreviewed",
+          "machine-generated",
+          "maintainer-reviewed",
+          "needs-review",
+          "stale"
+        ]
+      },
+      "CandidateState": {
+        "enum": [
+          "schema-invalid",
+          "schema-valid",
+          "maintainer-review",
+          "verified",
+          "stale",
+          "rejected"
+        ]
+      },
+      "SourceTier": {
+        "enum": [
+          "native-chain",
+          "provider-claimed",
+          "third-party-index",
+          "community-docs"
+        ]
+      },
+      "HealthStatus": {
+        "enum": ["ok", "degraded", "failed", "unknown"]
+      },
+      "Classification": {
+        "enum": [
+          "live",
+          "redirected",
+          "auth-required",
+          "dead",
+          "unsafe",
+          "unsupported",
+          "rate-limited",
+          "transient",
+          "timeout",
+          "content-mismatch",
+          "unknown"
+        ]
+      },
+      "SubnetStatus": {
+        "enum": ["active", "inactive", "unknown"]
+      },
+      "SubnetType": {
+        "enum": ["root", "application"]
+      },
+      "Provider": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "id",
+          "name",
+          "kind",
+          "website_url",
+          "authority"
+        ],
+        "properties": {
+          "schema_version": { "const": 1 },
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "name": { "type": "string", "minLength": 1 },
+          "kind": { "$ref": "#/components/schemas/ProviderKind" },
+          "website_url": { "type": "string", "format": "uri" },
+          "docs_url": { "type": "string", "format": "uri" },
+          "authority": { "$ref": "#/components/schemas/Authority" },
+          "notes": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "ProbeConfig": {
+        "type": "object",
+        "required": ["enabled", "method", "expect"],
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "method": { "enum": ["GET", "HEAD", "JSON-RPC", "WSS-RPC"] },
+          "expect": { "enum": ["json", "html", "sse", "any"] },
+          "timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 30000 }
+        },
+        "additionalProperties": false
+      },
+      "VerificationResult": {
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "classification",
+          "status",
+          "url",
+          "verified_at"
+        ],
+        "properties": {
+          "candidate_id": { "type": "string" },
+          "classification": { "$ref": "#/components/schemas/Classification" },
+          "confidence_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "content_type": { "type": ["string", "null"] },
+          "error": { "type": ["string", "null"] },
+          "kind": { "$ref": "#/components/schemas/SurfaceKind" },
+          "latency_ms": { "type": ["integer", "null"], "minimum": 0 },
+          "method_tested": { "type": "string" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "provider": { "type": "string" },
+          "source_tier": { "$ref": "#/components/schemas/SourceTier" },
+          "status": { "$ref": "#/components/schemas/HealthStatus" },
+          "status_code": { "type": ["integer", "null"] },
+          "url": { "type": "string", "format": "uri" },
+          "verified_at": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "Surface": {
+        "type": "object",
+        "required": [
+          "id",
+          "netuid",
+          "kind",
+          "url",
+          "provider",
+          "auth_required",
+          "authority",
+          "public_safe"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "subnet_name": { "type": "string" },
+          "subnet_slug": { "type": "string" },
+          "kind": { "$ref": "#/components/schemas/SurfaceKind" },
+          "url": { "type": "string", "format": "uri" },
+          "provider": { "type": "string" },
+          "auth_required": { "type": "boolean" },
+          "authority": { "$ref": "#/components/schemas/Authority" },
+          "public_safe": { "type": "boolean" },
+          "classification": { "$ref": "#/components/schemas/Classification" },
+          "status": { "$ref": "#/components/schemas/HealthStatus" },
+          "schema_url": { "type": "string", "format": "uri" },
+          "schema_status": {
+            "enum": ["machine-readable", "ui-only", "not-captured"]
+          },
+          "source_urls": {
+            "type": "array",
+            "items": { "type": "string", "format": "uri" }
+          },
+          "probe": { "$ref": "#/components/schemas/ProbeConfig" },
+          "rate_limit_notes": { "type": "string" },
+          "notes": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "CandidateSurface": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "id",
+          "netuid",
+          "state",
+          "name",
+          "kind",
+          "url",
+          "source_url",
+          "provider",
+          "auth_required",
+          "public_safe"
+        ],
+        "properties": {
+          "schema_version": { "const": 1 },
+          "id": { "type": "string" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "state": { "$ref": "#/components/schemas/CandidateState" },
+          "name": { "type": "string" },
+          "kind": { "$ref": "#/components/schemas/SurfaceKind" },
+          "url": { "type": "string", "format": "uri" },
+          "source_url": { "type": "string", "format": "uri" },
+          "source_urls": {
+            "type": "array",
+            "items": { "type": "string", "format": "uri" }
+          },
+          "source_type": { "type": "string" },
+          "source_tier": { "$ref": "#/components/schemas/SourceTier" },
+          "confidence": { "enum": ["low", "medium", "high"] },
+          "provider": { "type": "string" },
+          "auth_required": { "type": "boolean" },
+          "public_safe": { "type": "boolean" },
+          "rate_limit_notes": { "type": "string" },
+          "review_notes": { "type": "string" },
+          "subnet_name": { "type": ["string", "null"] },
+          "verification": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/VerificationResult" },
+              { "type": "null" }
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "CurationMetadata": {
+        "type": "object",
+        "required": ["level", "review_state"],
+        "properties": {
+          "level": { "$ref": "#/components/schemas/CurationLevel" },
+          "review_state": { "$ref": "#/components/schemas/ReviewState" },
+          "reviewed_at": { "type": ["string", "null"] },
+          "verified_at": { "type": ["string", "null"] },
+          "source_count": { "type": "integer", "minimum": 0 },
+          "gap_notes": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": true
+      },
+      "Gaps": {
+        "type": "object",
+        "required": ["missing_kinds", "supported_kinds", "gap_notes"],
+        "properties": {
+          "missing_kinds": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SurfaceKind" }
+          },
+          "supported_kinds": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SurfaceKind" }
+          },
+          "gap_notes": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": true
+      },
+      "SubnetIndexEntry": {
+        "type": "object",
+        "required": [
+          "netuid",
+          "name",
+          "slug",
+          "status",
+          "subnet_type",
+          "coverage_level",
+          "curation_level",
+          "surface_count"
+        ],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "name": { "type": "string" },
+          "native_name": { "type": ["string", "null"] },
+          "slug": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/SubnetStatus" },
+          "subnet_type": { "$ref": "#/components/schemas/SubnetType" },
+          "symbol": { "type": ["string", "null"] },
+          "coverage_level": { "$ref": "#/components/schemas/CoverageLevel" },
+          "curation_level": { "$ref": "#/components/schemas/CurationLevel" },
+          "surface_count": { "type": "integer", "minimum": 0 },
+          "probed_surface_count": { "type": "integer", "minimum": 0 },
+          "candidate_count": { "type": "integer", "minimum": 0 },
+          "participant_count": { "type": "integer", "minimum": 0 },
+          "tempo": { "type": "integer", "minimum": 0 },
+          "block": { "type": "integer", "minimum": 0 },
+          "registered_at_block": { "type": "integer", "minimum": 0 },
+          "mechanism_count": { "type": "integer", "minimum": 0 },
+          "docs_url": { "type": ["string", "null"], "format": "uri" },
+          "website_url": { "type": ["string", "null"], "format": "uri" },
+          "dashboard_url": { "type": ["string", "null"], "format": "uri" },
+          "source_repo": { "type": ["string", "null"], "format": "uri" },
+          "categories": { "type": "array", "items": { "type": "string" } },
+          "gap_count": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": true
+      },
+      "SubnetDetail": {
+        "allOf": [
+          { "$ref": "#/components/schemas/SubnetIndexEntry" },
+          {
+            "type": "object",
+            "required": ["curation", "gaps", "provenance", "links"],
+            "properties": {
+              "curation": { "$ref": "#/components/schemas/CurationMetadata" },
+              "gaps": { "$ref": "#/components/schemas/Gaps" },
+              "links": {
+                "type": "array",
+                "items": { "type": "object", "additionalProperties": true }
+              },
+              "provenance": { "type": "object", "additionalProperties": true }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "HealthSurface": {
+        "type": "object",
+        "required": ["surface_id", "netuid", "status", "classification", "url"],
+        "properties": {
+          "surface_id": { "type": "string" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "subnet_name": { "type": "string" },
+          "subnet_slug": { "type": "string" },
+          "kind": { "$ref": "#/components/schemas/SurfaceKind" },
+          "provider": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/HealthStatus" },
+          "classification": { "$ref": "#/components/schemas/Classification" },
+          "url": { "type": "string", "format": "uri" },
+          "latency_ms": { "type": ["integer", "null"], "minimum": 0 },
+          "status_code": { "type": ["integer", "null"] },
+          "last_checked": { "type": ["string", "null"] },
+          "last_ok": { "type": ["string", "null"] },
+          "verified_at": { "type": ["string", "null"] },
+          "error": { "type": ["string", "null"] },
+          "error_class": { "type": ["string", "null"] },
+          "uptime_sample_ratio": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "additionalProperties": true
+      },
+      "HealthSubnetSummary": {
+        "type": "object",
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "status",
+          "surface_count",
+          "ok_count",
+          "failed_count",
+          "degraded_count",
+          "unknown_count"
+        ],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/HealthStatus" },
+          "surface_count": { "type": "integer", "minimum": 0 },
+          "ok_count": { "type": "integer", "minimum": 0 },
+          "failed_count": { "type": "integer", "minimum": 0 },
+          "degraded_count": { "type": "integer", "minimum": 0 },
+          "unknown_count": { "type": "integer", "minimum": 0 },
+          "last_checked": { "type": ["string", "null"] },
+          "last_ok": { "type": ["string", "null"] },
+          "avg_latency_ms": { "type": ["integer", "null"], "minimum": 0 }
+        },
+        "additionalProperties": true
+      },
+      "RpcEndpoint": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "url",
+          "provider",
+          "status",
+          "classification",
+          "network",
+          "chain"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["subtensor-rpc", "subtensor-wss"] },
+          "url": { "type": "string", "format": "uri" },
+          "provider": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/HealthStatus" },
+          "classification": { "$ref": "#/components/schemas/Classification" },
+          "network": { "const": "finney" },
+          "chain": { "const": "bittensor" },
+          "archive_support": { "type": ["boolean", "null"] },
+          "latency_ms": { "type": ["integer", "null"], "minimum": 0 },
+          "latest_block": { "type": ["integer", "null"], "minimum": 0 },
+          "rpc_method_count": { "type": ["integer", "null"], "minimum": 0 },
+          "methods_supported": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": { "type": "boolean" }
+              },
+              { "type": "array", "items": { "type": "string" } },
+              { "type": "null" }
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "RpcPool": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "endpoint_count",
+          "eligible_count",
+          "endpoints"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "type": "string" },
+          "best_endpoint_id": { "type": ["string", "null"] },
+          "endpoint_count": { "type": "integer", "minimum": 0 },
+          "eligible_count": { "type": "integer", "minimum": 0 },
+          "endpoints": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RpcPoolEndpoint" }
+          }
+        },
+        "additionalProperties": true
+      },
+      "RpcPoolEndpoint": {
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "provider",
+          "status",
+          "score",
+          "pool_eligible"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "url": { "type": "string", "format": "uri" },
+          "provider": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/HealthStatus" },
+          "score": { "type": "integer" },
+          "pool_eligible": { "type": "boolean" },
+          "archive_support": { "type": ["boolean", "null"] },
+          "latency_ms": { "type": ["integer", "null"], "minimum": 0 },
+          "latest_block": { "type": ["integer", "null"], "minimum": 0 }
+        },
+        "additionalProperties": true
+      },
+      "SearchDocument": {
+        "type": "object",
+        "required": ["id", "type", "title", "artifact_path", "tokens"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "enum": ["subnet", "surface", "provider"] },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "slug": { "type": "string" },
+          "title": { "type": "string" },
+          "subtitle": { "type": "string" },
+          "url": { "type": "string" },
+          "artifact_path": { "type": "string" },
+          "tokens": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": true
+      },
+      "EvidenceClaim": {
+        "type": "object",
+        "required": [
+          "claim",
+          "subject",
+          "source_url",
+          "source_type",
+          "source_tier",
+          "confidence",
+          "support_summary",
+          "limits"
+        ],
+        "properties": {
+          "claim": { "type": "string" },
+          "subject": { "type": "string" },
+          "source_url": { "type": "string" },
+          "source_type": { "type": "string" },
+          "source_tier": { "$ref": "#/components/schemas/SourceTier" },
+          "confidence": { "enum": ["low", "medium", "high"] },
+          "support_summary": { "type": "string" },
+          "limits": { "type": "string" },
+          "verified_at": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "ArtifactSizeBudget": {
+        "type": "object",
+        "required": [
+          "path",
+          "size_bytes",
+          "warn_bytes",
+          "fail_bytes",
+          "status"
+        ],
+        "properties": {
+          "path": { "type": "string" },
+          "size_bytes": { "type": "integer", "minimum": 0 },
+          "warn_bytes": { "type": "integer", "minimum": 0 },
+          "fail_bytes": { "type": "integer", "minimum": 0 },
+          "status": { "enum": ["ok", "warn", "fail"] }
+        },
+        "additionalProperties": false
+      },
+      "CountMap": {
+        "type": "object",
+        "additionalProperties": { "type": "integer", "minimum": 0 }
+      },
+      "ArtifactContractEntry": {
+        "type": "object",
+        "required": ["contract_version", "id", "path", "schema_ref"],
+        "properties": {
+          "content_type": { "type": "string" },
+          "contract_version": { "type": "string" },
+          "description": { "type": "string" },
+          "id": { "type": "string" },
+          "path": { "type": "string", "pattern": "^/metagraph/" },
+          "schema_ref": {
+            "type": ["string", "null"],
+            "pattern": "^#/components/schemas/[A-Za-z0-9]+$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ArtifactDiffEntry": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+              "path": { "type": "string" },
+              "hash": { "type": "string" },
+              "previous_hash": { "type": ["string", "null"] }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ApiQueryParameter": {
+        "type": "object",
+        "required": ["name", "schema"],
+        "properties": {
+          "name": { "type": "string" },
+          "schema": { "type": "object", "additionalProperties": true }
+        },
+        "additionalProperties": false
+      },
+      "ApiRoute": {
+        "type": "object",
+        "required": [
+          "artifact_path",
+          "cache",
+          "description",
+          "id",
+          "method",
+          "path",
+          "public",
+          "query_parameters"
+        ],
+        "properties": {
+          "artifact_path": { "type": "string", "pattern": "^/metagraph/" },
+          "cache": { "$ref": "#/components/schemas/CacheProfile" },
+          "description": { "type": "string" },
+          "id": { "type": "string" },
+          "method": { "enum": ["GET"] },
+          "path": { "type": "string", "pattern": "^/api/v1" },
+          "public": { "const": true },
+          "query_parameters": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ApiQueryParameter" }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResponseEnvelopeContract": {
+        "type": "object",
+        "required": [
+          "error_schema_ref",
+          "fields",
+          "notes",
+          "schema_version",
+          "success_schema_ref"
+        ],
+        "properties": {
+          "error_schema_ref": { "const": "#/components/schemas/ErrorEnvelope" },
+          "fields": {
+            "type": "array",
+            "items": { "enum": ["ok", "data", "meta", "error"] }
+          },
+          "notes": { "type": "string" },
+          "schema_version": { "const": 1 },
+          "success_schema_ref": {
+            "const": "#/components/schemas/SuccessEnvelope"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CoverageDelta": {
+        "type": "object",
+        "required": ["after", "before", "delta"],
+        "properties": {
+          "after": { "type": "integer", "minimum": 0 },
+          "before": { "type": "integer", "minimum": 0 },
+          "delta": { "type": "integer" }
+        },
+        "additionalProperties": false
+      },
+      "FreshnessSource": {
+        "type": "object",
+        "required": ["id", "path", "stale_after_hours", "status", "timestamp"],
+        "properties": {
+          "id": { "type": "string" },
+          "path": { "type": "string" },
+          "stale_after_hours": { "type": "integer", "minimum": 0 },
+          "status": {
+            "enum": ["captured", "current", "degraded", "missing", "stale"]
+          },
+          "timestamp": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      },
+      "SourceHealthProvider": {
+        "type": "object",
+        "required": [
+          "authority",
+          "candidate_count",
+          "classifications",
+          "id",
+          "kind",
+          "name",
+          "rpc_endpoint_count",
+          "status",
+          "verification_result_count"
+        ],
+        "properties": {
+          "authority": { "$ref": "#/components/schemas/Authority" },
+          "candidate_count": { "type": "integer", "minimum": 0 },
+          "classifications": { "$ref": "#/components/schemas/CountMap" },
+          "id": { "type": "string" },
+          "kind": { "$ref": "#/components/schemas/ProviderKind" },
+          "name": { "type": "string" },
+          "rpc_endpoint_count": { "type": "integer", "minimum": 0 },
+          "status": { "$ref": "#/components/schemas/HealthStatus" },
+          "verification_result_count": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "SourceSnapshot": {
+        "type": "object",
+        "required": [
+          "captured_at",
+          "hash",
+          "id",
+          "kind",
+          "path",
+          "record_count"
+        ],
+        "properties": {
+          "captured_at": { "type": "string" },
+          "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "id": { "type": "string" },
+          "kind": {
+            "enum": [
+              "adapter-snapshot",
+              "candidate-discovery",
+              "native-chain",
+              "probe-results",
+              "registry-manifest",
+              "review-ledger"
+            ]
+          },
+          "path": { "type": "string" },
+          "record_count": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "SchemaDriftSurface": {
+        "type": "object",
+        "required": [
+          "netuid",
+          "schema_url",
+          "status",
+          "subnet_slug",
+          "surface_id",
+          "url"
+        ],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "schema_url": { "type": "string", "format": "uri" },
+          "status": {
+            "enum": [
+              "captured",
+              "changed",
+              "error",
+              "not-snapshotted",
+              "pending-snapshot",
+              "unchanged"
+            ]
+          },
+          "subnet_slug": { "type": "string" },
+          "surface_id": { "type": "string" },
+          "url": { "type": "string", "format": "uri" },
+          "hash": { "type": "string" },
+          "previous_hash": { "type": ["string", "null"] },
+          "error": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      },
+      "SchemaIndexEntry": {
+        "type": "object",
+        "required": ["hash", "path", "schema_url", "surface_id"],
+        "properties": {
+          "hash": { "type": "string" },
+          "path": { "type": "string" },
+          "schema_url": { "type": "string", "format": "uri" },
+          "surface_id": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "R2ManifestEntry": {
+        "type": "object",
+        "required": [
+          "content_type",
+          "key",
+          "latest_key",
+          "path",
+          "sha256",
+          "size_bytes"
+        ],
+        "properties": {
+          "content_type": { "type": "string" },
+          "key": { "type": "string" },
+          "latest_key": { "type": "string" },
+          "path": { "type": "string", "pattern": "^/metagraph/" },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "size_bytes": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "ContractsArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": [
+              "artifacts",
+              "base_path",
+              "name",
+              "openapi_url",
+              "primary_domain",
+              "status_domain",
+              "type_definitions_url"
+            ],
+            "properties": {
+              "artifacts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ArtifactContractEntry"
+                }
+              },
+              "base_path": { "const": "/metagraph" },
+              "name": { "type": "string" },
+              "openapi_url": { "const": "/metagraph/openapi.json" },
+              "primary_domain": { "const": "metagraph.sh" },
+              "status_domain": { "type": "null" },
+              "type_definitions_url": { "const": "/metagraph/types.d.ts" }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewGapPriority": {
+        "type": "object",
+        "required": [
+          "candidate_count",
+          "curation_level",
+          "missing_kinds",
+          "name",
+          "netuid",
+          "priority_score",
+          "review_state",
+          "slug",
+          "suggested_next_action",
+          "surface_count",
+          "verified_candidate_count"
+        ],
+        "properties": {
+          "candidate_count": { "type": "integer", "minimum": 0 },
+          "curation_level": { "$ref": "#/components/schemas/CurationLevel" },
+          "missing_kinds": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SurfaceKind" }
+          },
+          "name": { "type": "string" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "priority_score": { "type": "integer", "minimum": 0 },
+          "review_state": { "$ref": "#/components/schemas/ReviewState" },
+          "slug": { "type": "string" },
+          "suggested_next_action": { "type": "string" },
+          "surface_count": { "type": "integer", "minimum": 0 },
+          "verified_candidate_count": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "ReviewAdapterCandidate": {
+        "type": "object",
+        "required": [
+          "candidate_api_count",
+          "curation_level",
+          "name",
+          "netuid",
+          "operational_kinds",
+          "operational_surface_count",
+          "priority_score",
+          "slug"
+        ],
+        "properties": {
+          "candidate_api_count": { "type": "integer", "minimum": 0 },
+          "curation_level": { "$ref": "#/components/schemas/CurationLevel" },
+          "name": { "type": "string" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "operational_kinds": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SurfaceKind" }
+          },
+          "operational_surface_count": { "type": "integer", "minimum": 0 },
+          "priority_score": { "type": "integer", "minimum": 0 },
+          "slug": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "ReviewDecision": {
+        "type": "object",
+        "required": [
+          "confidence",
+          "decision",
+          "netuid",
+          "notes",
+          "reviewed_at",
+          "slug",
+          "source_urls"
+        ],
+        "properties": {
+          "confidence": { "enum": ["low", "medium", "high"] },
+          "decision": {
+            "enum": ["maintainer-reviewed", "needs-review", "rejected", "stale"]
+          },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "notes": { "type": "string" },
+          "reviewed_at": { "type": "string" },
+          "slug": { "type": "string" },
+          "source_urls": {
+            "type": "array",
+            "items": { "type": "string", "format": "uri" }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProvidersArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["providers"],
+            "properties": {
+              "providers": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/Provider" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ProviderArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["provider"],
+            "properties": {
+              "provider": { "$ref": "#/components/schemas/Provider" }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ApiIndexArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": [
+              "artifact_contracts",
+              "base_path",
+              "openapi_url",
+              "primary_domain",
+              "response_envelope",
+              "routes",
+              "type_definitions_url"
+            ],
+            "properties": {
+              "artifact_contracts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ArtifactContractEntry"
+                }
+              },
+              "base_path": { "const": "/api/v1" },
+              "openapi_url": { "const": "/api/v1/openapi.json" },
+              "primary_domain": { "const": "metagraph.sh" },
+              "response_envelope": {
+                "$ref": "#/components/schemas/ResponseEnvelopeContract"
+              },
+              "routes": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/ApiRoute" }
+              },
+              "type_definitions_url": { "const": "/metagraph/types.d.ts" }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "OpenApiArtifact": {
+        "type": "object",
+        "required": ["openapi", "info", "paths", "components"],
+        "properties": {
+          "openapi": { "const": "3.1.0" },
+          "info": { "type": "object", "additionalProperties": true },
+          "servers": {
+            "type": "array",
+            "items": { "type": "object", "additionalProperties": true }
+          },
+          "paths": { "type": "object", "additionalProperties": true },
+          "components": { "type": "object", "additionalProperties": true },
+          "x-metagraphed": { "type": "object", "additionalProperties": true }
+        },
+        "additionalProperties": true
+      },
+      "ChangelogArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["artifacts", "source", "subnets", "summary"],
+            "properties": {
+              "artifacts": {
+                "type": "object",
+                "required": ["added", "modified", "removed"],
+                "properties": {
+                  "added": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ArtifactDiffEntry"
+                    }
+                  },
+                  "modified": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ArtifactDiffEntry"
+                    }
+                  },
+                  "removed": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ArtifactDiffEntry"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "source": { "const": "generated-artifact-diff" },
+              "subnets": {
+                "type": "object",
+                "required": ["added", "removed", "renamed"],
+                "properties": {
+                  "added": { "type": "array", "items": { "type": "integer" } },
+                  "removed": {
+                    "type": "array",
+                    "items": { "type": "integer" }
+                  },
+                  "renamed": {
+                    "type": "array",
+                    "items": { "type": "object", "additionalProperties": true }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "artifact_added_count",
+                  "artifact_modified_count",
+                  "artifact_removed_count",
+                  "coverage_delta",
+                  "netuid_added_count",
+                  "netuid_removed_count",
+                  "netuid_renamed_count"
+                ],
+                "properties": {
+                  "artifact_added_count": { "type": "integer", "minimum": 0 },
+                  "artifact_modified_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "artifact_removed_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "coverage_delta": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "oneOf": [
+                        { "$ref": "#/components/schemas/CoverageDelta" },
+                        { "type": "null" }
+                      ]
+                    }
+                  },
+                  "netuid_added_count": { "type": "integer", "minimum": 0 },
+                  "netuid_removed_count": { "type": "integer", "minimum": 0 },
+                  "netuid_renamed_count": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "GenericArtifact": {
+        "allOf": [{ "$ref": "#/components/schemas/ArtifactBase" }]
+      },
+      "SubnetsArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["network", "source", "subnets"],
+            "properties": {
+              "network": { "const": "finney" },
+              "source": { "type": "object", "additionalProperties": true },
+              "subnets": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/SubnetIndexEntry" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SubnetDetailArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["subnet", "surfaces", "candidate_surfaces", "gaps"],
+            "properties": {
+              "subnet": { "$ref": "#/components/schemas/SubnetDetail" },
+              "surfaces": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/Surface" }
+              },
+              "verified_surfaces": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/Surface" }
+              },
+              "candidate_surfaces": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/CandidateSurface" }
+              },
+              "candidates": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/CandidateSurface" }
+              },
+              "gaps": { "$ref": "#/components/schemas/Gaps" }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SurfacesArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["surfaces"],
+            "properties": {
+              "surfaces": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/Surface" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SubnetSurfacesArtifact": {
+        "$ref": "#/components/schemas/SurfacesArtifact"
+      },
+      "CandidatesArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["candidates"],
+            "properties": {
+              "candidates": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/CandidateSurface" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SubnetCandidatesArtifact": {
+        "$ref": "#/components/schemas/CandidatesArtifact"
+      },
+      "ReviewQueueArtifact": {
+        "$ref": "#/components/schemas/CandidatesArtifact"
+      },
+      "SearchArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["documents"],
+            "properties": {
+              "document_count": { "type": "integer", "minimum": 0 },
+              "documents": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/SearchDocument" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "CoverageArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": [
+              "application_subnet_count",
+              "candidate_count",
+              "candidate_subnet_count",
+              "chain_subnet_count",
+              "curated_overlay_count",
+              "curation_level_counts",
+              "manifested_count",
+              "native_only_count",
+              "native_only_with_candidates",
+              "native_only_without_candidates",
+              "native_snapshot_captured_at",
+              "network",
+              "probed_count",
+              "probed_surface_count",
+              "root_subnet_count",
+              "source",
+              "surface_count"
+            ],
+            "properties": {
+              "application_subnet_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "candidate_count": { "type": "integer", "minimum": 0 },
+              "candidate_subnet_count": { "type": "integer", "minimum": 0 },
+              "chain_subnet_count": { "type": "integer", "minimum": 0 },
+              "curated_overlay_count": { "type": "integer", "minimum": 0 },
+              "curation_level_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "manifested_count": { "type": "integer", "minimum": 0 },
+              "native_only_count": { "type": "integer", "minimum": 0 },
+              "native_only_with_candidates": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "native_only_without_candidates": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "native_snapshot_captured_at": { "type": "string" },
+              "network": { "const": "finney" },
+              "probed_count": { "type": "integer", "minimum": 0 },
+              "probed_surface_count": { "type": "integer", "minimum": 0 },
+              "root_subnet_count": { "type": "integer", "minimum": 0 },
+              "source": {
+                "type": "object",
+                "required": ["candidates", "native", "overlays"],
+                "properties": {
+                  "candidates": { "type": "string" },
+                  "native": {
+                    "oneOf": [
+                      { "type": "string" },
+                      { "type": "object", "additionalProperties": true }
+                    ]
+                  },
+                  "overlays": { "type": "string" }
+                },
+                "additionalProperties": false
+              },
+              "surface_count": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "CurationEntry": {
+        "type": "object",
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "coverage_level",
+          "surface_count",
+          "candidate_count",
+          "curation",
+          "gaps"
+        ],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "coverage_level": { "$ref": "#/components/schemas/CoverageLevel" },
+          "surface_count": { "type": "integer", "minimum": 0 },
+          "candidate_count": { "type": "integer", "minimum": 0 },
+          "gap_count": { "type": "integer", "minimum": 0 },
+          "curation": { "$ref": "#/components/schemas/CurationMetadata" },
+          "gaps": { "$ref": "#/components/schemas/Gaps" }
+        },
+        "additionalProperties": true
+      },
+      "CurationArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["curation"],
+            "properties": {
+              "curation": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/CurationEntry" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "GapsEntry": {
+        "type": "object",
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "coverage_level",
+          "curation_level",
+          "gaps"
+        ],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "coverage_level": { "$ref": "#/components/schemas/CoverageLevel" },
+          "curation_level": { "$ref": "#/components/schemas/CurationLevel" },
+          "gaps": { "$ref": "#/components/schemas/Gaps" }
+        },
+        "additionalProperties": true
+      },
+      "GapsArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["gaps"],
+            "properties": {
+              "gaps": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/GapsEntry" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "VerificationArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["candidate_count", "results"],
+            "properties": {
+              "candidate_count": { "type": "integer", "minimum": 0 },
+              "summary": { "type": "object", "additionalProperties": true },
+              "results": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/VerificationResult" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SubnetVerificationArtifact": {
+        "$ref": "#/components/schemas/VerificationArtifact"
+      },
+      "FreshnessArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["sources", "summary"],
+            "properties": {
+              "sources": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/FreshnessSource" }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "adapter_count",
+                  "health_surface_count",
+                  "native_snapshot_captured_at",
+                  "openapi_surface_count",
+                  "verification_generated_at"
+                ],
+                "properties": {
+                  "adapter_count": { "type": "integer", "minimum": 0 },
+                  "health_surface_count": { "type": "integer", "minimum": 0 },
+                  "native_snapshot_captured_at": { "type": "string" },
+                  "openapi_surface_count": { "type": "integer", "minimum": 0 },
+                  "verification_generated_at": { "type": "string" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SourceHealthArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["providers", "source", "summary"],
+            "properties": {
+              "providers": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SourceHealthProvider"
+                }
+              },
+              "source": {
+                "const": "generated-provider-and-verification-summary"
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "candidate_count",
+                  "provider_count",
+                  "rpc_endpoint_count",
+                  "status_counts",
+                  "verification_result_count"
+                ],
+                "properties": {
+                  "candidate_count": { "type": "integer", "minimum": 0 },
+                  "provider_count": { "type": "integer", "minimum": 0 },
+                  "rpc_endpoint_count": { "type": "integer", "minimum": 0 },
+                  "status_counts": { "$ref": "#/components/schemas/CountMap" },
+                  "verification_result_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SourceSnapshotsArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["sources", "summary"],
+            "properties": {
+              "sources": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/SourceSnapshot" }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "adapter_snapshot_count",
+                  "candidate_count",
+                  "overlay_count",
+                  "provider_count",
+                  "source_count",
+                  "verification_result_count"
+                ],
+                "properties": {
+                  "adapter_snapshot_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "candidate_count": { "type": "integer", "minimum": 0 },
+                  "overlay_count": { "type": "integer", "minimum": 0 },
+                  "provider_count": { "type": "integer", "minimum": 0 },
+                  "source_count": { "type": "integer", "minimum": 0 },
+                  "verification_result_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "EvidenceLedgerArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["claims"],
+            "properties": {
+              "claims": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/EvidenceClaim" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "HealthLatestArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["summary", "surfaces"],
+            "properties": {
+              "summary": { "type": "object", "additionalProperties": true },
+              "surfaces": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/HealthSurface" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "HealthSummaryArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["global", "subnets"],
+            "properties": {
+              "global": { "type": "object", "additionalProperties": true },
+              "subnets": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/HealthSubnetSummary" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "HealthSubnetArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["netuid", "slug", "name", "summary", "surfaces"],
+            "properties": {
+              "netuid": { "type": "integer", "minimum": 0 },
+              "slug": { "type": "string" },
+              "name": { "type": "string" },
+              "summary": { "$ref": "#/components/schemas/HealthSubnetSummary" },
+              "surfaces": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/HealthSurface" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "HealthBadgeArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": [
+              "netuid",
+              "label",
+              "message",
+              "status",
+              "color",
+              "surface_count"
+            ],
+            "properties": {
+              "netuid": { "type": "integer", "minimum": 0 },
+              "label": { "type": "string" },
+              "message": { "type": "string" },
+              "status": { "$ref": "#/components/schemas/HealthStatus" },
+              "color": { "type": "string" },
+              "surface_count": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "RpcEndpointsArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["summary", "endpoints"],
+            "properties": {
+              "summary": { "type": "object", "additionalProperties": true },
+              "endpoints": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/RpcEndpoint" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "RpcPoolsArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["pools"],
+            "properties": {
+              "disabled_proxy_contract": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "pools": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/RpcPool" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SchemaDriftArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": [
+              "openapi_surface_count",
+              "schema_backed_surface_count",
+              "source",
+              "status",
+              "surfaces"
+            ],
+            "properties": {
+              "openapi_surface_count": { "type": "integer", "minimum": 0 },
+              "schema_backed_surface_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source": { "type": "string" },
+              "status": {
+                "enum": [
+                  "captured",
+                  "changed",
+                  "error",
+                  "not-snapshotted",
+                  "pending-snapshot",
+                  "unchanged"
+                ]
+              },
+              "surfaces": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/SchemaDriftSurface" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SchemaIndexArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["schemas", "source"],
+            "properties": {
+              "schemas": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/SchemaIndexEntry" }
+              },
+              "source": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "AdapterArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["netuid", "subnet", "slug", "extensions"],
+            "properties": {
+              "netuid": { "type": "integer", "minimum": 0 },
+              "subnet": { "type": "string" },
+              "slug": { "type": "string" },
+              "extensions": { "type": "object", "additionalProperties": true },
+              "snapshot": {
+                "type": ["object", "null"],
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "R2ManifestArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": [
+              "artifact_count",
+              "artifact_size_bytes",
+              "artifacts",
+              "bucket_binding",
+              "bucket_name",
+              "latest_prefix",
+              "run_prefix"
+            ],
+            "properties": {
+              "artifact_count": { "type": "integer", "minimum": 0 },
+              "artifact_size_bytes": { "type": "integer", "minimum": 0 },
+              "artifacts": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/R2ManifestEntry" }
+              },
+              "bucket_binding": { "type": "string" },
+              "bucket_name": { "type": "string" },
+              "latest_prefix": { "type": "string" },
+              "run_prefix": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewCurationArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": [
+              "adapter_candidates",
+              "gap_priorities",
+              "review_decisions",
+              "summary"
+            ],
+            "properties": {
+              "adapter_candidates": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewAdapterCandidate"
+                }
+              },
+              "gap_priorities": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/ReviewGapPriority" }
+              },
+              "review_decisions": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/ReviewDecision" }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "adapter_candidate_count",
+                  "gap_kind_counts",
+                  "maintainer_decision_count",
+                  "needs_maintainer_review_count",
+                  "subnet_count"
+                ],
+                "properties": {
+                  "adapter_candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "gap_kind_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "maintainer_decision_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "needs_maintainer_review_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "subnet_count": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewGapPrioritiesArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["priorities"],
+            "properties": {
+              "priorities": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/ReviewGapPriority" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewAdapterCandidatesArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["candidates"],
+            "properties": {
+              "candidates": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewAdapterCandidate"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewDecisionsArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["decisions"],
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/ReviewDecision" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "BuildSummaryArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": [
+              "artifact_count",
+              "artifact_size_bytes",
+              "subnet_count",
+              "surface_count"
+            ],
+            "properties": {
+              "artifact_count": { "type": "integer", "minimum": 0 },
+              "artifact_size_bytes": { "type": "integer", "minimum": 0 },
+              "subnet_count": { "type": "integer", "minimum": 0 },
+              "surface_count": { "type": "integer", "minimum": 0 },
+              "candidate_count": { "type": "integer", "minimum": 0 },
+              "provider_count": { "type": "integer", "minimum": 0 },
+              "artifact_budgets": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/ArtifactSizeBudget" }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    }
+  }
+}

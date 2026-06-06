@@ -1,0 +1,231 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-15-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "ORO TaoMarketCap dashboard",
+      "netuid": 15,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/15"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "ORO",
+      "url": "https://taomarketcap.com/subnets/15",
+      "verification": {
+        "candidate_id": "sn-15-taomarketcap-dashboard",
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "dashboard",
+        "latency_ms": 358,
+        "method_tested": "HEAD",
+        "name": "ORO TaoMarketCap dashboard",
+        "netuid": 15,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "third-party-index",
+        "source_type": "taomarketcap-dashboard",
+        "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
+        "source_urls": [
+          "https://api.taomarketcap.com/public/v1/subnets/15"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://taomarketcap.com/subnets/15",
+        "verified_at": "2026-06-06T07:43:54.309Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-15-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "ORO source repository",
+      "netuid": 15,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/15"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "ORO",
+      "url": "https://github.com/ORO-AI/oro",
+      "verification": {
+        "candidate_id": "sn-15-taomarketcap-source-repo",
+        "classification": "live",
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
+        "github_api_url": "https://api.github.com/repos/ORO-AI/oro",
+        "kind": "source-repo",
+        "latency_ms": 381,
+        "method_tested": "HEAD",
+        "name": "ORO source repository",
+        "netuid": 15,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "third-party-index",
+        "source_type": "taomarketcap-subnet-identity-v3",
+        "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
+        "source_urls": [
+          "https://api.taomarketcap.com/public/v1/subnets/15"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://github.com/ORO-AI/oro",
+        "verified_at": "2026-06-06T07:43:54.315Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-15-taomarketcap-website",
+      "kind": "website",
+      "name": "ORO website",
+      "netuid": 15,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/15"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "ORO",
+      "url": "https://oroagents.com/",
+      "verification": {
+        "candidate_id": "sn-15-taomarketcap-website",
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 243,
+        "method_tested": "HEAD",
+        "name": "ORO website",
+        "netuid": 15,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "third-party-index",
+        "source_type": "taomarketcap-subnet-identity-v3",
+        "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
+        "source_urls": [
+          "https://api.taomarketcap.com/public/v1/subnets/15"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://oroagents.com/",
+        "verified_at": "2026-06-06T07:43:54.325Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-15-tensorplex-docs",
+      "kind": "docs",
+      "name": "ORO Tensorplex subnet docs",
+      "netuid": 15,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "ORO",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/15",
+      "verification": {
+        "candidate_id": "sn-15-tensorplex-docs",
+        "classification": "live",
+        "confidence_score": 73,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 307,
+        "method_tested": "HEAD",
+        "name": "ORO Tensorplex subnet docs",
+        "netuid": 15,
+        "private_redirect_blocked": false,
+        "provider": "tensorplex-subnet-docs",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "tensorplex-subnet-docs",
+        "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json",
+        "source_urls": [
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/15",
+        "verified_at": "2026-06-06T07:43:54.326Z"
+      }
+    }
+  ],
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "ORO",
+  "netuid": 15,
+  "schema_version": 1,
+  "slug": "sn-15"
+}

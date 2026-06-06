@@ -131,6 +131,14 @@ test("public artifacts are internally consistent", () => {
   assert.equal(contracts.primary_domain, "metagraph.sh");
   assert.equal(contracts.status_domain, null);
   assert.equal(
+    contracts.artifacts.some(
+      (artifact) =>
+        artifact.id === "contracts" &&
+        artifact.schema_ref === "#/components/schemas/ContractsArtifact",
+    ),
+    true,
+  );
+  assert.equal(
     new Set(contracts.artifacts.map((artifact) => artifact.id)).size,
     contracts.artifacts.length,
   );

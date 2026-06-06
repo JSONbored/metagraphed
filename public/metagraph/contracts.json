@@ -3,10 +3,26 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Public artifact contract metadata for metagraph.sh consumers.",
+      "id": "contracts",
+      "path": "/metagraph/contracts.json",
+      "schema_ref": "#/components/schemas/ContractsArtifact"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Provider/source registry.",
       "id": "providers",
       "path": "/metagraph/providers.json",
       "schema_ref": "#/components/schemas/ProvidersArtifact"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Per-provider detail payload.",
+      "id": "provider-detail",
+      "path": "/metagraph/providers/{slug}.json",
+      "schema_ref": "#/components/schemas/ProviderArtifact"
     },
     {
       "content_type": "application/json",
@@ -23,6 +39,14 @@
       "id": "openapi",
       "path": "/metagraph/openapi.json",
       "schema_ref": "#/components/schemas/OpenApiArtifact"
+    },
+    {
+      "content_type": "text/plain; charset=utf-8",
+      "contract_version": "2026-06-06.1",
+      "description": "Generated TypeScript definitions for metagraph.sh backend consumers.",
+      "id": "type-definitions",
+      "path": "/metagraph/types.d.ts",
+      "schema_ref": null
     },
     {
       "content_type": "application/json",
@@ -59,10 +83,26 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Curated public interface surfaces for one subnet.",
+      "id": "surfaces-subnet",
+      "path": "/metagraph/surfaces/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetSurfacesArtifact"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Unpromoted candidate surfaces from public discovery.",
       "id": "candidates",
       "path": "/metagraph/candidates.json",
       "schema_ref": "#/components/schemas/CandidatesArtifact"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Unpromoted candidate surfaces for one subnet.",
+      "id": "candidates-subnet",
+      "path": "/metagraph/candidates/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetCandidatesArtifact"
     },
     {
       "content_type": "application/json",
@@ -111,6 +151,14 @@
       "id": "verification",
       "path": "/metagraph/verification/latest.json",
       "schema_ref": "#/components/schemas/VerificationArtifact"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Latest candidate verification snapshot for one subnet.",
+      "id": "verification-subnet",
+      "path": "/metagraph/verification/subnets/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetVerificationArtifact"
     },
     {
       "content_type": "application/json",
@@ -278,5 +326,6 @@
   "openapi_url": "/metagraph/openapi.json",
   "primary_domain": "metagraph.sh",
   "schema_version": 1,
-  "status_domain": null
+  "status_domain": null,
+  "type_definitions_url": "/metagraph/types.d.ts"
 }

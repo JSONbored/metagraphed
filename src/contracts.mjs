@@ -3,6 +3,7 @@ export const SCHEMA_VERSION = 1;
 export const PRIMARY_DOMAIN = "metagraph.sh";
 export const API_BASE_PATH = "/api/v1";
 export const ARTIFACT_BASE_PATH = "/metagraph";
+export const TYPE_DEFINITIONS_PATH = "/metagraph/types.d.ts";
 
 export const CACHE_SECONDS = {
   short: 60,
@@ -12,10 +13,22 @@ export const CACHE_SECONDS = {
 
 export const PUBLIC_ARTIFACTS = [
   artifact(
+    "contracts",
+    "/metagraph/contracts.json",
+    "Public artifact contract metadata for metagraph.sh consumers.",
+    "ContractsArtifact",
+  ),
+  artifact(
     "providers",
     "/metagraph/providers.json",
     "Provider/source registry.",
     "ProvidersArtifact",
+  ),
+  artifact(
+    "provider-detail",
+    "/metagraph/providers/{slug}.json",
+    "Per-provider detail payload.",
+    "ProviderArtifact",
   ),
   artifact(
     "api-index",
@@ -28,6 +41,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/openapi.json",
     "OpenAPI 3.1 contract for the metagraph.sh backend API.",
     "OpenApiArtifact",
+  ),
+  artifact(
+    "type-definitions",
+    "/metagraph/types.d.ts",
+    "Generated TypeScript definitions for metagraph.sh backend consumers.",
+    null,
   ),
   artifact(
     "changelog",
@@ -54,10 +73,22 @@ export const PUBLIC_ARTIFACTS = [
     "SurfacesArtifact",
   ),
   artifact(
+    "surfaces-subnet",
+    "/metagraph/surfaces/{netuid}.json",
+    "Curated public interface surfaces for one subnet.",
+    "SubnetSurfacesArtifact",
+  ),
+  artifact(
     "candidates",
     "/metagraph/candidates.json",
     "Unpromoted candidate surfaces from public discovery.",
     "CandidatesArtifact",
+  ),
+  artifact(
+    "candidates-subnet",
+    "/metagraph/candidates/{netuid}.json",
+    "Unpromoted candidate surfaces for one subnet.",
+    "SubnetCandidatesArtifact",
   ),
   artifact(
     "review-queue",
@@ -94,6 +125,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/verification/latest.json",
     "Latest candidate verification snapshot.",
     "VerificationArtifact",
+  ),
+  artifact(
+    "verification-subnet",
+    "/metagraph/verification/subnets/{netuid}.json",
+    "Latest candidate verification snapshot for one subnet.",
+    "SubnetVerificationArtifact",
   ),
   artifact(
     "freshness",
@@ -229,7 +266,7 @@ export const API_ROUTES = [
     "List active Finney subnets.",
     "standard",
     ["subnets"],
-    query(
+    listQuery(
       "netuid",
       "coverage_level",
       "curation_level",
@@ -256,7 +293,18 @@ export const API_ROUTES = [
     "List curated public surfaces.",
     "standard",
     ["surfaces"],
-    query("netuid", "kind", "provider", "status", "classification"),
+    listQuery("netuid", "kind", "provider", "status", "classification"),
+  ),
+  route(
+    "subnet-surfaces",
+    "GET",
+    "/api/v1/subnets/{netuid}/surfaces",
+    "/metagraph/surfaces/{netuid}.json",
+    "List curated public surfaces for one subnet.",
+    "standard",
+    ["surfaces", "subnets"],
+    listQuery("kind", "provider", "status", "classification"),
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
     "candidates",
@@ -266,7 +314,18 @@ export const API_ROUTES = [
     "List unpromoted candidate surfaces.",
     "standard",
     ["candidates"],
-    query("netuid", "kind", "provider", "state"),
+    listQuery("netuid", "kind", "provider", "state"),
+  ),
+  route(
+    "subnet-candidates",
+    "GET",
+    "/api/v1/subnets/{netuid}/candidates",
+    "/metagraph/candidates/{netuid}.json",
+    "List unpromoted candidate surfaces for one subnet.",
+    "standard",
+    ["candidates", "subnets"],
+    listQuery("kind", "provider", "state"),
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
     "providers",
@@ -276,7 +335,18 @@ export const API_ROUTES = [
     "List providers and sources.",
     "standard",
     ["providers"],
-    query("id", "kind", "authority"),
+    listQuery("id", "kind", "authority"),
+  ),
+  route(
+    "provider-detail",
+    "GET",
+    "/api/v1/providers/{slug}",
+    "/metagraph/providers/{slug}.json",
+    "Fetch per-provider detail.",
+    "standard",
+    ["providers"],
+    [],
+    [{ name: "slug", schema: { type: "string", pattern: "^[a-z0-9-]+$" } }],
   ),
   route(
     "coverage",
@@ -295,7 +365,7 @@ export const API_ROUTES = [
     "Fetch curation states by subnet.",
     "standard",
     ["registry"],
-    query("netuid", "coverage_level"),
+    listQuery("netuid", "coverage_level"),
   ),
   route(
     "gaps",
@@ -305,7 +375,7 @@ export const API_ROUTES = [
     "Fetch interface gap report.",
     "standard",
     ["registry"],
-    query("netuid", "coverage_level", "curation_level"),
+    listQuery("netuid", "coverage_level", "curation_level"),
   ),
   route(
     "health",
@@ -315,6 +385,18 @@ export const API_ROUTES = [
     "Fetch global health summary.",
     "short",
     ["health"],
+    listQuery("netuid", "status"),
+  ),
+  route(
+    "subnet-health",
+    "GET",
+    "/api/v1/subnets/{netuid}/health",
+    "/metagraph/health/subnets/{netuid}.json",
+    "Fetch health detail for one subnet.",
+    "short",
+    ["health", "subnets"],
+    listQuery("kind", "provider", "status", "classification"),
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
     "freshness",
@@ -342,7 +424,7 @@ export const API_ROUTES = [
     "Fetch public evidence ledger.",
     "standard",
     ["evidence"],
-    query("q"),
+    listQuery("q"),
   ),
   route(
     "changelog",
@@ -361,7 +443,7 @@ export const API_ROUTES = [
     "Fetch source input hashes and counts.",
     "standard",
     ["operations"],
-    query("q"),
+    listQuery("q"),
   ),
   route(
     "rpc-endpoints",
@@ -371,7 +453,7 @@ export const API_ROUTES = [
     "Fetch Bittensor RPC endpoint status.",
     "short",
     ["rpc"],
-    query("kind", "provider", "status"),
+    listQuery("kind", "provider", "status"),
   ),
   route(
     "rpc-pools",
@@ -410,7 +492,7 @@ export const API_ROUTES = [
     "Fetch compact search index.",
     "standard",
     ["search"],
-    query("q"),
+    listQuery("q"),
   ),
   route(
     "contracts",
@@ -451,6 +533,7 @@ export function buildContractsArtifact(generatedAt) {
     status_domain: null,
     base_path: ARTIFACT_BASE_PATH,
     openapi_url: `${ARTIFACT_BASE_PATH}/openapi.json`,
+    type_definitions_url: TYPE_DEFINITIONS_PATH,
     notes: [
       "Native Bittensor chain data is canonical for active subnet existence.",
       "Curated overlays are canonical for public interface metadata.",
@@ -461,8 +544,10 @@ export function buildContractsArtifact(generatedAt) {
       id: entry.id,
       path: entry.path,
       description: entry.description,
-      content_type: "application/json",
-      schema_ref: `#/components/schemas/${entry.schema_ref}`,
+      content_type: artifactContentType(entry.path),
+      schema_ref: entry.schema_ref
+        ? `#/components/schemas/${entry.schema_ref}`
+        : null,
       contract_version: CONTRACT_VERSION,
     })),
   };
@@ -476,6 +561,7 @@ export function buildApiIndexArtifact(generatedAt, contractsArtifact) {
     primary_domain: PRIMARY_DOMAIN,
     base_path: API_BASE_PATH,
     openapi_url: `${API_BASE_PATH}/openapi.json`,
+    type_definitions_url: TYPE_DEFINITIONS_PATH,
     response_envelope: {
       schema_version: SCHEMA_VERSION,
       fields: ["ok", "data", "meta", "error"],
@@ -503,7 +589,13 @@ export function buildApiIndexArtifact(generatedAt, contractsArtifact) {
   };
 }
 
-export function buildOpenApiArtifact(generatedAt) {
+export function buildOpenApiArtifact(generatedAt, componentSchemas) {
+  if (!componentSchemas) {
+    throw new Error(
+      "buildOpenApiArtifact requires canonical component schemas from schemas/api-components.schema.json",
+    );
+  }
+
   const paths = {};
   for (const entry of API_ROUTES) {
     const openApiPath = entry.path
@@ -601,7 +693,15 @@ export function buildOpenApiArtifact(generatedAt) {
     ],
     paths,
     components: {
-      schemas: openApiSchemas(generatedAt),
+      schemas: {
+        ...componentSchemas,
+        GeneratedOpenApiMarker: {
+          type: "object",
+          properties: {
+            generated_at: { const: generatedAt },
+          },
+        },
+      },
       headers: {
         ETag: { schema: { type: "string" } },
         CacheControl: { schema: { type: "string" } },
@@ -645,6 +745,13 @@ function artifact(id, pathValue, description, schemaRef) {
   };
 }
 
+function artifactContentType(pathValue) {
+  if (pathValue.endsWith(".d.ts")) {
+    return "text/plain; charset=utf-8";
+  }
+  return "application/json";
+}
+
 function route(
   id,
   method,
@@ -677,6 +784,28 @@ function query(...names) {
   }));
 }
 
+function listQuery(...names) {
+  return [
+    ...query(...names),
+    {
+      name: "limit",
+      schema: { type: "integer", minimum: 1, maximum: 1000 },
+    },
+    {
+      name: "cursor",
+      schema: { type: "integer", minimum: 0 },
+    },
+    {
+      name: "sort",
+      schema: { type: "string" },
+    },
+    {
+      name: "order",
+      schema: { enum: ["asc", "desc"] },
+    },
+  ];
+}
+
 function schemaRefForArtifactPath(artifactPath) {
   const contract = PUBLIC_ARTIFACTS.find((entry) =>
     pathTemplatesMatch(entry.path, artifactPath),
@@ -704,333 +833,5 @@ function apiResponseHeaders() {
     "x-metagraph-contract-version": {
       $ref: "#/components/headers/ContractVersion",
     },
-  };
-}
-
-function openApiSchemas(generatedAt) {
-  const artifactBase = {
-    type: "object",
-    required: ["schema_version", "generated_at"],
-    properties: {
-      schema_version: { const: SCHEMA_VERSION },
-      contract_version: { type: "string" },
-      generated_at: { type: "string" },
-      notes: {
-        oneOf: [
-          { type: "string" },
-          { type: "array", items: { type: "string" } },
-        ],
-      },
-    },
-  };
-
-  return {
-    JsonObject: {
-      type: "object",
-      additionalProperties: true,
-    },
-    SuccessEnvelope: {
-      type: "object",
-      required: ["ok", "schema_version", "data", "meta"],
-      properties: {
-        ok: { const: true },
-        schema_version: { const: SCHEMA_VERSION },
-        data: { type: "object", additionalProperties: true },
-        meta: { $ref: "#/components/schemas/ResponseMeta" },
-      },
-      additionalProperties: false,
-    },
-    ErrorEnvelope: {
-      type: "object",
-      required: ["ok", "schema_version", "data", "error", "meta"],
-      properties: {
-        ok: { const: false },
-        schema_version: { const: SCHEMA_VERSION },
-        data: { type: "null" },
-        error: {
-          type: "object",
-          required: ["code", "message"],
-          properties: {
-            code: { type: "string" },
-            message: { type: "string" },
-          },
-          additionalProperties: false,
-        },
-        meta: { $ref: "#/components/schemas/ResponseMeta" },
-      },
-      additionalProperties: false,
-    },
-    ResponseMeta: {
-      type: "object",
-      required: ["contract_version"],
-      properties: {
-        artifact_path: { type: "string" },
-        cache: { enum: Object.keys(CACHE_SECONDS) },
-        contract_version: { type: "string" },
-        generated_at: { type: ["string", "null"] },
-        source: { type: "string" },
-      },
-      additionalProperties: true,
-    },
-    ArtifactBase: artifactBase,
-    ProvidersArtifact: objectArtifact("providers", {
-      providers: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    ApiIndexArtifact: objectArtifact("routes", {
-      routes: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    OpenApiArtifact: {
-      type: "object",
-      required: ["openapi", "info", "paths"],
-      properties: {
-        openapi: { const: "3.1.0" },
-        info: { type: "object", additionalProperties: true },
-        servers: {
-          type: "array",
-          items: { type: "object", additionalProperties: true },
-        },
-        paths: { type: "object", additionalProperties: true },
-        components: { type: "object", additionalProperties: true },
-        "x-metagraphed": { type: "object", additionalProperties: true },
-      },
-      additionalProperties: true,
-    },
-    ChangelogArtifact: objectArtifact("summary", {
-      summary: { type: "object", additionalProperties: true },
-    }),
-    SubnetsArtifact: objectArtifact("subnets", {
-      subnets: {
-        type: "array",
-        items: { $ref: "#/components/schemas/SubnetIndexEntry" },
-      },
-    }),
-    SubnetDetailArtifact: objectArtifact("subnet", {
-      subnet: { type: "object", additionalProperties: true },
-      surfaces: {
-        type: "array",
-        items: { $ref: "#/components/schemas/Surface" },
-      },
-      candidate_surfaces: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-      gaps: { type: "object", additionalProperties: true },
-    }),
-    SurfacesArtifact: objectArtifact("surfaces", {
-      surfaces: {
-        type: "array",
-        items: { $ref: "#/components/schemas/Surface" },
-      },
-    }),
-    CandidatesArtifact: objectArtifact("candidates", {
-      candidates: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    ReviewQueueArtifact: objectArtifact("candidates", {
-      candidates: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    SearchArtifact: objectArtifact("documents", {
-      documents: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    CoverageArtifact: objectArtifact("chain_subnet_count", {
-      chain_subnet_count: { type: "integer", minimum: 0 },
-    }),
-    CurationArtifact: objectArtifact("curation", {
-      curation: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    GapsArtifact: objectArtifact("gaps", {
-      gaps: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    VerificationArtifact: objectArtifact("results", {
-      results: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    FreshnessArtifact: objectArtifact("sources", {
-      sources: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    SourceHealthArtifact: objectArtifact("providers", {
-      providers: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    SourceSnapshotsArtifact: objectArtifact("sources", {
-      sources: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    EvidenceLedgerArtifact: objectArtifact("claims", {
-      claims: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    HealthLatestArtifact: objectArtifact("surfaces", {
-      surfaces: {
-        type: "array",
-        items: { $ref: "#/components/schemas/HealthSurface" },
-      },
-    }),
-    HealthSummaryArtifact: objectArtifact("subnets", {
-      subnets: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    HealthSubnetArtifact: objectArtifact("summary", {
-      summary: { type: "object", additionalProperties: true },
-    }),
-    HealthBadgeArtifact: objectArtifact("status", {
-      status: { type: "string" },
-    }),
-    RpcEndpointsArtifact: objectArtifact("endpoints", {
-      endpoints: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    RpcPoolsArtifact: objectArtifact("pools", {
-      pools: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    SchemaDriftArtifact: objectArtifact("surfaces", {
-      surfaces: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    SchemaIndexArtifact: objectArtifact("schemas", {
-      schemas: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    AdapterArtifact: objectArtifact("slug", {
-      slug: { type: "string" },
-      snapshot: { type: ["object", "null"], additionalProperties: true },
-    }),
-    R2ManifestArtifact: objectArtifact("artifacts", {
-      artifacts: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    ReviewCurationArtifact: objectArtifact("summary", {
-      summary: { type: "object", additionalProperties: true },
-    }),
-    ReviewGapPrioritiesArtifact: objectArtifact("priorities", {
-      priorities: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    ReviewAdapterCandidatesArtifact: objectArtifact("candidates", {
-      candidates: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    ReviewDecisionsArtifact: objectArtifact("decisions", {
-      decisions: {
-        type: "array",
-        items: { type: "object", additionalProperties: true },
-      },
-    }),
-    BuildSummaryArtifact: objectArtifact("artifact_count", {
-      artifact_count: { type: "integer", minimum: 0 },
-    }),
-    SubnetIndexEntry: {
-      type: "object",
-      required: [
-        "netuid",
-        "name",
-        "slug",
-        "coverage_level",
-        "curation_level",
-        "surface_count",
-      ],
-      properties: {
-        netuid: { type: "integer", minimum: 0 },
-        name: { type: "string" },
-        slug: { type: "string" },
-        coverage_level: { type: "string" },
-        curation_level: { type: "string" },
-        surface_count: { type: "integer", minimum: 0 },
-      },
-      additionalProperties: true,
-    },
-    Surface: {
-      type: "object",
-      required: ["id", "netuid", "kind", "url", "provider", "public_safe"],
-      properties: {
-        id: { type: "string" },
-        netuid: { type: "integer", minimum: 0 },
-        kind: { type: "string" },
-        url: { type: "string", format: "uri" },
-        provider: { type: "string" },
-        public_safe: { type: "boolean" },
-      },
-      additionalProperties: true,
-    },
-    HealthSurface: {
-      type: "object",
-      required: ["surface_id", "netuid", "status", "classification", "url"],
-      properties: {
-        surface_id: { type: "string" },
-        netuid: { type: "integer", minimum: 0 },
-        status: { enum: ["ok", "degraded", "failed", "unknown"] },
-        classification: { type: "string" },
-        url: { type: "string", format: "uri" },
-      },
-      additionalProperties: true,
-    },
-    GeneratedOpenApiMarker: {
-      type: "object",
-      properties: {
-        generated_at: { const: generatedAt },
-      },
-    },
-  };
-}
-
-function objectArtifact(requiredKey, properties) {
-  return {
-    allOf: [
-      { $ref: "#/components/schemas/ArtifactBase" },
-      {
-        type: "object",
-        required: [requiredKey],
-        properties,
-        additionalProperties: true,
-      },
-    ],
   };
 }

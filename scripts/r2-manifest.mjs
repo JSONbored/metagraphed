@@ -1,8 +1,7 @@
 import path from "node:path";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import {
   buildTimestamp,
-  listJsonFilesRecursive,
   readJson,
   repoRoot,
   sha256Hex,
@@ -48,7 +47,7 @@ console.log(stableStringify(summary));
 async function buildManifest() {
   const generatedAt = buildTimestamp();
   const version = generatedAt.replace(/[:.]/g, "-");
-  const files = await listJsonFilesRecursive(
+  const files = await listPublicArtifactFiles(
     path.join(repoRoot, "public/metagraph"),
   );
   const artifacts = [];
@@ -62,7 +61,7 @@ async function buildManifest() {
     const raw = await readFile(file);
     const fileStat = await stat(file);
     artifacts.push({
-      content_type: "application/json",
+      content_type: contentTypeFor(relative),
       key: `runs/${version}/${relative}`,
       latest_key: `latest/${relative}`,
       path: `/metagraph/${relative}`,
@@ -86,4 +85,38 @@ async function buildManifest() {
     ),
     artifacts,
   };
+}
+
+async function listPublicArtifactFiles(dirPath) {
+  let entries;
+  try {
+    entries = await readdir(dirPath, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+
+  const files = [];
+  for (const entry of entries) {
+    const entryPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await listPublicArtifactFiles(entryPath)));
+    } else if (entry.isFile() && isManifestedArtifact(entry.name)) {
+      files.push(entryPath);
+    }
+  }
+  return files.sort((a, b) => a.localeCompare(b));
+}
+
+function isManifestedArtifact(fileName) {
+  return fileName.endsWith(".json") || fileName.endsWith(".d.ts");
+}
+
+function contentTypeFor(relativePath) {
+  if (relativePath.endsWith(".d.ts")) {
+    return "text/plain; charset=utf-8";
+  }
+  return "application/json";
 }

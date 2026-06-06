@@ -129,6 +129,7 @@
       "source_count": 6,
       "verified_at": null
     },
+    "curation_level": "maintainer-reviewed",
     "dashboard_url": "https://taomarketcap.com/subnets/0",
     "docs_url": "https://docs.learnbittensor.org/concepts/bittensor-networks",
     "gaps": {

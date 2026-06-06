@@ -1,0 +1,15 @@
+{
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "provider": {
+    "authority": "provider-claimed",
+    "docs_url": "https://getblock.io/nodes/tao/",
+    "id": "getblock",
+    "kind": "infrastructure-provider",
+    "name": "GetBlock",
+    "notes": "Bittensor node provider. API-key gated endpoints are tracked as provider capability, not public probeable surfaces.",
+    "schema_version": 1,
+    "website_url": "https://getblock.io"
+  },
+  "schema_version": 1
+}

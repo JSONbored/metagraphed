@@ -1,9 +1,22 @@
 import assert from "node:assert/strict";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { API_ROUTES } from "../src/contracts.mjs";
+import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { repoRoot } from "./lib.mjs";
+import { readJson, repoRoot } from "./lib.mjs";
+
+const openapi = await readJson(
+  path.join(repoRoot, "public/metagraph/openapi.json"),
+);
+const ajv = new Ajv2020({
+  allErrors: true,
+  allowUnionTypes: true,
+  strict: false,
+  validateFormats: true,
+});
+addFormats(ajv);
 
 const env = {
   ASSETS: {
@@ -39,6 +52,34 @@ const checks = [
   ],
   ["/api/v1/subnets/7", (body) => assert.equal(body.data.subnet.netuid, 7)],
   [
+    "/api/v1/subnets/7/surfaces?kind=subnet-api&limit=3",
+    (body) =>
+      assert.equal(
+        body.data.surfaces.every(
+          (surface) => surface.netuid === 7 && surface.kind === "subnet-api",
+        ),
+        true,
+      ),
+  ],
+  [
+    "/api/v1/subnets/7/candidates?limit=2",
+    (body) =>
+      assert.equal(
+        body.data.candidates.every((candidate) => candidate.netuid === 7),
+        true,
+      ),
+  ],
+  [
+    "/api/v1/subnets/7/health?status=ok",
+    (body) =>
+      assert.equal(
+        body.data.surfaces.every(
+          (surface) => surface.netuid === 7 && surface.status === "ok",
+        ),
+        true,
+      ),
+  ],
+  [
     "/api/v1/surfaces?kind=openapi",
     (body) =>
       assert.equal(
@@ -59,6 +100,10 @@ const checks = [
   [
     "/api/v1/providers",
     (body) => assert.equal(Array.isArray(body.data.providers), true),
+  ],
+  [
+    "/api/v1/providers/allways",
+    (body) => assert.equal(body.data.provider.id, "allways"),
   ],
   [
     "/api/v1/coverage",
@@ -160,8 +205,26 @@ for (const [route, assertion] of checks) {
   const body = await response.json();
   assert.equal(body.ok, true, `${route}: expected ok envelope`);
   assert.equal(body.schema_version, 1, `${route}: expected schema_version 1`);
+  validateWorkerResponse(route, body);
   assertion(body);
 }
+
+const paginated = await handleRequest(
+  new Request(
+    "https://metagraph.sh/api/v1/subnets?limit=2&sort=netuid&order=desc",
+  ),
+  env,
+  {},
+);
+const paginatedBody = await paginated.json();
+assert.equal(paginated.status, 200, "paginated subnets should return 200");
+assert.equal(paginatedBody.data.subnets.length, 2);
+assert.equal(paginatedBody.meta.pagination.returned, 2);
+assert.equal(paginatedBody.meta.pagination.next_cursor, 2);
+assert.equal(
+  paginatedBody.data.subnets[0].netuid > paginatedBody.data.subnets[1].netuid,
+  true,
+);
 
 const etagSource = await handleRequest(
   new Request("https://metagraph.sh/api/v1/subnets/7"),
@@ -186,7 +249,7 @@ const missing = await handleRequest(
 );
 assert.equal(missing.status, 404, "missing subnet should return 404");
 assert.equal(
-  (await missing.json()).ok,
+  validateErrorEnvelope(await missing.json()).ok,
   false,
   "missing subnet should return error envelope",
 );
@@ -259,3 +322,44 @@ assert.equal(
 );
 
 console.log(`Validated ${checks.length} Worker API route(s).`);
+
+function validateWorkerResponse(route, body) {
+  const url = new URL(`https://metagraph.sh${route}`);
+  const routeContract = API_ROUTES.find((entry) =>
+    compileRoutePattern(entry.path).test(url.pathname),
+  );
+  assert.ok(routeContract, `${route}: missing route contract`);
+
+  const operation =
+    openapi.paths?.[routeContract.path]?.[routeContract.method.toLowerCase()];
+  const responseSchema =
+    operation?.responses?.["200"]?.content?.["application/json"]?.schema;
+  assert.ok(responseSchema, `${route}: missing OpenAPI 200 schema`);
+
+  const validator = ajv.compile({
+    components: openapi.components,
+    ...responseSchema,
+  });
+  assert.equal(
+    validator(body),
+    true,
+    `${route}: Worker response must match generated OpenAPI schema: ${ajv.errorsText(
+      validator.errors,
+    )}`,
+  );
+}
+
+function validateErrorEnvelope(body) {
+  const validator = ajv.compile({
+    components: openapi.components,
+    $ref: "#/components/schemas/ErrorEnvelope",
+  });
+  assert.equal(
+    validator(body),
+    true,
+    `error envelope must match generated OpenAPI schema: ${ajv.errorsText(
+      validator.errors,
+    )}`,
+  );
+  return body;
+}

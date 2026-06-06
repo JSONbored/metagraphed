@@ -49,6 +49,9 @@ jobs:
         run: |
           npm run validate:schemas
           npm run validate:api
+          npm run validate:openapi
+          npm run validate:types
+          npm run validate:artifact-budgets
           npm run validate:intake
           npm run validate:workflows
           npm run r2:manifest:dry-run

@@ -89,17 +89,18 @@ async function handleApiRequest(request, env, url) {
     });
   }
 
-  const data = applyQueryFilters(artifact.data, url);
+  const transformed = applyQueryFilters(artifact.data, url);
   return envelopeResponse(
     request,
     {
-      data,
+      data: transformed.data,
       meta: {
         artifact_path: matched.artifactPath,
         cache: matched.cache,
         contract_version: contractVersion(env),
         generated_at: artifact.data?.generated_at || null,
         source: artifact.source,
+        ...transformed.meta,
       },
     },
     matched.cache,
@@ -340,98 +341,89 @@ async function latestPointer(env) {
 function applyQueryFilters(data, url) {
   const params = url.searchParams;
   if (Array.isArray(data?.subnets)) {
-    return {
-      ...data,
-      subnets: filterRows(data.subnets, params, [
-        "netuid",
-        "coverage_level",
-        "curation_level",
-        "status",
-        "subnet_type",
-      ]),
-    };
+    return applyListTransform(data, params, "subnets", [
+      "netuid",
+      "coverage_level",
+      "curation_level",
+      "status",
+      "subnet_type",
+    ]);
   }
   if (Array.isArray(data?.surfaces)) {
-    return {
-      ...data,
-      surfaces: filterRows(data.surfaces, params, [
-        "netuid",
-        "kind",
-        "provider",
-        "status",
-        "classification",
-      ]),
-    };
+    return applyListTransform(data, params, "surfaces", [
+      "netuid",
+      "kind",
+      "provider",
+      "status",
+      "classification",
+    ]);
   }
   if (Array.isArray(data?.providers)) {
-    return {
-      ...data,
-      providers: filterRows(data.providers, params, [
-        "id",
-        "kind",
-        "authority",
-      ]),
-    };
+    return applyListTransform(data, params, "providers", [
+      "id",
+      "kind",
+      "authority",
+    ]);
   }
   if (Array.isArray(data?.candidates)) {
-    return {
-      ...data,
-      candidates: filterRows(data.candidates, params, [
-        "netuid",
-        "kind",
-        "provider",
-        "state",
-      ]),
-    };
+    return applyListTransform(data, params, "candidates", [
+      "netuid",
+      "kind",
+      "provider",
+      "state",
+    ]);
   }
   if (Array.isArray(data?.curation)) {
-    return {
-      ...data,
-      curation: filterRows(data.curation, params, ["netuid", "coverage_level"]),
-    };
+    return applyListTransform(data, params, "curation", [
+      "netuid",
+      "coverage_level",
+    ]);
   }
   if (Array.isArray(data?.gaps)) {
-    return {
-      ...data,
-      gaps: filterRows(data.gaps, params, [
-        "netuid",
-        "coverage_level",
-        "curation_level",
-      ]),
-    };
+    return applyListTransform(data, params, "gaps", [
+      "netuid",
+      "coverage_level",
+      "curation_level",
+    ]);
   }
-  if (Array.isArray(data?.claims) && params.get("q")) {
-    const q = params.get("q").toLowerCase();
-    return {
-      ...data,
-      claims: data.claims.filter((claim) =>
-        [claim.subject, claim.claim, claim.source_url, claim.support_summary]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(q),
-      ),
-    };
+  if (Array.isArray(data?.claims)) {
+    return applyListTransform(
+      data,
+      params,
+      "claims",
+      [],
+      ["subject", "claim", "source_url", "support_summary"],
+    );
   }
-  if (Array.isArray(data?.documents) && params.get("q")) {
-    const q = params.get("q").toLowerCase();
-    return {
-      ...data,
-      documents: data.documents.filter((document) =>
-        [
-          document.title,
-          document.subtitle,
-          document.slug,
-          ...(document.tokens || []),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(q),
-      ),
-    };
+  if (Array.isArray(data?.documents)) {
+    return applyListTransform(
+      data,
+      params,
+      "documents",
+      [],
+      ["title", "subtitle", "slug", "tokens"],
+    );
   }
-  return data;
+  if (Array.isArray(data?.sources)) {
+    return applyListTransform(
+      data,
+      params,
+      "sources",
+      [],
+      ["id", "kind", "path"],
+    );
+  }
+  if (Array.isArray(data?.endpoints)) {
+    return applyListTransform(data, params, "endpoints", [
+      "kind",
+      "provider",
+      "status",
+    ]);
+  }
+  if (Array.isArray(data?.pools)) {
+    return applyListTransform(data, params, "pools", ["id", "kind"]);
+  }
+  return { data, meta: {} };
 }
 
 function filterRows(rows, params, keys) {
@@ -443,6 +435,96 @@ function filterRows(rows, params, keys) {
       return String(row[key]) === params.get(key);
     }),
   );
+}
+
+function applyListTransform(data, params, key, filterKeys, searchKeys = []) {
+  const filtered = filterRows(
+    searchRows(data[key], params, searchKeys),
+    params,
+    filterKeys,
+  );
+  const sorted = sortRows(filtered, params);
+  const paginated = paginateRows(sorted, params);
+  return {
+    data: {
+      ...data,
+      [key]: paginated.rows,
+    },
+    meta: {
+      pagination: {
+        collection: key,
+        total: sorted.length,
+        returned: paginated.rows.length,
+        limit: paginated.limit,
+        cursor: paginated.cursor,
+        next_cursor: paginated.nextCursor,
+        sort: paginated.sort,
+        order: paginated.order,
+      },
+    },
+  };
+}
+
+function searchRows(rows, params, keys) {
+  const q = params.get("q");
+  if (!q || keys.length === 0) {
+    return rows;
+  }
+  const needle = q.toLowerCase();
+  return rows.filter((row) =>
+    keys
+      .flatMap((key) => {
+        const value = row[key];
+        return Array.isArray(value) ? value : [value];
+      })
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(needle),
+  );
+}
+
+function sortRows(rows, params) {
+  const key = params.get("sort");
+  if (!key || !rows.some((row) => Object.hasOwn(row, key))) {
+    return rows;
+  }
+  const direction = params.get("order") === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => compareValues(a[key], b[key]) * direction);
+}
+
+function compareValues(a, b) {
+  if (typeof a === "number" && typeof b === "number") {
+    return a - b;
+  }
+  return String(a ?? "").localeCompare(String(b ?? ""));
+}
+
+function paginateRows(rows, params) {
+  const requestedLimit = numberParam(params.get("limit"));
+  const requestedCursor = numberParam(params.get("cursor"));
+  const shouldPage = requestedLimit !== null || requestedCursor !== null;
+  const limit = shouldPage
+    ? Math.min(Math.max(requestedLimit ?? 100, 1), 1000)
+    : rows.length;
+  const cursor = Math.min(Math.max(requestedCursor ?? 0, 0), rows.length);
+  const next = cursor + limit;
+  return {
+    cursor,
+    limit,
+    nextCursor: next < rows.length ? next : null,
+    order: params.get("order") === "desc" ? "desc" : "asc",
+    rows: shouldPage ? rows.slice(cursor, next) : rows,
+    sort: params.get("sort") || null,
+  };
+}
+
+function numberParam(value) {
+  if (value === null || value === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
 async function envelopeResponse(request, payload, cacheProfile) {

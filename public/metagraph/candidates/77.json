@@ -1,0 +1,231 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-77-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "Liquidity TaoMarketCap dashboard",
+      "netuid": 77,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-dashboard",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/77",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/77"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Liquidity",
+      "url": "https://taomarketcap.com/subnets/77",
+      "verification": {
+        "candidate_id": "sn-77-taomarketcap-dashboard",
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "dashboard",
+        "latency_ms": 126,
+        "method_tested": "HEAD",
+        "name": "Liquidity TaoMarketCap dashboard",
+        "netuid": 77,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "third-party-index",
+        "source_type": "taomarketcap-dashboard",
+        "source_url": "https://api.taomarketcap.com/public/v1/subnets/77",
+        "source_urls": [
+          "https://api.taomarketcap.com/public/v1/subnets/77"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://taomarketcap.com/subnets/77",
+        "verified_at": "2026-06-06T07:44:04.034Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-77-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "Liquidity source repository",
+      "netuid": 77,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/77",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/77"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Liquidity",
+      "url": "https://github.com/creativebuilds/sn77",
+      "verification": {
+        "candidate_id": "sn-77-taomarketcap-source-repo",
+        "classification": "live",
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
+        "github_api_url": "https://api.github.com/repos/creativebuilds/sn77",
+        "kind": "source-repo",
+        "latency_ms": 610,
+        "method_tested": "HEAD",
+        "name": "Liquidity source repository",
+        "netuid": 77,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "third-party-index",
+        "source_type": "taomarketcap-subnet-identity-v3",
+        "source_url": "https://api.taomarketcap.com/public/v1/subnets/77",
+        "source_urls": [
+          "https://api.taomarketcap.com/public/v1/subnets/77"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://github.com/creativebuilds/sn77",
+        "verified_at": "2026-06-06T07:44:04.049Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-77-taomarketcap-website",
+      "kind": "website",
+      "name": "Liquidity website",
+      "netuid": 77,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/77",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/77"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Liquidity",
+      "url": "https://sn77.xyz/",
+      "verification": {
+        "candidate_id": "sn-77-taomarketcap-website",
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 136,
+        "method_tested": "HEAD",
+        "name": "Liquidity website",
+        "netuid": 77,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "third-party-index",
+        "source_type": "taomarketcap-subnet-identity-v3",
+        "source_url": "https://api.taomarketcap.com/public/v1/subnets/77",
+        "source_urls": [
+          "https://api.taomarketcap.com/public/v1/subnets/77"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://sn77.xyz/",
+        "verified_at": "2026-06-06T07:44:04.050Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-77-tensorplex-docs",
+      "kind": "docs",
+      "name": "Liquidity Tensorplex subnet docs",
+      "netuid": 77,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/77/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/77/subnet.json"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Liquidity",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/77",
+      "verification": {
+        "candidate_id": "sn-77-tensorplex-docs",
+        "classification": "live",
+        "confidence_score": 73,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 392,
+        "method_tested": "HEAD",
+        "name": "Liquidity Tensorplex subnet docs",
+        "netuid": 77,
+        "private_redirect_blocked": false,
+        "provider": "tensorplex-subnet-docs",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "tensorplex-subnet-docs",
+        "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/77/subnet.json",
+        "source_urls": [
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/77/subnet.json"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/77",
+        "verified_at": "2026-06-06T07:44:04.061Z"
+      }
+    }
+  ],
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "Liquidity",
+  "netuid": 77,
+  "schema_version": 1,
+  "slug": "sn-77"
+}

@@ -1263,6 +1263,7 @@
       "source_count": 4,
       "verified_at": "2026-06-06T07:44:10.021Z"
     },
+    "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/118",
     "docs_url": "https://docs.learnbittensor.org/miners",
     "gaps": {

@@ -1,0 +1,143 @@
+{
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "Gittensor",
+  "netuid": 74,
+  "schema_version": 1,
+  "slug": "gittensor",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "gittensor-docs",
+      "kind": "docs",
+      "name": "Gittensor docs",
+      "netuid": 74,
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET"
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "url": "https://docs.gittensor.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "gittensor-hyperparameters-docs",
+      "kind": "docs",
+      "name": "Gittensor repository hyperparameters docs",
+      "netuid": 74,
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET"
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "url": "https://docs.gittensor.io/repository-hyperparameters"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "gittensor-master-repositories",
+      "kind": "data-artifact",
+      "name": "Gittensor master repository weights",
+      "netuid": 74,
+      "notes": "Documented source for public repository emission_share, issue_discovery_share, and maintainer_cut config.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "source_urls": [
+        "https://docs.gittensor.io/repository-hyperparameters"
+      ],
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "url": "https://raw.githubusercontent.com/entrius/gittensor/main/gittensor/validator/weights/master_repositories.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "gittensor-registration-docs",
+      "kind": "docs",
+      "name": "Gittensor repository registration docs",
+      "netuid": 74,
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET"
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "url": "https://docs.gittensor.io/register-repository.html"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "gittensor-repositories-registry",
+      "kind": "repo-registry",
+      "name": "Gittensor public repositories registry",
+      "netuid": 74,
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET"
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "source_urls": [
+        "https://docs.gittensor.io/register-repository.html"
+      ],
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "url": "https://gittensor.io/repositories"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "gittensor-source-repo",
+      "kind": "source-repo",
+      "name": "Gittensor source repository",
+      "netuid": 74,
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD"
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "url": "https://github.com/entrius/gittensor"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "gittensor-website",
+      "kind": "website",
+      "name": "Gittensor website",
+      "netuid": 74,
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD"
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "subnet_name": "Gittensor",
+      "subnet_slug": "gittensor",
+      "url": "https://gittensor.io/"
+    }
+  ]
+}
