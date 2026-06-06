@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jsonbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  },
+  "candidates": [
+    {
+      "schema_version": 1,
+      "id": "community-sn-7-docs-example",
+      "netuid": 7,
+      "state": "schema-valid",
+      "name": "Allways community docs example",
+      "kind": "docs",
+      "url": "https://docs.all-ways.io/community-submission-example",
+      "source_url": "https://docs.all-ways.io/how-it-works.html",
+      "source_urls": ["https://docs.all-ways.io/how-it-works.html"],
+      "source_type": "community-pr-intake",
+      "source_tier": "community-docs",
+      "confidence": "medium",
+      "provider": "allways",
+      "auth_required": false,
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate."
+    }
+  ]
+}

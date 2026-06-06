@@ -11,6 +11,15 @@ Candidate entries are not published as verified registry surfaces. They must sta
 - no secrets, private dashboards, credentialed flows, or validator-sensitive data are included.
 
 Generated public-source candidates live in `generated/public-sources.json`.
+Community-submitted direct PR candidates live in `community/*.json`.
+
+Direct PR submissions must:
+
+- change exactly one `registry/candidates/community/*.json` file;
+- include one `candidates[0]` entry only;
+- include `submission.submitted_by` and `submission.submitted_by_url` matching the PR author;
+- use public-safe `url` and `source_url` values;
+- avoid generated artifacts, secrets, private URLs, wallet data, and validator-local data.
 
 The generated bundle is allowed to contain:
 

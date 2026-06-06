@@ -57,7 +57,7 @@ jobs:
               '',
               report.errors.length > 0
                 ? `Errors:\n${report.errors.map((error) => `- ${error}`).join('\n')}`
-                : 'Candidate parsed successfully. Maintainer review is still required before promotion.'
+                : 'Candidate parsed successfully. Private gate review is still required before promotion.'
             ].join('\n');
             await github.rest.issues.createComment({
               owner: context.repo.owner,

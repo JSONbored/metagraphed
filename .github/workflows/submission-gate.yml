@@ -1,0 +1,51 @@
+name: Submission Gate
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: submission-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  metagraphed-submission-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Capture changed files
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+        run: |
+          git fetch origin "$BASE_REF" --depth=1
+          git diff --name-only "origin/$BASE_REF"...HEAD > changed-files.txt
+
+      - name: Run public submission preflight
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: npm run submission:pr -- --changed-files changed-files.txt --out submission-report.json
+
+      - name: Show public preflight report
+        run: node -e "const fs=require('fs'); const report=JSON.parse(fs.readFileSync('submission-report.json','utf8')); console.log(JSON.stringify({public_state:report.public_state,next_action:report.next_action,blocking:report.blocking,error_categories:report.error_categories,manual_reasons:report.manual_reasons},null,2));"

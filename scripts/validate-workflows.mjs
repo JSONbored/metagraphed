@@ -88,6 +88,24 @@ for (const workflow of workflows) {
       "intake import must use the checked-in import script",
     );
   }
+  if (workflow === "submission-gate.yml") {
+    check(
+      content.includes("metagraphed-submission-gate:"),
+      workflow,
+      "submission gate workflow must expose the metagraphed-submission-gate job",
+    );
+    check(
+      content.includes("npm run submission:pr"),
+      workflow,
+      "submission gate workflow must use the checked-in PR classifier",
+    );
+    check(
+      !content.includes("contents: write") &&
+        !content.includes("pull-requests: write"),
+      workflow,
+      "public submission gate workflow must not publish or merge",
+    );
+  }
   if (
     ["validate.yml", "sync-subnets.yml", "publish-cloudflare.yml"].includes(
       workflow,

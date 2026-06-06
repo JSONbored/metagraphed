@@ -10,7 +10,8 @@
 
 - [ ] No secrets, PATs, wallet data, private dashboards, private URLs, or validator-local state.
 - [ ] Generated artifacts came from repo scripts, not hand-edited public JSON.
-- [ ] Community-submitted interfaces remain maintainer-reviewed before promotion.
+- [ ] Direct community submissions change exactly one `registry/candidates/community/*.json` file and no generated artifacts.
+- [ ] Community-submitted interfaces pass public preflight before private gate review.
 
 ## Validation
 
@@ -23,6 +24,7 @@
 - [ ] `npm run validate:docs`
 - [ ] `npm run validate:intake`
 - [ ] `npm run validate:workflows`
+- [ ] `npm run submission:pr -- --changed-files <changed-files.txt>` for direct UGC submissions
 - [ ] `npm run worker:test`
 - [ ] `npm run test:coverage`
 - [ ] `npm run scan:public-safety`

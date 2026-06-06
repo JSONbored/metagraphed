@@ -66,7 +66,7 @@ jobs:
           title: "feat(intake): import subnet interface submission"
           body: |
             ## Summary
-            - Imports a maintainer-approved subnet interface candidate from issue #${{ github.event.issue.number }}.
+            - Imports a gate-approved subnet interface candidate from issue #${{ github.event.issue.number }}.
             - Rebuilds public registry artifacts from the reviewed candidate source.
 
             ## Validation
@@ -82,4 +82,4 @@ jobs:
             - npm test
           labels: |
             interface-submission
-            maintainer-review
+            metagraphed-under-review

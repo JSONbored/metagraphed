@@ -165,6 +165,7 @@ npm run validate:api
 npm run validate:docs
 npm run validate:intake
 npm run validate:workflows
+npm run submission:pr -- --changed-files changed-files.txt
 npm run r2:manifest:dry-run
 npm run r2:download:dry-run
 npm run kv:publish:dry-run
@@ -189,6 +190,12 @@ npm run probes:smoke
 `probes:smoke` performs read-only checks against public surfaces. It does not submit transactions, mutate subnet state, send wallet data, or use credentials.
 
 `r2:manifest` generates the Cloudflare R2 upload manifest for the current artifact tree. `r2:upload`, `r2:download`, and `kv:publish` require explicit write flags so local validation cannot accidentally publish or restore.
+
+## Community Submissions
+
+Metagraphed supports PR-first and issue-first UGC for public subnet interface corrections. Direct UGC PRs must change exactly one `registry/candidates/community/*.json` file and no generated artifacts. Public preflight returns broad states (`submit_pr`, `fix_required`, `route_away`, `manual_review`); private gate scoring and merge heuristics are intentionally not committed.
+
+See `docs/submission-gate.md` and `CONTRIBUTING.md` for the submission contract.
 
 ## Repository Layout
 

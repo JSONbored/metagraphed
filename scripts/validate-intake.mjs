@@ -11,11 +11,19 @@ const statusTemplate = await fs.readFile(
   path.join(templateRoot, "report-endpoint-status-issue.yml"),
   "utf8",
 );
+const pullRequestTemplate = await fs.readFile(
+  path.join(repoRoot, ".github/pull_request_template.md"),
+  "utf8",
+);
+const submissionGateDocs = await fs.readFile(
+  path.join(repoRoot, "docs/submission-gate.md"),
+  "utf8",
+);
 const errors = [];
 
 checkIncludes(interfaceTemplate.toLowerCase(), "interface template", [
   "interface-submission",
-  "maintainer-review",
+  "metagraphed-under-review",
   "id: netuid",
   "id: kind",
   "id: url",
@@ -44,12 +52,30 @@ for (const kind of [
 
 checkIncludes(statusTemplate, "status template", [
   "status-report",
-  "maintainer-review",
+  "metagraphed-under-review",
   "id: netuid",
   "id: surface_id",
   "id: issue_type",
   "unsafe-or-private",
   "This report does not include secrets",
+]);
+
+checkIncludes(pullRequestTemplate, "pull request template", [
+  "registry/candidates/community/*.json",
+  "npm run submission:pr",
+]);
+
+checkIncludes(submissionGateDocs, "submission gate docs", [
+  "submit_pr",
+  "fix_required",
+  "route_away",
+  "manual_review",
+  "metagraphed-under-review",
+  "metagraphed-manual-review",
+  "metagraphed-closed-by-gate",
+  "metagraphed-merged-by-gate",
+  "metagraphed-import-approved",
+  "<!-- metagraphed-submission-gate -->",
 ]);
 
 if (errors.length > 0) {

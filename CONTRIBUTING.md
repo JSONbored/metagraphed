@@ -41,16 +41,43 @@ npm run scan:public-safety
 
 ## Community Intake
 
-Issue submissions can become candidates, not direct registry truth.
+Community submissions can become candidates, not direct registry truth. There are
+two supported paths:
 
-The import flow is:
+- PR-first: add exactly one `registry/candidates/community/*.json` candidate
+  document and no other files.
+- Issue-first: submit an `interface-submission` issue and let the import
+  workflow create the candidate PR after approval.
+
+Do not include generated `public/metagraph/**` artifacts, native snapshots,
+workflow/script changes, secrets, wallet/PAT material, private URLs, or
+validator-local data in UGC submissions.
+
+The public submission gate performs deterministic checks first:
+
+- active Finney netuid;
+- supported surface kind;
+- registered provider;
+- public-safe interface and source URLs;
+- one candidate per submission;
+- no duplicate curated surface or candidate;
+- submitter provenance for direct PRs;
+- no generated artifact edits.
+
+Passing public preflight routes the submission into private gate review. The
+private reviewer may merge/import clean submissions, close hard failures, or
+route rare edge cases to manual review. Public comments expose broad reason
+categories only; private scoring prompts, thresholds, and corpus weights are not
+part of the public repo.
+
+The issue import flow is:
 
 1. Submit an `interface-submission` issue.
 2. `intake:dry-run` parses and validates the issue.
-3. A maintainer reviews source facts and safety.
-4. A maintainer applies `metagraphed-import-approved`.
+3. The submission gate reviews source facts and safety.
+4. The gate or a maintainer applies `metagraphed-import-approved`.
 5. The import workflow opens a PR.
-6. Normal validation and review decide whether it merges.
+6. Normal validation plus gate review decide whether it merges.
 
 Schema-valid does not mean accepted.
 

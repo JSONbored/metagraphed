@@ -3,12 +3,12 @@ description: Submit a public subnet API, docs, dashboard, OpenAPI, SSE, reposito
 title: "interface: "
 labels:
   - interface-submission
-  - maintainer-review
+  - metagraphed-under-review
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve Metagraphed. Schema-valid submissions are not auto-published; a maintainer still reviews source facts, auth requirements, and probe safety before promotion into the curated registry. Approved imports require the `metagraphed-import-approved` label and open a pull request.
+        Thanks for helping improve Metagraphed. Schema-valid submissions are not auto-published; public validation is followed by the private Metagraphed submission gate. Clean submissions can be imported automatically after approval; edge cases get routed to manual review. Approved imports require the `metagraphed-import-approved` label and open a pull request.
   - type: input
     id: netuid
     attributes:

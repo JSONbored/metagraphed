@@ -3,7 +3,7 @@ description: Report a stale, down, misclassified, or unsafe public subnet interf
 title: "status: "
 labels:
   - status-report
-  - maintainer-review
+  - metagraphed-under-review
 body:
   - type: input
     id: netuid

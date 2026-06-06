@@ -116,6 +116,10 @@ tmp/
 # Local-only internal research notes
 docs/research/
 
+# Local/private automation implementation details
+private/
+ops/private/
+
 # FuseBox cache
 .fusebox/
 
