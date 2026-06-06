@@ -33,7 +33,7 @@ jobs:
         run: npm ci
 
       - name: Write issue payload
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
           script: |
             const fs = require('fs');
@@ -43,7 +43,7 @@ jobs:
         run: npm run intake:dry-run -- --issue-json issue.json --out intake-report.json
 
       - name: Comment intake report
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
           script: |
             const fs = require('fs');
