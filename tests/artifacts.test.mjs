@@ -21,6 +21,8 @@ test("artifact build emits public indexes", () => {
   const native = JSON.parse(readFileSync("registry/native/finney-subnets.json", "utf8"));
   const subnets = JSON.parse(readFileSync("public/metagraph/subnets.json", "utf8"));
   const surfaces = JSON.parse(readFileSync("public/metagraph/surfaces.json", "utf8"));
+  const candidates = JSON.parse(readFileSync("public/metagraph/candidates.json", "utf8"));
+  const reviewQueue = JSON.parse(readFileSync("public/metagraph/review-queue.json", "utf8"));
   const health = JSON.parse(readFileSync("public/metagraph/health/latest.json", "utf8"));
   const coverage = JSON.parse(readFileSync("public/metagraph/coverage.json", "utf8"));
 
@@ -29,6 +31,10 @@ test("artifact build emits public indexes", () => {
   assert.equal(health.surfaces.length, 16);
   assert.equal(coverage.chain_subnet_count, native.subnets.length);
   assert.equal(coverage.curated_overlay_count, 2);
+  assert.equal(coverage.candidate_count, candidates.candidates.length);
+  assert.equal(coverage.candidate_subnet_count, native.subnets.length);
+  assert.equal(reviewQueue.count, reviewQueue.candidates.length);
+  assert.equal(reviewQueue.candidates.length, candidates.candidates.length);
   assert.equal(coverage.probed_count, 2);
   assert.equal(coverage.native_only_count, native.subnets.length - 2);
   assert.deepEqual(

@@ -1,8 +1,117 @@
 {
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-1-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "Apex source repository",
+      "netuid": 1,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/1",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/1",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/macrocosm-os/apex"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-1-taomarketcap-website",
+      "kind": "website",
+      "name": "Apex website",
+      "netuid": 1,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/1",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/1"
+      ],
+      "state": "schema-valid",
+      "url": "https://apex.macrocosmos.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-1-taopedia-article",
+      "kind": "docs",
+      "name": "Apex Taopedia article",
+      "netuid": 1,
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "taopedia-article",
+      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_1_apex/index.mdx",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_1_apex/index.mdx"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_1_apex/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-1-tensorplex-docs",
+      "kind": "docs",
+      "name": "Apex Tensorplex subnet docs",
+      "netuid": 1,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/1"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-1-tensorplex-hardware-docs",
+      "kind": "docs",
+      "name": "Apex hardware requirements",
+      "netuid": 1,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs hardware requirements metadata.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs-hardware",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/macrocosm-os/prompting/blob/main/min_compute.yml"
+    }
+  ],
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
     "block": 8344198,
+    "candidate_count": 5,
     "categories": [
       "native-only"
     ],

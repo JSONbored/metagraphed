@@ -18,7 +18,10 @@ const candidates = await loadCandidates();
 const nativeSnapshot = await loadNativeSnapshot();
 const overlayByNetuid = new Map(overlays.map((overlay) => [overlay.netuid, overlay]));
 const chainSubnets = nativeSnapshot.subnets;
-const mergedSubnets = chainSubnets.map((nativeSubnet) => mergeSubnet(nativeSubnet, overlayByNetuid.get(nativeSubnet.netuid)));
+const candidatesByNetuid = groupByNetuid(candidates);
+const mergedSubnets = chainSubnets.map((nativeSubnet) =>
+  mergeSubnet(nativeSubnet, overlayByNetuid.get(nativeSubnet.netuid), candidatesByNetuid.get(nativeSubnet.netuid)?.length || 0)
+);
 const activeOverlayNetuids = new Set(chainSubnets.map((subnet) => subnet.netuid));
 const activeOverlays = overlays.filter((overlay) => activeOverlayNetuids.has(overlay.netuid));
 const surfaces = flattenSurfaces(activeOverlays);
@@ -27,6 +30,7 @@ const generatedAt = buildTimestamp();
 
 const subnetIndex = mergedSubnets.map((subnet) => ({
   block: subnet.block,
+  candidate_count: subnet.candidate_count,
   categories: subnet.categories,
   coverage_level: subnet.coverage_level,
   dashboard_url: subnet.dashboard_url,
@@ -112,8 +116,24 @@ const coverage = {
   probed_count: mergedSubnets.filter((subnet) => subnet.coverage_level === "probed").length,
   surface_count: surfaces.length,
   probed_surface_count: surfaces.filter((surface) => surface.probe?.enabled).length,
-  candidate_count: candidates.length
+  candidate_count: candidates.length,
+  candidate_subnet_count: candidatesByNetuid.size,
+  native_only_with_candidates: mergedSubnets.filter(
+    (subnet) => subnet.coverage_level === "native-only" && subnet.candidate_count > 0
+  ).length,
+  native_only_without_candidates: mergedSubnets.filter(
+    (subnet) => subnet.coverage_level === "native-only" && subnet.candidate_count === 0
+  ).length
 };
+
+const candidateIndex = candidates.map((candidate) => ({
+  ...candidate,
+  subnet_name: nativeSnapshot.subnets.find((subnet) => subnet.netuid === candidate.netuid)?.name || null
+}));
+
+const reviewQueue = candidateIndex.filter((candidate) =>
+  ["schema-valid", "maintainer-review", "stale"].includes(candidate.state)
+);
 
 await writeJson(path.join(outputRoot, "providers.json"), {
   schema_version: 1,
@@ -132,10 +152,12 @@ await writeJson(path.join(outputRoot, "subnets.json"), {
 
 await fs.rm(path.join(outputRoot, "subnets"), { recursive: true, force: true });
 for (const subnet of mergedSubnets) {
+  const subnetCandidates = candidatesByNetuid.get(subnet.netuid) || [];
   await writeJson(path.join(outputRoot, `subnets/${subnet.netuid}.json`), {
     schema_version: 1,
     generated_at: generatedAt,
     subnet,
+    candidates: subnetCandidates,
     surfaces: surfaces.filter((surface) => surface.netuid === subnet.netuid)
   });
 }
@@ -145,6 +167,21 @@ await writeJson(path.join(outputRoot, "surfaces.json"), {
   generated_at: generatedAt,
   notes: "Curated and verified public interface surfaces only. Native-only subnet stubs do not invent surfaces.",
   surfaces
+});
+
+await writeJson(path.join(outputRoot, "candidates.json"), {
+  schema_version: 1,
+  generated_at: generatedAt,
+  notes: "Unverified candidate surfaces from public source discovery and community intake. Candidates are not verified registry surfaces.",
+  candidates: candidateIndex
+});
+
+await writeJson(path.join(outputRoot, "review-queue.json"), {
+  schema_version: 1,
+  generated_at: generatedAt,
+  notes: "Candidate surfaces that need maintainer review before promotion into curated subnet overlays.",
+  count: reviewQueue.length,
+  candidates: reviewQueue
 });
 
 await writeJson(path.join(outputRoot, "metagraph/latest.json"), metagraphLatest);
@@ -168,7 +205,7 @@ await writeJson(path.join(outputRoot, "build-summary.json"), {
 
 console.log(`Built ${mergedSubnets.length} subnet(s), ${surfaces.length} surface(s), and ${providers.length} provider(s).`);
 
-function mergeSubnet(nativeSubnet, overlay) {
+function mergeSubnet(nativeSubnet, overlay, candidateCount) {
   const surfaceCount = overlay?.surfaces?.length || 0;
   const probedSurfaceCount = overlay?.surfaces?.filter((surface) => surface.probe?.enabled).length || 0;
   const coverageLevel = surfaceCount === 0 ? "native-only" : probedSurfaceCount > 0 ? "probed" : "manifested";
@@ -176,6 +213,7 @@ function mergeSubnet(nativeSubnet, overlay) {
 
   return {
     block: nativeSubnet.block,
+    candidate_count: candidateCount,
     categories: overlay?.categories || (nativeSubnet.netuid === 0 ? ["root", "system"] : ["native-only"]),
     coverage_level: coverageLevel,
     dashboard_url: overlay?.dashboard_url || null,
@@ -207,4 +245,14 @@ function mergeSubnet(nativeSubnet, overlay) {
     symbol: nativeSubnet.symbol,
     tempo: nativeSubnet.tempo
   };
+}
+
+function groupByNetuid(items) {
+  const groups = new Map();
+  for (const item of items) {
+    const group = groups.get(item.netuid) || [];
+    group.push(item);
+    groups.set(item.netuid, group);
+  }
+  return groups;
 }

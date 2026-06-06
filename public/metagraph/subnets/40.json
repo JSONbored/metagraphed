@@ -1,8 +1,54 @@
 {
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-40-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "Chunking source repository",
+      "netuid": 40,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/40",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/40",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/VectorChat/chunking_subnet"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-40-tensorplex-docs",
+      "kind": "docs",
+      "name": "Chunking Tensorplex subnet docs",
+      "netuid": 40,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/40"
+    }
+  ],
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
     "block": 8344198,
+    "candidate_count": 2,
     "categories": [
       "native-only"
     ],

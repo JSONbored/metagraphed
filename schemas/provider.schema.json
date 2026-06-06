@@ -28,6 +28,7 @@
       "enum": [
         "subnet-team",
         "infrastructure-provider",
+        "data-provider",
         "docs-provider",
         "registry"
       ]

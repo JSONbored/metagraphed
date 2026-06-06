@@ -50,6 +50,8 @@
         "subnet-api",
         "openapi",
         "sse",
+        "website",
+        "source-repo",
         "dashboard",
         "repo-registry",
         "docs",
@@ -63,6 +65,32 @@
     "source_url": {
       "type": "string",
       "format": "uri"
+    },
+    "source_urls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "uniqueItems": true
+    },
+    "source_type": {
+      "type": "string"
+    },
+    "source_tier": {
+      "enum": [
+        "native-chain",
+        "provider-claimed",
+        "third-party-index",
+        "community-docs"
+      ]
+    },
+    "confidence": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
     },
     "provider": {
       "type": "string"

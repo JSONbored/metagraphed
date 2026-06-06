@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "tensorplex-subnet-docs",
+  "name": "Tensorplex subnet-docs",
+  "kind": "docs-provider",
+  "website_url": "https://github.com/tensorplex-labs/subnet-docs",
+  "docs_url": "https://github.com/tensorplex-labs/subnet-docs",
+  "authority": "community",
+  "notes": "Structured community-maintained subnet documentation. Used as enrichment and candidate discovery pending maintainer review."
+}

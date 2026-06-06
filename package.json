@@ -19,6 +19,8 @@
     "build:artifacts": "node scripts/build-artifacts.mjs",
     "sync:subnets": "node scripts/sync-subnets.mjs --write",
     "sync:subnets:dry-run": "node scripts/sync-subnets.mjs --dry-run",
+    "discover:candidates": "node scripts/discover-candidates.mjs --write",
+    "discover:candidates:dry-run": "node scripts/discover-candidates.mjs --dry-run",
     "probes:smoke": "node scripts/probes-smoke.mjs",
     "scan:public-safety": "node scripts/scan-public-safety.mjs",
     "test": "node --test tests/*.test.mjs"

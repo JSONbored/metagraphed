@@ -30,6 +30,36 @@
       "notes": "Registry and probe observations are not protocol authority.",
       "schema_version": 1,
       "website_url": "https://metagraph.sh"
+    },
+    {
+      "authority": "provider-claimed",
+      "docs_url": "https://api.taomarketcap.com/developer/documentation/",
+      "id": "taomarketcap",
+      "kind": "data-provider",
+      "name": "TaoMarketCap",
+      "notes": "Third-party Bittensor market and subnet API. Used only as enrichment and candidate discovery, not canonical subnet existence authority.",
+      "schema_version": 1,
+      "website_url": "https://taomarketcap.com"
+    },
+    {
+      "authority": "community",
+      "docs_url": "https://github.com/e35ventura/taopedia-articles",
+      "id": "taopedia-articles",
+      "kind": "docs-provider",
+      "name": "Taopedia Articles",
+      "notes": "Public article source for Taopedia. Used to discover documentation candidates, not verified operational surfaces.",
+      "schema_version": 1,
+      "website_url": "https://github.com/e35ventura/taopedia-articles"
+    },
+    {
+      "authority": "community",
+      "docs_url": "https://github.com/tensorplex-labs/subnet-docs",
+      "id": "tensorplex-subnet-docs",
+      "kind": "docs-provider",
+      "name": "Tensorplex subnet-docs",
+      "notes": "Structured community-maintained subnet documentation. Used as enrichment and candidate discovery pending maintainer review.",
+      "schema_version": 1,
+      "website_url": "https://github.com/tensorplex-labs/subnet-docs"
     }
   ],
   "schema_version": 1

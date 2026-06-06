@@ -1,0 +1,68 @@
+name: Sync Subnets
+
+on:
+  schedule:
+    - cron: "17 5,17 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install
+        run: npm ci
+
+      - name: Sync native subnet snapshot
+        run: npm run sync:subnets
+
+      - name: Discover candidate surfaces
+        run: npm run discover:candidates
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build artifacts
+        run: npm run build
+
+      - name: Validate registry
+        run: npm run validate
+
+      - name: Test
+        run: npm test
+
+      - name: Public-safety scan
+        run: npm run scan:public-safety
+
+      - name: Open sync pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: codex/sync-subnets
+          delete-branch: true
+          title: "chore(sync): refresh subnet registry data"
+          commit-message: "chore(sync): refresh subnet registry data"
+          body: |
+            ## Summary
+            - refresh the native Finney subnet snapshot
+            - refresh generated public-source candidate surfaces
+            - rebuild deterministic public artifacts
+
+            ## Validation
+            - npm run validate
+            - npm test
+            - npm run build
+            - npm run scan:public-safety

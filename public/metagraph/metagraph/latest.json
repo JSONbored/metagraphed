@@ -14,6 +14,7 @@
   "subnets": [
     {
       "block": 8344198,
+      "candidate_count": 1,
       "categories": [
         "root",
         "system"
@@ -38,6 +39,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 5,
       "categories": [
         "native-only"
       ],
@@ -61,6 +63,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -84,6 +87,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -107,6 +111,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 5,
       "categories": [
         "native-only"
       ],
@@ -130,6 +135,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -153,6 +159,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -176,6 +183,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "bitcoin",
         "subnet-api",
@@ -201,6 +209,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -224,6 +233,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -247,6 +257,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -270,6 +281,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -293,6 +305,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -316,6 +329,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -339,6 +353,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -362,6 +377,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -385,6 +401,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -408,6 +425,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -431,6 +449,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -454,6 +473,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -477,6 +497,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -500,6 +521,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -523,6 +545,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -546,6 +569,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -569,6 +593,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -592,6 +617,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -615,6 +641,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -638,6 +665,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -661,6 +689,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 1,
       "categories": [
         "native-only"
       ],
@@ -684,6 +713,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -707,6 +737,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -730,6 +761,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 1,
       "categories": [
         "native-only"
       ],
@@ -753,6 +785,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -776,6 +809,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -799,6 +833,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -822,6 +857,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -845,6 +881,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -868,6 +905,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -891,6 +929,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -914,6 +953,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -937,6 +977,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -960,6 +1001,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -983,6 +1025,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 1,
       "categories": [
         "native-only"
       ],
@@ -1006,6 +1049,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -1029,6 +1073,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -1052,6 +1097,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1075,6 +1121,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 6,
       "categories": [
         "native-only"
       ],
@@ -1098,6 +1145,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1121,6 +1169,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -1144,6 +1193,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1167,6 +1217,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1190,6 +1241,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1213,6 +1265,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 5,
       "categories": [
         "native-only"
       ],
@@ -1236,6 +1289,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -1259,6 +1313,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1282,6 +1337,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1305,6 +1361,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -1328,6 +1385,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -1351,6 +1409,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -1374,6 +1433,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1397,6 +1457,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -1420,6 +1481,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1443,6 +1505,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1466,6 +1529,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -1489,6 +1553,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 5,
       "categories": [
         "native-only"
       ],
@@ -1512,6 +1577,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1535,6 +1601,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1558,6 +1625,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1581,6 +1649,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1604,6 +1673,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 1,
       "categories": [
         "native-only"
       ],
@@ -1627,6 +1697,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1650,6 +1721,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1673,6 +1745,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1696,6 +1769,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -1719,6 +1793,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "developer-tools",
         "repositories",
@@ -1744,6 +1819,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 5,
       "categories": [
         "native-only"
       ],
@@ -1767,6 +1843,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 1,
       "categories": [
         "native-only"
       ],
@@ -1790,6 +1867,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1813,6 +1891,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 5,
       "categories": [
         "native-only"
       ],
@@ -1836,6 +1915,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1859,6 +1939,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1882,6 +1963,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1905,6 +1987,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -1928,6 +2011,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1951,6 +2035,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1974,6 +2059,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -1997,6 +2083,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 1,
       "categories": [
         "native-only"
       ],
@@ -2020,6 +2107,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -2043,6 +2131,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2066,6 +2155,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2089,6 +2179,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 1,
       "categories": [
         "native-only"
       ],
@@ -2112,6 +2203,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -2135,6 +2227,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2158,6 +2251,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2181,6 +2275,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2204,6 +2299,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 1,
       "categories": [
         "native-only"
       ],
@@ -2227,6 +2323,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -2250,6 +2347,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -2273,6 +2371,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -2296,6 +2395,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -2319,6 +2419,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 5,
       "categories": [
         "native-only"
       ],
@@ -2342,6 +2443,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 1,
       "categories": [
         "native-only"
       ],
@@ -2365,6 +2467,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2388,6 +2491,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2411,6 +2515,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 1,
       "categories": [
         "native-only"
       ],
@@ -2434,6 +2539,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2457,6 +2563,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2480,6 +2587,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -2503,6 +2611,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2526,6 +2635,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -2549,6 +2659,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2572,6 +2683,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -2595,6 +2707,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2618,6 +2731,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2641,6 +2755,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -2664,6 +2779,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -2687,6 +2803,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -2710,6 +2827,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2733,6 +2851,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],
@@ -2756,6 +2875,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -2779,6 +2899,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2802,6 +2923,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2825,6 +2947,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -2848,6 +2971,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 2,
       "categories": [
         "native-only"
       ],
@@ -2871,6 +2995,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2894,6 +3019,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 1,
       "categories": [
         "native-only"
       ],
@@ -2917,6 +3043,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2940,6 +3067,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 3,
       "categories": [
         "native-only"
       ],
@@ -2963,6 +3091,7 @@
     },
     {
       "block": 8344198,
+      "candidate_count": 4,
       "categories": [
         "native-only"
       ],

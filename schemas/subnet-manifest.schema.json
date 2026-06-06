@@ -105,6 +105,8 @@
             "subnet-api",
             "openapi",
             "sse",
+            "website",
+            "source-repo",
             "dashboard",
             "repo-registry",
             "docs",

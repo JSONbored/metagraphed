@@ -41,6 +41,7 @@ Metagraphed is chain-first:
 - root `netuid: 0` is included and labeled as root/system;
 - curated overlays add public interface metadata only after review;
 - third-party APIs are enrichment/candidate sources, not canonical existence sources.
+- generated candidates capture public-source leads, but only reviewed overlays become verified surfaces.
 
 Coverage levels:
 
@@ -63,6 +64,8 @@ Generated public artifacts live under `public/metagraph`:
 
 - `subnets.json`
 - `surfaces.json`
+- `candidates.json`
+- `review-queue.json`
 - `providers.json`
 - `metagraph/latest.json`
 - `health/latest.json`
@@ -82,10 +85,13 @@ npm test
 npm run build
 npm run scan:public-safety
 npm run sync:subnets:dry-run
+npm run discover:candidates:dry-run
 npm run probes:smoke
 ```
 
 `sync:subnets` uses the Bittensor Python SDK through `uvx` to fetch decoded native Finney subnet metadata without committing Python dependencies to this repo.
+
+`discover:candidates` reads public enrichment sources and writes unverified candidate surfaces into `registry/candidates/generated/public-sources.json`.
 
 `probes:smoke` performs read-only checks against public surfaces. It does not submit transactions, mutate subnet state, send wallet data, or use credentials.
 

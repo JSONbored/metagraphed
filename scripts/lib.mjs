@@ -29,6 +29,30 @@ export async function listJsonFiles(dirPath) {
     .sort((a, b) => a.localeCompare(b));
 }
 
+export async function listJsonFilesRecursive(dirPath) {
+  let entries;
+  try {
+    entries = await fs.readdir(dirPath, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+
+  const files = [];
+  for (const entry of entries) {
+    const entryPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await listJsonFilesRecursive(entryPath)));
+    } else if (entry.isFile() && entry.name.endsWith(".json")) {
+      files.push(entryPath);
+    }
+  }
+
+  return files.sort((a, b) => a.localeCompare(b));
+}
+
 export async function loadProviders() {
   const files = await listJsonFiles(path.join(repoRoot, "registry/providers"));
   return Promise.all(files.map(readJson));
@@ -45,9 +69,15 @@ export async function loadNativeSnapshot() {
 }
 
 export async function loadCandidates() {
-  const files = await listJsonFiles(path.join(repoRoot, "registry/candidates"));
-  const candidates = await Promise.all(files.map(readJson));
-  return candidates.sort((a, b) => a.id.localeCompare(b.id));
+  const files = await listJsonFilesRecursive(path.join(repoRoot, "registry/candidates"));
+  const documents = await Promise.all(files.map(readJson));
+  const candidates = documents.flatMap((document) => {
+    if (Array.isArray(document.candidates)) {
+      return document.candidates;
+    }
+    return [document];
+  });
+  return candidates.sort((a, b) => a.netuid - b.netuid || a.id.localeCompare(b.id));
 }
 
 export function flattenSurfaces(subnets) {

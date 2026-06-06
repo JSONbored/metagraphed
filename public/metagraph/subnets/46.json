@@ -1,8 +1,137 @@
 {
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-46-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "Zipcode source repository",
+      "netuid": 46,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/46",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/46"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/resi-labs-ai/RESI-models"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-46-taomarketcap-website",
+      "kind": "website",
+      "name": "Zipcode website",
+      "netuid": 46,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/46",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/46"
+      ],
+      "state": "schema-valid",
+      "url": "https://zipcode.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-46-tensorplex-docs",
+      "kind": "docs",
+      "name": "Zipcode Tensorplex subnet docs",
+      "netuid": 46,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/46"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-46-tensorplex-source-repo-1",
+      "kind": "source-repo",
+      "name": "Zipcode source repository",
+      "netuid": 46,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs-github",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/resi-labs-ai/resi"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-46-tensorplex-source-repo-2",
+      "kind": "source-repo",
+      "name": "Zipcode source repository",
+      "netuid": 46,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs-github",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/resi-labs-ai/resi-labs-api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-46-tensorplex-source-repo-3",
+      "kind": "source-repo",
+      "name": "Zipcode source repository",
+      "netuid": 46,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs-github",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/resi-labs-ai/prospector"
+    }
+  ],
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
     "block": 8344198,
+    "candidate_count": 6,
     "categories": [
       "native-only"
     ],

@@ -1,8 +1,75 @@
 {
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-50-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "Synth source repository",
+      "netuid": 50,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/50",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/50",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/50/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/mode-network/synth-subnet"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-50-taomarketcap-website",
+      "kind": "website",
+      "name": "Synth website",
+      "netuid": 50,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/50",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/50"
+      ],
+      "state": "schema-valid",
+      "url": "https://synthdata.co/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-50-tensorplex-docs",
+      "kind": "docs",
+      "name": "Synth Tensorplex subnet docs",
+      "netuid": 50,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/50/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/50/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/50"
+    }
+  ],
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
     "block": 8344198,
+    "candidate_count": 3,
     "categories": [
       "native-only"
     ],

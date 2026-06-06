@@ -1,8 +1,96 @@
 {
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-2-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "DSperse source repository",
+      "netuid": 2,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/2",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/2",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/2/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/inference-labs-inc/subnet-2"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-2-taomarketcap-website",
+      "kind": "website",
+      "name": "DSperse website",
+      "netuid": 2,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/2",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/2"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnet2.inferencelabs.com/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-2-taopedia-article",
+      "kind": "docs",
+      "name": "DSperse Taopedia article",
+      "netuid": 2,
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "taopedia-article",
+      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_2/index.mdx",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_2/index.mdx"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_2/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-2-tensorplex-docs",
+      "kind": "docs",
+      "name": "DSperse Tensorplex subnet docs",
+      "netuid": 2,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/2/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/2/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/2"
+    }
+  ],
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
     "block": 8344198,
+    "candidate_count": 4,
     "categories": [
       "native-only"
     ],

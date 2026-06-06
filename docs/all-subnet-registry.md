@@ -42,6 +42,8 @@ An overlay must reference a netuid that exists in the native snapshot unless it 
 
 Candidates are never treated as verified surfaces. They must pass maintainer review before being promoted into `registry/subnets`.
 
+`npm run discover:candidates` generates a public-source candidate bundle from enrichment sources such as TaoMarketCap, Tensorplex subnet-docs, and Taopedia articles. Generated candidates are review inputs only.
+
 ## Generated Artifacts
 
 `public/metagraph/subnets.json` lists every active chain subnet.
@@ -49,5 +51,9 @@ Candidates are never treated as verified surfaces. They must pass maintainer rev
 `public/metagraph/surfaces.json` lists only curated/verified public interface surfaces.
 
 `public/metagraph/coverage.json` summarizes chain coverage, curated overlays, native-only stubs, probed subnets, and candidate counts.
+
+`public/metagraph/candidates.json` lists unverified candidate surfaces with source provenance.
+
+`public/metagraph/review-queue.json` lists candidate surfaces that need maintainer review.
 
 `public/metagraph/subnets/{netuid}.json` exposes per-subnet static detail artifacts for app and API consumers.

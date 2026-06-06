@@ -1,8 +1,95 @@
 {
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-26-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "Perturb source repository",
+      "netuid": 26,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/26",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/26"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/0xsigurd/Perturb"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-26-taomarketcap-website",
+      "kind": "website",
+      "name": "Perturb website",
+      "netuid": 26,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/26",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/26"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.perturbai.io/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-26-tensorplex-docs",
+      "kind": "docs",
+      "name": "Perturb Tensorplex subnet docs",
+      "netuid": 26,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/26/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/26/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/26"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-26-tensorplex-source-repo-1",
+      "kind": "source-repo",
+      "name": "Perturb source repository",
+      "netuid": 26,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "tensorplex-subnet-docs-github",
+      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/26/subnet.json",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/26/subnet.json"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/threetau/kinitro"
+    }
+  ],
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
     "block": 8344198,
+    "candidate_count": 4,
     "categories": [
       "native-only"
     ],

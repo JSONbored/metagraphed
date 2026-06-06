@@ -13,6 +13,7 @@ import {
 const providerKinds = new Set([
   "subnet-team",
   "infrastructure-provider",
+  "data-provider",
   "docs-provider",
   "registry"
 ]);
@@ -32,6 +33,8 @@ const surfaceKinds = new Set([
   "subnet-api",
   "openapi",
   "sse",
+  "website",
+  "source-repo",
   "dashboard",
   "repo-registry",
   "docs",
@@ -164,7 +167,7 @@ function validateNativeSnapshot(snapshot) {
   return netuids;
 }
 
-function validateCandidate(candidate, nativeNetuids) {
+function validateCandidate(candidate, nativeNetuids, providerIds) {
   const key = `candidate:${candidate.id || "unknown"}`;
   assert(candidate.schema_version === 1, `${key}: schema_version must be 1`);
   assert(slugPattern.test(candidate.id || ""), `${key}: invalid id`);
@@ -175,13 +178,31 @@ function validateCandidate(candidate, nativeNetuids) {
   assert(surfaceKinds.has(candidate.kind), `${key}: invalid kind`);
   assert(isValidUrl(candidate.url), `${key}: url must be a URL`);
   assert(isValidUrl(candidate.source_url), `${key}: source_url must be a URL`);
+  if (candidate.source_urls !== undefined) {
+    assert(Array.isArray(candidate.source_urls), `${key}: source_urls must be an array`);
+    for (const sourceUrl of candidate.source_urls || []) {
+      assert(isValidUrl(sourceUrl), `${key}: source_urls must contain URLs`);
+    }
+  }
+  if (candidate.source_tier !== undefined) {
+    assert(
+      ["native-chain", "provider-claimed", "third-party-index", "community-docs"].includes(candidate.source_tier),
+      `${key}: invalid source_tier`
+    );
+  }
+  if (candidate.confidence !== undefined) {
+    assert(["low", "medium", "high"].includes(candidate.confidence), `${key}: invalid confidence`);
+  }
+  assert(providerIds.has(candidate.provider), `${key}: unknown provider ${candidate.provider}`);
   assert(typeof candidate.auth_required === "boolean", `${key}: auth_required must be boolean`);
   assert(typeof candidate.public_safe === "boolean", `${key}: public_safe must be boolean`);
 }
 
-async function validateGeneratedArtifacts(nativeSnapshot, overlays) {
+async function validateGeneratedArtifacts(nativeSnapshot, overlays, candidates) {
   const subnetsArtifact = await readJson(path.join(repoRoot, "public/metagraph/subnets.json"));
   const surfacesArtifact = await readJson(path.join(repoRoot, "public/metagraph/surfaces.json"));
+  const candidatesArtifact = await readJson(path.join(repoRoot, "public/metagraph/candidates.json"));
+  const reviewQueueArtifact = await readJson(path.join(repoRoot, "public/metagraph/review-queue.json"));
   const coverageArtifact = await readJson(path.join(repoRoot, "public/metagraph/coverage.json"));
 
   const nativeNetuids = nativeSnapshot.subnets.map((subnet) => subnet.netuid);
@@ -209,6 +230,12 @@ async function validateGeneratedArtifacts(nativeSnapshot, overlays) {
 
   assert(coverageArtifact.chain_subnet_count === nativeSnapshot.subnets.length, "coverage: chain_subnet_count mismatch");
   assert(coverageArtifact.surface_count === surfacesArtifact.surfaces.length, "coverage: surface_count mismatch");
+  assert(coverageArtifact.candidate_count === candidates.length, "coverage: candidate_count mismatch");
+  assert(candidatesArtifact.candidates.length === candidates.length, "candidates artifact: count mismatch");
+  assert(
+    reviewQueueArtifact.count === reviewQueueArtifact.candidates.length,
+    "review queue artifact: count must match candidates length"
+  );
 }
 
 const providers = await loadProviders();
@@ -220,6 +247,7 @@ const netuids = new Set();
 const slugs = new Set();
 const surfaceIds = new Set();
 const nativeNetuids = validateNativeSnapshot(nativeSnapshot);
+const candidateIds = new Set();
 
 for (const provider of providers) {
   validateProvider(provider);
@@ -240,10 +268,12 @@ for (const subnet of subnets) {
 }
 
 for (const candidate of candidates) {
-  validateCandidate(candidate, nativeNetuids);
+  assert(!candidateIds.has(candidate.id), `${candidate.id}: duplicate candidate id`);
+  candidateIds.add(candidate.id);
+  validateCandidate(candidate, nativeNetuids, providerIds);
 }
 
-await validateGeneratedArtifacts(nativeSnapshot, subnets);
+await validateGeneratedArtifacts(nativeSnapshot, subnets, candidates);
 
 if (errors.length > 0) {
   console.error(`Validation failed with ${errors.length} issue(s):`);
