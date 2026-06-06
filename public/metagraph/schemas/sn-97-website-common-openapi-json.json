@@ -1,0 +1,21 @@
+{
+  "component_schema_count": 7,
+  "contract_version": "2026-06-06.1",
+  "drift_status": "new",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "hash": "61b026a793721514ba0a4a018c746c575858b0058cc671ecd9aaeca638dc10ba",
+  "netuid": 97,
+  "openapi_version": "3.1.0",
+  "path_count": 12,
+  "previous_hash": null,
+  "schema_url": "https://us-east-1.hippius.com/openapi.json",
+  "schema_version": 1,
+  "server_count": 0,
+  "subnet_name": "Albedo",
+  "subnet_slug": "sn-97",
+  "surface_id": "sn-97-website-common-openapi-json",
+  "surface_url": "https://us-east-1.hippius.com/openapi.json",
+  "tag_count": 0,
+  "title": "Hippius S3",
+  "version": "1.0.0"
+}

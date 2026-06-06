@@ -2,6 +2,8 @@ import path from "node:path";
 import {
   buildTimestamp,
   loadNativeSnapshot,
+  loadSubnets,
+  nativeDisplayName,
   readJson,
   repoRoot,
   slugify,
@@ -13,8 +15,14 @@ const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
 const nativeSnapshot = await loadNativeSnapshot();
+const existingOverlays = await loadSubnets();
 const nativeByNetuid = new Map(
   nativeSnapshot.subnets.map((subnet) => [subnet.netuid, subnet]),
+);
+const overlayNameByNetuid = new Map(
+  existingOverlays
+    .filter((overlay) => overlay.name)
+    .map((overlay) => [overlay.netuid, overlay.name]),
 );
 const candidatesByKey = new Map();
 const candidateIds = new Set();
@@ -29,6 +37,12 @@ await discoverUniversalTaoMarketCapDashboards();
 if (restoredProviders.size === 0) {
   await discoverFromGithubReadmes();
   await discoverFromProjectWebsites();
+} else {
+  restoreExistingCandidatesForSourceTypes([
+    "github-readme-link",
+    "project-website-common-path",
+    "project-website-link",
+  ]);
 }
 
 const candidates = [...candidatesByKey.values()].sort(
@@ -120,7 +134,7 @@ async function discoverFromTaoMarketCap() {
 
       const sourceUrl = `https://api.taomarketcap.com/public/v1/subnets/${netuid}/`;
       const displayName =
-        cleanName(identity.subnetName) || nativeByNetuid.get(netuid).name;
+        cleanName(identity.subnetName) || displayNameForNetuid(netuid);
 
       for (const url of extractUrls(identity.subnetUrl)) {
         addCandidate({
@@ -193,7 +207,7 @@ async function discoverFromTensorplexSubnetDocs() {
         return;
       }
 
-      const nativeName = nativeByNetuid.get(netuid).name;
+      const nativeName = displayNameForNetuid(netuid);
       const displayName = cleanName(document.name) || nativeName;
       addCandidate({
         id: `sn-${netuid}-tensorplex-docs`,
@@ -300,7 +314,7 @@ async function discoverFromTaopediaArticles() {
     addCandidate({
       id: `sn-${netuid}-taopedia-article`,
       netuid,
-      name: `${nativeByNetuid.get(netuid).name} Taopedia article`,
+      name: `${displayNameForNetuid(netuid)} Taopedia article`,
       kind: "docs",
       url,
       source_url: url,
@@ -319,7 +333,7 @@ async function discoverUniversalTaoMarketCapDashboards() {
     addCandidate({
       id: `sn-${subnet.netuid}-taomarketcap-dashboard`,
       netuid: subnet.netuid,
-      name: `${subnet.name} TaoMarketCap dashboard`,
+      name: `${displayNameForNetuid(subnet.netuid)} TaoMarketCap dashboard`,
       kind: "dashboard",
       url: `https://taomarketcap.com/subnets/${subnet.netuid}`,
       source_url: `https://api.taomarketcap.com/public/v1/subnets/${subnet.netuid}/`,
@@ -373,7 +387,7 @@ async function discoverFromGithubReadmes() {
         addCandidate({
           id: `sn-${candidate.netuid}-github-readme-${repoSlug}-${link.classification.kind}-${index + 1}`,
           netuid: candidate.netuid,
-          name: `${nativeByNetuid.get(candidate.netuid).name} ${link.classification.label}`,
+          name: `${displayNameForNetuid(candidate.netuid)} ${link.classification.label}`,
           kind: link.classification.kind,
           url: link.url,
           source_url: readme.htmlUrl,
@@ -423,7 +437,7 @@ async function discoverFromProjectWebsites() {
       addCandidate({
         id: `sn-${candidate.netuid}-website-link-${websiteSlug}-${link.classification.kind}-${index + 1}`,
         netuid: candidate.netuid,
-        name: `${nativeByNetuid.get(candidate.netuid).name} ${link.classification.label}`,
+        name: `${displayNameForNetuid(candidate.netuid)} ${link.classification.label}`,
         kind: link.classification.kind,
         url: link.url,
         source_url: root,
@@ -463,7 +477,7 @@ function addCommonApiPathCandidates(candidate, root) {
     addCandidate({
       id: `sn-${candidate.netuid}-website-common-${slugify(commonPath.path)}`,
       netuid: candidate.netuid,
-      name: `${nativeByNetuid.get(candidate.netuid).name} ${commonPath.label}`,
+      name: `${displayNameForNetuid(candidate.netuid)} ${commonPath.label}`,
       kind: commonPath.kind,
       url: `${origin}${commonPath.path}`,
       source_url: root,
@@ -478,14 +492,37 @@ function addCommonApiPathCandidates(candidate, root) {
 }
 
 async function loadExistingGeneratedCandidates() {
+  const candidates = [];
   try {
     const existing = await readJson(
       path.join(repoRoot, "registry/candidates/generated/public-sources.json"),
     );
-    return Array.isArray(existing.candidates) ? existing.candidates : [];
+    if (Array.isArray(existing.candidates)) {
+      candidates.push(...existing.candidates);
+    }
   } catch {
-    return [];
+    // Continue to the public artifact fallback below.
   }
+
+  try {
+    const publicArtifact = await readJson(
+      path.join(repoRoot, "public/metagraph/candidates.json"),
+    );
+    if (Array.isArray(publicArtifact.candidates)) {
+      candidates.push(...publicArtifact.candidates);
+    }
+  } catch {
+    // No built candidate artifact exists yet.
+  }
+
+  const byKey = new Map();
+  for (const candidate of candidates) {
+    const key = `${candidate.id}:${candidate.url}`;
+    if (!byKey.has(key)) {
+      byKey.set(key, candidate);
+    }
+  }
+  return [...byKey.values()];
 }
 
 function restoreExistingCandidatesForProvider(provider) {
@@ -493,11 +530,44 @@ function restoreExistingCandidatesForProvider(provider) {
   for (const candidate of existingGeneratedCandidates.filter(
     (entry) => entry.provider === provider,
   )) {
-    addCandidate({
-      ...candidate,
-      review_notes: `${candidate.review_notes || "Candidate restored from previous generated bundle."} Source refresh failed; preserved pending a successful refresh.`,
-    });
+    restoreCandidate(candidate);
   }
+}
+
+function restoreExistingCandidatesForSourceTypes(sourceTypes) {
+  const sourceTypeSet = new Set(sourceTypes);
+  for (const candidate of existingGeneratedCandidates.filter((entry) =>
+    sourceTypeSet.has(entry.source_type),
+  )) {
+    restoreCandidate(candidate);
+  }
+}
+
+function restoreCandidate(candidate) {
+  addCandidate({
+    id: candidate.id,
+    netuid: candidate.netuid,
+    name: candidate.name,
+    kind: candidate.kind,
+    url: candidate.url,
+    source_url: candidate.source_url,
+    source_type: candidate.source_type,
+    source_tier: candidate.source_tier,
+    confidence: candidate.confidence,
+    provider: candidate.provider,
+    review_notes: `${
+      candidate.review_notes ||
+      "Candidate restored from previous generated bundle."
+    } Source refresh failed; preserved pending a successful refresh.`,
+  });
+}
+
+function displayNameForNetuid(netuid) {
+  const nativeSubnet = nativeByNetuid.get(netuid);
+  return nativeDisplayName(
+    nativeSubnet,
+    overlayNameByNetuid.get(netuid) || `Subnet ${netuid}`,
+  );
 }
 
 function addCandidate(candidate) {
@@ -571,7 +641,7 @@ function extractUrls(value) {
       return [];
     }
     const trimmed = item.trim();
-    const explicitUrls = trimmed.match(/https?:\/\/[^\s,"')\]]+/g) || [];
+    const explicitUrls = trimmed.match(/https?:\/\/[^\s,"'`)\]]+/g) || [];
     return explicitUrls.length > 0 ? explicitUrls : [trimmed];
   });
 
@@ -585,9 +655,9 @@ function normalizePublicUrl(value) {
 
   let candidate = value
     .trim()
-    .replace(/^<|>$/g, "")
+    .replace(/^[<`"']+|[>`"',.;:!]+$/g, "")
     .split("](")[0]
-    .replace(/\]+$/g, "");
+    .replace(/[\]`"',.;:!]+$/g, "");
   if (!candidate || isPlaceholder(candidate)) {
     return null;
   }
@@ -723,7 +793,7 @@ async function fetchGithubReadme(repo) {
 function extractMarkdownLinks(markdown, baseUrl) {
   const links = [];
   const markdownLinkPattern = /\[([^\]]{1,120})\]\((https?:\/\/[^)\s]+)\)/g;
-  const bareUrlPattern = /https?:\/\/[^\s<>)"'\]]+/g;
+  const bareUrlPattern = /https?:\/\/[^\s<>)"'`\]]+/g;
   for (const match of markdown.matchAll(markdownLinkPattern)) {
     links.push({ label: match[1], url: normalizePublicUrl(match[2]) });
   }

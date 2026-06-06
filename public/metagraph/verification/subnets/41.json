@@ -1,10 +1,76 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 13,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Almanac",
   "netuid": 41,
   "results": [
+    {
+      "candidate_id": "sn-41-github-readme-sportstensor-sn41-docs-1",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 40,
+      "method_tested": "HEAD",
+      "name": "Almanac docs",
+      "netuid": 41,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/sportstensor/sn41/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/sportstensor/sn41/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.learnbittensor.org/keys/wallets",
+      "verified_at": "2026-06-06T12:18:19.809Z"
+    },
+    {
+      "candidate_id": "sn-41-github-readme-sportstensor-sn41-docs-2",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 40,
+      "method_tested": "HEAD",
+      "name": "Almanac docs",
+      "netuid": 41,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/sportstensor/sn41/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/sportstensor/sn41/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.learnbittensor.org/miners",
+      "verified_at": "2026-06-06T12:18:19.809Z"
+    },
     {
       "candidate_id": "sn-41-taomarketcap-dashboard",
       "classification": "live",
@@ -12,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 457,
+      "latency_ms": 149,
       "method_tested": "HEAD",
       "name": "Almanac TaoMarketCap dashboard",
       "netuid": 41,
@@ -36,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/41",
-      "verified_at": "2026-06-06T07:43:57.008Z"
+      "verified_at": "2026-06-06T12:18:19.818Z"
     },
     {
       "candidate_id": "sn-41-taomarketcap-source-repo",
@@ -46,7 +112,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/sportstensor/sn41",
       "kind": "source-repo",
-      "latency_ms": 420,
+      "latency_ms": 725,
       "method_tested": "HEAD",
       "name": "Almanac source repository",
       "netuid": 41,
@@ -65,12 +131,13 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/41",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/41"
+        "https://api.taomarketcap.com/public/v1/subnets/41",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/41/subnet.json"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/sportstensor/sn41",
-      "verified_at": "2026-06-06T07:43:57.008Z"
+      "verified_at": "2026-06-06T12:18:19.824Z"
     },
     {
       "candidate_id": "sn-41-taomarketcap-website",
@@ -79,7 +146,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 2201,
+      "latency_ms": 176,
       "method_tested": "HEAD",
       "name": "Almanac website",
       "netuid": 41,
@@ -103,7 +170,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://almanac.market/",
-      "verified_at": "2026-06-06T07:43:57.020Z"
+      "verified_at": "2026-06-06T12:18:19.849Z"
     },
     {
       "candidate_id": "sn-41-tensorplex-docs",
@@ -112,7 +179,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 665,
+      "latency_ms": 341,
       "method_tested": "HEAD",
       "name": "Almanac Tensorplex subnet docs",
       "netuid": 41,
@@ -136,23 +203,257 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/41",
-      "verified_at": "2026-06-06T07:43:57.036Z"
+      "verified_at": "2026-06-06T12:18:19.849Z"
+    },
+    {
+      "candidate_id": "sn-41-website-common-api",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 160,
+      "method_tested": "HEAD",
+      "name": "Almanac API",
+      "netuid": 41,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://almanac.market/api",
+      "verified_at": "2026-06-06T12:18:19.869Z"
+    },
+    {
+      "candidate_id": "sn-41-website-common-docs",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 159,
+      "method_tested": "HEAD",
+      "name": "Almanac docs",
+      "netuid": 41,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://almanac.market/docs",
+      "verified_at": "2026-06-06T12:18:19.889Z"
+    },
+    {
+      "candidate_id": "sn-41-website-common-health",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 193,
+      "method_tested": "HEAD",
+      "name": "Almanac health endpoint",
+      "netuid": 41,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://almanac.market/health",
+      "verified_at": "2026-06-06T12:18:19.931Z"
+    },
+    {
+      "candidate_id": "sn-41-website-common-openapi-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 180,
+      "method_tested": "HEAD",
+      "name": "Almanac OpenAPI JSON",
+      "netuid": 41,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://almanac.market/openapi.json",
+      "verified_at": "2026-06-06T12:18:19.950Z"
+    },
+    {
+      "candidate_id": "sn-41-website-common-swagger",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 190,
+      "method_tested": "HEAD",
+      "name": "Almanac Swagger UI",
+      "netuid": 41,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://almanac.market/swagger",
+      "verified_at": "2026-06-06T12:18:19.951Z"
+    },
+    {
+      "candidate_id": "sn-41-website-common-swagger-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 154,
+      "method_tested": "HEAD",
+      "name": "Almanac Swagger JSON",
+      "netuid": 41,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://almanac.market/swagger.json",
+      "verified_at": "2026-06-06T12:18:19.967Z"
+    },
+    {
+      "candidate_id": "sn-41-website-link-almanac-market-website-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 701,
+      "method_tested": "HEAD",
+      "name": "Almanac website page",
+      "netuid": 41,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://beta.almanac.market/",
+      "verified_at": "2026-06-06T12:18:19.967Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-41",
   "summary": {
     "by_classification": {
-      "live": 4
+      "content-mismatch": 2,
+      "live": 11
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "docs": 4,
+      "openapi": 3,
       "source-repo": 1,
-      "website": 1
+      "subnet-api": 2,
+      "website": 2
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 12,
       "tensorplex-subnet-docs": 1
     }
   }

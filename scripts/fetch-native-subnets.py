@@ -8,9 +8,13 @@ import bittensor as bt
 
 def normalize_info(info, mechanism_count):
     netuid = int(info.netuid)
+    raw_name = str(getattr(info, "name", "") or "").strip()
+    name_quality = classify_name(raw_name, netuid)
     return {
         "netuid": netuid,
-        "name": str(getattr(info, "name", "") or f"Subnet {netuid}"),
+        "name": raw_name or f"Subnet {netuid}",
+        "raw_name": raw_name or None,
+        "native_name_quality": name_quality,
         "symbol": str(getattr(info, "symbol", "") or ""),
         "status": "active",
         "subnet_type": "root" if netuid == 0 else "application",
@@ -20,6 +24,17 @@ def normalize_info(info, mechanism_count):
         "registered_at_block": int(getattr(info, "network_registered_at", 0) or 0),
         "mechanism_count": int(mechanism_count),
     }
+
+
+def classify_name(raw_name, netuid):
+    if not raw_name:
+        return "empty"
+    normalized = raw_name.lower()
+    if normalized in {"unknown", "none", "null", "n/a", "na", "unnamed"}:
+        return "placeholder"
+    if normalized == f"subnet {netuid}".lower():
+        return "placeholder"
+    return "chain"
 
 
 def main():

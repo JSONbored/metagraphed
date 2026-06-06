@@ -2,6 +2,132 @@
   "candidate_surfaces": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-dashboard-2",
+      "kind": "dashboard",
+      "name": "Aurelius dashboard",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnet/455"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-dashboard-3",
+      "kind": "dashboard",
+      "name": "Aurelius dashboard",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnet/37"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-docs-1",
+      "kind": "docs",
+      "name": "Aurelius docs",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.bittensor.com/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-4",
+      "kind": "subnet-api",
+      "name": "Aurelius API surface",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://new-collector-api-production.up.railway.app/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-5",
+      "kind": "subnet-api",
+      "name": "Aurelius API surface",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://new-collector-api-production.up.railway.app/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-6",
+      "kind": "subnet-api",
+      "name": "Aurelius API surface",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://api.deepseek.com/v1"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-37-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -73,7 +199,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -94,7 +220,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -104,11 +230,347 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/Aurelius-Protocol"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-common-api",
+      "kind": "subnet-api",
+      "name": "Aurelius API",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-common-docs",
+      "kind": "docs",
+      "name": "Aurelius docs",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-common-health",
+      "kind": "subnet-api",
+      "name": "Aurelius health endpoint",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Aurelius OpenAPI JSON",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-common-swagger",
+      "kind": "openapi",
+      "name": "Aurelius Swagger UI",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Aurelius Swagger JSON",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-link-aureliusaligned-ai-website-1",
+      "kind": "website",
+      "name": "Aurelius website page",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/about/alignment"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-link-aureliusaligned-ai-website-2",
+      "kind": "website",
+      "name": "Aurelius website page",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/about"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-link-aureliusaligned-ai-website-3",
+      "kind": "website",
+      "name": "Aurelius website page",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/team"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-link-aureliusaligned-ai-website-4",
+      "kind": "website",
+      "name": "Aurelius website page",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/roadmap"
     }
   ],
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-dashboard-2",
+      "kind": "dashboard",
+      "name": "Aurelius dashboard",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnet/455"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-dashboard-3",
+      "kind": "dashboard",
+      "name": "Aurelius dashboard",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnet/37"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-docs-1",
+      "kind": "docs",
+      "name": "Aurelius docs",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.bittensor.com/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-4",
+      "kind": "subnet-api",
+      "name": "Aurelius API surface",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://new-collector-api-production.up.railway.app/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-5",
+      "kind": "subnet-api",
+      "name": "Aurelius API surface",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://new-collector-api-production.up.railway.app/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-6",
+      "kind": "subnet-api",
+      "name": "Aurelius API surface",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://api.deepseek.com/v1"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-37-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -180,7 +642,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -201,7 +663,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -211,18 +673,226 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/Aurelius-Protocol"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-common-api",
+      "kind": "subnet-api",
+      "name": "Aurelius API",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-common-docs",
+      "kind": "docs",
+      "name": "Aurelius docs",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-common-health",
+      "kind": "subnet-api",
+      "name": "Aurelius health endpoint",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Aurelius OpenAPI JSON",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-common-swagger",
+      "kind": "openapi",
+      "name": "Aurelius Swagger UI",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Aurelius Swagger JSON",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-link-aureliusaligned-ai-website-1",
+      "kind": "website",
+      "name": "Aurelius website page",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/about/alignment"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-link-aureliusaligned-ai-website-2",
+      "kind": "website",
+      "name": "Aurelius website page",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/about"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-link-aureliusaligned-ai-website-3",
+      "kind": "website",
+      "name": "Aurelius website page",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/team"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-37-website-link-aureliusaligned-ai-website-4",
+      "kind": "website",
+      "name": "Aurelius website page",
+      "netuid": 37,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://aureliusaligned.ai/roadmap"
     }
   ],
   "gaps": {
     "gap_notes": [
       "No verified OpenAPI/Swagger surface yet.",
-      "No verified subnet API surface yet.",
       "No verified SSE/event stream yet.",
       "No verified data artifact yet."
     ],
     "missing_kinds": [
       "openapi",
-      "subnet-api",
       "sse",
       "data-artifact"
     ],
@@ -230,14 +900,15 @@
       "dashboard",
       "docs",
       "source-repo",
+      "subnet-api",
       "website"
     ]
   },
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 5,
+    "block": 8347420,
+    "candidate_count": 21,
     "categories": [
       "baseline-curated"
     ],
@@ -245,29 +916,26 @@
     "curation": {
       "gap_notes": [
         "No verified OpenAPI/Swagger surface yet.",
-        "No verified subnet API surface yet.",
         "No verified SSE/event stream yet.",
         "No verified data artifact yet."
       ],
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 2,
-      "verified_at": "2026-06-06T07:43:56.705Z"
+      "source_count": 3,
+      "verified_at": "2026-06-06T12:18:19.334Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/37",
-    "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/37",
+    "docs_url": "https://docs.bittensor.com/",
     "gaps": {
       "gap_notes": [
         "No verified OpenAPI/Swagger surface yet.",
-        "No verified subnet API surface yet.",
         "No verified SSE/event stream yet.",
         "No verified data artifact yet."
       ],
       "missing_kinds": [
         "openapi",
-        "subnet-api",
         "sse",
         "data-artifact"
       ],
@@ -275,6 +943,7 @@
         "dashboard",
         "docs",
         "source-repo",
+        "subnet-api",
         "website"
       ]
     },
@@ -282,18 +951,23 @@
     "mechanism_count": 1,
     "name": "Aurelius",
     "native_name": "Aurelius",
+    "native_name_quality": "chain",
     "native_slug": "aurelius",
     "netuid": 37,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 256,
-    "probed_surface_count": 5,
+    "probed_surface_count": 7,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -302,7 +976,7 @@
     "source_repo": "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 5,
+    "surface_count": 7,
     "symbol": "ל",
     "tempo": 360,
     "website_url": "https://aureliusaligned.ai/"
@@ -311,6 +985,90 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-docs-1",
+      "kind": "docs",
+      "name": "Aurelius docs",
+      "netuid": 37,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "subnet_name": "Aurelius",
+      "subnet_slug": "sn-37",
+      "url": "https://docs.bittensor.com/",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 61,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 94,
+        "method_tested": "HEAD",
+        "redirect_target": "https://docs.learnbittensor.org/",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:19.178Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-5",
+      "kind": "subnet-api",
+      "name": "Aurelius API surface",
+      "netuid": 37,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "subnet_name": "Aurelius",
+      "subnet_slug": "sn-37",
+      "url": "https://new-collector-api-production.up.railway.app/health",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "application/json",
+        "latency_ms": 357,
+        "method_tested": "GET",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:19.197Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-37-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Aurelius TaoMarketCap dashboard",
@@ -343,11 +1101,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 275,
+        "latency_ms": 136,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.601Z"
+        "verified_at": "2026-06-06T12:18:19.272Z"
       }
     },
     {
@@ -386,11 +1144,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Aurelius-Protocol/Aurelius-Protocol",
-        "latency_ms": 460,
+        "latency_ms": 582,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.609Z"
+        "verified_at": "2026-06-06T12:18:19.303Z"
       }
     },
     {
@@ -428,11 +1186,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 171,
+        "latency_ms": 167,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.621Z"
+        "verified_at": "2026-06-06T12:18:19.305Z"
       }
     },
     {
@@ -442,7 +1200,7 @@
       "kind": "docs",
       "name": "Aurelius Tensorplex subnet docs",
       "netuid": 37,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -470,11 +1228,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 345,
+        "latency_ms": 349,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.663Z"
+        "verified_at": "2026-06-06T12:18:19.330Z"
       }
     },
     {
@@ -484,7 +1242,7 @@
       "kind": "source-repo",
       "name": "Aurelius source repository",
       "netuid": 37,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -512,11 +1270,11 @@
         "classification": "live",
         "confidence_score": 65,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 303,
+        "latency_ms": 296,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.705Z"
+        "verified_at": "2026-06-06T12:18:19.334Z"
       }
     }
   ],
@@ -524,6 +1282,90 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-docs-1",
+      "kind": "docs",
+      "name": "Aurelius docs",
+      "netuid": 37,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "subnet_name": "Aurelius",
+      "subnet_slug": "sn-37",
+      "url": "https://docs.bittensor.com/",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 61,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 94,
+        "method_tested": "HEAD",
+        "redirect_target": "https://docs.learnbittensor.org/",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:19.178Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-5",
+      "kind": "subnet-api",
+      "name": "Aurelius API surface",
+      "netuid": 37,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "subnet_name": "Aurelius",
+      "subnet_slug": "sn-37",
+      "url": "https://new-collector-api-production.up.railway.app/health",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "application/json",
+        "latency_ms": 357,
+        "method_tested": "GET",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:19.197Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-37-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Aurelius TaoMarketCap dashboard",
@@ -556,11 +1398,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 275,
+        "latency_ms": 136,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.601Z"
+        "verified_at": "2026-06-06T12:18:19.272Z"
       }
     },
     {
@@ -599,11 +1441,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Aurelius-Protocol/Aurelius-Protocol",
-        "latency_ms": 460,
+        "latency_ms": 582,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.609Z"
+        "verified_at": "2026-06-06T12:18:19.303Z"
       }
     },
     {
@@ -641,11 +1483,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 171,
+        "latency_ms": 167,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.621Z"
+        "verified_at": "2026-06-06T12:18:19.305Z"
       }
     },
     {
@@ -655,7 +1497,7 @@
       "kind": "docs",
       "name": "Aurelius Tensorplex subnet docs",
       "netuid": 37,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -683,11 +1525,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 345,
+        "latency_ms": 349,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.663Z"
+        "verified_at": "2026-06-06T12:18:19.330Z"
       }
     },
     {
@@ -697,7 +1539,7 @@
       "kind": "source-repo",
       "name": "Aurelius source repository",
       "netuid": 37,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -725,11 +1567,11 @@
         "classification": "live",
         "confidence_score": 65,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 303,
+        "latency_ms": 296,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.705Z"
+        "verified_at": "2026-06-06T12:18:19.334Z"
       }
     }
   ]

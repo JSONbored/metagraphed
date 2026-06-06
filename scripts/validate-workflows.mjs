@@ -88,6 +88,17 @@ for (const workflow of workflows) {
       "intake import must use the checked-in import script",
     );
   }
+  if (
+    ["validate.yml", "sync-subnets.yml", "publish-cloudflare.yml"].includes(
+      workflow,
+    )
+  ) {
+    check(
+      content.includes("npm run validate:docs"),
+      workflow,
+      "workflow must validate public documentation contracts",
+    );
+  }
 }
 
 if (errors.length > 0) {

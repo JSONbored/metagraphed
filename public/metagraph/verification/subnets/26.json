@@ -1,10 +1,43 @@
 {
-  "candidate_count": 5,
+  "candidate_count": 15,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Perturb",
   "netuid": 26,
   "results": [
+    {
+      "candidate_id": "sn-26-github-readme-0xsigurd-perturb-subnet-api-1",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "application/json; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 167,
+      "method_tested": "HEAD",
+      "name": "Perturb API surface",
+      "netuid": 26,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/0xsigurd/Perturb/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/0xsigurd/Perturb/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://api.pexels.com/v1/search",
+      "verified_at": "2026-06-06T12:18:16.619Z"
+    },
     {
       "candidate_id": "sn-26-taomarketcap-dashboard",
       "classification": "live",
@@ -12,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 144,
+      "latency_ms": 182,
       "method_tested": "HEAD",
       "name": "Perturb TaoMarketCap dashboard",
       "netuid": 26,
@@ -36,31 +69,30 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/26",
-      "verified_at": "2026-06-06T07:43:55.673Z"
+      "verified_at": "2026-06-06T12:18:16.625Z"
     },
     {
+      "archived": false,
       "candidate_id": "sn-26-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
-      "error": null,
-      "github_api_status": 403,
+      "confidence_score": 80,
+      "default_branch": "main",
+      "description": null,
       "github_api_url": "https://api.github.com/repos/0xsigurd/Perturb",
+      "homepage": null,
+      "html_url": "https://github.com/0xsigurd/Perturb",
       "kind": "source-repo",
-      "latency_ms": 541,
-      "method_tested": "HEAD",
+      "last_push_at": "2026-05-27T18:44:37Z",
       "name": "Perturb source repository",
       "netuid": 26,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/26",
@@ -68,9 +100,9 @@
         "https://api.taomarketcap.com/public/v1/subnets/26"
       ],
       "status": "ok",
-      "status_code": 200,
+      "topics": [],
       "url": "https://github.com/0xsigurd/Perturb",
-      "verified_at": "2026-06-06T07:43:55.680Z"
+      "verified_at": "2026-06-06T12:18:16.627Z"
     },
     {
       "candidate_id": "sn-26-taomarketcap-website",
@@ -79,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 204,
+      "latency_ms": 166,
       "method_tested": "HEAD",
       "name": "Perturb website",
       "netuid": 26,
@@ -103,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.perturbai.io/",
-      "verified_at": "2026-06-06T07:43:55.712Z"
+      "verified_at": "2026-06-06T12:18:16.656Z"
     },
     {
       "candidate_id": "sn-26-tensorplex-docs",
@@ -112,7 +144,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 273,
+      "latency_ms": 371,
       "method_tested": "HEAD",
       "name": "Perturb Tensorplex subnet docs",
       "netuid": 26,
@@ -136,17 +168,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/26",
-      "verified_at": "2026-06-06T07:43:55.756Z"
+      "verified_at": "2026-06-06T12:18:16.690Z"
     },
     {
       "candidate_id": "sn-26-tensorplex-source-repo-1",
       "classification": "dead",
       "confidence_score": 0,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 404,
       "github_api_url": "https://api.github.com/repos/threetau/kinitro",
       "kind": "source-repo",
-      "latency_ms": 157,
+      "latency_ms": 200,
       "method_tested": "HEAD",
       "name": "Perturb source repository",
       "netuid": 26,
@@ -170,24 +202,323 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://github.com/threetau/kinitro",
-      "verified_at": "2026-06-06T07:43:55.792Z"
+      "verified_at": "2026-06-06T12:18:16.697Z"
+    },
+    {
+      "candidate_id": "sn-26-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 72,
+      "method_tested": "GET",
+      "name": "Perturb API",
+      "netuid": 26,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.perturbai.io/",
+      "source_urls": [
+        "https://www.perturbai.io/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.perturbai.io/api",
+      "verified_at": "2026-06-06T12:18:16.741Z"
+    },
+    {
+      "candidate_id": "sn-26-website-common-docs",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 49,
+      "method_tested": "GET",
+      "name": "Perturb docs",
+      "netuid": 26,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.perturbai.io/",
+      "source_urls": [
+        "https://www.perturbai.io/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.perturbai.io/docs",
+      "verified_at": "2026-06-06T12:18:16.774Z"
+    },
+    {
+      "candidate_id": "sn-26-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 85,
+      "method_tested": "GET",
+      "name": "Perturb health endpoint",
+      "netuid": 26,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.perturbai.io/",
+      "source_urls": [
+        "https://www.perturbai.io/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.perturbai.io/health",
+      "verified_at": "2026-06-06T12:18:16.777Z"
+    },
+    {
+      "candidate_id": "sn-26-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 49,
+      "method_tested": "GET",
+      "name": "Perturb OpenAPI JSON",
+      "netuid": 26,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.perturbai.io/",
+      "source_urls": [
+        "https://www.perturbai.io/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.perturbai.io/openapi.json",
+      "verified_at": "2026-06-06T12:18:16.786Z"
+    },
+    {
+      "candidate_id": "sn-26-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 43,
+      "method_tested": "GET",
+      "name": "Perturb Swagger UI",
+      "netuid": 26,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.perturbai.io/",
+      "source_urls": [
+        "https://www.perturbai.io/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.perturbai.io/swagger",
+      "verified_at": "2026-06-06T12:18:16.796Z"
+    },
+    {
+      "candidate_id": "sn-26-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 64,
+      "method_tested": "GET",
+      "name": "Perturb Swagger JSON",
+      "netuid": 26,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.perturbai.io/",
+      "source_urls": [
+        "https://www.perturbai.io/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.perturbai.io/swagger.json",
+      "verified_at": "2026-06-06T12:18:16.806Z"
+    },
+    {
+      "candidate_id": "sn-26-website-link-www-perturbai-io-docs-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 145,
+      "method_tested": "HEAD",
+      "name": "Perturb docs",
+      "netuid": 26,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.perturbai.io/",
+      "source_urls": [
+        "https://www.perturbai.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.perturbai.io/whitepaper",
+      "verified_at": "2026-06-06T12:18:16.810Z"
+    },
+    {
+      "candidate_id": "sn-26-website-link-www-perturbai-io-website-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 175,
+      "method_tested": "HEAD",
+      "name": "Perturb website page",
+      "netuid": 26,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.perturbai.io/",
+      "source_urls": [
+        "https://www.perturbai.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.perturbai.io/blog",
+      "verified_at": "2026-06-06T12:18:16.814Z"
+    },
+    {
+      "candidate_id": "sn-26-website-link-www-perturbai-io-website-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 63,
+      "method_tested": "HEAD",
+      "name": "Perturb website page",
+      "netuid": 26,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.perturbai.io/",
+      "source_urls": [
+        "https://www.perturbai.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.perturbai.io/playground",
+      "verified_at": "2026-06-06T12:18:16.821Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-26",
   "summary": {
     "by_classification": {
-      "dead": 1,
-      "live": 4
+      "dead": 7,
+      "live": 8
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "docs": 3,
+      "openapi": 3,
       "source-repo": 2,
-      "website": 1
+      "subnet-api": 3,
+      "website": 3
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 13,
       "tensorplex-subnet-docs": 2
     }
   }

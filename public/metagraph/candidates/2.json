@@ -2,6 +2,226 @@
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-2",
+      "kind": "dashboard",
+      "name": "DSperse dashboard",
+      "netuid": 2,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "DSperse",
+      "url": "https://sn2-stats.inferencelabs.com/",
+      "verification": {
+        "candidate_id": "sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-2",
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "dashboard",
+        "latency_ms": 115,
+        "method_tested": "HEAD",
+        "name": "DSperse dashboard",
+        "netuid": 2,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://sn2-stats.inferencelabs.com/",
+        "verified_at": "2026-06-06T12:18:09.448Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-3",
+      "kind": "dashboard",
+      "name": "DSperse dashboard",
+      "netuid": 2,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "DSperse",
+      "url": "https://wandb.ai/inferencelabs/subnet-2",
+      "verification": {
+        "candidate_id": "sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-3",
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "dashboard",
+        "latency_ms": 182,
+        "method_tested": "HEAD",
+        "name": "DSperse dashboard",
+        "netuid": 2,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://wandb.ai/inferencelabs/subnet-2",
+        "verified_at": "2026-06-06T12:18:09.496Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-2-github-readme-inference-labs-inc-subnet-2-docs-1",
+      "kind": "docs",
+      "name": "DSperse docs",
+      "netuid": 2,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "DSperse",
+      "url": "https://sn2-docs.inferencelabs.com/",
+      "verification": {
+        "candidate_id": "sn-2-github-readme-inference-labs-inc-subnet-2-docs-1",
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 230,
+        "method_tested": "HEAD",
+        "name": "DSperse docs",
+        "netuid": 2,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://sn2-docs.inferencelabs.com/",
+        "verified_at": "2026-06-06T12:18:09.545Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-2-github-readme-inference-labs-inc-subnet-2-docs-4",
+      "kind": "docs",
+      "name": "DSperse docs",
+      "netuid": 2,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "DSperse",
+      "url": "https://docs.bittensor.com/getting-started/installation",
+      "verification": {
+        "candidate_id": "sn-2-github-readme-inference-labs-inc-subnet-2-docs-4",
+        "classification": "redirected",
+        "confidence_score": 61,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 363,
+        "method_tested": "HEAD",
+        "name": "DSperse docs",
+        "netuid": 2,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": "https://docs.learnbittensor.org/getting-started/installation",
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://docs.bittensor.com/getting-started/installation",
+        "verified_at": "2026-06-06T12:18:09.545Z"
+      }
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-2-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -28,7 +248,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 328,
+        "latency_ms": 135,
         "method_tested": "HEAD",
         "name": "DSperse TaoMarketCap dashboard",
         "netuid": 2,
@@ -52,7 +272,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/2",
-        "verified_at": "2026-06-06T07:43:50.769Z"
+        "verified_at": "2026-06-06T12:18:09.563Z"
       }
     },
     {
@@ -71,44 +291,49 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/2",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/2"
+        "https://api.taomarketcap.com/public/v1/subnets/2",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/2/subnet.json"
       ],
       "state": "schema-valid",
       "subnet_name": "DSperse",
       "url": "https://github.com/inference-labs-inc/subnet-2",
       "verification": {
+        "archived": false,
         "candidate_id": "sn-2-taomarketcap-source-repo",
         "classification": "live",
-        "confidence_score": 59,
-        "error": null,
-        "github_api_status": 403,
+        "confidence_score": 80,
+        "default_branch": "main",
+        "description": "Verifiable inference on Bittensor",
         "github_api_url": "https://api.github.com/repos/inference-labs-inc/subnet-2",
+        "homepage": "https://subnet2.inferencelabs.com/",
+        "html_url": "https://github.com/inference-labs-inc/subnet-2",
         "kind": "source-repo",
-        "latency_ms": 1361,
-        "method_tested": "HEAD",
+        "last_push_at": "2026-06-04T02:15:53Z",
         "name": "DSperse source repository",
         "netuid": 2,
-        "private_redirect_blocked": false,
         "provider": "taomarketcap",
         "quality_signals": {
-          "content_type_matches_kind": true,
+          "archived": false,
+          "has_default_branch": true,
+          "has_recent_push_metadata": true,
           "public_safe": true,
-          "rate_limited": false,
-          "redirected": false,
-          "source_tier": "third-party-index",
-          "transient_failure": false
+          "source_tier": "third-party-index"
         },
-        "redirect_target": null,
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/2",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/2"
+          "https://api.taomarketcap.com/public/v1/subnets/2",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/2/subnet.json"
         ],
         "status": "ok",
-        "status_code": 200,
+        "topics": [
+          "bittensor",
+          "zk",
+          "zkml"
+        ],
         "url": "https://github.com/inference-labs-inc/subnet-2",
-        "verified_at": "2026-06-06T07:43:50.769Z"
+        "verified_at": "2026-06-06T12:18:09.593Z"
       }
     },
     {
@@ -139,7 +364,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 222,
+        "latency_ms": 133,
         "method_tested": "HEAD",
         "name": "DSperse website",
         "netuid": 2,
@@ -163,7 +388,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://subnet2.inferencelabs.com/",
-        "verified_at": "2026-06-06T07:43:50.770Z"
+        "verified_at": "2026-06-06T12:18:09.607Z"
       }
     },
     {
@@ -176,7 +401,7 @@
       "provider": "taopedia-articles",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "taopedia-article",
@@ -194,7 +419,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 712,
+        "latency_ms": 495,
         "method_tested": "HEAD",
         "name": "DSperse Taopedia article",
         "netuid": 2,
@@ -218,7 +443,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_2/index.mdx",
-        "verified_at": "2026-06-06T07:43:50.770Z"
+        "verified_at": "2026-06-06T12:18:09.612Z"
       }
     },
     {
@@ -231,7 +456,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -249,7 +474,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 583,
+        "latency_ms": 340,
         "method_tested": "HEAD",
         "name": "DSperse Tensorplex subnet docs",
         "netuid": 2,
@@ -273,7 +498,337 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/2",
-        "verified_at": "2026-06-06T07:43:50.771Z"
+        "verified_at": "2026-06-06T12:18:09.613Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-2-website-common-api",
+      "kind": "subnet-api",
+      "name": "DSperse API",
+      "netuid": 2,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://subnet2.inferencelabs.com/",
+      "source_urls": [
+        "https://subnet2.inferencelabs.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "DSperse",
+      "url": "https://subnet2.inferencelabs.com/api",
+      "verification": {
+        "candidate_id": "sn-2-website-common-api",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 117,
+        "method_tested": "HEAD",
+        "name": "DSperse API",
+        "netuid": 2,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://subnet2.inferencelabs.com/",
+        "source_urls": [
+          "https://subnet2.inferencelabs.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://subnet2.inferencelabs.com/api",
+        "verified_at": "2026-06-06T12:18:09.614Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-2-website-common-docs",
+      "kind": "docs",
+      "name": "DSperse docs",
+      "netuid": 2,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://subnet2.inferencelabs.com/",
+      "source_urls": [
+        "https://subnet2.inferencelabs.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "DSperse",
+      "url": "https://subnet2.inferencelabs.com/docs",
+      "verification": {
+        "candidate_id": "sn-2-website-common-docs",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 158,
+        "method_tested": "HEAD",
+        "name": "DSperse docs",
+        "netuid": 2,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://subnet2.inferencelabs.com/",
+        "source_urls": [
+          "https://subnet2.inferencelabs.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://subnet2.inferencelabs.com/docs",
+        "verified_at": "2026-06-06T12:18:09.634Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-2-website-common-health",
+      "kind": "subnet-api",
+      "name": "DSperse health endpoint",
+      "netuid": 2,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://subnet2.inferencelabs.com/",
+      "source_urls": [
+        "https://subnet2.inferencelabs.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "DSperse",
+      "url": "https://subnet2.inferencelabs.com/health",
+      "verification": {
+        "candidate_id": "sn-2-website-common-health",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 136,
+        "method_tested": "HEAD",
+        "name": "DSperse health endpoint",
+        "netuid": 2,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://subnet2.inferencelabs.com/",
+        "source_urls": [
+          "https://subnet2.inferencelabs.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://subnet2.inferencelabs.com/health",
+        "verified_at": "2026-06-06T12:18:09.678Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-2-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "DSperse OpenAPI JSON",
+      "netuid": 2,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://subnet2.inferencelabs.com/",
+      "source_urls": [
+        "https://subnet2.inferencelabs.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "DSperse",
+      "url": "https://subnet2.inferencelabs.com/openapi.json",
+      "verification": {
+        "candidate_id": "sn-2-website-common-openapi-json",
+        "classification": "content-mismatch",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 125,
+        "method_tested": "HEAD",
+        "name": "DSperse OpenAPI JSON",
+        "netuid": 2,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": false,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://subnet2.inferencelabs.com/",
+        "source_urls": [
+          "https://subnet2.inferencelabs.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://subnet2.inferencelabs.com/openapi.json",
+        "verified_at": "2026-06-06T12:18:09.698Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-2-website-common-swagger",
+      "kind": "openapi",
+      "name": "DSperse Swagger UI",
+      "netuid": 2,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://subnet2.inferencelabs.com/",
+      "source_urls": [
+        "https://subnet2.inferencelabs.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "DSperse",
+      "url": "https://subnet2.inferencelabs.com/swagger",
+      "verification": {
+        "candidate_id": "sn-2-website-common-swagger",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 43,
+        "method_tested": "HEAD",
+        "name": "DSperse Swagger UI",
+        "netuid": 2,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://subnet2.inferencelabs.com/",
+        "source_urls": [
+          "https://subnet2.inferencelabs.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://subnet2.inferencelabs.com/swagger",
+        "verified_at": "2026-06-06T12:18:09.732Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-2-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "DSperse Swagger JSON",
+      "netuid": 2,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://subnet2.inferencelabs.com/",
+      "source_urls": [
+        "https://subnet2.inferencelabs.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "DSperse",
+      "url": "https://subnet2.inferencelabs.com/swagger.json",
+      "verification": {
+        "candidate_id": "sn-2-website-common-swagger-json",
+        "classification": "content-mismatch",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 52,
+        "method_tested": "HEAD",
+        "name": "DSperse Swagger JSON",
+        "netuid": 2,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": false,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://subnet2.inferencelabs.com/",
+        "source_urls": [
+          "https://subnet2.inferencelabs.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://subnet2.inferencelabs.com/swagger.json",
+        "verified_at": "2026-06-06T12:18:09.739Z"
       }
     }
   ],

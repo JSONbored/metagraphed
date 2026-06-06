@@ -11,6 +11,13 @@ npm ci
 npm run pipeline:check
 ```
 
+Before opening a PR that changes public contracts, also run:
+
+```bash
+npm run test:coverage
+git diff --check
+```
+
 For smaller changes, run the focused checks that match the files you touched:
 
 ```bash
@@ -29,6 +36,8 @@ npm run scan:public-safety
 - Third-party directories, docs, GitHub READMEs, and websites are enrichment sources only.
 - Do not add secrets, PATs, wallet paths, private dashboards, private URLs, validator-local state, or credentialed API flows.
 - Do not invent API/status surfaces for subnets that do not publish them.
+- Preserve raw native chain values separately from curated display metadata.
+- Treat duplicate `netuid + kind + URL` records as data-quality bugs.
 
 ## Community Intake
 
@@ -56,3 +65,10 @@ npm run pipeline:refresh
 ```
 
 for full local refreshes. Set `METAGRAPH_WRITE_PROBE_RESULTS=1` only when you intentionally want live probe artifacts updated.
+
+## Pull Requests
+
+- Use short, focused PRs with Conventional Commit-style titles.
+- Include the relevant validation commands in the PR body.
+- Do not include local paths, machine-specific setup, raw environment dumps, or private research notes.
+- Keep UI/frontend work out of this repo; this repo owns backend data contracts and generated JSON.

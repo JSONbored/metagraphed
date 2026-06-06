@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 514,
+        "latency_ms": 158,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:09.390Z"
+        "verified_at": "2026-06-06T12:18:43.202Z"
       }
     },
     {
@@ -55,7 +55,7 @@
       "kind": "docs",
       "name": "hard_sign Tensorplex subnet docs",
       "netuid": 116,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 452,
+        "latency_ms": 334,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:09.401Z"
+        "verified_at": "2026-06-06T12:18:43.204Z"
       }
     }
   ]

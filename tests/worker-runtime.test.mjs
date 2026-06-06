@@ -541,6 +541,13 @@ describe("Worker runtime", () => {
           ),
       ],
       [
+        "https://metagraph.sh/api/v1/health/history/2026-06-06?limit=2",
+        (body) =>
+          body.data.date === "2026-06-06" &&
+          body.data.surfaces.length <= 2 &&
+          body.meta.pagination.collection === "surfaces",
+      ],
+      [
         "https://metagraph.sh/api/v1/providers/allways",
         (body) => body.data.provider.id === "allways",
       ],
@@ -550,6 +557,26 @@ describe("Worker runtime", () => {
       const response = await handleRequest(new Request(url), env, {});
       assert.equal(response.status, 200, url);
       assert.equal(predicate(await response.json()), true, url);
+    }
+  });
+
+  test("rejects malformed documented query parameters", async () => {
+    const routes = [
+      "https://metagraph.sh/api/v1/subnets?limit=0",
+      "https://metagraph.sh/api/v1/subnets?cursor=-1",
+      "https://metagraph.sh/api/v1/subnets?order=sideways",
+      "https://metagraph.sh/api/v1/subnets?sort=unknown_field",
+      "https://metagraph.sh/api/v1/subnets?netuid=not-a-number",
+    ];
+
+    for (const url of routes) {
+      const response = await handleRequest(new Request(url), env, {});
+      assert.equal(response.status, 400, url);
+      assert.equal(
+        response.headers.get("x-metagraph-error-code"),
+        "invalid_query",
+      );
+      assert.equal((await response.json()).error.code, "invalid_query");
     }
   });
 });

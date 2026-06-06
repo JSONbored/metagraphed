@@ -37,7 +37,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/128",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/128"
+        "https://api.taomarketcap.com/public/v1/subnets/128",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/128/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/byteleapai/byteleap-Miner"
@@ -73,7 +74,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -94,7 +95,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -104,6 +105,132 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/byteleapai/byteleap-Validator"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-128-website-common-api",
+      "kind": "subnet-api",
+      "name": "ByteLeap API",
+      "netuid": 128,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://byteleap.ai/",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://byteleap.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-128-website-common-docs",
+      "kind": "docs",
+      "name": "ByteLeap docs",
+      "netuid": 128,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://byteleap.ai/",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://byteleap.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-128-website-common-health",
+      "kind": "subnet-api",
+      "name": "ByteLeap health endpoint",
+      "netuid": 128,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://byteleap.ai/",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://byteleap.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-128-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "ByteLeap OpenAPI JSON",
+      "netuid": 128,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://byteleap.ai/",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://byteleap.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-128-website-common-swagger",
+      "kind": "openapi",
+      "name": "ByteLeap Swagger UI",
+      "netuid": 128,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://byteleap.ai/",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://byteleap.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-128-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "ByteLeap Swagger JSON",
+      "netuid": 128,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://byteleap.ai/",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://byteleap.ai/swagger.json"
     }
   ],
   "candidates": [
@@ -144,7 +271,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/128",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/128"
+        "https://api.taomarketcap.com/public/v1/subnets/128",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/128/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/byteleapai/byteleap-Miner"
@@ -180,7 +308,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -201,7 +329,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -211,17 +339,141 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/byteleapai/byteleap-Validator"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-128-website-common-api",
+      "kind": "subnet-api",
+      "name": "ByteLeap API",
+      "netuid": 128,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://byteleap.ai/",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://byteleap.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-128-website-common-docs",
+      "kind": "docs",
+      "name": "ByteLeap docs",
+      "netuid": 128,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://byteleap.ai/",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://byteleap.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-128-website-common-health",
+      "kind": "subnet-api",
+      "name": "ByteLeap health endpoint",
+      "netuid": 128,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://byteleap.ai/",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://byteleap.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-128-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "ByteLeap OpenAPI JSON",
+      "netuid": 128,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://byteleap.ai/",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://byteleap.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-128-website-common-swagger",
+      "kind": "openapi",
+      "name": "ByteLeap Swagger UI",
+      "netuid": 128,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://byteleap.ai/",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://byteleap.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-128-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "ByteLeap Swagger JSON",
+      "netuid": 128,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://byteleap.ai/",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://byteleap.ai/swagger.json"
     }
   ],
   "gaps": {
     "gap_notes": [
-      "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
       "No verified SSE/event stream yet.",
       "No verified data artifact yet."
     ],
     "missing_kinds": [
-      "openapi",
       "subnet-api",
       "sse",
       "data-artifact"
@@ -229,6 +481,7 @@
     "supported_kinds": [
       "dashboard",
       "docs",
+      "openapi",
       "source-repo",
       "website"
     ]
@@ -236,15 +489,14 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 5,
+    "block": 8347420,
+    "candidate_count": 11,
     "categories": [
       "baseline-curated"
     ],
     "coverage_level": "probed",
     "curation": {
       "gap_notes": [
-        "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
         "No verified SSE/event stream yet.",
         "No verified data artifact yet."
@@ -252,21 +504,19 @@
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 2,
-      "verified_at": "2026-06-06T07:44:11.023Z"
+      "source_count": 3,
+      "verified_at": "2026-06-06T12:18:46.291Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/128",
     "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/128",
     "gaps": {
       "gap_notes": [
-        "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
         "No verified SSE/event stream yet.",
         "No verified data artifact yet."
       ],
       "missing_kinds": [
-        "openapi",
         "subnet-api",
         "sse",
         "data-artifact"
@@ -274,6 +524,7 @@
       "supported_kinds": [
         "dashboard",
         "docs",
+        "openapi",
         "source-repo",
         "website"
       ]
@@ -282,18 +533,23 @@
     "mechanism_count": 1,
     "name": "ByteLeap",
     "native_name": "ByteLeap",
+    "native_name_quality": "chain",
     "native_slug": "byteleap",
     "netuid": 128,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 256,
-    "probed_surface_count": 5,
+    "probed_surface_count": 7,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -302,7 +558,7 @@
     "source_repo": "https://github.com/byteleapai/byteleap-Miner",
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 5,
+    "surface_count": 7,
     "symbol": "න",
     "tempo": 360,
     "website_url": "https://byteleap.ai/"
@@ -347,7 +603,7 @@
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.890Z"
+        "verified_at": "2026-06-06T12:18:45.870Z"
       }
     },
     {
@@ -376,7 +632,8 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/128"
+        "https://api.taomarketcap.com/public/v1/subnets/128",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/128/subnet.json"
       ],
       "subnet_name": "ByteLeap",
       "subnet_slug": "sn-128",
@@ -386,11 +643,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/byteleapai/byteleap-Miner",
-        "latency_ms": 402,
+        "latency_ms": 365,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.973Z"
+        "verified_at": "2026-06-06T12:18:45.961Z"
       }
     },
     {
@@ -428,11 +685,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 666,
+        "latency_ms": 268,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.994Z"
+        "verified_at": "2026-06-06T12:18:45.989Z"
       }
     },
     {
@@ -442,7 +699,7 @@
       "kind": "docs",
       "name": "ByteLeap Tensorplex subnet docs",
       "netuid": 128,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -470,11 +727,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 359,
+        "latency_ms": 286,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.995Z"
+        "verified_at": "2026-06-06T12:18:46.004Z"
       }
     },
     {
@@ -484,7 +741,7 @@
       "kind": "source-repo",
       "name": "ByteLeap source repository",
       "netuid": 128,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -513,11 +770,96 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/byteleapai/byteleap-Validator",
-        "latency_ms": 497,
+        "latency_ms": 509,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:11.023Z"
+        "verified_at": "2026-06-06T12:18:46.024Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-128-website-common-docs",
+      "kind": "docs",
+      "name": "ByteLeap docs",
+      "netuid": 128,
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "subnet_name": "ByteLeap",
+      "subnet_slug": "sn-128",
+      "url": "https://byteleap.ai/docs",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html",
+        "latency_ms": 280,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:46.136Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-128-website-common-swagger",
+      "kind": "openapi",
+      "name": "ByteLeap Swagger UI",
+      "netuid": 128,
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "schema_status": "ui-only",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "subnet_name": "ByteLeap",
+      "subnet_slug": "sn-128",
+      "url": "https://byteleap.ai/swagger",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html",
+        "latency_ms": 490,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:46.291Z"
       }
     }
   ],
@@ -561,7 +903,7 @@
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.890Z"
+        "verified_at": "2026-06-06T12:18:45.870Z"
       }
     },
     {
@@ -590,7 +932,8 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/128"
+        "https://api.taomarketcap.com/public/v1/subnets/128",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/128/subnet.json"
       ],
       "subnet_name": "ByteLeap",
       "subnet_slug": "sn-128",
@@ -600,11 +943,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/byteleapai/byteleap-Miner",
-        "latency_ms": 402,
+        "latency_ms": 365,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.973Z"
+        "verified_at": "2026-06-06T12:18:45.961Z"
       }
     },
     {
@@ -642,11 +985,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 666,
+        "latency_ms": 268,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.994Z"
+        "verified_at": "2026-06-06T12:18:45.989Z"
       }
     },
     {
@@ -656,7 +999,7 @@
       "kind": "docs",
       "name": "ByteLeap Tensorplex subnet docs",
       "netuid": 128,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -684,11 +1027,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 359,
+        "latency_ms": 286,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.995Z"
+        "verified_at": "2026-06-06T12:18:46.004Z"
       }
     },
     {
@@ -698,7 +1041,7 @@
       "kind": "source-repo",
       "name": "ByteLeap source repository",
       "netuid": 128,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -727,11 +1070,96 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/byteleapai/byteleap-Validator",
-        "latency_ms": 497,
+        "latency_ms": 509,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:11.023Z"
+        "verified_at": "2026-06-06T12:18:46.024Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-128-website-common-docs",
+      "kind": "docs",
+      "name": "ByteLeap docs",
+      "netuid": 128,
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "subnet_name": "ByteLeap",
+      "subnet_slug": "sn-128",
+      "url": "https://byteleap.ai/docs",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html",
+        "latency_ms": 280,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:46.136Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-128-website-common-swagger",
+      "kind": "openapi",
+      "name": "ByteLeap Swagger UI",
+      "netuid": 128,
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "schema_status": "ui-only",
+      "source_urls": [
+        "https://byteleap.ai/"
+      ],
+      "subnet_name": "ByteLeap",
+      "subnet_slug": "sn-128",
+      "url": "https://byteleap.ai/swagger",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html",
+        "latency_ms": 490,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:46.291Z"
       }
     }
   ]

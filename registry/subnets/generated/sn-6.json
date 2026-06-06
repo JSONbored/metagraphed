@@ -12,10 +12,10 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 3,
-    "verified_at": "2026-06-06T07:43:52.377Z"
+    "source_count": 4,
+    "verified_at": "2026-06-06T12:18:10.508Z"
   },
-  "dashboard_url": "https://taomarketcap.com/subnets/6",
+  "dashboard_url": "https://app.hex.tech/1644b22a-abe5-4113-9d5f-3ad05e4a8de7/app/Numinous-031erYRYSssIrH3W3KcyHg/latest",
   "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
   "links": [],
   "name": "Numinous",
@@ -42,28 +42,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/6"
+        "https://api.taomarketcap.com/public/v1/subnets/6",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json"
       ],
       "url": "https://github.com/numinouslabs/numinous",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/numinouslabs/numinous",
-        "latency_ms": 1019,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-05T09:27:27Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.319Z"
+        "topics": [],
+        "verified_at": "2026-06-06T12:18:10.475Z"
       }
     },
     {
@@ -98,11 +100,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 770,
+        "latency_ms": 163,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.344Z"
+        "verified_at": "2026-06-06T12:18:10.492Z"
       }
     },
     {
@@ -111,7 +113,7 @@
       "id": "sn-6-taopedia-article",
       "kind": "docs",
       "name": "Numinous Taopedia article",
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +139,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1065,
+        "latency_ms": 384,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.347Z"
+        "verified_at": "2026-06-06T12:18:10.508Z"
       }
     },
     {
@@ -150,7 +152,7 @@
       "id": "sn-6-tensorplex-docs",
       "kind": "docs",
       "name": "Numinous Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +178,89 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1035,
+        "latency_ms": 280,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.377Z"
+        "verified_at": "2026-06-06T12:18:10.508Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-6-github-readme-numinouslabs-numinous-dashboard-1",
+      "kind": "dashboard",
+      "name": "Numinous dashboard",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/numinouslabs/numinous/blob/main/README.md"
+      ],
+      "url": "https://app.hex.tech/1644b22a-abe5-4113-9d5f-3ad05e4a8de7/app/Numinous-031erYRYSssIrH3W3KcyHg/latest",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 231,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:10.382Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-6-github-readme-numinouslabs-numinous-dashboard-2",
+      "kind": "dashboard",
+      "name": "Numinous dashboard",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/numinouslabs/numinous/blob/main/README.md"
+      ],
+      "url": "https://taostats.io/subnets/6/chart",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 316,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:10.386Z"
       }
     },
     {
@@ -215,11 +295,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 140,
+        "latency_ms": 135,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.272Z"
+        "verified_at": "2026-06-06T12:18:10.399Z"
       }
     }
   ],

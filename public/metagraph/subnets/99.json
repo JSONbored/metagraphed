@@ -2,6 +2,132 @@
   "candidate_surfaces": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-data-artifact-3",
+      "kind": "data-artifact",
+      "name": "Leoma data artifact",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://huggingface.co/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-docs-1",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.learnbittensor.org/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-docs-4",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.leoma.ai/storage"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-docs-5",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.leoma.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-subnet-api-2",
+      "kind": "subnet-api",
+      "name": "Leoma API surface",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.leoma.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-subnet-api-6",
+      "kind": "subnet-api",
+      "name": "Leoma API surface",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://api.leoma.ai/"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-99-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -73,7 +199,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -94,7 +220,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -104,11 +230,263 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/subnet99/neza"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-website-common-api",
+      "kind": "subnet-api",
+      "name": "Leoma API",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leoma.ai/",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://leoma.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-website-common-docs",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leoma.ai/",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://leoma.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-website-common-health",
+      "kind": "subnet-api",
+      "name": "Leoma health endpoint",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leoma.ai/",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://leoma.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Leoma OpenAPI JSON",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leoma.ai/",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://leoma.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-website-common-swagger",
+      "kind": "openapi",
+      "name": "Leoma Swagger UI",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leoma.ai/",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://leoma.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Leoma Swagger JSON",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leoma.ai/",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://leoma.ai/swagger.json"
     }
   ],
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-data-artifact-3",
+      "kind": "data-artifact",
+      "name": "Leoma data artifact",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://huggingface.co/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-docs-1",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.learnbittensor.org/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-docs-4",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.leoma.ai/storage"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-docs-5",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.leoma.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-subnet-api-2",
+      "kind": "subnet-api",
+      "name": "Leoma API surface",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.leoma.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-subnet-api-6",
+      "kind": "subnet-api",
+      "name": "Leoma API surface",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://api.leoma.ai/"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-99-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -180,7 +558,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -201,7 +579,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -211,24 +589,148 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/subnet99/neza"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-website-common-api",
+      "kind": "subnet-api",
+      "name": "Leoma API",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leoma.ai/",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://leoma.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-website-common-docs",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leoma.ai/",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://leoma.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-website-common-health",
+      "kind": "subnet-api",
+      "name": "Leoma health endpoint",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leoma.ai/",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://leoma.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Leoma OpenAPI JSON",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leoma.ai/",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://leoma.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-website-common-swagger",
+      "kind": "openapi",
+      "name": "Leoma Swagger UI",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leoma.ai/",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://leoma.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-99-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Leoma Swagger JSON",
+      "netuid": 99,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leoma.ai/",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://leoma.ai/swagger.json"
     }
   ],
   "gaps": {
     "gap_notes": [
-      "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
-      "No verified SSE/event stream yet.",
-      "No verified data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "missing_kinds": [
-      "openapi",
       "subnet-api",
-      "sse",
-      "data-artifact"
+      "sse"
     ],
     "supported_kinds": [
       "dashboard",
+      "data-artifact",
       "docs",
+      "openapi",
       "source-repo",
       "website"
     ]
@@ -236,44 +738,40 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 5,
+    "block": 8347420,
+    "candidate_count": 17,
     "categories": [
       "baseline-curated"
     ],
     "coverage_level": "probed",
     "curation": {
       "gap_notes": [
-        "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
-        "No verified SSE/event stream yet.",
-        "No verified data artifact yet."
+        "No verified SSE/event stream yet."
       ],
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 2,
-      "verified_at": "2026-06-06T07:44:07.548Z"
+      "source_count": 4,
+      "verified_at": "2026-06-06T12:18:37.936Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/99",
-    "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/99",
+    "docs_url": "https://docs.learnbittensor.org/",
     "gaps": {
       "gap_notes": [
-        "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
-        "No verified SSE/event stream yet.",
-        "No verified data artifact yet."
+        "No verified SSE/event stream yet."
       ],
       "missing_kinds": [
-        "openapi",
         "subnet-api",
-        "sse",
-        "data-artifact"
+        "sse"
       ],
       "supported_kinds": [
         "dashboard",
+        "data-artifact",
         "docs",
+        "openapi",
         "source-repo",
         "website"
       ]
@@ -282,18 +780,23 @@
     "mechanism_count": 1,
     "name": "Leoma",
     "native_name": "Leoma",
+    "native_name_quality": "chain",
     "native_slug": "leoma",
     "netuid": 99,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 256,
-    "probed_surface_count": 5,
+    "probed_surface_count": 10,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -302,7 +805,7 @@
     "source_repo": "https://github.com/RendixNetwork/leoma",
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 5,
+    "surface_count": 10,
     "symbol": "გ",
     "tempo": 360,
     "website_url": "https://leoma.ai/"
@@ -311,6 +814,174 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-data-artifact-3",
+      "kind": "data-artifact",
+      "name": "Leoma data artifact",
+      "netuid": 99,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-99",
+      "url": "https://huggingface.co/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 26,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.723Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-docs-1",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-99",
+      "url": "https://docs.learnbittensor.org/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 49,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.730Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-docs-4",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-99",
+      "url": "https://docs.leoma.ai/storage",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 198,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.749Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-docs-5",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-99",
+      "url": "https://docs.leoma.ai/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 226,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.750Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-99-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Leoma TaoMarketCap dashboard",
@@ -343,11 +1014,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 148,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.401Z"
+        "verified_at": "2026-06-06T12:18:37.782Z"
       }
     },
     {
@@ -386,11 +1057,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/RendixNetwork/leoma",
-        "latency_ms": 443,
+        "latency_ms": 385,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.425Z"
+        "verified_at": "2026-06-06T12:18:37.793Z"
       }
     },
     {
@@ -428,11 +1099,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 194,
+        "latency_ms": 170,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.425Z"
+        "verified_at": "2026-06-06T12:18:37.793Z"
       }
     },
     {
@@ -442,7 +1113,7 @@
       "kind": "docs",
       "name": "Leoma Tensorplex subnet docs",
       "netuid": 99,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -470,11 +1141,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 336,
+        "latency_ms": 352,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.509Z"
+        "verified_at": "2026-06-06T12:18:37.811Z"
       }
     },
     {
@@ -484,7 +1155,7 @@
       "kind": "source-repo",
       "name": "Leoma source repository",
       "netuid": 99,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -513,11 +1184,54 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/subnet99/neza",
-        "latency_ms": 450,
+        "latency_ms": 563,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.548Z"
+        "verified_at": "2026-06-06T12:18:37.819Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-99-website-common-swagger",
+      "kind": "openapi",
+      "name": "Leoma Swagger UI",
+      "netuid": 99,
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "schema_status": "ui-only",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-99",
+      "url": "https://leoma.ai/swagger",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 146,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.936Z"
       }
     }
   ],
@@ -525,6 +1239,174 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-data-artifact-3",
+      "kind": "data-artifact",
+      "name": "Leoma data artifact",
+      "netuid": 99,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-99",
+      "url": "https://huggingface.co/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 26,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.723Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-docs-1",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-99",
+      "url": "https://docs.learnbittensor.org/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 49,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.730Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-docs-4",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-99",
+      "url": "https://docs.leoma.ai/storage",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 198,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.749Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-99-github-readme-rendixnetwork-leoma-docs-5",
+      "kind": "docs",
+      "name": "Leoma docs",
+      "netuid": 99,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/RendixNetwork/leoma/blob/main/README.md"
+      ],
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-99",
+      "url": "https://docs.leoma.ai/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 226,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.750Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-99-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Leoma TaoMarketCap dashboard",
@@ -557,11 +1439,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 148,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.401Z"
+        "verified_at": "2026-06-06T12:18:37.782Z"
       }
     },
     {
@@ -600,11 +1482,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/RendixNetwork/leoma",
-        "latency_ms": 443,
+        "latency_ms": 385,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.425Z"
+        "verified_at": "2026-06-06T12:18:37.793Z"
       }
     },
     {
@@ -642,11 +1524,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 194,
+        "latency_ms": 170,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.425Z"
+        "verified_at": "2026-06-06T12:18:37.793Z"
       }
     },
     {
@@ -656,7 +1538,7 @@
       "kind": "docs",
       "name": "Leoma Tensorplex subnet docs",
       "netuid": 99,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -684,11 +1566,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 336,
+        "latency_ms": 352,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.509Z"
+        "verified_at": "2026-06-06T12:18:37.811Z"
       }
     },
     {
@@ -698,7 +1580,7 @@
       "kind": "source-repo",
       "name": "Leoma source repository",
       "netuid": 99,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -727,11 +1609,54 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/subnet99/neza",
-        "latency_ms": 450,
+        "latency_ms": 563,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.548Z"
+        "verified_at": "2026-06-06T12:18:37.819Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-99-website-common-swagger",
+      "kind": "openapi",
+      "name": "Leoma Swagger UI",
+      "netuid": 99,
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "schema_status": "ui-only",
+      "source_urls": [
+        "https://leoma.ai/"
+      ],
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-99",
+      "url": "https://leoma.ai/swagger",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 146,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.936Z"
       }
     }
   ]

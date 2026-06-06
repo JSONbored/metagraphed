@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 176,
+        "latency_ms": 139,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.620Z"
+        "verified_at": "2026-06-06T12:18:37.947Z"
       }
     },
     {
@@ -84,11 +84,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/PlatformNetwork/platform",
-        "latency_ms": 522,
+        "latency_ms": 557,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.629Z"
+        "verified_at": "2026-06-06T12:18:37.963Z"
       }
     },
     {
@@ -126,11 +126,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 376,
+        "latency_ms": 422,
         "method_tested": "HEAD",
         "redirect_target": "https://www.platform.network/",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.676Z"
+        "verified_at": "2026-06-06T12:18:37.969Z"
       }
     },
     {
@@ -140,7 +140,7 @@
       "kind": "docs",
       "name": "Plaτform Tensorplex subnet docs",
       "netuid": 100,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -168,11 +168,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 312,
+        "latency_ms": 342,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.702Z"
+        "verified_at": "2026-06-06T12:18:37.976Z"
       }
     },
     {
@@ -182,7 +182,7 @@
       "kind": "source-repo",
       "name": "Plaτform source repository",
       "netuid": 100,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -211,11 +211,11 @@
         "confidence_score": 50,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/CortexLM/platform",
-        "latency_ms": 458,
+        "latency_ms": 514,
         "method_tested": "HEAD",
         "redirect_target": "https://github.com/PlatformNetwork/platform",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.705Z"
+        "verified_at": "2026-06-06T12:18:38.002Z"
       }
     },
     {
@@ -225,7 +225,7 @@
       "kind": "source-repo",
       "name": "Plaτform source repository",
       "netuid": 100,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +253,53 @@
         "classification": "live",
         "confidence_score": 65,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 444,
+        "latency_ms": 405,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.741Z"
+        "verified_at": "2026-06-06T12:18:38.062Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-100-website-common-docs",
+      "kind": "docs",
+      "name": "Plaτform docs",
+      "netuid": 100,
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://platform.network/"
+      ],
+      "subnet_name": "Plaτform",
+      "subnet_slug": "sn-100",
+      "url": "https://platform.network/docs",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 71,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 317,
+        "method_tested": "HEAD",
+        "redirect_target": "https://www.platform.network/docs",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:38.082Z"
       }
     }
   ]

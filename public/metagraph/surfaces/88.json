@@ -9,6 +9,175 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-88-github-readme-mobiusfund-investing-dashboard-1",
+      "kind": "dashboard",
+      "name": "Investing dashboard",
+      "netuid": 88,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/mobiusfund/investing/blob/main/README.md",
+        "https://investing88.ai/"
+      ],
+      "subnet_name": "Investing",
+      "subnet_slug": "sn-88",
+      "url": "https://db.investing88.ai/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 272,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:33.166Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-88-github-readme-mobiusfund-investing-docs-2",
+      "kind": "docs",
+      "name": "Investing docs",
+      "netuid": 88,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/mobiusfund/investing/blob/main/README.md"
+      ],
+      "subnet_name": "Investing",
+      "subnet_slug": "sn-88",
+      "url": "https://docs.learnbittensor.org/miners",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 45,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:33.174Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-88-github-readme-mobiusfund-investing-docs-3",
+      "kind": "docs",
+      "name": "Investing docs",
+      "netuid": 88,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/mobiusfund/investing/blob/main/README.md"
+      ],
+      "subnet_name": "Investing",
+      "subnet_slug": "sn-88",
+      "url": "https://docs.learnbittensor.org/learn/slippage",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 50,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:33.219Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-88-github-readme-mobiusfund-investing-subnet-api-5",
+      "kind": "subnet-api",
+      "name": "Investing API surface",
+      "netuid": 88,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/mobiusfund/investing/blob/main/README.md"
+      ],
+      "subnet_name": "Investing",
+      "subnet_slug": "sn-88",
+      "url": "https://api.investing88.ai/ratio",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "application/json",
+        "latency_ms": 87,
+        "method_tested": "GET",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:33.242Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-88-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Investing TaoMarketCap dashboard",
@@ -41,11 +210,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 142,
+        "latency_ms": 131,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.957Z"
+        "verified_at": "2026-06-06T12:18:33.250Z"
       }
     },
     {
@@ -74,7 +243,8 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/88"
+        "https://api.taomarketcap.com/public/v1/subnets/88",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/88/subnet.json"
       ],
       "subnet_name": "Investing",
       "subnet_slug": "sn-88",
@@ -84,11 +254,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/mobiusfund/investing",
-        "latency_ms": 448,
+        "latency_ms": 545,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.965Z"
+        "verified_at": "2026-06-06T12:18:33.266Z"
       }
     },
     {
@@ -126,11 +296,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 293,
+        "latency_ms": 274,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:06.027Z"
+        "verified_at": "2026-06-06T12:18:33.269Z"
       }
     },
     {
@@ -140,7 +310,7 @@
       "kind": "docs",
       "name": "Investing Tensorplex subnet docs",
       "netuid": 88,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -168,11 +338,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 420,
+        "latency_ms": 346,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:06.046Z"
+        "verified_at": "2026-06-06T12:18:33.298Z"
       }
     }
   ]

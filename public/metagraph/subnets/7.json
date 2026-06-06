@@ -37,7 +37,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/7",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/7"
+        "https://api.taomarketcap.com/public/v1/subnets/7",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/7/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/entrius/allways"
@@ -73,7 +74,7 @@
       "provider": "taopedia-articles",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "taopedia-article",
@@ -94,7 +95,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -104,6 +105,132 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/7"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-7-website-common-api",
+      "kind": "subnet-api",
+      "name": "Allways API",
+      "netuid": 7,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://all-ways.io/",
+      "source_urls": [
+        "https://all-ways.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://all-ways.io/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-7-website-common-docs",
+      "kind": "docs",
+      "name": "Allways docs",
+      "netuid": 7,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://all-ways.io/",
+      "source_urls": [
+        "https://all-ways.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://all-ways.io/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-7-website-common-health",
+      "kind": "subnet-api",
+      "name": "Allways health endpoint",
+      "netuid": 7,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://all-ways.io/",
+      "source_urls": [
+        "https://all-ways.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://all-ways.io/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-7-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Allways OpenAPI JSON",
+      "netuid": 7,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://all-ways.io/",
+      "source_urls": [
+        "https://all-ways.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://all-ways.io/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-7-website-common-swagger",
+      "kind": "openapi",
+      "name": "Allways Swagger UI",
+      "netuid": 7,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://all-ways.io/",
+      "source_urls": [
+        "https://all-ways.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://all-ways.io/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-7-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Allways Swagger JSON",
+      "netuid": 7,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://all-ways.io/",
+      "source_urls": [
+        "https://all-ways.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://all-ways.io/swagger.json"
     }
   ],
   "candidates": [
@@ -144,7 +271,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/7",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/7"
+        "https://api.taomarketcap.com/public/v1/subnets/7",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/7/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/entrius/allways"
@@ -180,7 +308,7 @@
       "provider": "taopedia-articles",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "taopedia-article",
@@ -201,7 +329,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -211,6 +339,132 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/7"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-7-website-common-api",
+      "kind": "subnet-api",
+      "name": "Allways API",
+      "netuid": 7,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://all-ways.io/",
+      "source_urls": [
+        "https://all-ways.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://all-ways.io/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-7-website-common-docs",
+      "kind": "docs",
+      "name": "Allways docs",
+      "netuid": 7,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://all-ways.io/",
+      "source_urls": [
+        "https://all-ways.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://all-ways.io/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-7-website-common-health",
+      "kind": "subnet-api",
+      "name": "Allways health endpoint",
+      "netuid": 7,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://all-ways.io/",
+      "source_urls": [
+        "https://all-ways.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://all-ways.io/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-7-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Allways OpenAPI JSON",
+      "netuid": 7,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://all-ways.io/",
+      "source_urls": [
+        "https://all-ways.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://all-ways.io/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-7-website-common-swagger",
+      "kind": "openapi",
+      "name": "Allways Swagger UI",
+      "netuid": 7,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://all-ways.io/",
+      "source_urls": [
+        "https://all-ways.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://all-ways.io/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-7-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Allways Swagger JSON",
+      "netuid": 7,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://all-ways.io/",
+      "source_urls": [
+        "https://all-ways.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://all-ways.io/swagger.json"
     }
   ],
   "gaps": {
@@ -234,8 +488,8 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 5,
+    "block": 8347420,
+    "candidate_count": 11,
     "categories": [
       "bitcoin",
       "subnet-api",
@@ -278,6 +532,7 @@
     "mechanism_count": 1,
     "name": "Allways",
     "native_name": "Allways",
+    "native_name_quality": "chain",
     "native_slug": "allways",
     "netuid": 7,
     "notes": "Pilot manifest. Registry observations are external status data, not Allways protocol authority.",
@@ -286,10 +541,14 @@
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "adapter-backed"
     },

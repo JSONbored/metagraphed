@@ -1,5 +1,5 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 15,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "NexisGen",
@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 175,
+      "latency_ms": 150,
       "method_tested": "HEAD",
       "name": "NexisGen TaoMarketCap dashboard",
       "netuid": 70,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/70",
-      "verified_at": "2026-06-06T07:44:03.008Z"
+      "verified_at": "2026-06-06T12:18:27.848Z"
     },
     {
       "candidate_id": "sn-70-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/RendixNetwork/nexisgen",
       "kind": "source-repo",
-      "latency_ms": 626,
+      "latency_ms": 477,
       "method_tested": "HEAD",
       "name": "NexisGen source repository",
       "netuid": 70,
@@ -70,7 +70,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/RendixNetwork/nexisgen",
-      "verified_at": "2026-06-06T07:44:03.104Z"
+      "verified_at": "2026-06-06T12:18:27.910Z"
     },
     {
       "candidate_id": "sn-70-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 532,
+      "latency_ms": 466,
       "method_tested": "HEAD",
       "name": "NexisGen website",
       "netuid": 70,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://nexisgen.ai/",
-      "verified_at": "2026-06-06T07:44:03.111Z"
+      "verified_at": "2026-06-06T12:18:27.911Z"
     },
     {
       "candidate_id": "sn-70-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 406,
+      "latency_ms": 382,
       "method_tested": "HEAD",
       "name": "NexisGen Tensorplex subnet docs",
       "netuid": 70,
@@ -136,24 +136,391 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/70",
-      "verified_at": "2026-06-06T07:44:03.183Z"
+      "verified_at": "2026-06-06T12:18:27.947Z"
+    },
+    {
+      "candidate_id": "sn-70-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 149,
+      "method_tested": "GET",
+      "name": "NexisGen API",
+      "netuid": 70,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.nexisgen.ai/api",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://nexisgen.ai/",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://nexisgen.ai/api",
+      "verified_at": "2026-06-06T12:18:27.958Z"
+    },
+    {
+      "candidate_id": "sn-70-website-common-docs",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 337,
+      "method_tested": "HEAD",
+      "name": "NexisGen docs",
+      "netuid": 70,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.nexisgen.ai/docs",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://nexisgen.ai/",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://nexisgen.ai/docs",
+      "verified_at": "2026-06-06T12:18:27.978Z"
+    },
+    {
+      "candidate_id": "sn-70-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 123,
+      "method_tested": "GET",
+      "name": "NexisGen health endpoint",
+      "netuid": 70,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.nexisgen.ai/health",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://nexisgen.ai/",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://nexisgen.ai/health",
+      "verified_at": "2026-06-06T12:18:27.987Z"
+    },
+    {
+      "candidate_id": "sn-70-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 114,
+      "method_tested": "GET",
+      "name": "NexisGen OpenAPI JSON",
+      "netuid": 70,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.nexisgen.ai/openapi.json",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://nexisgen.ai/",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://nexisgen.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:27.990Z"
+    },
+    {
+      "candidate_id": "sn-70-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 103,
+      "method_tested": "GET",
+      "name": "NexisGen Swagger UI",
+      "netuid": 70,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.nexisgen.ai/swagger",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://nexisgen.ai/",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://nexisgen.ai/swagger",
+      "verified_at": "2026-06-06T12:18:27.998Z"
+    },
+    {
+      "candidate_id": "sn-70-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 118,
+      "method_tested": "GET",
+      "name": "NexisGen Swagger JSON",
+      "netuid": 70,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.nexisgen.ai/swagger.json",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://nexisgen.ai/",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://nexisgen.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:28.003Z"
+    },
+    {
+      "candidate_id": "sn-70-website-link-nexisgen-ai-data-artifact-5",
+      "classification": "redirected",
+      "confidence_score": 63,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "data-artifact",
+      "latency_ms": 278,
+      "method_tested": "HEAD",
+      "name": "NexisGen data artifact",
+      "netuid": 70,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.nexisgen.ai/commission",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://nexisgen.ai/",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://nexisgen.ai/commission",
+      "verified_at": "2026-06-06T12:18:28.004Z"
+    },
+    {
+      "candidate_id": "sn-70-website-link-nexisgen-ai-website-1",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 287,
+      "method_tested": "HEAD",
+      "name": "NexisGen website page",
+      "netuid": 70,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.nexisgen.ai/catalogue",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://nexisgen.ai/",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://nexisgen.ai/catalogue",
+      "verified_at": "2026-06-06T12:18:28.008Z"
+    },
+    {
+      "candidate_id": "sn-70-website-link-nexisgen-ai-website-2",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 359,
+      "method_tested": "HEAD",
+      "name": "NexisGen website page",
+      "netuid": 70,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.nexisgen.ai/floor",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://nexisgen.ai/",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://nexisgen.ai/floor",
+      "verified_at": "2026-06-06T12:18:28.014Z"
+    },
+    {
+      "candidate_id": "sn-70-website-link-nexisgen-ai-website-3",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 285,
+      "method_tested": "HEAD",
+      "name": "NexisGen website page",
+      "netuid": 70,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.nexisgen.ai/how-it-works",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://nexisgen.ai/",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://nexisgen.ai/how-it-works",
+      "verified_at": "2026-06-06T12:18:28.026Z"
+    },
+    {
+      "candidate_id": "sn-70-website-link-nexisgen-ai-website-6",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 327,
+      "method_tested": "HEAD",
+      "name": "NexisGen website page",
+      "netuid": 70,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.nexisgen.ai/catalogue/video_v1",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://nexisgen.ai/",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://nexisgen.ai/catalogue/video_v1",
+      "verified_at": "2026-06-06T12:18:28.195Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-70",
   "summary": {
     "by_classification": {
+      "dead": 5,
       "live": 3,
-      "redirected": 1
+      "redirected": 7
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "data-artifact": 1,
+      "docs": 2,
+      "openapi": 3,
       "source-repo": 1,
-      "website": 1
+      "subnet-api": 2,
+      "website": 5
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 14,
       "tensorplex-subnet-docs": 1
     }
   }

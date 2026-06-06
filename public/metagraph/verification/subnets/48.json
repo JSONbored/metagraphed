@@ -1,5 +1,5 @@
 {
-  "candidate_count": 5,
+  "candidate_count": 20,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Quantum Compute",
@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 142,
+      "latency_ms": 132,
       "method_tested": "HEAD",
       "name": "Quantum Compute TaoMarketCap dashboard",
       "netuid": 48,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/48",
-      "verified_at": "2026-06-06T07:43:59.220Z"
+      "verified_at": "2026-06-06T12:18:21.533Z"
     },
     {
       "candidate_id": "sn-48-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/qbittensor-labs/quantum-compute",
       "kind": "source-repo",
-      "latency_ms": 354,
+      "latency_ms": 431,
       "method_tested": "HEAD",
       "name": "Quantum Compute source repository",
       "netuid": 48,
@@ -70,7 +70,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/qbittensor-labs/quantum-compute",
-      "verified_at": "2026-06-06T07:43:59.362Z"
+      "verified_at": "2026-06-06T12:18:21.538Z"
     },
     {
       "candidate_id": "sn-48-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 577,
+      "latency_ms": 276,
       "method_tested": "HEAD",
       "name": "Quantum Compute website",
       "netuid": 48,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.qbittensorlabs.com/",
-      "verified_at": "2026-06-06T07:43:59.363Z"
+      "verified_at": "2026-06-06T12:18:21.560Z"
     },
     {
       "candidate_id": "sn-48-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 259,
+      "latency_ms": 281,
       "method_tested": "HEAD",
       "name": "Quantum Compute Tensorplex subnet docs",
       "netuid": 48,
@@ -136,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/48",
-      "verified_at": "2026-06-06T07:43:59.392Z"
+      "verified_at": "2026-06-06T12:18:21.572Z"
     },
     {
       "candidate_id": "sn-48-tensorplex-source-repo-1",
@@ -146,7 +146,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/qbittensor-labs/quantum",
       "kind": "source-repo",
-      "latency_ms": 202,
+      "latency_ms": 217,
       "method_tested": "HEAD",
       "name": "Quantum Compute source repository",
       "netuid": 48,
@@ -170,24 +170,521 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://github.com/qbittensor-labs/quantum",
-      "verified_at": "2026-06-06T07:43:59.564Z"
+      "verified_at": "2026-06-06T12:18:21.637Z"
+    },
+    {
+      "candidate_id": "sn-48-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 209,
+      "method_tested": "GET",
+      "name": "Quantum Compute API",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.qbittensorlabs.com/api",
+      "verified_at": "2026-06-06T12:18:21.665Z"
+    },
+    {
+      "candidate_id": "sn-48-website-common-docs",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 94,
+      "method_tested": "GET",
+      "name": "Quantum Compute docs",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.qbittensorlabs.com/docs",
+      "verified_at": "2026-06-06T12:18:21.665Z"
+    },
+    {
+      "candidate_id": "sn-48-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 97,
+      "method_tested": "GET",
+      "name": "Quantum Compute health endpoint",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.qbittensorlabs.com/health",
+      "verified_at": "2026-06-06T12:18:21.682Z"
+    },
+    {
+      "candidate_id": "sn-48-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 268,
+      "method_tested": "GET",
+      "name": "Quantum Compute OpenAPI JSON",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.qbittensorlabs.com/openapi.json",
+      "verified_at": "2026-06-06T12:18:21.776Z"
+    },
+    {
+      "candidate_id": "sn-48-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 93,
+      "method_tested": "GET",
+      "name": "Quantum Compute Swagger UI",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.qbittensorlabs.com/swagger",
+      "verified_at": "2026-06-06T12:18:21.777Z"
+    },
+    {
+      "candidate_id": "sn-48-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 159,
+      "method_tested": "GET",
+      "name": "Quantum Compute Swagger JSON",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.qbittensorlabs.com/swagger.json",
+      "verified_at": "2026-06-06T12:18:21.818Z"
+    },
+    {
+      "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 210,
+      "method_tested": "HEAD",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.qbittensorlabs.com/enigma",
+      "verified_at": "2026-06-06T12:18:21.837Z"
+    },
+    {
+      "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 151,
+      "method_tested": "HEAD",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.qbittensorlabs.com/quantum",
+      "verified_at": "2026-06-06T12:18:21.853Z"
+    },
+    {
+      "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 264,
+      "method_tested": "HEAD",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.qbittensorlabs.com/about",
+      "verified_at": "2026-06-06T12:18:21.877Z"
+    },
+    {
+      "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-4",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 166,
+      "method_tested": "HEAD",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.qbittensorlabs.com/news",
+      "verified_at": "2026-06-06T12:18:21.934Z"
+    },
+    {
+      "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-5",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 163,
+      "method_tested": "HEAD",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.qbittensorlabs.com/enigma/contracts",
+      "verified_at": "2026-06-06T12:18:21.994Z"
+    },
+    {
+      "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-6",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 195,
+      "method_tested": "HEAD",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.qbittensorlabs.com/terms",
+      "verified_at": "2026-06-06T12:18:22.005Z"
+    },
+    {
+      "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-7",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 277,
+      "method_tested": "HEAD",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.qbittensorlabs.com/privacy",
+      "verified_at": "2026-06-06T12:18:22.028Z"
+    },
+    {
+      "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-8",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 87,
+      "method_tested": "HEAD",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.qbittensorlabs.com/payment-processing",
+      "verified_at": "2026-06-06T12:18:22.035Z"
+    },
+    {
+      "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-9",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 204,
+      "method_tested": "HEAD",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.qbittensorlabs.com/enigma/rules",
+      "verified_at": "2026-06-06T12:18:22.044Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-48",
   "summary": {
     "by_classification": {
-      "dead": 1,
-      "live": 4
+      "dead": 7,
+      "live": 13
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "docs": 2,
+      "openapi": 3,
       "source-repo": 2,
-      "website": 1
+      "subnet-api": 2,
+      "website": 10
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 18,
       "tensorplex-subnet-docs": 2
     }
   }

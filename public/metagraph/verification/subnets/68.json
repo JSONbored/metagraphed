@@ -1,5 +1,5 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 15,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "NOVA",
@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 188,
+      "latency_ms": 147,
       "method_tested": "HEAD",
       "name": "NOVA TaoMarketCap dashboard",
       "netuid": 68,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/68",
-      "verified_at": "2026-06-06T07:44:02.923Z"
+      "verified_at": "2026-06-06T12:18:27.311Z"
     },
     {
       "candidate_id": "sn-68-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/metanova-labs/nova",
       "kind": "source-repo",
-      "latency_ms": 408,
+      "latency_ms": 524,
       "method_tested": "HEAD",
       "name": "NOVA source repository",
       "netuid": 68,
@@ -65,12 +65,13 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/68",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/68"
+        "https://api.taomarketcap.com/public/v1/subnets/68",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/68/subnet.json"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/metanova-labs/nova",
-      "verified_at": "2026-06-06T07:44:02.962Z"
+      "verified_at": "2026-06-06T12:18:27.359Z"
     },
     {
       "candidate_id": "sn-68-taomarketcap-website",
@@ -79,7 +80,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 239,
+      "latency_ms": 248,
       "method_tested": "HEAD",
       "name": "NOVA website",
       "netuid": 68,
@@ -103,7 +104,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.metanova-labs.ai/",
-      "verified_at": "2026-06-06T07:44:02.964Z"
+      "verified_at": "2026-06-06T12:18:27.442Z"
     },
     {
       "candidate_id": "sn-68-tensorplex-docs",
@@ -112,7 +113,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 347,
+      "latency_ms": 321,
       "method_tested": "HEAD",
       "name": "NOVA Tensorplex subnet docs",
       "netuid": 68,
@@ -136,23 +137,390 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/68",
-      "verified_at": "2026-06-06T07:44:02.998Z"
+      "verified_at": "2026-06-06T12:18:27.458Z"
+    },
+    {
+      "candidate_id": "sn-68-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 60,
+      "method_tested": "GET",
+      "name": "NOVA API",
+      "netuid": 68,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.metanova-labs.ai/api",
+      "verified_at": "2026-06-06T12:18:27.519Z"
+    },
+    {
+      "candidate_id": "sn-68-website-common-docs",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 60,
+      "method_tested": "GET",
+      "name": "NOVA docs",
+      "netuid": 68,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.metanova-labs.ai/docs",
+      "verified_at": "2026-06-06T12:18:27.532Z"
+    },
+    {
+      "candidate_id": "sn-68-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 62,
+      "method_tested": "GET",
+      "name": "NOVA health endpoint",
+      "netuid": 68,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.metanova-labs.ai/health",
+      "verified_at": "2026-06-06T12:18:27.634Z"
+    },
+    {
+      "candidate_id": "sn-68-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 63,
+      "method_tested": "GET",
+      "name": "NOVA OpenAPI JSON",
+      "netuid": 68,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.metanova-labs.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:27.640Z"
+    },
+    {
+      "candidate_id": "sn-68-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 69,
+      "method_tested": "GET",
+      "name": "NOVA Swagger UI",
+      "netuid": 68,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.metanova-labs.ai/swagger",
+      "verified_at": "2026-06-06T12:18:27.690Z"
+    },
+    {
+      "candidate_id": "sn-68-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 73,
+      "method_tested": "GET",
+      "name": "NOVA Swagger JSON",
+      "netuid": 68,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.metanova-labs.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:27.711Z"
+    },
+    {
+      "candidate_id": "sn-68-website-link-www-metanova-labs-ai-dashboard-5",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 218,
+      "method_tested": "HEAD",
+      "name": "NOVA dashboard",
+      "netuid": 68,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.metanova-labs.ai/dashboard",
+      "verified_at": "2026-06-06T12:18:27.772Z"
+    },
+    {
+      "candidate_id": "sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "data-artifact",
+      "latency_ms": 71,
+      "method_tested": "HEAD",
+      "name": "NOVA data artifact",
+      "netuid": 68,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.metanova-labs.ai/models",
+      "verified_at": "2026-06-06T12:18:27.772Z"
+    },
+    {
+      "candidate_id": "sn-68-website-link-www-metanova-labs-ai-docs-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 69,
+      "method_tested": "HEAD",
+      "name": "NOVA docs",
+      "netuid": 68,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.metanova-labs.ai/whitepapers",
+      "verified_at": "2026-06-06T12:18:27.779Z"
+    },
+    {
+      "candidate_id": "sn-68-website-link-www-metanova-labs-ai-website-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 197,
+      "method_tested": "HEAD",
+      "name": "NOVA website page",
+      "netuid": 68,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.metanova-labs.ai/about",
+      "verified_at": "2026-06-06T12:18:27.807Z"
+    },
+    {
+      "candidate_id": "sn-68-website-link-www-metanova-labs-ai-website-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 190,
+      "method_tested": "HEAD",
+      "name": "NOVA website page",
+      "netuid": 68,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.metanova-labs.ai/nova",
+      "verified_at": "2026-06-06T12:18:27.818Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-68",
   "summary": {
     "by_classification": {
-      "live": 4
+      "dead": 6,
+      "live": 9
     },
     "by_kind": {
-      "dashboard": 1,
-      "docs": 1,
+      "dashboard": 2,
+      "data-artifact": 1,
+      "docs": 3,
+      "openapi": 3,
       "source-repo": 1,
-      "website": 1
+      "subnet-api": 2,
+      "website": 3
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 14,
       "tensorplex-subnet-docs": 1
     }
   }

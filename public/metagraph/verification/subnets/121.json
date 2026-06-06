@@ -1,5 +1,5 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 20,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "sundae_bar",
@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 319,
+      "latency_ms": 156,
       "method_tested": "HEAD",
       "name": "sundae_bar TaoMarketCap dashboard",
       "netuid": 121,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/121",
-      "verified_at": "2026-06-06T07:44:10.309Z"
+      "verified_at": "2026-06-06T12:18:43.845Z"
     },
     {
       "candidate_id": "sn-121-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/sundae-bar/bittensor-subnet",
       "kind": "source-repo",
-      "latency_ms": 469,
+      "latency_ms": 394,
       "method_tested": "HEAD",
       "name": "sundae_bar source repository",
       "netuid": 121,
@@ -70,7 +70,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/sundae-bar/bittensor-subnet",
-      "verified_at": "2026-06-06T07:44:10.309Z"
+      "verified_at": "2026-06-06T12:18:43.875Z"
     },
     {
       "candidate_id": "sn-121-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 238,
+      "latency_ms": 223,
       "method_tested": "HEAD",
       "name": "sundae_bar website",
       "netuid": 121,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.sundaebar.ai/",
-      "verified_at": "2026-06-06T07:44:10.314Z"
+      "verified_at": "2026-06-06T12:18:43.930Z"
     },
     {
       "candidate_id": "sn-121-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 376,
+      "latency_ms": 272,
       "method_tested": "HEAD",
       "name": "sundae_bar Tensorplex subnet docs",
       "netuid": 121,
@@ -136,23 +136,554 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/121",
-      "verified_at": "2026-06-06T07:44:10.321Z"
+      "verified_at": "2026-06-06T12:18:43.938Z"
+    },
+    {
+      "candidate_id": "sn-121-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 181,
+      "method_tested": "GET",
+      "name": "sundae_bar API",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.sundaebar.ai/api",
+      "verified_at": "2026-06-06T12:18:44.001Z"
+    },
+    {
+      "candidate_id": "sn-121-website-common-docs",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 183,
+      "method_tested": "GET",
+      "name": "sundae_bar docs",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.sundaebar.ai/docs",
+      "verified_at": "2026-06-06T12:18:44.058Z"
+    },
+    {
+      "candidate_id": "sn-121-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 188,
+      "method_tested": "GET",
+      "name": "sundae_bar health endpoint",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.sundaebar.ai/health",
+      "verified_at": "2026-06-06T12:18:44.066Z"
+    },
+    {
+      "candidate_id": "sn-121-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 168,
+      "method_tested": "GET",
+      "name": "sundae_bar OpenAPI JSON",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.sundaebar.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:44.071Z"
+    },
+    {
+      "candidate_id": "sn-121-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 265,
+      "method_tested": "GET",
+      "name": "sundae_bar Swagger UI",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.sundaebar.ai/swagger",
+      "verified_at": "2026-06-06T12:18:44.085Z"
+    },
+    {
+      "candidate_id": "sn-121-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 176,
+      "method_tested": "GET",
+      "name": "sundae_bar Swagger JSON",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.sundaebar.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:44.090Z"
+    },
+    {
+      "candidate_id": "sn-121-website-link-www-sundaebar-ai-website-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 179,
+      "method_tested": "HEAD",
+      "name": "sundae_bar website page",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.sundaebar.ai/news",
+      "verified_at": "2026-06-06T12:18:44.114Z"
+    },
+    {
+      "candidate_id": "sn-121-website-link-www-sundaebar-ai-website-10",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 182,
+      "method_tested": "HEAD",
+      "name": "sundae_bar website page",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.sundaebar.ai/privacy-policy",
+      "verified_at": "2026-06-06T12:18:44.151Z"
+    },
+    {
+      "candidate_id": "sn-121-website-link-www-sundaebar-ai-website-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 405,
+      "method_tested": "HEAD",
+      "name": "sundae_bar website page",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.sundaebar.ai/explore",
+      "verified_at": "2026-06-06T12:18:44.152Z"
+    },
+    {
+      "candidate_id": "sn-121-website-link-www-sundaebar-ai-website-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 186,
+      "method_tested": "HEAD",
+      "name": "sundae_bar website page",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.sundaebar.ai/enterprise",
+      "verified_at": "2026-06-06T12:18:44.156Z"
+    },
+    {
+      "candidate_id": "sn-121-website-link-www-sundaebar-ai-website-4",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 386,
+      "method_tested": "HEAD",
+      "name": "sundae_bar website page",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.sundaebar.ai/lab",
+      "verified_at": "2026-06-06T12:18:44.166Z"
+    },
+    {
+      "candidate_id": "sn-121-website-link-www-sundaebar-ai-website-5",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 162,
+      "method_tested": "HEAD",
+      "name": "sundae_bar website page",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.sundaebar.ai/about",
+      "verified_at": "2026-06-06T12:18:44.174Z"
+    },
+    {
+      "candidate_id": "sn-121-website-link-www-sundaebar-ai-website-6",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 202,
+      "method_tested": "HEAD",
+      "name": "sundae_bar website page",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.sundaebar.ai/roadmap",
+      "verified_at": "2026-06-06T12:18:44.210Z"
+    },
+    {
+      "candidate_id": "sn-121-website-link-www-sundaebar-ai-website-7",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 123,
+      "method_tested": "HEAD",
+      "name": "sundae_bar website page",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://corporate.sundaebar.ai/",
+      "verified_at": "2026-06-06T12:18:44.294Z"
+    },
+    {
+      "candidate_id": "sn-121-website-link-www-sundaebar-ai-website-8",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 68,
+      "method_tested": "HEAD",
+      "name": "sundae_bar website page",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.sundaebar.ai/contact",
+      "verified_at": "2026-06-06T12:18:44.333Z"
+    },
+    {
+      "candidate_id": "sn-121-website-link-www-sundaebar-ai-website-9",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 72,
+      "method_tested": "HEAD",
+      "name": "sundae_bar website page",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.sundaebar.ai/",
+      "source_urls": [
+        "https://www.sundaebar.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.sundaebar.ai/terms-of-service",
+      "verified_at": "2026-06-06T12:18:44.336Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-121",
   "summary": {
     "by_classification": {
-      "live": 4
+      "dead": 6,
+      "live": 14
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "docs": 2,
+      "openapi": 3,
       "source-repo": 1,
-      "website": 1
+      "subnet-api": 2,
+      "website": 11
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 19,
       "tensorplex-subnet-docs": 1
     }
   }

@@ -1,10 +1,43 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 15,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Babelbit",
   "netuid": 59,
   "results": [
+    {
+      "candidate_id": "sn-59-github-readme-babelbit-babelbit-subnet-subnet-api-1",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "application/json",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 543,
+      "method_tested": "GET",
+      "name": "Babelbit API surface",
+      "netuid": 59,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/babelbit/babelbit_subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/babelbit/babelbit_subnet/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://api.babelbit.ai/",
+      "verified_at": "2026-06-06T12:18:24.677Z"
+    },
     {
       "candidate_id": "sn-59-taomarketcap-dashboard",
       "classification": "live",
@@ -12,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 146,
+      "latency_ms": 157,
       "method_tested": "HEAD",
       "name": "Babelbit TaoMarketCap dashboard",
       "netuid": 59,
@@ -36,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/59",
-      "verified_at": "2026-06-06T07:44:01.586Z"
+      "verified_at": "2026-06-06T12:18:24.704Z"
     },
     {
       "candidate_id": "sn-59-taomarketcap-source-repo",
@@ -46,7 +79,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/babelbit/babelbit_subnet",
       "kind": "source-repo",
-      "latency_ms": 613,
+      "latency_ms": 561,
       "method_tested": "HEAD",
       "name": "Babelbit source repository",
       "netuid": 59,
@@ -65,12 +98,13 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/59",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/59"
+        "https://api.taomarketcap.com/public/v1/subnets/59",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/59/subnet.json"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/babelbit/babelbit_subnet",
-      "verified_at": "2026-06-06T07:44:01.609Z"
+      "verified_at": "2026-06-06T12:18:24.722Z"
     },
     {
       "candidate_id": "sn-59-taomarketcap-website",
@@ -79,7 +113,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 297,
+      "latency_ms": 278,
       "method_tested": "HEAD",
       "name": "Babelbit website",
       "netuid": 59,
@@ -103,7 +137,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://babelbit.ai/",
-      "verified_at": "2026-06-06T07:44:01.614Z"
+      "verified_at": "2026-06-06T12:18:24.733Z"
     },
     {
       "candidate_id": "sn-59-tensorplex-docs",
@@ -112,7 +146,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 427,
+      "latency_ms": 369,
       "method_tested": "HEAD",
       "name": "Babelbit Tensorplex subnet docs",
       "netuid": 59,
@@ -136,23 +170,356 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/59",
-      "verified_at": "2026-06-06T07:44:01.618Z"
+      "verified_at": "2026-06-06T12:18:24.741Z"
+    },
+    {
+      "candidate_id": "sn-59-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 48,
+      "method_tested": "GET",
+      "name": "Babelbit API",
+      "netuid": 59,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://babelbit.ai/",
+      "source_urls": [
+        "https://babelbit.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://babelbit.ai/api",
+      "verified_at": "2026-06-06T12:18:24.741Z"
+    },
+    {
+      "candidate_id": "sn-59-website-common-docs",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 53,
+      "method_tested": "GET",
+      "name": "Babelbit docs",
+      "netuid": 59,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://babelbit.ai/",
+      "source_urls": [
+        "https://babelbit.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://babelbit.ai/docs",
+      "verified_at": "2026-06-06T12:18:24.801Z"
+    },
+    {
+      "candidate_id": "sn-59-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 46,
+      "method_tested": "GET",
+      "name": "Babelbit health endpoint",
+      "netuid": 59,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://babelbit.ai/",
+      "source_urls": [
+        "https://babelbit.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://babelbit.ai/health",
+      "verified_at": "2026-06-06T12:18:24.809Z"
+    },
+    {
+      "candidate_id": "sn-59-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 53,
+      "method_tested": "GET",
+      "name": "Babelbit OpenAPI JSON",
+      "netuid": 59,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://babelbit.ai/",
+      "source_urls": [
+        "https://babelbit.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://babelbit.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:24.812Z"
+    },
+    {
+      "candidate_id": "sn-59-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 57,
+      "method_tested": "GET",
+      "name": "Babelbit Swagger UI",
+      "netuid": 59,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://babelbit.ai/",
+      "source_urls": [
+        "https://babelbit.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://babelbit.ai/swagger",
+      "verified_at": "2026-06-06T12:18:24.844Z"
+    },
+    {
+      "candidate_id": "sn-59-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 68,
+      "method_tested": "GET",
+      "name": "Babelbit Swagger JSON",
+      "netuid": 59,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://babelbit.ai/",
+      "source_urls": [
+        "https://babelbit.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://babelbit.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:24.856Z"
+    },
+    {
+      "candidate_id": "sn-59-website-link-babelbit-ai-dashboard-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 396,
+      "method_tested": "HEAD",
+      "name": "Babelbit dashboard",
+      "netuid": 59,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://babelbit.ai/",
+      "source_urls": [
+        "https://babelbit.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://babelbit.ai/main/dashboard",
+      "verified_at": "2026-06-06T12:18:24.861Z"
+    },
+    {
+      "candidate_id": "sn-59-website-link-babelbit-ai-website-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 144,
+      "method_tested": "HEAD",
+      "name": "Babelbit website page",
+      "netuid": 59,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://babelbit.ai/",
+      "source_urls": [
+        "https://babelbit.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://babelbit.ai/demo",
+      "verified_at": "2026-06-06T12:18:24.942Z"
+    },
+    {
+      "candidate_id": "sn-59-website-link-babelbit-ai-website-3",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 54,
+      "method_tested": "GET",
+      "name": "Babelbit website page",
+      "netuid": 59,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://babelbit.ai/",
+      "source_urls": [
+        "https://babelbit.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://babelbit.ai/terms",
+      "verified_at": "2026-06-06T12:18:24.960Z"
+    },
+    {
+      "candidate_id": "sn-59-website-link-babelbit-ai-website-4",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 49,
+      "method_tested": "GET",
+      "name": "Babelbit website page",
+      "netuid": 59,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://babelbit.ai/",
+      "source_urls": [
+        "https://babelbit.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://babelbit.ai/policy",
+      "verified_at": "2026-06-06T12:18:24.972Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-59",
   "summary": {
     "by_classification": {
-      "live": 4
+      "dead": 8,
+      "live": 7
     },
     "by_kind": {
-      "dashboard": 1,
-      "docs": 1,
+      "dashboard": 2,
+      "docs": 2,
+      "openapi": 3,
       "source-repo": 1,
-      "website": 1
+      "subnet-api": 3,
+      "website": 4
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 14,
       "tensorplex-subnet-docs": 1
     }
   }

@@ -7,6 +7,7 @@ import {
   loadSubnets,
   isValidUrl,
   readJson,
+  registrySurfaceKey,
   repoRoot,
 } from "./lib.mjs";
 
@@ -45,6 +46,7 @@ const probeMethods = new Set(["GET", "HEAD", "JSON-RPC", "WSS-RPC"]);
 const probeExpectations = new Set(["json", "html", "sse", "any"]);
 const coverageLevels = new Set(["native-only", "manifested", "probed"]);
 const subnetTypes = new Set(["root", "application"]);
+const nativeNameQualities = new Set(["chain", "placeholder", "empty"]);
 const candidateStates = new Set([
   "schema-invalid",
   "schema-valid",
@@ -125,7 +127,7 @@ function validateProvider(provider) {
   );
 }
 
-function validateSubnet(subnet, providerIds, surfaceIds) {
+function validateSubnet(subnet, providerIds, surfaceIds, surfaceLocators) {
   assert(
     subnet.schema_version === 1,
     `${subnet.slug || "subnet"}: schema_version must be 1`,
@@ -176,6 +178,15 @@ function validateSubnet(subnet, providerIds, surfaceIds) {
       `${surfaceKey}: duplicate global surface id`,
     );
     surfaceIds.add(surface.id);
+    const locator = registrySurfaceKey({
+      ...surface,
+      netuid: subnet.netuid,
+    });
+    assert(
+      !surfaceLocators.has(locator),
+      `${surfaceKey}: duplicate public surface locator ${locator}`,
+    );
+    surfaceLocators.add(locator);
     assert(Boolean(surface.name), `${surfaceKey}: name is required`);
     assert(surfaceKinds.has(surface.kind), `${surfaceKey}: invalid kind`);
     assert(isValidUrl(surface.url), `${surfaceKey}: url must be a URL`);
@@ -375,6 +386,16 @@ function validateNativeSnapshot(snapshot) {
     previousNetuid = subnet.netuid;
     netuids.add(subnet.netuid);
     assert(Boolean(subnet.name), `${key}: name is required`);
+    assert(
+      nativeNameQualities.has(subnet.native_name_quality || "chain"),
+      `${key}: invalid native_name_quality`,
+    );
+    if (subnet.raw_name !== undefined && subnet.raw_name !== null) {
+      assert(
+        typeof subnet.raw_name === "string",
+        `${key}: raw_name must be a string or null`,
+      );
+    }
     assert(
       typeof subnet.symbol === "string",
       `${key}: symbol must be a string`,
@@ -923,8 +944,10 @@ const providerIds = new Set();
 const netuids = new Set();
 const slugs = new Set();
 const surfaceIds = new Set();
+const surfaceLocators = new Set();
 const nativeNetuids = validateNativeSnapshot(nativeSnapshot);
 const candidateIds = new Set();
+const candidateLocators = new Set();
 
 for (const provider of providers) {
   validateProvider(provider);
@@ -948,7 +971,7 @@ for (const subnet of subnets) {
   );
   netuids.add(subnet.netuid);
   slugs.add(subnet.slug);
-  validateSubnet(subnet, providerIds, surfaceIds);
+  validateSubnet(subnet, providerIds, surfaceIds, surfaceLocators);
 }
 
 for (const nativeNetuid of nativeNetuids) {
@@ -970,6 +993,12 @@ for (const candidate of candidates) {
     `${candidate.id}: duplicate candidate id`,
   );
   candidateIds.add(candidate.id);
+  const locator = registrySurfaceKey(candidate);
+  assert(
+    !candidateLocators.has(locator),
+    `${candidate.id}: duplicate candidate locator ${locator}`,
+  );
+  candidateLocators.add(locator);
   validateCandidate(candidate, nativeNetuids, providerIds);
 }
 

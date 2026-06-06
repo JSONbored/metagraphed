@@ -14,7 +14,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-06T07:44:10.528Z"
+    "verified_at": "2026-06-06T12:18:44.481Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/123",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/123",
@@ -52,7 +52,8 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/123"
+        "https://api.taomarketcap.com/public/v1/subnets/123",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/123/subnet.json"
       ],
       "url": "https://github.com/Barbariandev/MANTIS",
       "verification": {
@@ -60,11 +61,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Barbariandev/MANTIS",
-        "latency_ms": 665,
+        "latency_ms": 472,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.509Z"
+        "verified_at": "2026-06-06T12:18:44.416Z"
       }
     },
     {
@@ -73,7 +74,7 @@
       "id": "sn-123-tensorplex-docs",
       "kind": "docs",
       "name": "MANTIS Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -99,11 +100,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 326,
+        "latency_ms": 325,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.528Z"
+        "verified_at": "2026-06-06T12:18:44.481Z"
       }
     },
     {
@@ -138,11 +139,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 247,
+        "latency_ms": 144,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.437Z"
+        "verified_at": "2026-06-06T12:18:44.412Z"
       }
     }
   ]

@@ -1,5 +1,5 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 14,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Poker44",
@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 171,
+      "latency_ms": 132,
       "method_tested": "HEAD",
       "name": "Poker44 TaoMarketCap dashboard",
       "netuid": 126,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/126",
-      "verified_at": "2026-06-06T07:44:10.684Z"
+      "verified_at": "2026-06-06T12:18:44.825Z"
     },
     {
       "candidate_id": "sn-126-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/Poker44/Poker44-subnet",
       "kind": "source-repo",
-      "latency_ms": 501,
+      "latency_ms": 509,
       "method_tested": "HEAD",
       "name": "Poker44 source repository",
       "netuid": 126,
@@ -70,7 +70,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Poker44/Poker44-subnet",
-      "verified_at": "2026-06-06T07:44:10.697Z"
+      "verified_at": "2026-06-06T12:18:44.834Z"
     },
     {
       "candidate_id": "sn-126-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 602,
+      "latency_ms": 559,
       "method_tested": "HEAD",
       "name": "Poker44 website",
       "netuid": 126,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://poker44.net/",
-      "verified_at": "2026-06-06T07:44:10.726Z"
+      "verified_at": "2026-06-06T12:18:44.921Z"
     },
     {
       "candidate_id": "sn-126-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 319,
+      "latency_ms": 303,
       "method_tested": "HEAD",
       "name": "Poker44 Tensorplex subnet docs",
       "netuid": 126,
@@ -136,23 +136,356 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/126",
-      "verified_at": "2026-06-06T07:44:10.801Z"
+      "verified_at": "2026-06-06T12:18:44.943Z"
+    },
+    {
+      "candidate_id": "sn-126-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 194,
+      "method_tested": "GET",
+      "name": "Poker44 API",
+      "netuid": 126,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://poker44.net/",
+      "source_urls": [
+        "https://poker44.net/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://poker44.net/api",
+      "verified_at": "2026-06-06T12:18:44.957Z"
+    },
+    {
+      "candidate_id": "sn-126-website-common-docs",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 194,
+      "method_tested": "GET",
+      "name": "Poker44 docs",
+      "netuid": 126,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://poker44.net/",
+      "source_urls": [
+        "https://poker44.net/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://poker44.net/docs",
+      "verified_at": "2026-06-06T12:18:44.965Z"
+    },
+    {
+      "candidate_id": "sn-126-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 214,
+      "method_tested": "GET",
+      "name": "Poker44 health endpoint",
+      "netuid": 126,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://poker44.net/",
+      "source_urls": [
+        "https://poker44.net/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://poker44.net/health",
+      "verified_at": "2026-06-06T12:18:45.042Z"
+    },
+    {
+      "candidate_id": "sn-126-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 198,
+      "method_tested": "GET",
+      "name": "Poker44 OpenAPI JSON",
+      "netuid": 126,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://poker44.net/",
+      "source_urls": [
+        "https://poker44.net/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://poker44.net/openapi.json",
+      "verified_at": "2026-06-06T12:18:45.074Z"
+    },
+    {
+      "candidate_id": "sn-126-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 194,
+      "method_tested": "GET",
+      "name": "Poker44 Swagger UI",
+      "netuid": 126,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://poker44.net/",
+      "source_urls": [
+        "https://poker44.net/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://poker44.net/swagger",
+      "verified_at": "2026-06-06T12:18:45.083Z"
+    },
+    {
+      "candidate_id": "sn-126-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 194,
+      "method_tested": "GET",
+      "name": "Poker44 Swagger JSON",
+      "netuid": 126,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://poker44.net/",
+      "source_urls": [
+        "https://poker44.net/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://poker44.net/swagger.json",
+      "verified_at": "2026-06-06T12:18:45.099Z"
+    },
+    {
+      "candidate_id": "sn-126-website-link-poker44-net-dashboard-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 1211,
+      "method_tested": "HEAD",
+      "name": "Poker44 dashboard",
+      "netuid": 126,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://poker44.net/",
+      "source_urls": [
+        "https://poker44.net/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://poker44.net/dashboard",
+      "verified_at": "2026-06-06T12:18:45.246Z"
+    },
+    {
+      "candidate_id": "sn-126-website-link-poker44-net-website-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 552,
+      "method_tested": "HEAD",
+      "name": "Poker44 website page",
+      "netuid": 126,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://poker44.net/",
+      "source_urls": [
+        "https://poker44.net/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://poker44.net/poker-gameplay",
+      "verified_at": "2026-06-06T12:18:45.273Z"
+    },
+    {
+      "candidate_id": "sn-126-website-link-poker44-net-website-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 586,
+      "method_tested": "HEAD",
+      "name": "Poker44 website page",
+      "netuid": 126,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://poker44.net/",
+      "source_urls": [
+        "https://poker44.net/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://poker44.net/miners",
+      "verified_at": "2026-06-06T12:18:45.418Z"
+    },
+    {
+      "candidate_id": "sn-126-website-link-poker44-net-website-4",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 296,
+      "method_tested": "HEAD",
+      "name": "Poker44 website page",
+      "netuid": 126,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://poker44.net/",
+      "source_urls": [
+        "https://poker44.net/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://poker44.net/network",
+      "verified_at": "2026-06-06T12:18:45.480Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-126",
   "summary": {
     "by_classification": {
-      "live": 4
+      "dead": 6,
+      "live": 8
     },
     "by_kind": {
-      "dashboard": 1,
-      "docs": 1,
+      "dashboard": 2,
+      "docs": 2,
+      "openapi": 3,
       "source-repo": 1,
-      "website": 1
+      "subnet-api": 2,
+      "website": 4
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 13,
       "tensorplex-subnet-docs": 1
     }
   }

@@ -5,6 +5,7 @@
   "curation": {
     "gap_notes": [
       "No verified source repository yet.",
+      "No verified project website yet.",
       "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
       "No verified SSE/event stream yet.",
@@ -14,7 +15,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-06T07:44:05.954Z"
+    "verified_at": "2026-06-06T12:18:33.155Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/87",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/87",
@@ -29,49 +30,10 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-87-taomarketcap-website",
-      "kind": "website",
-      "name": "Luminar Network website",
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/87"
-      ],
-      "url": "https://luminar.network/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html",
-        "latency_ms": 670,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.938Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-87-tensorplex-docs",
       "kind": "docs",
       "name": "Luminar Network Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -97,11 +59,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 299,
+        "latency_ms": 335,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.954Z"
+        "verified_at": "2026-06-06T12:18:33.155Z"
       }
     },
     {
@@ -136,13 +98,12 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 157,
+        "latency_ms": 198,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.935Z"
+        "verified_at": "2026-06-06T12:18:33.111Z"
       }
     }
-  ],
-  "website_url": "https://luminar.network/"
+  ]
 }

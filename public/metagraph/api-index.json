@@ -158,6 +158,12 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "health-history",
+      "path": "/metagraph/health/history/{date}.json",
+      "schema_ref": "#/components/schemas/HealthHistoryArtifact"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "health-subnet",
       "path": "/metagraph/health/subnets/{netuid}.json",
       "schema_ref": "#/components/schemas/HealthSubnetArtifact"
@@ -818,6 +824,66 @@
         },
         {
           "name": "status",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/health/history/{date}.json",
+      "cache": "short",
+      "description": "Fetch compact daily health history.",
+      "id": "health-history",
+      "method": "GET",
+      "path": "/api/v1/health/history/{date}",
+      "public": true,
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "status",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "classification",
           "schema": {
             "type": "string"
           }

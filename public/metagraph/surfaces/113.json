@@ -9,6 +9,90 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-113-github-readme-tensorusd-subnet-docs-1",
+      "kind": "docs",
+      "name": "TensorUSD docs",
+      "netuid": 113,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/TensorUSD/subnet/blob/main/README.md"
+      ],
+      "subnet_name": "TensorUSD",
+      "subnet_slug": "sn-113",
+      "url": "https://docs.tensorusd.com/components/subnet",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 253,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:41.777Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-113-github-readme-tensorusd-subnet-docs-2",
+      "kind": "docs",
+      "name": "TensorUSD docs",
+      "netuid": 113,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/TensorUSD/subnet/blob/main/README.md"
+      ],
+      "subnet_name": "TensorUSD",
+      "subnet_slug": "sn-113",
+      "url": "https://docs.astral.sh/uv",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 61,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 126,
+        "method_tested": "HEAD",
+        "redirect_target": "https://docs.astral.sh/uv/",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:41.803Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-113-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "TensorUSD TaoMarketCap dashboard",
@@ -41,11 +125,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 137,
+        "latency_ms": 150,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:08.888Z"
+        "verified_at": "2026-06-06T12:18:41.806Z"
       }
     },
     {
@@ -84,11 +168,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/TensorUSD/subnet",
-        "latency_ms": 552,
+        "latency_ms": 522,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:08.932Z"
+        "verified_at": "2026-06-06T12:18:41.878Z"
       }
     },
     {
@@ -126,11 +210,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 582,
+        "latency_ms": 575,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:09.005Z"
+        "verified_at": "2026-06-06T12:18:41.894Z"
       }
     },
     {
@@ -140,7 +224,7 @@
       "kind": "docs",
       "name": "TensorUSD Tensorplex subnet docs",
       "netuid": 113,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -168,11 +252,53 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 395,
+        "latency_ms": 289,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:09.022Z"
+        "verified_at": "2026-06-06T12:18:41.928Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-113-website-link-tensorusd-com-docs-1",
+      "kind": "docs",
+      "name": "TensorUSD docs",
+      "netuid": 113,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://tensorusd.com/"
+      ],
+      "subnet_name": "TensorUSD",
+      "subnet_slug": "sn-113",
+      "url": "https://docs.tensorusd.com/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 95,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:42.218Z"
       }
     }
   ]

@@ -1,10 +1,44 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 20,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "blockmachine",
   "netuid": 19,
   "results": [
+    {
+      "candidate_id": "sn-19-github-readme-taostat-blockmachine-docs-1",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 235,
+      "method_tested": "HEAD",
+      "name": "blockmachine docs",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/taostat/blockmachine/blob/main/README.md",
+      "source_urls": [
+        "https://blockmachine.io/",
+        "https://github.com/taostat/blockmachine/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://blockmachine.io/whitepaper",
+      "verified_at": "2026-06-06T12:18:14.577Z"
+    },
     {
       "candidate_id": "sn-19-taomarketcap-dashboard",
       "classification": "live",
@@ -12,7 +46,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 163,
+      "latency_ms": 152,
       "method_tested": "HEAD",
       "name": "blockmachine TaoMarketCap dashboard",
       "netuid": 19,
@@ -36,41 +70,41 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/19",
-      "verified_at": "2026-06-06T07:43:54.994Z"
+      "verified_at": "2026-06-06T12:18:14.581Z"
     },
     {
+      "archived": false,
       "candidate_id": "sn-19-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
-      "error": null,
-      "github_api_status": 403,
+      "confidence_score": 80,
+      "default_branch": "main",
+      "description": null,
       "github_api_url": "https://api.github.com/repos/taostat/blockmachine",
+      "homepage": null,
+      "html_url": "https://github.com/taostat/blockmachine",
       "kind": "source-repo",
-      "latency_ms": 527,
-      "method_tested": "HEAD",
+      "last_push_at": "2026-04-27T11:27:02Z",
       "name": "blockmachine source repository",
       "netuid": 19,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/19",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/19"
+        "https://api.taomarketcap.com/public/v1/subnets/19",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/19/subnet.json"
       ],
       "status": "ok",
-      "status_code": 200,
+      "topics": [],
       "url": "https://github.com/taostat/blockmachine",
-      "verified_at": "2026-06-06T07:43:54.997Z"
+      "verified_at": "2026-06-06T12:18:14.581Z"
     },
     {
       "candidate_id": "sn-19-taomarketcap-website",
@@ -79,7 +113,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 548,
+      "latency_ms": 275,
       "method_tested": "HEAD",
       "name": "blockmachine website",
       "netuid": 19,
@@ -103,7 +137,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://blockmachine.io/",
-      "verified_at": "2026-06-06T07:43:55.005Z"
+      "verified_at": "2026-06-06T12:18:14.588Z"
     },
     {
       "candidate_id": "sn-19-tensorplex-docs",
@@ -112,7 +146,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 252,
+      "latency_ms": 271,
       "method_tested": "HEAD",
       "name": "blockmachine Tensorplex subnet docs",
       "netuid": 19,
@@ -136,23 +170,521 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/19",
-      "verified_at": "2026-06-06T07:43:55.009Z"
+      "verified_at": "2026-06-06T12:18:14.635Z"
+    },
+    {
+      "candidate_id": "sn-19-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 294,
+      "method_tested": "GET",
+      "name": "blockmachine API",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://blockmachine.io/api",
+      "verified_at": "2026-06-06T12:18:14.677Z"
+    },
+    {
+      "candidate_id": "sn-19-website-common-docs",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 260,
+      "method_tested": "HEAD",
+      "name": "blockmachine docs",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://blockmachine.io/docs",
+      "verified_at": "2026-06-06T12:18:14.705Z"
+    },
+    {
+      "candidate_id": "sn-19-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 191,
+      "method_tested": "GET",
+      "name": "blockmachine health endpoint",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://blockmachine.io/health",
+      "verified_at": "2026-06-06T12:18:14.709Z"
+    },
+    {
+      "candidate_id": "sn-19-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 256,
+      "method_tested": "GET",
+      "name": "blockmachine OpenAPI JSON",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://blockmachine.io/openapi.json",
+      "verified_at": "2026-06-06T12:18:14.709Z"
+    },
+    {
+      "candidate_id": "sn-19-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 196,
+      "method_tested": "GET",
+      "name": "blockmachine Swagger UI",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://blockmachine.io/swagger",
+      "verified_at": "2026-06-06T12:18:14.718Z"
+    },
+    {
+      "candidate_id": "sn-19-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 213,
+      "method_tested": "GET",
+      "name": "blockmachine Swagger JSON",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://blockmachine.io/swagger.json",
+      "verified_at": "2026-06-06T12:18:14.733Z"
+    },
+    {
+      "candidate_id": "sn-19-website-link-blockmachine-io-docs-4",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 324,
+      "method_tested": "HEAD",
+      "name": "blockmachine docs",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://blockmachine.io/docs/ai-agents",
+      "verified_at": "2026-06-06T12:18:14.747Z"
+    },
+    {
+      "candidate_id": "sn-19-website-link-blockmachine-io-website-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 309,
+      "method_tested": "HEAD",
+      "name": "blockmachine website page",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://blockmachine.io/performance",
+      "verified_at": "2026-06-06T12:18:14.761Z"
+    },
+    {
+      "candidate_id": "sn-19-website-link-blockmachine-io-website-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 332,
+      "method_tested": "HEAD",
+      "name": "blockmachine website page",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://blockmachine.io/technology",
+      "verified_at": "2026-06-06T12:18:14.777Z"
+    },
+    {
+      "candidate_id": "sn-19-website-link-blockmachine-io-website-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 318,
+      "method_tested": "HEAD",
+      "name": "blockmachine website page",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://blockmachine.io/pricing",
+      "verified_at": "2026-06-06T12:18:14.794Z"
+    },
+    {
+      "candidate_id": "sn-19-website-link-blockmachine-io-website-5",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 502,
+      "method_tested": "HEAD",
+      "name": "blockmachine website page",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://blockmachine.io/login",
+      "verified_at": "2026-06-06T12:18:14.804Z"
+    },
+    {
+      "candidate_id": "sn-19-website-link-blockmachine-io-website-6",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 257,
+      "method_tested": "HEAD",
+      "name": "blockmachine website page",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://blockmachine.io/login?redirect=%2Fdashboard%2Fplans",
+      "verified_at": "2026-06-06T12:18:14.812Z"
+    },
+    {
+      "candidate_id": "sn-19-website-link-blockmachine-io-website-7",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 371,
+      "method_tested": "HEAD",
+      "name": "blockmachine website page",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://blockmachine.io/bittensor",
+      "verified_at": "2026-06-06T12:18:14.845Z"
+    },
+    {
+      "candidate_id": "sn-19-website-link-blockmachine-io-website-8",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 246,
+      "method_tested": "HEAD",
+      "name": "blockmachine website page",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://blockmachine.io/miners",
+      "verified_at": "2026-06-06T12:18:14.863Z"
+    },
+    {
+      "candidate_id": "sn-19-website-link-blockmachine-io-website-9",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 309,
+      "method_tested": "HEAD",
+      "name": "blockmachine website page",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://blockmachine.io/",
+      "source_urls": [
+        "https://blockmachine.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://blockmachine.io/buybacks",
+      "verified_at": "2026-06-06T12:18:14.907Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-19",
   "summary": {
     "by_classification": {
-      "live": 4
+      "dead": 5,
+      "live": 15
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "docs": 4,
+      "openapi": 3,
       "source-repo": 1,
-      "website": 1
+      "subnet-api": 2,
+      "website": 9
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 19,
       "tensorplex-subnet-docs": 1
     }
   }

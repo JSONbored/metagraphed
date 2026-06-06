@@ -20,7 +20,7 @@ It is canonical for:
 
 - active netuid existence;
 - root/system versus application subnet classification;
-- chain subnet name and symbol;
+- raw chain subnet name, symbol, and name-quality classification;
 - participant count;
 - tempo;
 - registration block;
@@ -28,6 +28,8 @@ It is canonical for:
 - capture block and source metadata.
 
 It is not the place for docs URLs, dashboards, public APIs, or probe rules.
+
+Native subnet names can degrade to placeholders such as `unknown` when the upstream chain/RPC source cannot provide a meaningful label. In that case, public registry artifacts preserve the raw native value through `native_name` and `native_name_quality`, while builder-facing `name` stays sourced from the reviewed overlay when available.
 
 ## Curated Overlays
 

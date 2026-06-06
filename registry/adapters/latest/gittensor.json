@@ -12,11 +12,11 @@
       "status": "docs-only"
     },
     "master_repositories": {
-      "captured_at": "2026-06-06T09:16:53.492Z",
+      "captured_at": "2026-06-06T12:14:41.678Z",
       "config_hash": "d61ad080861bcb00f3418313cf146fdee6faefa821df2f4adbcae2684ee4ebf7",
       "content_type": "text/plain; charset=utf-8",
       "issue_discovery_enabled_count": 3,
-      "latency_ms": 848,
+      "latency_ms": 119,
       "maintainer_cut_repo_count": 9,
       "max_maintainer_cut": 0.5,
       "repository_count": 18,
@@ -89,22 +89,208 @@
       "zero_emission_count": 1
     },
     "mirror_freshness": {
-      "captured_at": "2026-06-06T09:16:53.858Z",
+      "captured_at": "2026-06-06T12:14:42.839Z",
       "error": "API rate limit exceeded for 98.97.112.120. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)",
+      "fallback_latency_ms": 660,
+      "fallback_reason": "rate-limited-or-forbidden",
+      "fallback_status_code": 200,
       "full_name": "entrius/das-github-mirror",
-      "latency_ms": 72,
-      "status": "rate-limited-or-forbidden",
+      "html_url": "https://github.com/entrius/das-github-mirror",
+      "latency_ms": 76,
+      "status": "html-fallback",
       "status_code": 403
     },
     "repository_metadata": {
       "archived_count": 0,
       "captured_count": 0,
       "disabled_count": 0,
+      "html_fallback_count": 18,
       "latest_push_at": null,
-      "rate_limited_or_forbidden_count": 18,
-      "repositories": [],
+      "rate_limited_or_forbidden_count": 0,
+      "repositories": [
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "cogniax/tao-pulse-app",
+          "html_url": "https://github.com/cogniax/tao-pulse-app",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "e35ventura/taopedia",
+          "html_url": "https://github.com/e35ventura/taopedia",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "e35ventura/taopedia-articles",
+          "html_url": "https://github.com/e35ventura/taopedia-articles",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "entrius/allways",
+          "html_url": "https://github.com/entrius/allways",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "entrius/das-github-mirror",
+          "html_url": "https://github.com/entrius/das-github-mirror",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "entrius/gittensor",
+          "html_url": "https://github.com/entrius/gittensor",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "entrius/gittensor-ui",
+          "html_url": "https://github.com/entrius/gittensor-ui",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "entrius/oc-1",
+          "html_url": "https://github.com/entrius/oc-1",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "Geniepod/genie-claw",
+          "html_url": "https://github.com/Geniepod/genie-claw",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "infiniflow/ragflow",
+          "html_url": "https://github.com/infiniflow/ragflow",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "JSONbored/awesome-claude",
+          "html_url": "https://github.com/JSONbored/awesome-claude",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "JSONbored/gittensory",
+          "html_url": "https://github.com/JSONbored/gittensory",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "MkDev11/gittensor-hub",
+          "html_url": "https://github.com/MkDev11/gittensor-hub",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "phase-rs/phase",
+          "html_url": "https://github.com/phase-rs/phase",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "seroperson/jvm-live-reload",
+          "html_url": "https://github.com/seroperson/jvm-live-reload",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "touchpilot/touchpilot",
+          "html_url": "https://github.com/touchpilot/touchpilot",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "vouchdev/vouch",
+          "html_url": "https://github.com/vouchdev/vouch",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        },
+        {
+          "archived": null,
+          "default_branch": null,
+          "full_name": "we-promise/sure",
+          "html_url": "https://github.com/we-promise/sure",
+          "metadata_level": "html-fallback",
+          "open_issues_count": null,
+          "pushed_at": null,
+          "topic_count": 0
+        }
+      ],
       "repository_count": 18,
-      "status": "degraded"
+      "status": "captured"
     }
   },
   "excluded_dimensions": [
@@ -122,5 +308,5 @@
   "schema_version": 1,
   "slug": "gittensor",
   "source": "adapter-snapshot",
-  "status": "degraded"
+  "status": "captured"
 }

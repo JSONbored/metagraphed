@@ -1,10 +1,76 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 16,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "ConnitoAI",
   "netuid": 102,
   "results": [
+    {
+      "candidate_id": "sn-102-github-readme-connito-ai-connito-docs-1",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 41,
+      "method_tested": "GET",
+      "name": "ConnitoAI docs",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Connito-AI/Connito/blob/master/README.md",
+      "source_urls": [
+        "https://github.com/Connito-AI/Connito/blob/master/README.md"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://connito.ai/docs/miner",
+      "verified_at": "2026-06-06T12:18:38.459Z"
+    },
+    {
+      "candidate_id": "sn-102-github-readme-connito-ai-connito-docs-2",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 40,
+      "method_tested": "GET",
+      "name": "ConnitoAI docs",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Connito-AI/Connito/blob/master/README.md",
+      "source_urls": [
+        "https://github.com/Connito-AI/Connito/blob/master/README.md"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://connito.ai/docs/validator",
+      "verified_at": "2026-06-06T12:18:38.462Z"
+    },
     {
       "candidate_id": "sn-102-taomarketcap-dashboard",
       "classification": "live",
@@ -12,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 132,
+      "latency_ms": 138,
       "method_tested": "HEAD",
       "name": "ConnitoAI TaoMarketCap dashboard",
       "netuid": 102,
@@ -36,17 +102,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/102",
-      "verified_at": "2026-06-06T07:44:07.795Z"
+      "verified_at": "2026-06-06T12:18:38.467Z"
     },
     {
       "candidate_id": "sn-102-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 429,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/Connito-AI/Connito",
       "kind": "source-repo",
-      "latency_ms": 362,
+      "latency_ms": 428,
       "method_tested": "HEAD",
       "name": "ConnitoAI source repository",
       "netuid": 102,
@@ -70,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Connito-AI/Connito",
-      "verified_at": "2026-06-06T07:44:07.845Z"
+      "verified_at": "2026-06-06T12:18:38.472Z"
     },
     {
       "candidate_id": "sn-102-taomarketcap-website",
@@ -79,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 155,
+      "latency_ms": 112,
       "method_tested": "HEAD",
       "name": "ConnitoAI website",
       "netuid": 102,
@@ -103,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://connito.ai/",
-      "verified_at": "2026-06-06T07:44:07.913Z"
+      "verified_at": "2026-06-06T12:18:38.512Z"
     },
     {
       "candidate_id": "sn-102-tensorplex-docs",
@@ -112,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 429,
+      "latency_ms": 296,
       "method_tested": "HEAD",
       "name": "ConnitoAI Tensorplex subnet docs",
       "netuid": 102,
@@ -136,23 +202,357 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/102",
-      "verified_at": "2026-06-06T07:44:07.928Z"
+      "verified_at": "2026-06-06T12:18:38.515Z"
+    },
+    {
+      "candidate_id": "sn-102-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 39,
+      "method_tested": "GET",
+      "name": "ConnitoAI API",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://connito.ai/",
+      "source_urls": [
+        "https://connito.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://connito.ai/api",
+      "verified_at": "2026-06-06T12:18:38.525Z"
+    },
+    {
+      "candidate_id": "sn-102-website-common-docs",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 161,
+      "method_tested": "HEAD",
+      "name": "ConnitoAI docs",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://connito.ai/docs/miner/prerequisites",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://connito.ai/",
+      "source_urls": [
+        "https://connito.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://connito.ai/docs",
+      "verified_at": "2026-06-06T12:18:38.526Z"
+    },
+    {
+      "candidate_id": "sn-102-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 48,
+      "method_tested": "GET",
+      "name": "ConnitoAI health endpoint",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://connito.ai/",
+      "source_urls": [
+        "https://connito.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://connito.ai/health",
+      "verified_at": "2026-06-06T12:18:38.527Z"
+    },
+    {
+      "candidate_id": "sn-102-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 38,
+      "method_tested": "GET",
+      "name": "ConnitoAI OpenAPI JSON",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://connito.ai/",
+      "source_urls": [
+        "https://connito.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://connito.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:38.582Z"
+    },
+    {
+      "candidate_id": "sn-102-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 36,
+      "method_tested": "GET",
+      "name": "ConnitoAI Swagger UI",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://connito.ai/",
+      "source_urls": [
+        "https://connito.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://connito.ai/swagger",
+      "verified_at": "2026-06-06T12:18:38.587Z"
+    },
+    {
+      "candidate_id": "sn-102-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 40,
+      "method_tested": "GET",
+      "name": "ConnitoAI Swagger JSON",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://connito.ai/",
+      "source_urls": [
+        "https://connito.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://connito.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:38.600Z"
+    },
+    {
+      "candidate_id": "sn-102-website-link-connito-ai-docs-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 375,
+      "method_tested": "HEAD",
+      "name": "ConnitoAI docs",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://connito.ai/",
+      "source_urls": [
+        "https://connito.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://connito.ai/docs/miner/prerequisites",
+      "verified_at": "2026-06-06T12:18:38.603Z"
+    },
+    {
+      "candidate_id": "sn-102-website-link-connito-ai-docs-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 125,
+      "method_tested": "HEAD",
+      "name": "ConnitoAI docs",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://connito.ai/",
+      "source_urls": [
+        "https://connito.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://connito.ai/whitepaper",
+      "verified_at": "2026-06-06T12:18:38.605Z"
+    },
+    {
+      "candidate_id": "sn-102-website-link-connito-ai-website-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 38,
+      "method_tested": "HEAD",
+      "name": "ConnitoAI website page",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://connito.ai/",
+      "source_urls": [
+        "https://connito.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://connito.ai/connito-explained/the-connito-story",
+      "verified_at": "2026-06-06T12:18:38.623Z"
+    },
+    {
+      "candidate_id": "sn-102-website-link-connito-ai-website-4",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 111,
+      "method_tested": "HEAD",
+      "name": "ConnitoAI website page",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://connito.ai/",
+      "source_urls": [
+        "https://connito.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://connito.ai/blog",
+      "verified_at": "2026-06-06T12:18:38.655Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-102",
   "summary": {
     "by_classification": {
-      "live": 4
+      "dead": 7,
+      "live": 8,
+      "redirected": 1
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "docs": 6,
+      "openapi": 3,
       "source-repo": 1,
-      "website": 1
+      "subnet-api": 2,
+      "website": 3
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 15,
       "tensorplex-subnet-docs": 1
     }
   }

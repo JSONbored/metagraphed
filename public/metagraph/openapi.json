@@ -1303,6 +1303,123 @@
           }
         ]
       },
+      "HealthHistoryArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "date": {
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                "type": "string"
+              },
+              "probe_finished_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "probe_started_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source": {
+                "type": "string"
+              },
+              "summary": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "surfaces": {
+                "items": {
+                  "$ref": "#/components/schemas/HealthHistorySurface"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "date",
+              "summary",
+              "surfaces"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "HealthHistorySurface": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "error_class": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "last_checked": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_ok": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latency_ms": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "status_code": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "surface_id": {
+            "type": "string"
+          },
+          "verified_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "surface_id",
+          "netuid",
+          "kind",
+          "provider",
+          "status",
+          "classification"
+        ],
+        "type": "object"
+      },
       "HealthLatestArtifact": {
         "allOf": [
           {
@@ -2497,11 +2614,10 @@
               "status": {
                 "enum": [
                   "captured",
-                  "changed",
                   "error",
+                  "not-found",
                   "not-snapshotted",
-                  "pending-snapshot",
-                  "unchanged"
+                  "unsafe"
                 ]
               },
               "surfaces": {
@@ -2525,6 +2641,15 @@
       "SchemaDriftSurface": {
         "additionalProperties": true,
         "properties": {
+          "drift_status": {
+            "enum": [
+              "changed",
+              "missing-after-previous-capture",
+              "new",
+              "not-captured",
+              "unchanged"
+            ]
+          },
           "error": {
             "type": [
               "string",
@@ -2532,7 +2657,10 @@
             ]
           },
           "hash": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "netuid": {
             "minimum": 0,
@@ -2546,16 +2674,19 @@
           },
           "schema_url": {
             "format": "uri",
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "status": {
             "enum": [
               "captured",
-              "changed",
               "error",
-              "not-snapshotted",
+              "not-found",
               "pending-snapshot",
-              "unchanged"
+              "ui-only-or-undiscovered",
+              "unsafe"
             ]
           },
           "subnet_slug": {
@@ -2608,24 +2739,83 @@
       "SchemaIndexEntry": {
         "additionalProperties": true,
         "properties": {
+          "content_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "drift_status": {
+            "enum": [
+              "changed",
+              "missing-after-previous-capture",
+              "new",
+              "not-captured",
+              "unchanged"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "hash": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
           },
           "path": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "previous_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "schema_url": {
             "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "snapshot": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "captured",
+              "error",
+              "not-found",
+              "unsafe"
+            ]
+          },
+          "subnet_slug": {
             "type": "string"
           },
           "surface_id": {
             "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "type": "string"
           }
         },
         "required": [
-          "hash",
-          "path",
+          "drift_status",
           "schema_url",
+          "status",
           "surface_id"
         ],
         "type": "object"
@@ -3062,6 +3252,13 @@
               "null"
             ]
           },
+          "native_name_quality": {
+            "enum": [
+              "chain",
+              "placeholder",
+              "empty"
+            ]
+          },
           "netuid": {
             "minimum": 0,
             "type": "integer"
@@ -3480,6 +3677,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -3568,6 +3775,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -3645,6 +3862,16 @@
           },
           "304": {
             "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
           },
           "404": {
             "content": {
@@ -3796,6 +4023,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -3873,6 +4110,16 @@
           },
           "304": {
             "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
           },
           "404": {
             "content": {
@@ -3952,6 +4199,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -4029,6 +4286,16 @@
           },
           "304": {
             "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
           },
           "404": {
             "content": {
@@ -4164,6 +4431,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -4289,6 +4566,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -4366,6 +4653,16 @@
           },
           "304": {
             "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
           },
           "404": {
             "content": {
@@ -4509,6 +4806,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -4643,6 +4950,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -4675,6 +4992,167 @@
           }
         },
         "summary": "Fetch global health summary.",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/health/history/{date}": {
+      "get": {
+        "operationId": "healthHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "classification",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/HealthHistoryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch compact daily health history.",
         "tags": [
           "health"
         ]
@@ -4720,6 +5198,16 @@
           },
           "304": {
             "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
           },
           "404": {
             "content": {
@@ -4862,6 +5350,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -4949,6 +5447,16 @@
           },
           "304": {
             "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
           },
           "404": {
             "content": {
@@ -5091,6 +5599,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -5169,6 +5687,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -5246,6 +5774,16 @@
           },
           "304": {
             "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
           },
           "404": {
             "content": {
@@ -5372,6 +5910,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -5449,6 +5997,16 @@
           },
           "304": {
             "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
           },
           "404": {
             "content": {
@@ -5574,6 +6132,16 @@
           },
           "304": {
             "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
           },
           "404": {
             "content": {
@@ -5733,6 +6301,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -5820,6 +6398,16 @@
           },
           "304": {
             "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
           },
           "404": {
             "content": {
@@ -5970,6 +6558,16 @@
           },
           "304": {
             "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
           },
           "404": {
             "content": {
@@ -6130,6 +6728,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -6289,6 +6897,16 @@
           "304": {
             "description": "ETag matched and the cached response is still valid."
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -6447,6 +7065,16 @@
           },
           "304": {
             "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
           },
           "404": {
             "content": {

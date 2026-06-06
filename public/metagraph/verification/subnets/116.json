@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 514,
+      "latency_ms": 158,
       "method_tested": "HEAD",
       "name": "hard_sign TaoMarketCap dashboard",
       "netuid": 116,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/116",
-      "verified_at": "2026-06-06T07:44:09.390Z"
+      "verified_at": "2026-06-06T12:18:43.202Z"
     },
     {
       "candidate_id": "sn-116-tensorplex-docs",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 452,
+      "latency_ms": 334,
       "method_tested": "HEAD",
       "name": "hard_sign Tensorplex subnet docs",
       "netuid": 116,
@@ -69,17 +69,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/116",
-      "verified_at": "2026-06-06T07:44:09.401Z"
+      "verified_at": "2026-06-06T12:18:43.204Z"
     },
     {
       "candidate_id": "sn-116-tensorplex-source-repo-1",
       "classification": "dead",
       "confidence_score": 0,
       "error": null,
-      "github_api_status": 429,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/xpenlab/taolend",
       "kind": "source-repo",
-      "latency_ms": 228,
+      "latency_ms": 205,
       "method_tested": "HEAD",
       "name": "hard_sign source repository",
       "netuid": 116,
@@ -103,7 +103,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://github.com/xpenlab/taolend",
-      "verified_at": "2026-06-06T07:44:09.409Z"
+      "verified_at": "2026-06-06T12:18:43.238Z"
     }
   ],
   "schema_version": 1,

@@ -12,11 +12,11 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 3,
-    "verified_at": "2026-06-06T07:43:50.769Z"
+    "source_count": 4,
+    "verified_at": "2026-06-06T12:18:09.032Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/1",
-  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_1_apex/index.mdx",
+  "docs_url": "https://docs.macrocosmos.ai/subnets/subnet-1-apex",
   "links": [],
   "name": "Apex",
   "netuid": 1,
@@ -42,28 +42,37 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/1"
+        "https://api.taomarketcap.com/public/v1/subnets/1",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json"
       ],
       "url": "https://github.com/macrocosm-os/apex",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/macrocosm-os/apex",
-        "latency_ms": 1341,
-        "method_tested": "HEAD",
+        "homepage": "https://apex.macrocosmos.ai/",
+        "last_push_at": "2026-06-04T09:58:25Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:50.767Z"
+        "topics": [
+          "ai",
+          "bittensor",
+          "blockchain",
+          "cryptocurrency",
+          "llm",
+          "network"
+        ],
+        "verified_at": "2026-06-06T12:18:09.031Z"
       }
     },
     {
@@ -98,89 +107,168 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 432,
+        "latency_ms": 223,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:50.768Z"
+        "verified_at": "2026-06-06T12:18:09.032Z"
       }
     },
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-1-taopedia-article",
+      "id": "sn-1-github-readme-macrocosm-os-apex-docs-1",
       "kind": "docs",
-      "name": "Apex Taopedia article",
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
+      "name": "Apex docs",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taopedia-articles",
+      "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "community-docs",
         "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_1_apex/index.mdx"
+        "https://apex.macrocosmos.ai/",
+        "https://github.com/macrocosm-os/apex/blob/main/README.md"
       ],
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_1_apex/index.mdx",
+      "url": "https://docs.macrocosmos.ai/subnets/subnet-1-apex",
       "verification": {
-        "classification": "live",
-        "confidence_score": 66,
+        "classification": "redirected",
+        "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 634,
+        "latency_ms": 338,
         "method_tested": "HEAD",
-        "redirect_target": null,
+        "redirect_target": "https://docs.macrocosmos.ai/",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:50.768Z"
+        "verified_at": "2026-06-06T12:18:09.028Z"
       }
     },
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-1-tensorplex-docs",
+      "id": "sn-1-github-readme-macrocosm-os-apex-docs-2",
       "kind": "docs",
-      "name": "Apex Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "name": "Apex docs",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "community-docs",
         "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json"
+        "https://github.com/macrocosm-os/apex/blob/main/README.md"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/1",
+      "url": "https://docs.macrocosmos.ai/subnets/new-subnet-1-apex/subnet-1-base-miner-setup",
       "verification": {
-        "classification": "live",
-        "confidence_score": 73,
+        "classification": "redirected",
+        "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 650,
+        "latency_ms": 350,
         "method_tested": "HEAD",
-        "redirect_target": null,
+        "redirect_target": "https://docs.macrocosmos.ai/subnets/subnet-1-apex/subnet-1-base-miner-setup",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:50.769Z"
+        "verified_at": "2026-06-06T12:18:09.029Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-1-github-readme-macrocosm-os-apex-docs-3",
+      "kind": "docs",
+      "name": "Apex docs",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/macrocosm-os/apex/blob/main/README.md"
+      ],
+      "url": "https://docs.macrocosmos.ai/subnets/new-subnet-1-apex/subnet-1-base-miner-setup/apex-cli",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 61,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 350,
+        "method_tested": "HEAD",
+        "redirect_target": "https://docs.macrocosmos.ai/subnets/subnet-1-apex/subnet-1-base-miner-setup/apex-cli",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:09.029Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-1-github-readme-macrocosm-os-apex-docs-4",
+      "kind": "docs",
+      "name": "Apex docs",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/macrocosm-os/apex/blob/main/README.md"
+      ],
+      "url": "https://docs.macrocosmos.ai/subnets/new-subnet-1-apex/incentive-mechanism",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 61,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 357,
+        "method_tested": "HEAD",
+        "redirect_target": "https://docs.macrocosmos.ai/subnets/subnet-1-apex/incentive-mechanism",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:09.030Z"
       }
     },
     {
@@ -215,11 +303,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 330,
+        "latency_ms": 347,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:50.767Z"
+        "verified_at": "2026-06-06T12:18:09.031Z"
       }
     }
   ],

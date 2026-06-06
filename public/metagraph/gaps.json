@@ -59,13 +59,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -73,6 +71,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -86,12 +85,14 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
+          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
+          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -100,8 +101,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo",
-          "website"
+          "source-repo"
         ]
       },
       "name": "deprecated",
@@ -142,17 +142,16 @@
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo",
           "website"
@@ -436,13 +435,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -450,6 +447,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -600,13 +598,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -614,6 +610,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -628,13 +625,11 @@
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -642,6 +637,7 @@
           "dashboard",
           "docs",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
@@ -656,17 +652,16 @@
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo",
           "website"
@@ -709,13 +704,11 @@
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -723,6 +716,7 @@
           "dashboard",
           "docs",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
@@ -793,22 +787,22 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
+          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
+          "website",
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
-          "source-repo",
-          "website"
+          "source-repo"
         ]
       },
       "name": "Coldint",
@@ -907,18 +901,17 @@
           "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "website",
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo"
         ]
@@ -935,18 +928,17 @@
           "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "website",
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo"
         ]
@@ -1015,13 +1007,11 @@
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -1029,6 +1019,7 @@
           "dashboard",
           "docs",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
@@ -1041,13 +1032,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -1055,6 +1044,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -1125,13 +1115,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -1139,6 +1127,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -1172,7 +1161,7 @@
           "docs"
         ]
       },
-      "name": "Unknown",
+      "name": "Subnet 42",
       "netuid": 42,
       "slug": "sn-42"
     },
@@ -1263,19 +1252,19 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet."
+          "No verified SSE/event stream yet.",
+          "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
-          "sse"
+          "sse",
+          "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
-          "data-artifact",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -1289,22 +1278,22 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
+          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
+          "website",
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
-          "source-repo",
-          "website"
+          "source-repo"
         ]
       },
       "name": "EvolAI",
@@ -1371,13 +1360,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -1385,6 +1372,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -1399,13 +1387,11 @@
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -1413,6 +1399,7 @@
           "dashboard",
           "docs",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
@@ -1425,12 +1412,14 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
+          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
+          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1439,8 +1428,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo",
-          "website"
+          "source-repo"
         ]
       },
       "name": "Dojo",
@@ -1535,20 +1523,18 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -1590,11 +1576,13 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
+          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
+          "website",
           "openapi",
           "sse",
           "data-artifact"
@@ -1603,8 +1591,7 @@
           "dashboard",
           "docs",
           "source-repo",
-          "subnet-api",
-          "website"
+          "subnet-api"
         ]
       },
       "name": "Pending",
@@ -1617,13 +1604,11 @@
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -1631,6 +1616,7 @@
           "dashboard",
           "docs",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
@@ -1643,13 +1629,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -1657,6 +1641,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -1753,20 +1738,18 @@
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "openapi",
-          "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
@@ -1779,13 +1762,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -1793,6 +1774,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -1806,21 +1788,19 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
@@ -1862,17 +1842,16 @@
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo",
           "website"
@@ -1918,17 +1897,16 @@
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo",
           "website"
@@ -1943,13 +1921,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -1957,6 +1933,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -1972,17 +1949,16 @@
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo",
           "website"
@@ -2110,13 +2086,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -2124,6 +2098,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -2137,13 +2112,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -2151,6 +2124,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -2191,13 +2165,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -2205,6 +2177,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -2218,12 +2191,14 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
+          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
+          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -2232,8 +2207,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo",
-          "website"
+          "source-repo"
         ]
       },
       "name": "deprecated",
@@ -2272,13 +2246,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -2286,6 +2258,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -2299,12 +2272,14 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
+          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
+          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -2313,8 +2288,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo",
-          "website"
+          "source-repo"
         ]
       },
       "name": "ansuz",
@@ -2326,13 +2300,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -2340,6 +2312,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -2383,6 +2356,7 @@
       "gaps": {
         "gap_notes": [
           "No verified source repository yet.",
+          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
@@ -2390,6 +2364,7 @@
         ],
         "missing_kinds": [
           "source-repo",
+          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -2397,8 +2372,7 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
-          "website"
+          "docs"
         ]
       },
       "name": "Luminar Network",
@@ -2411,13 +2385,11 @@
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -2425,6 +2397,7 @@
           "dashboard",
           "docs",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
@@ -2522,13 +2495,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -2536,6 +2507,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -2549,13 +2521,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -2563,6 +2533,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -2632,13 +2603,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -2646,6 +2615,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -2659,20 +2629,18 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -2713,20 +2681,18 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -2879,13 +2845,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -2893,6 +2857,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -2934,13 +2899,11 @@
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -2948,6 +2911,7 @@
           "dashboard",
           "docs",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
@@ -3017,17 +2981,16 @@
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo",
           "website"
@@ -3126,17 +3089,16 @@
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo",
           "website"
@@ -3208,12 +3170,14 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
+          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
+          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -3222,11 +3186,10 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo",
-          "website"
+          "source-repo"
         ]
       },
-      "name": "Unknown",
+      "name": "Subnet 117",
       "netuid": 117,
       "slug": "sn-117"
     },
@@ -3401,13 +3364,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -3415,6 +3376,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]
@@ -3485,13 +3447,11 @@
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
@@ -3499,6 +3459,7 @@
           "dashboard",
           "docs",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
@@ -3511,13 +3472,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -3525,6 +3484,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
           "website"
         ]

@@ -31,6 +31,55 @@ const DENIED_RPC_PREFIXES = [
 ];
 const MAX_RPC_BODY_BYTES = 65536;
 const METAGRAPH_LATEST_KEY = "metagraph:latest";
+const SORT_FIELDS = {
+  candidates: [
+    "confidence",
+    "id",
+    "kind",
+    "name",
+    "netuid",
+    "provider",
+    "state",
+  ],
+  claims: ["claim", "source_url", "subject", "verified_at"],
+  curation: ["coverage_level", "curation_level", "name", "netuid"],
+  documents: ["kind", "netuid", "slug", "title"],
+  endpoints: ["kind", "latency_ms", "provider", "status"],
+  gaps: ["coverage_level", "curation_level", "gap_count", "name", "netuid"],
+  pools: ["eligible_count", "endpoint_count", "id", "kind"],
+  providers: ["authority", "id", "kind", "name"],
+  sources: ["id", "kind", "path", "record_count"],
+  subnets: [
+    "block",
+    "candidate_count",
+    "coverage_level",
+    "curation_level",
+    "mechanism_count",
+    "name",
+    "netuid",
+    "participant_count",
+    "probed_surface_count",
+    "status",
+    "subnet_type",
+    "surface_count",
+    "tempo",
+  ],
+  surfaces: [
+    "classification",
+    "id",
+    "kind",
+    "last_checked",
+    "last_ok",
+    "latency_ms",
+    "name",
+    "netuid",
+    "provider",
+    "status",
+    "status_code",
+    "surface_id",
+    "verified_at",
+  ],
+};
 
 export default {
   async fetch(request, env, ctx) {
@@ -90,6 +139,12 @@ async function handleApiRequest(request, env, url) {
   }
 
   const transformed = applyQueryFilters(artifact.data, url);
+  if (transformed.error) {
+    return errorResponse("invalid_query", transformed.error.message, 400, {
+      artifact_path: matched.artifactPath,
+      parameter: transformed.error.parameter,
+    });
+  }
   return envelopeResponse(
     request,
     {
@@ -438,6 +493,10 @@ function filterRows(rows, params, keys) {
 }
 
 function applyListTransform(data, params, key, filterKeys, searchKeys = []) {
+  const queryError = validateListQuery(params, key, filterKeys);
+  if (queryError) {
+    return { error: queryError };
+  }
   const filtered = filterRows(
     searchRows(data[key], params, searchKeys),
     params,
@@ -486,7 +545,7 @@ function searchRows(rows, params, keys) {
 
 function sortRows(rows, params) {
   const key = params.get("sort");
-  if (!key || !rows.some((row) => Object.hasOwn(row, key))) {
+  if (!key) {
     return rows;
   }
   const direction = params.get("order") === "desc" ? -1 : 1;
@@ -501,8 +560,8 @@ function compareValues(a, b) {
 }
 
 function paginateRows(rows, params) {
-  const requestedLimit = numberParam(params.get("limit"));
-  const requestedCursor = numberParam(params.get("cursor"));
+  const requestedLimit = integerParam(params.get("limit"));
+  const requestedCursor = integerParam(params.get("cursor"));
   const shouldPage = requestedLimit !== null || requestedCursor !== null;
   const limit = shouldPage
     ? Math.min(Math.max(requestedLimit ?? 100, 1), 1000)
@@ -519,12 +578,69 @@ function paginateRows(rows, params) {
   };
 }
 
-function numberParam(value) {
+function validateListQuery(params, collection, filterKeys) {
+  const limit = params.get("limit");
+  if (limit !== null && (integerParam(limit) === null || Number(limit) < 1)) {
+    return {
+      parameter: "limit",
+      message: "limit must be an integer between 1 and 1000.",
+    };
+  }
+  if (limit !== null && Number(limit) > 1000) {
+    return {
+      parameter: "limit",
+      message: "limit must be an integer between 1 and 1000.",
+    };
+  }
+
+  const cursor = params.get("cursor");
+  if (cursor !== null && integerParam(cursor) === null) {
+    return {
+      parameter: "cursor",
+      message: "cursor must be a non-negative integer.",
+    };
+  }
+
+  const order = params.get("order");
+  if (order !== null && !["asc", "desc"].includes(order)) {
+    return {
+      parameter: "order",
+      message: "order must be asc or desc.",
+    };
+  }
+
+  const sort = params.get("sort");
+  if (sort !== null && !(SORT_FIELDS[collection] || []).includes(sort)) {
+    return {
+      parameter: "sort",
+      message: `sort is not supported for ${collection}.`,
+    };
+  }
+
+  for (const key of filterKeys) {
+    if (key !== "netuid" || !params.has(key)) {
+      continue;
+    }
+    if (integerParam(params.get(key)) === null) {
+      return {
+        parameter: key,
+        message: `${key} must be a non-negative integer.`,
+      };
+    }
+  }
+
+  return null;
+}
+
+function integerParam(value) {
   if (value === null || value === "") {
     return null;
   }
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
   const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
 async function envelopeResponse(request, payload, cacheProfile) {

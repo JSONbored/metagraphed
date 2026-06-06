@@ -4,18 +4,18 @@
   ],
   "curation": {
     "gap_notes": [
+      "No verified project website yet.",
       "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
-      "No verified SSE/event stream yet.",
-      "No verified data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T07:43:56.021Z"
+    "verified_at": "2026-06-06T12:18:17.095Z"
   },
-  "dashboard_url": "https://taomarketcap.com/subnets/29",
+  "dashboard_url": "https://taostats.io/subnets/netuid-29",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/29",
   "links": [],
   "name": "Coldint",
@@ -42,28 +42,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/29"
+        "https://api.taomarketcap.com/public/v1/subnets/29",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/29/subnet.json"
       ],
       "url": "https://github.com/coldint/coldint_validator",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/coldint/coldint_validator",
-        "latency_ms": 569,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2025-07-11T21:46:06Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.957Z"
+        "topics": [],
+        "verified_at": "2026-06-06T12:18:17.095Z"
       }
     },
     {
@@ -72,7 +74,7 @@
       "id": "sn-29-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Coldint source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -82,12 +84,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -95,54 +96,17 @@
       ],
       "url": "https://github.com/coldint/sn29",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 55,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/coldint/sn29",
-        "latency_ms": 614,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-01-28T13:39:41Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.021Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-29-github-readme-coldint-sn29-website-1",
-      "kind": "website",
-      "name": "Coldint website page",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/coldint/sn29/blob/main/README.md"
-      ],
-      "url": "https://github.com/coldint/coldint_validator",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 396,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.925Z"
+        "topics": [],
+        "verified_at": "2026-06-06T12:18:17.095Z"
       }
     },
     {
@@ -151,7 +115,7 @@
       "id": "sn-29-tensorplex-docs",
       "kind": "docs",
       "name": "Coldint Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -177,11 +141,50 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 339,
+        "latency_ms": 362,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.010Z"
+        "verified_at": "2026-06-06T12:18:17.095Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-29-github-readme-coldint-coldint-validator-dashboard-3",
+      "kind": "dashboard",
+      "name": "Coldint dashboard",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/coldint/coldint_validator/blob/main/README.md"
+      ],
+      "url": "https://taostats.io/subnets/netuid-29",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 229,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:17.034Z"
       }
     },
     {
@@ -216,13 +219,51 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 195,
+        "latency_ms": 208,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.952Z"
+        "verified_at": "2026-06-06T12:18:17.094Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-29-github-readme-coldint-coldint-validator-data-artifact-2",
+      "kind": "data-artifact",
+      "name": "Coldint data artifact",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/coldint/coldint_validator/blob/main/README.md"
+      ],
+      "url": "https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-score-2",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 191,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:17.061Z"
       }
     }
-  ],
-  "website_url": "https://github.com/coldint/coldint_validator"
+  ]
 }

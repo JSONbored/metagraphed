@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/11",
-        "verified_at": "2026-06-06T07:43:53.565Z"
+        "verified_at": "2026-06-06T12:18:11.572Z"
       }
     },
     {
@@ -71,44 +71,54 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/11",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/11"
+        "https://api.taomarketcap.com/public/v1/subnets/11",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/11/subnet.json"
       ],
       "state": "schema-valid",
       "subnet_name": "TrajectoryRL",
       "url": "https://github.com/trajectoryRL/trajectoryRL",
       "verification": {
+        "archived": false,
         "candidate_id": "sn-11-taomarketcap-source-repo",
         "classification": "live",
-        "confidence_score": 59,
-        "error": null,
-        "github_api_status": 403,
+        "confidence_score": 80,
+        "default_branch": "main",
+        "description": "Bittensor Subnet 11 — an open skill factory that uses distributed compute and RL to produce state-of-the-art skills for AI agents.",
         "github_api_url": "https://api.github.com/repos/trajectoryRL/trajectoryRL",
+        "homepage": "https://trajrl.com/",
+        "html_url": "https://github.com/trajectoryRL/trajectoryRL",
         "kind": "source-repo",
-        "latency_ms": 544,
-        "method_tested": "HEAD",
+        "last_push_at": "2026-06-02T19:13:19Z",
         "name": "TrajectoryRL source repository",
         "netuid": 11,
-        "private_redirect_blocked": false,
         "provider": "taomarketcap",
         "quality_signals": {
-          "content_type_matches_kind": true,
+          "archived": false,
+          "has_default_branch": true,
+          "has_recent_push_metadata": true,
           "public_safe": true,
-          "rate_limited": false,
-          "redirected": false,
-          "source_tier": "third-party-index",
-          "transient_failure": false
+          "source_tier": "third-party-index"
         },
-        "redirect_target": null,
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/11",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/11"
+          "https://api.taomarketcap.com/public/v1/subnets/11",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/11/subnet.json"
         ],
         "status": "ok",
-        "status_code": 200,
+        "topics": [
+          "agent-skills",
+          "ai-agents",
+          "bittensor",
+          "decentralized-ai",
+          "policy-optimization",
+          "reinforcement-learning",
+          "skill-factory",
+          "subnet"
+        ],
         "url": "https://github.com/trajectoryRL/trajectoryRL",
-        "verified_at": "2026-06-06T07:43:53.572Z"
+        "verified_at": "2026-06-06T12:18:11.580Z"
       }
     },
     {
@@ -139,7 +149,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 380,
+        "latency_ms": 339,
         "method_tested": "HEAD",
         "name": "TrajectoryRL website",
         "netuid": 11,
@@ -163,7 +173,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://trajrl.com/",
-        "verified_at": "2026-06-06T07:43:53.593Z"
+        "verified_at": "2026-06-06T12:18:11.582Z"
       }
     },
     {
@@ -176,7 +186,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +204,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 375,
+        "latency_ms": 335,
         "method_tested": "HEAD",
         "name": "TrajectoryRL Tensorplex subnet docs",
         "netuid": 11,
@@ -218,7 +228,557 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/11",
-        "verified_at": "2026-06-06T07:43:53.599Z"
+        "verified_at": "2026-06-06T12:18:11.582Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-11-website-common-api",
+      "kind": "subnet-api",
+      "name": "TrajectoryRL API",
+      "netuid": 11,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://trajrl.com/",
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TrajectoryRL",
+      "url": "https://trajrl.com/api",
+      "verification": {
+        "candidate_id": "sn-11-website-common-api",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 285,
+        "method_tested": "GET",
+        "name": "TrajectoryRL API",
+        "netuid": 11,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://trajrl.com/",
+        "source_urls": [
+          "https://trajrl.com/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://trajrl.com/api",
+        "verified_at": "2026-06-06T12:18:11.612Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-11-website-common-docs",
+      "kind": "docs",
+      "name": "TrajectoryRL docs",
+      "netuid": 11,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://trajrl.com/",
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TrajectoryRL",
+      "url": "https://trajrl.com/docs",
+      "verification": {
+        "candidate_id": "sn-11-website-common-docs",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 326,
+        "method_tested": "HEAD",
+        "name": "TrajectoryRL docs",
+        "netuid": 11,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://trajrl.com/",
+        "source_urls": [
+          "https://trajrl.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://trajrl.com/docs",
+        "verified_at": "2026-06-06T12:18:11.698Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-11-website-common-health",
+      "kind": "subnet-api",
+      "name": "TrajectoryRL health endpoint",
+      "netuid": 11,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://trajrl.com/",
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TrajectoryRL",
+      "url": "https://trajrl.com/health",
+      "verification": {
+        "candidate_id": "sn-11-website-common-health",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 162,
+        "method_tested": "GET",
+        "name": "TrajectoryRL health endpoint",
+        "netuid": 11,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://trajrl.com/",
+        "source_urls": [
+          "https://trajrl.com/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://trajrl.com/health",
+        "verified_at": "2026-06-06T12:18:11.710Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-11-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "TrajectoryRL OpenAPI JSON",
+      "netuid": 11,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://trajrl.com/",
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TrajectoryRL",
+      "url": "https://trajrl.com/openapi.json",
+      "verification": {
+        "candidate_id": "sn-11-website-common-openapi-json",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 156,
+        "method_tested": "GET",
+        "name": "TrajectoryRL OpenAPI JSON",
+        "netuid": 11,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://trajrl.com/",
+        "source_urls": [
+          "https://trajrl.com/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://trajrl.com/openapi.json",
+        "verified_at": "2026-06-06T12:18:11.724Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-11-website-common-swagger",
+      "kind": "openapi",
+      "name": "TrajectoryRL Swagger UI",
+      "netuid": 11,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://trajrl.com/",
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TrajectoryRL",
+      "url": "https://trajrl.com/swagger",
+      "verification": {
+        "candidate_id": "sn-11-website-common-swagger",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 154,
+        "method_tested": "GET",
+        "name": "TrajectoryRL Swagger UI",
+        "netuid": 11,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://trajrl.com/",
+        "source_urls": [
+          "https://trajrl.com/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://trajrl.com/swagger",
+        "verified_at": "2026-06-06T12:18:11.725Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-11-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "TrajectoryRL Swagger JSON",
+      "netuid": 11,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://trajrl.com/",
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TrajectoryRL",
+      "url": "https://trajrl.com/swagger.json",
+      "verification": {
+        "candidate_id": "sn-11-website-common-swagger-json",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 152,
+        "method_tested": "GET",
+        "name": "TrajectoryRL Swagger JSON",
+        "netuid": 11,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://trajrl.com/",
+        "source_urls": [
+          "https://trajrl.com/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://trajrl.com/swagger.json",
+        "verified_at": "2026-06-06T12:18:11.728Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-11-website-link-trajrl-com-dashboard-3",
+      "kind": "dashboard",
+      "name": "TrajectoryRL dashboard",
+      "netuid": 11,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://trajrl.com/",
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TrajectoryRL",
+      "url": "https://trajrl.com/leaderboard",
+      "verification": {
+        "candidate_id": "sn-11-website-link-trajrl-com-dashboard-3",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "dashboard",
+        "latency_ms": 443,
+        "method_tested": "HEAD",
+        "name": "TrajectoryRL dashboard",
+        "netuid": 11,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://trajrl.com/",
+        "source_urls": [
+          "https://trajrl.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://trajrl.com/leaderboard",
+        "verified_at": "2026-06-06T12:18:11.742Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-11-website-link-trajrl-com-website-1",
+      "kind": "website",
+      "name": "TrajectoryRL website page",
+      "netuid": 11,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://trajrl.com/",
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TrajectoryRL",
+      "url": "https://trajrl.com/live",
+      "verification": {
+        "candidate_id": "sn-11-website-link-trajrl-com-website-1",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 436,
+        "method_tested": "HEAD",
+        "name": "TrajectoryRL website page",
+        "netuid": 11,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://trajrl.com/",
+        "source_urls": [
+          "https://trajrl.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://trajrl.com/live",
+        "verified_at": "2026-06-06T12:18:11.762Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-11-website-link-trajrl-com-website-2",
+      "kind": "website",
+      "name": "TrajectoryRL website page",
+      "netuid": 11,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://trajrl.com/",
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TrajectoryRL",
+      "url": "https://trajrl.com/winners",
+      "verification": {
+        "candidate_id": "sn-11-website-link-trajrl-com-website-2",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 430,
+        "method_tested": "HEAD",
+        "name": "TrajectoryRL website page",
+        "netuid": 11,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://trajrl.com/",
+        "source_urls": [
+          "https://trajrl.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://trajrl.com/winners",
+        "verified_at": "2026-06-06T12:18:11.778Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-11-website-link-trajrl-com-website-4",
+      "kind": "website",
+      "name": "TrajectoryRL website page",
+      "netuid": 11,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://trajrl.com/",
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TrajectoryRL",
+      "url": "https://trajrl.com/bench",
+      "verification": {
+        "candidate_id": "sn-11-website-link-trajrl-com-website-4",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 306,
+        "method_tested": "HEAD",
+        "name": "TrajectoryRL website page",
+        "netuid": 11,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://trajrl.com/",
+        "source_urls": [
+          "https://trajrl.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://trajrl.com/bench",
+        "verified_at": "2026-06-06T12:18:11.783Z"
       }
     }
   ],

@@ -25,10 +25,10 @@
     "contract_version": "2026-06-06.1",
     "dimensions": {
       "crown": {
-        "captured_at": "2026-06-06T09:16:53.448Z",
+        "captured_at": "2026-06-06T12:14:41.807Z",
         "content_type": "application/json; charset=utf-8",
-        "hash": "de37971a7453db044126d96ca9162fac36e265965a1d337aba7a3c5b8648f308",
-        "latency_ms": 62,
+        "hash": "9ce91c4b5966564ab048477a7c0bf907f4179b7788db13d534c6ffc1ec83b1f7",
+        "latency_ms": 55,
         "shape": {
           "array_fields": [],
           "object_fields": [
@@ -54,10 +54,10 @@
         "url": "https://api.all-ways.io/crown"
       },
       "events_latest": {
-        "captured_at": "2026-06-06T09:16:53.430Z",
+        "captured_at": "2026-06-06T12:14:41.797Z",
         "content_type": "application/json; charset=utf-8",
-        "hash": "f847123a1bb87661b36cacb096d0bd17e859a728a760f0598fd9ec7ba6b0a07e",
-        "latency_ms": 129,
+        "hash": "d0bc00b218ee1124bd9d8daaebfb9a74d4996c0e996183827e55018b54acb08b",
+        "latency_ms": 83,
         "shape": {
           "first_item_keys": [
             "amountRaw",
@@ -89,10 +89,10 @@
         "url": "https://api.all-ways.io/events/latest"
       },
       "health": {
-        "captured_at": "2026-06-06T09:16:53.284Z",
+        "captured_at": "2026-06-06T12:14:41.714Z",
         "content_type": "application/json; charset=utf-8",
         "hash": "61ac5857feb130a1dc475db36bbe21604fddf30024110bb2bea9d8b23e8b1b44",
-        "latency_ms": 677,
+        "latency_ms": 188,
         "shape": {
           "array_fields": [],
           "object_fields": [],
@@ -108,10 +108,10 @@
         "url": "https://api.all-ways.io/health"
       },
       "leaderboard": {
-        "captured_at": "2026-06-06T09:16:53.698Z",
+        "captured_at": "2026-06-06T12:14:42.199Z",
         "content_type": "application/json; charset=utf-8",
-        "hash": "5e9d7926353e50a20758c47e2d7d097167e155053b5f2412c260f4dc9d4d3cc1",
-        "latency_ms": 1055,
+        "hash": "69a1624dc583c8da4c996ab787031b7fa64ab11b6d1ba4757d6e82f4f867c533",
+        "latency_ms": 641,
         "shape": {
           "first_item_keys": [
             "collateralRao",
@@ -124,7 +124,7 @@
             "uid",
             "volumeTao"
           ],
-          "item_count": 46,
+          "item_count": 47,
           "redacted_key_count": 1,
           "type": "array"
         },
@@ -133,10 +133,10 @@
         "url": "https://api.all-ways.io/miners/leaderboard"
       },
       "miners": {
-        "captured_at": "2026-06-06T09:16:53.387Z",
+        "captured_at": "2026-06-06T12:14:41.751Z",
         "content_type": "application/json; charset=utf-8",
-        "hash": "eca45a16dbeab4b5a7a149268bc78d147f58aba06ada900b76607eb65b871b71",
-        "latency_ms": 743,
+        "hash": "c6ac1907d9f073f2c141df47e5787f04fa1feb4f24c35f694d344f29c8be6fc6",
+        "latency_ms": 193,
         "shape": {
           "first_item_keys": [
             "collateralRao",
@@ -152,7 +152,7 @@
             "uid",
             "updatedAt"
           ],
-          "item_count": 46,
+          "item_count": 47,
           "redacted_key_count": 3,
           "type": "array"
         },
@@ -161,10 +161,10 @@
         "url": "https://api.all-ways.io/miners"
       },
       "network_overview": {
-        "captured_at": "2026-06-06T09:16:53.430Z",
+        "captured_at": "2026-06-06T12:14:41.813Z",
         "content_type": "application/json; charset=utf-8",
-        "hash": "f83a4ff9440702b25ca647e96b69a9dcf5b0ab30bace3c9f1a6c0a0b77785265",
-        "latency_ms": 787,
+        "hash": "d2257fb7fd46375dfe78b114e3bf5ff3bf24e5a2b0fd8c982113e3fbc422e33c",
+        "latency_ms": 255,
         "shape": {
           "array_fields": [
             {
@@ -191,10 +191,10 @@
         "url": "https://api.all-ways.io/network/overview"
       },
       "protocol_chain_state": {
-        "captured_at": "2026-06-06T09:16:53.385Z",
+        "captured_at": "2026-06-06T12:14:41.775Z",
         "content_type": "application/json; charset=utf-8",
-        "hash": "aabcc3447077ee78ac899368b711cbe7857287a8bc80b86ac7a47ec343c0567d",
-        "latency_ms": 743,
+        "hash": "bd91447ba78da2ff8140b063adbc25c1b64b3aee82baaa1dc3cd96b565e1710f",
+        "latency_ms": 217,
         "shape": {
           "array_fields": [],
           "object_fields": [],
@@ -210,10 +210,10 @@
         "url": "https://api.all-ways.io/protocol/chain-state"
       },
       "protocol_constants": {
-        "captured_at": "2026-06-06T09:16:53.295Z",
+        "captured_at": "2026-06-06T12:14:41.715Z",
         "content_type": "application/json; charset=utf-8",
         "hash": "7a49de612a186c2614a967e6b4705402d512f0a3a1bed2159e91547032b00583",
-        "latency_ms": 653,
+        "latency_ms": 157,
         "shape": {
           "array_fields": [],
           "object_fields": [],
@@ -232,10 +232,10 @@
         "url": "https://api.all-ways.io/protocol/constants"
       },
       "reliability": {
-        "captured_at": "2026-06-06T09:16:53.413Z",
+        "captured_at": "2026-06-06T12:14:41.807Z",
         "content_type": "application/json; charset=utf-8",
-        "hash": "08ddae0d3de104f58afdfc4735443de381d9f597752c94a4a100f5fd76f88e64",
-        "latency_ms": 128,
+        "hash": "7a57f60c5bc33572f4e5efedbf0403b0b28eaf722a644e276eef2236ddab7d77",
+        "latency_ms": 93,
         "shape": {
           "first_item_keys": [
             "completed",
@@ -243,7 +243,7 @@
             "sourceChain",
             "total"
           ],
-          "item_count": 80,
+          "item_count": 82,
           "redacted_key_count": 1,
           "type": "array"
         },
@@ -252,10 +252,10 @@
         "url": "https://api.all-ways.io/miners/reliability"
       },
       "sse": {
-        "captured_at": "2026-06-06T09:16:53.767Z",
+        "captured_at": "2026-06-06T12:14:42.262Z",
         "content_type": "text/event-stream",
         "first_chunk_bytes": 25,
-        "latency_ms": 69,
+        "latency_ms": 63,
         "status": "captured",
         "status_code": 200,
         "url": "https://api.all-ways.io/sse"

@@ -124,6 +124,14 @@ const checks = [
     (body) => assert.equal(Array.isArray(body.data.subnets), true),
   ],
   [
+    "/api/v1/health/history/2026-06-06?limit=2",
+    (body) => {
+      assert.equal(Array.isArray(body.data.surfaces), true);
+      assert.equal(body.data.date, "2026-06-06");
+      assert.equal(body.data.surfaces.length <= 2, true);
+    },
+  ],
+  [
     "/api/v1/freshness",
     (body) =>
       assert.equal(
@@ -225,6 +233,26 @@ assert.equal(
   paginatedBody.data.subnets[0].netuid > paginatedBody.data.subnets[1].netuid,
   true,
 );
+
+for (const route of [
+  "/api/v1/subnets?limit=0",
+  "/api/v1/subnets?cursor=-1",
+  "/api/v1/subnets?order=sideways",
+  "/api/v1/subnets?sort=unknown_field",
+  "/api/v1/subnets?netuid=not-a-number",
+]) {
+  const response = await handleRequest(
+    new Request(`https://metagraph.sh${route}`),
+    env,
+    {},
+  );
+  assert.equal(response.status, 400, `${route}: expected invalid query`);
+  assert.equal(
+    response.headers.get("x-metagraph-error-code"),
+    "invalid_query",
+    `${route}: expected invalid_query code`,
+  );
+}
 
 const etagSource = await handleRequest(
   new Request("https://metagraph.sh/api/v1/subnets/7"),

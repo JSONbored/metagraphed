@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-06-06T01:19:40Z",
+  "captured_at": "2026-06-06T12:04:01Z",
   "network": "finney",
   "schema_version": 1,
   "source": {
@@ -11,11 +11,13 @@
   },
   "subnets": [
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "root",
+      "native_name_quality": "chain",
       "netuid": 0,
       "participant_count": 64,
+      "raw_name": "root",
       "registered_at_block": 0,
       "status": "active",
       "subnet_type": "root",
@@ -23,11 +25,13 @@
       "tempo": 100
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Apex",
+      "native_name_quality": "chain",
       "netuid": 1,
       "participant_count": 256,
+      "raw_name": "Apex",
       "registered_at_block": 1497824,
       "status": "active",
       "subnet_type": "application",
@@ -35,11 +39,13 @@
       "tempo": 99
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "DSperse",
+      "native_name_quality": "chain",
       "netuid": 2,
       "participant_count": 256,
+      "raw_name": "DSperse",
       "registered_at_block": 2734060,
       "status": "active",
       "subnet_type": "application",
@@ -47,11 +53,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "deprecated",
+      "native_name_quality": "chain",
       "netuid": 3,
       "participant_count": 256,
+      "raw_name": "deprecated",
       "registered_at_block": 4165565,
       "status": "active",
       "subnet_type": "application",
@@ -59,11 +67,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Targon",
+      "native_name_quality": "chain",
       "netuid": 4,
       "participant_count": 256,
+      "raw_name": "Targon",
       "registered_at_block": 1411451,
       "status": "active",
       "subnet_type": "application",
@@ -71,11 +81,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Hone",
+      "native_name_quality": "chain",
       "netuid": 5,
       "participant_count": 256,
+      "raw_name": "Hone",
       "registered_at_block": 2491604,
       "status": "active",
       "subnet_type": "application",
@@ -83,11 +95,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Numinous",
+      "native_name_quality": "chain",
       "netuid": 6,
       "participant_count": 256,
+      "raw_name": "Numinous",
       "registered_at_block": 3219949,
       "status": "active",
       "subnet_type": "application",
@@ -95,11 +109,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Allways",
+      "native_name_quality": "chain",
       "netuid": 7,
       "participant_count": 256,
+      "raw_name": "Allways",
       "registered_at_block": 2627691,
       "status": "active",
       "subnet_type": "application",
@@ -107,11 +123,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Vanta",
+      "native_name_quality": "chain",
       "netuid": 8,
       "participant_count": 256,
+      "raw_name": "Vanta",
       "registered_at_block": 1477264,
       "status": "active",
       "subnet_type": "application",
@@ -119,11 +137,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "iota",
+      "native_name_quality": "chain",
       "netuid": 9,
       "participant_count": 256,
+      "raw_name": "iota",
       "registered_at_block": 1489797,
       "status": "active",
       "subnet_type": "application",
@@ -131,11 +151,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Swap",
+      "native_name_quality": "chain",
       "netuid": 10,
       "participant_count": 256,
+      "raw_name": "Swap",
       "registered_at_block": 2869647,
       "status": "active",
       "subnet_type": "application",
@@ -143,11 +165,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "TrajectoryRL",
+      "native_name_quality": "chain",
       "netuid": 11,
       "participant_count": 256,
+      "raw_name": "TrajectoryRL",
       "registered_at_block": 2918568,
       "status": "active",
       "subnet_type": "application",
@@ -155,11 +179,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Compute Horde",
+      "native_name_quality": "chain",
       "netuid": 12,
       "participant_count": 256,
+      "raw_name": "Compute Horde",
       "registered_at_block": 2256433,
       "status": "active",
       "subnet_type": "application",
@@ -167,11 +193,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Data Universe",
+      "native_name_quality": "chain",
       "netuid": 13,
       "participant_count": 256,
+      "raw_name": "Data Universe",
       "registered_at_block": 1907637,
       "status": "active",
       "subnet_type": "application",
@@ -179,11 +207,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Cacheon",
+      "native_name_quality": "chain",
       "netuid": 14,
       "participant_count": 256,
+      "raw_name": "Cacheon",
       "registered_at_block": 4848444,
       "status": "active",
       "subnet_type": "application",
@@ -191,11 +221,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "ORO",
+      "native_name_quality": "chain",
       "netuid": 15,
       "participant_count": 256,
+      "raw_name": "ORO",
       "registered_at_block": 7366897,
       "status": "active",
       "subnet_type": "application",
@@ -203,11 +235,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 2,
       "name": "BitAds",
+      "native_name_quality": "chain",
       "netuid": 16,
       "participant_count": 256,
+      "raw_name": "BitAds",
       "registered_at_block": 2765446,
       "status": "active",
       "subnet_type": "application",
@@ -215,11 +249,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "404—GEN",
+      "native_name_quality": "chain",
       "netuid": 17,
       "participant_count": 256,
+      "raw_name": "404—GEN",
       "registered_at_block": 2840556,
       "status": "active",
       "subnet_type": "application",
@@ -227,11 +263,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Zeus",
+      "native_name_quality": "chain",
       "netuid": 18,
       "participant_count": 257,
+      "raw_name": "Zeus",
       "registered_at_block": 1604679,
       "status": "active",
       "subnet_type": "application",
@@ -239,11 +277,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "blockmachine",
+      "native_name_quality": "chain",
       "netuid": 19,
       "participant_count": 256,
+      "raw_name": "blockmachine",
       "registered_at_block": 1956072,
       "status": "active",
       "subnet_type": "application",
@@ -251,11 +291,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "GroundLayer",
+      "native_name_quality": "chain",
       "netuid": 20,
       "participant_count": 256,
+      "raw_name": "GroundLayer",
       "registered_at_block": 1970929,
       "status": "active",
       "subnet_type": "application",
@@ -263,11 +305,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "AdTAO",
+      "native_name_quality": "chain",
       "netuid": 21,
       "participant_count": 256,
+      "raw_name": "AdTAO",
       "registered_at_block": 3156578,
       "status": "active",
       "subnet_type": "application",
@@ -275,11 +319,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Desearch",
+      "native_name_quality": "chain",
       "netuid": 22,
       "participant_count": 256,
+      "raw_name": "Desearch",
       "registered_at_block": 2009702,
       "status": "active",
       "subnet_type": "application",
@@ -287,11 +333,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Trishool",
+      "native_name_quality": "chain",
       "netuid": 23,
       "participant_count": 256,
+      "raw_name": "Trishool",
       "registered_at_block": 2063528,
       "status": "active",
       "subnet_type": "application",
@@ -299,11 +347,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Quasar",
+      "native_name_quality": "chain",
       "netuid": 24,
       "participant_count": 256,
+      "raw_name": "Quasar",
       "registered_at_block": 2538424,
       "status": "active",
       "subnet_type": "application",
@@ -311,11 +361,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Mainframe",
+      "native_name_quality": "chain",
       "netuid": 25,
       "participant_count": 256,
+      "raw_name": "Mainframe",
       "registered_at_block": 2998801,
       "status": "active",
       "subnet_type": "application",
@@ -323,11 +375,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Perturb",
+      "native_name_quality": "chain",
       "netuid": 26,
       "participant_count": 256,
+      "raw_name": "Perturb",
       "registered_at_block": 8123781,
       "status": "active",
       "subnet_type": "application",
@@ -335,11 +389,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Nodexo",
+      "native_name_quality": "chain",
       "netuid": 27,
       "participant_count": 256,
+      "raw_name": "Nodexo",
       "registered_at_block": 1727132,
       "status": "active",
       "subnet_type": "application",
@@ -347,11 +403,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "gm",
+      "native_name_quality": "chain",
       "netuid": 28,
       "participant_count": 256,
+      "raw_name": "gm",
       "registered_at_block": 4878363,
       "status": "active",
       "subnet_type": "application",
@@ -359,11 +417,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Coldint",
+      "native_name_quality": "chain",
       "netuid": 29,
       "participant_count": 256,
+      "raw_name": "Coldint",
       "registered_at_block": 3379782,
       "status": "active",
       "subnet_type": "application",
@@ -371,11 +431,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Endure Network",
+      "native_name_quality": "chain",
       "netuid": 30,
       "participant_count": 256,
+      "raw_name": "Endure Network",
       "registered_at_block": 3250216,
       "status": "active",
       "subnet_type": "application",
@@ -383,11 +445,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Recall",
+      "native_name_quality": "chain",
       "netuid": 31,
       "participant_count": 256,
+      "raw_name": "Recall",
       "registered_at_block": 7173591,
       "status": "active",
       "subnet_type": "application",
@@ -395,11 +459,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "ItsAI",
+      "native_name_quality": "chain",
       "netuid": 32,
       "participant_count": 256,
+      "raw_name": "ItsAI",
       "registered_at_block": 2515294,
       "status": "active",
       "subnet_type": "application",
@@ -407,11 +473,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "ReadyAI",
+      "native_name_quality": "chain",
       "netuid": 33,
       "participant_count": 256,
+      "raw_name": "ReadyAI",
       "registered_at_block": 2943950,
       "status": "active",
       "subnet_type": "application",
@@ -419,11 +487,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "BitMind",
+      "native_name_quality": "chain",
       "netuid": 34,
       "participant_count": 256,
+      "raw_name": "BitMind",
       "registered_at_block": 3493948,
       "status": "active",
       "subnet_type": "application",
@@ -431,11 +501,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "OxMarkets",
+      "native_name_quality": "chain",
       "netuid": 35,
       "participant_count": 256,
+      "raw_name": "OxMarkets",
       "registered_at_block": 3037158,
       "status": "active",
       "subnet_type": "application",
@@ -443,11 +515,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Eirel",
+      "native_name_quality": "chain",
       "netuid": 36,
       "participant_count": 256,
+      "raw_name": "Eirel",
       "registered_at_block": 7894898,
       "status": "active",
       "subnet_type": "application",
@@ -455,11 +529,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Aurelius",
+      "native_name_quality": "chain",
       "netuid": 37,
       "participant_count": 256,
+      "raw_name": "Aurelius",
       "registered_at_block": 3212175,
       "status": "active",
       "subnet_type": "application",
@@ -467,11 +543,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "colosseum",
+      "native_name_quality": "chain",
       "netuid": 38,
       "participant_count": 256,
+      "raw_name": "colosseum",
       "registered_at_block": 7284230,
       "status": "active",
       "subnet_type": "application",
@@ -479,11 +557,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "deprecated",
+      "native_name_quality": "chain",
       "netuid": 39,
       "participant_count": 256,
+      "raw_name": "deprecated",
       "registered_at_block": 3280104,
       "status": "active",
       "subnet_type": "application",
@@ -491,11 +571,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Chunking",
+      "native_name_quality": "chain",
       "netuid": 40,
       "participant_count": 256,
+      "raw_name": "Chunking",
       "registered_at_block": 3372582,
       "status": "active",
       "subnet_type": "application",
@@ -503,11 +585,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Almanac",
+      "native_name_quality": "chain",
       "netuid": 41,
       "participant_count": 256,
+      "raw_name": "Almanac",
       "registered_at_block": 3394182,
       "status": "active",
       "subnet_type": "application",
@@ -515,11 +599,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Unknown",
+      "native_name_quality": "placeholder",
       "netuid": 42,
       "participant_count": 256,
+      "raw_name": "Unknown",
       "registered_at_block": 3613591,
       "status": "active",
       "subnet_type": "application",
@@ -527,11 +613,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Graphite",
+      "native_name_quality": "chain",
       "netuid": 43,
       "participant_count": 256,
+      "raw_name": "Graphite",
       "registered_at_block": 3408582,
       "status": "active",
       "subnet_type": "application",
@@ -539,11 +627,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 2,
       "name": "Score",
+      "native_name_quality": "chain",
       "netuid": 44,
       "participant_count": 256,
+      "raw_name": "Score",
       "registered_at_block": 3550319,
       "status": "active",
       "subnet_type": "application",
@@ -551,11 +641,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Talisman AI",
+      "native_name_quality": "chain",
       "netuid": 45,
       "participant_count": 256,
+      "raw_name": "Talisman AI",
       "registered_at_block": 3633154,
       "status": "active",
       "subnet_type": "application",
@@ -563,11 +655,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Zipcode",
+      "native_name_quality": "chain",
       "netuid": 46,
       "participant_count": 256,
+      "raw_name": "Zipcode",
       "registered_at_block": 3919107,
       "status": "active",
       "subnet_type": "application",
@@ -575,11 +669,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "EvolAI",
+      "native_name_quality": "chain",
       "netuid": 47,
       "participant_count": 108,
+      "raw_name": "EvolAI",
       "registered_at_block": 7340355,
       "status": "active",
       "subnet_type": "application",
@@ -587,11 +683,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Quantum Compute",
+      "native_name_quality": "chain",
       "netuid": 48,
       "participant_count": 256,
+      "raw_name": "Quantum Compute",
       "registered_at_block": 3856677,
       "status": "active",
       "subnet_type": "application",
@@ -599,11 +697,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Nepher Robotics",
+      "native_name_quality": "chain",
       "netuid": 49,
       "participant_count": 256,
+      "raw_name": "Nepher Robotics",
       "registered_at_block": 6783158,
       "status": "active",
       "subnet_type": "application",
@@ -611,11 +711,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Synth",
+      "native_name_quality": "chain",
       "netuid": 50,
       "participant_count": 256,
+      "raw_name": "Synth",
       "registered_at_block": 4763204,
       "status": "active",
       "subnet_type": "application",
@@ -623,11 +725,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "lium.io",
+      "native_name_quality": "chain",
       "netuid": 51,
       "participant_count": 256,
+      "raw_name": "lium.io",
       "registered_at_block": 3966206,
       "status": "active",
       "subnet_type": "application",
@@ -635,11 +739,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Dojo",
+      "native_name_quality": "chain",
       "netuid": 52,
       "participant_count": 256,
+      "raw_name": "Dojo",
       "registered_at_block": 3989825,
       "status": "active",
       "subnet_type": "application",
@@ -647,11 +753,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "EfficientFrontier",
+      "native_name_quality": "chain",
       "netuid": 53,
       "participant_count": 256,
+      "raw_name": "EfficientFrontier",
       "registered_at_block": 4203869,
       "status": "active",
       "subnet_type": "application",
@@ -659,11 +767,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Yanez MIID",
+      "native_name_quality": "chain",
       "netuid": 54,
       "participant_count": 256,
+      "raw_name": "Yanez MIID",
       "registered_at_block": 4742549,
       "status": "active",
       "subnet_type": "application",
@@ -671,11 +781,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "NIOME",
+      "native_name_quality": "chain",
       "netuid": 55,
       "participant_count": 256,
+      "raw_name": "NIOME",
       "registered_at_block": 4703386,
       "status": "active",
       "subnet_type": "application",
@@ -683,11 +795,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Gradients",
+      "native_name_quality": "chain",
       "netuid": 56,
       "participant_count": 256,
+      "raw_name": "Gradients",
       "registered_at_block": 4312927,
       "status": "active",
       "subnet_type": "application",
@@ -695,11 +809,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "gaia",
+      "native_name_quality": "chain",
       "netuid": 57,
       "participant_count": 177,
+      "raw_name": "gaia",
       "registered_at_block": 8057320,
       "status": "active",
       "subnet_type": "application",
@@ -707,11 +823,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Pending",
+      "native_name_quality": "chain",
       "netuid": 58,
       "participant_count": 256,
+      "raw_name": "Pending",
       "registered_at_block": 4367003,
       "status": "active",
       "subnet_type": "application",
@@ -719,11 +837,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Babelbit",
+      "native_name_quality": "chain",
       "netuid": 59,
       "participant_count": 256,
+      "raw_name": "Babelbit",
       "registered_at_block": 4401833,
       "status": "active",
       "subnet_type": "application",
@@ -731,11 +851,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Bitsec.ai",
+      "native_name_quality": "chain",
       "netuid": 60,
       "participant_count": 256,
+      "raw_name": "Bitsec.ai",
       "registered_at_block": 4796992,
       "status": "active",
       "subnet_type": "application",
@@ -743,11 +865,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "RedTeam",
+      "native_name_quality": "chain",
       "netuid": 61,
       "participant_count": 256,
+      "raw_name": "RedTeam",
       "registered_at_block": 4457976,
       "status": "active",
       "subnet_type": "application",
@@ -755,11 +879,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Ridges",
+      "native_name_quality": "chain",
       "netuid": 62,
       "participant_count": 256,
+      "raw_name": "Ridges",
       "registered_at_block": 4474225,
       "status": "active",
       "subnet_type": "application",
@@ -767,11 +893,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Enigma",
+      "native_name_quality": "chain",
       "netuid": 63,
       "participant_count": 256,
+      "raw_name": "Enigma",
       "registered_at_block": 4885578,
       "status": "active",
       "subnet_type": "application",
@@ -779,11 +907,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Chutes",
+      "native_name_quality": "chain",
       "netuid": 64,
       "participant_count": 256,
+      "raw_name": "Chutes",
       "registered_at_block": 4531295,
       "status": "active",
       "subnet_type": "application",
@@ -791,11 +921,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "TAO Private Network",
+      "native_name_quality": "chain",
       "netuid": 65,
       "participant_count": 256,
+      "raw_name": "TAO Private Network",
       "registered_at_block": 4950813,
       "status": "active",
       "subnet_type": "application",
@@ -803,11 +935,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "ninja",
+      "native_name_quality": "chain",
       "netuid": 66,
       "participant_count": 256,
+      "raw_name": "ninja",
       "registered_at_block": 4958013,
       "status": "active",
       "subnet_type": "application",
@@ -815,11 +949,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Harnyx",
+      "native_name_quality": "chain",
       "netuid": 67,
       "participant_count": 256,
+      "raw_name": "Harnyx",
       "registered_at_block": 7236936,
       "status": "active",
       "subnet_type": "application",
@@ -827,11 +963,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 2,
       "name": "NOVA",
+      "native_name_quality": "chain",
       "netuid": 68,
       "participant_count": 64,
+      "raw_name": "NOVA",
       "registered_at_block": 4972413,
       "status": "active",
       "subnet_type": "application",
@@ -839,11 +977,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "ain",
+      "native_name_quality": "chain",
       "netuid": 69,
       "participant_count": 152,
+      "raw_name": "ain",
       "registered_at_block": 8138182,
       "status": "active",
       "subnet_type": "application",
@@ -851,11 +991,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "NexisGen",
+      "native_name_quality": "chain",
       "netuid": 70,
-      "participant_count": 232,
+      "participant_count": 234,
+      "raw_name": "NexisGen",
       "registered_at_block": 7787562,
       "status": "active",
       "subnet_type": "application",
@@ -863,11 +1005,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Leadpoet",
+      "native_name_quality": "chain",
       "netuid": 71,
       "participant_count": 256,
+      "raw_name": "Leadpoet",
       "registered_at_block": 5048438,
       "status": "active",
       "subnet_type": "application",
@@ -875,11 +1019,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "StreetVision by NATIX",
+      "native_name_quality": "chain",
       "netuid": 72,
       "participant_count": 256,
+      "raw_name": "StreetVision by NATIX",
       "registered_at_block": 5064327,
       "status": "active",
       "subnet_type": "application",
@@ -887,11 +1033,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Parked",
+      "native_name_quality": "chain",
       "netuid": 73,
       "participant_count": 256,
+      "raw_name": "Parked",
       "registered_at_block": 5160047,
       "status": "active",
       "subnet_type": "application",
@@ -899,11 +1047,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Gittensor",
+      "native_name_quality": "chain",
       "netuid": 74,
       "participant_count": 256,
+      "raw_name": "Gittensor",
       "registered_at_block": 5086205,
       "status": "active",
       "subnet_type": "application",
@@ -911,11 +1061,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Hippius",
+      "native_name_quality": "chain",
       "netuid": 75,
       "participant_count": 256,
+      "raw_name": "Hippius",
       "registered_at_block": 5102795,
       "status": "active",
       "subnet_type": "application",
@@ -923,11 +1075,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Byzantium",
+      "native_name_quality": "chain",
       "netuid": 76,
       "participant_count": 44,
+      "raw_name": "Byzantium",
       "registered_at_block": 7574784,
       "status": "active",
       "subnet_type": "application",
@@ -935,11 +1089,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Liquidity",
+      "native_name_quality": "chain",
       "netuid": 77,
       "participant_count": 256,
+      "raw_name": "Liquidity",
       "registered_at_block": 5128460,
       "status": "active",
       "subnet_type": "application",
@@ -947,11 +1103,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Vocence",
+      "native_name_quality": "chain",
       "netuid": 78,
       "participant_count": 256,
+      "raw_name": "Vocence",
       "registered_at_block": 7966145,
       "status": "active",
       "subnet_type": "application",
@@ -959,11 +1117,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "MVTRX",
+      "native_name_quality": "chain",
       "netuid": 79,
       "participant_count": 256,
+      "raw_name": "MVTRX",
       "registered_at_block": 5173967,
       "status": "active",
       "subnet_type": "application",
@@ -971,11 +1131,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "dogelayer",
+      "native_name_quality": "chain",
       "netuid": 80,
       "participant_count": 256,
+      "raw_name": "dogelayer",
       "registered_at_block": 7151800,
       "status": "active",
       "subnet_type": "application",
@@ -983,11 +1145,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "deprecated",
+      "native_name_quality": "chain",
       "netuid": 81,
       "participant_count": 256,
+      "raw_name": "deprecated",
       "registered_at_block": 5203057,
       "status": "active",
       "subnet_type": "application",
@@ -995,11 +1159,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Compelle",
+      "native_name_quality": "chain",
       "netuid": 82,
       "participant_count": 64,
+      "raw_name": "Compelle",
       "registered_at_block": 8026517,
       "status": "active",
       "subnet_type": "application",
@@ -1007,11 +1173,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "CliqueAI",
+      "native_name_quality": "chain",
       "netuid": 83,
       "participant_count": 256,
+      "raw_name": "CliqueAI",
       "registered_at_block": 5231190,
       "status": "active",
       "subnet_type": "application",
@@ -1019,11 +1187,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "ansuz",
+      "native_name_quality": "chain",
       "netuid": 84,
       "participant_count": 64,
+      "raw_name": "ansuz",
       "registered_at_block": 8085297,
       "status": "active",
       "subnet_type": "application",
@@ -1031,11 +1201,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Vidaio",
+      "native_name_quality": "chain",
       "netuid": 85,
       "participant_count": 256,
+      "raw_name": "Vidaio",
       "registered_at_block": 5258781,
       "status": "active",
       "subnet_type": "application",
@@ -1043,11 +1215,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "⚒",
+      "native_name_quality": "chain",
       "netuid": 86,
       "participant_count": 256,
+      "raw_name": "⚒",
       "registered_at_block": 6914378,
       "status": "active",
       "subnet_type": "application",
@@ -1055,11 +1229,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 2,
-      "name": "Luminar Network",
+      "name": "unknown",
+      "native_name_quality": "placeholder",
       "netuid": 87,
       "participant_count": 256,
+      "raw_name": "unknown",
       "registered_at_block": 7208725,
       "status": "active",
       "subnet_type": "application",
@@ -1067,11 +1243,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Investing",
+      "native_name_quality": "chain",
       "netuid": 88,
       "participant_count": 256,
+      "raw_name": "Investing",
       "registered_at_block": 5299805,
       "status": "active",
       "subnet_type": "application",
@@ -1079,11 +1257,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 2,
       "name": "InfiniteHash",
+      "native_name_quality": "chain",
       "netuid": 89,
       "participant_count": 256,
+      "raw_name": "InfiniteHash",
       "registered_at_block": 5313364,
       "status": "active",
       "subnet_type": "application",
@@ -1091,11 +1271,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "ogham",
+      "native_name_quality": "chain",
       "netuid": 90,
       "participant_count": 256,
+      "raw_name": "ogham",
       "registered_at_block": 7063126,
       "status": "active",
       "subnet_type": "application",
@@ -1103,11 +1285,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Bitstarter #1",
+      "native_name_quality": "chain",
       "netuid": 91,
       "participant_count": 256,
+      "raw_name": "Bitstarter #1",
       "registered_at_block": 7633645,
       "status": "active",
       "subnet_type": "application",
@@ -1115,11 +1299,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "TensorClaw",
+      "native_name_quality": "chain",
       "netuid": 92,
       "participant_count": 256,
+      "raw_name": "TensorClaw",
       "registered_at_block": 7013758,
       "status": "active",
       "subnet_type": "application",
@@ -1127,11 +1313,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 2,
       "name": "Bitcast",
+      "native_name_quality": "chain",
       "netuid": 93,
       "participant_count": 256,
+      "raw_name": "Bitcast",
       "registered_at_block": 5370681,
       "status": "active",
       "subnet_type": "application",
@@ -1139,11 +1327,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Bitsota",
+      "native_name_quality": "chain",
       "netuid": 94,
       "participant_count": 256,
+      "raw_name": "Bitsota",
       "registered_at_block": 6962737,
       "status": "active",
       "subnet_type": "application",
@@ -1151,11 +1341,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "nion",
+      "native_name_quality": "chain",
       "netuid": 95,
       "participant_count": 256,
+      "raw_name": "nion",
       "registered_at_block": 5403674,
       "status": "active",
       "subnet_type": "application",
@@ -1163,11 +1355,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Verathos",
+      "native_name_quality": "chain",
       "netuid": 96,
       "participant_count": 256,
+      "raw_name": "Verathos",
       "registered_at_block": 7692872,
       "status": "active",
       "subnet_type": "application",
@@ -1175,11 +1369,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Albedo",
+      "native_name_quality": "chain",
       "netuid": 97,
       "participant_count": 256,
+      "raw_name": "Albedo",
       "registered_at_block": 7735450,
       "status": "active",
       "subnet_type": "application",
@@ -1187,11 +1383,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "ForeverMoney",
+      "native_name_quality": "chain",
       "netuid": 98,
       "participant_count": 256,
+      "raw_name": "ForeverMoney",
       "registered_at_block": 5445992,
       "status": "active",
       "subnet_type": "application",
@@ -1199,11 +1397,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Leoma",
+      "native_name_quality": "chain",
       "netuid": 99,
       "participant_count": 256,
+      "raw_name": "Leoma",
       "registered_at_block": 7415113,
       "status": "active",
       "subnet_type": "application",
@@ -1211,11 +1411,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Plaτform",
+      "native_name_quality": "chain",
       "netuid": 100,
       "participant_count": 256,
+      "raw_name": "Plaτform",
       "registered_at_block": 6693448,
       "status": "active",
       "subnet_type": "application",
@@ -1223,11 +1425,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "eni",
+      "native_name_quality": "chain",
       "netuid": 101,
       "participant_count": 256,
+      "raw_name": "eni",
       "registered_at_block": 5481350,
       "status": "active",
       "subnet_type": "application",
@@ -1235,11 +1439,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "ConnitoAI",
+      "native_name_quality": "chain",
       "netuid": 102,
       "participant_count": 256,
+      "raw_name": "ConnitoAI",
       "registered_at_block": 7840965,
       "status": "active",
       "subnet_type": "application",
@@ -1247,11 +1453,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Djinn",
+      "native_name_quality": "chain",
       "netuid": 103,
       "participant_count": 256,
+      "raw_name": "Djinn",
       "registered_at_block": 5515448,
       "status": "active",
       "subnet_type": "application",
@@ -1259,11 +1467,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "for sale (burn to uid1)",
+      "native_name_quality": "chain",
       "netuid": 104,
       "participant_count": 64,
+      "raw_name": "for sale (burn to uid1)",
       "registered_at_block": 5528520,
       "status": "active",
       "subnet_type": "application",
@@ -1271,11 +1481,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Beam",
+      "native_name_quality": "chain",
       "netuid": 105,
       "participant_count": 256,
+      "raw_name": "Beam",
       "registered_at_block": 6841399,
       "status": "active",
       "subnet_type": "application",
@@ -1283,11 +1495,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "VoidAI",
+      "native_name_quality": "chain",
       "netuid": 106,
       "participant_count": 256,
+      "raw_name": "VoidAI",
       "registered_at_block": 5558480,
       "status": "active",
       "subnet_type": "application",
@@ -1295,11 +1509,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Minos",
+      "native_name_quality": "chain",
       "netuid": 107,
       "participant_count": 64,
+      "raw_name": "Minos",
       "registered_at_block": 7457580,
       "status": "active",
       "subnet_type": "application",
@@ -1307,11 +1523,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "TalkHead",
+      "native_name_quality": "chain",
       "netuid": 108,
       "participant_count": 150,
+      "raw_name": "TalkHead",
       "registered_at_block": 7105263,
       "status": "active",
       "subnet_type": "application",
@@ -1319,11 +1537,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Academia",
+      "native_name_quality": "chain",
       "netuid": 109,
       "participant_count": 256,
+      "raw_name": "Academia",
       "registered_at_block": 7257480,
       "status": "active",
       "subnet_type": "application",
@@ -1331,11 +1551,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Green Compute",
+      "native_name_quality": "chain",
       "netuid": 110,
       "participant_count": 256,
+      "raw_name": "Green Compute",
       "registered_at_block": 5606062,
       "status": "active",
       "subnet_type": "application",
@@ -1343,11 +1565,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "oneoneone",
+      "native_name_quality": "chain",
       "netuid": 111,
       "participant_count": 256,
+      "raw_name": "oneoneone",
       "registered_at_block": 5615562,
       "status": "active",
       "subnet_type": "application",
@@ -1355,11 +1579,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "minotaur",
+      "native_name_quality": "chain",
       "netuid": 112,
       "participant_count": 256,
+      "raw_name": "minotaur",
       "registered_at_block": 5633022,
       "status": "active",
       "subnet_type": "application",
@@ -1367,11 +1593,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 2,
       "name": "TensorUSD",
+      "native_name_quality": "chain",
       "netuid": 113,
       "participant_count": 135,
+      "raw_name": "TensorUSD",
       "registered_at_block": 7119664,
       "status": "active",
       "subnet_type": "application",
@@ -1379,11 +1607,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "SOMA",
+      "native_name_quality": "chain",
       "netuid": 114,
       "participant_count": 256,
+      "raw_name": "SOMA",
       "registered_at_block": 7312241,
       "status": "active",
       "subnet_type": "application",
@@ -1391,11 +1621,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "HashiChain",
+      "native_name_quality": "chain",
       "netuid": 115,
       "participant_count": 256,
+      "raw_name": "HashiChain",
       "registered_at_block": 5683635,
       "status": "active",
       "subnet_type": "application",
@@ -1403,11 +1635,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "hard_sign",
+      "native_name_quality": "chain",
       "netuid": 116,
       "participant_count": 62,
+      "raw_name": "hard_sign",
       "registered_at_block": 8294730,
       "status": "active",
       "subnet_type": "application",
@@ -1415,11 +1649,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Unknown",
+      "native_name_quality": "placeholder",
       "netuid": 117,
       "participant_count": 97,
+      "raw_name": "Unknown",
       "registered_at_block": 5710859,
       "status": "active",
       "subnet_type": "application",
@@ -1427,11 +1663,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Ditto",
+      "native_name_quality": "chain",
       "netuid": 118,
       "participant_count": 256,
+      "raw_name": "Ditto",
       "registered_at_block": 5724794,
       "status": "active",
       "subnet_type": "application",
@@ -1439,11 +1677,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Satori",
+      "native_name_quality": "chain",
       "netuid": 119,
       "participant_count": 256,
+      "raw_name": "Satori",
       "registered_at_block": 5740660,
       "status": "active",
       "subnet_type": "application",
@@ -1451,11 +1691,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Affine",
+      "native_name_quality": "chain",
       "netuid": 120,
       "participant_count": 256,
+      "raw_name": "Affine",
       "registered_at_block": 5749344,
       "status": "active",
       "subnet_type": "application",
@@ -1463,11 +1705,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "sundae_bar",
+      "native_name_quality": "chain",
       "netuid": 121,
       "participant_count": 256,
+      "raw_name": "sundae_bar",
       "registered_at_block": 5766528,
       "status": "active",
       "subnet_type": "application",
@@ -1475,11 +1719,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "gamma_small",
+      "native_name_quality": "chain",
       "netuid": 122,
       "participant_count": 2,
+      "raw_name": "gamma_small",
       "registered_at_block": 8238082,
       "status": "active",
       "subnet_type": "application",
@@ -1487,11 +1733,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "MANTIS",
+      "native_name_quality": "chain",
       "netuid": 123,
       "participant_count": 256,
+      "raw_name": "MANTIS",
       "registered_at_block": 5794330,
       "status": "active",
       "subnet_type": "application",
@@ -1499,11 +1747,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Swarm",
+      "native_name_quality": "chain",
       "netuid": 124,
       "participant_count": 256,
+      "raw_name": "Swarm",
       "registered_at_block": 5813454,
       "status": "active",
       "subnet_type": "application",
@@ -1511,11 +1761,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "8 Ball",
+      "native_name_quality": "chain",
       "netuid": 125,
       "participant_count": 256,
+      "raw_name": "8 Ball",
       "registered_at_block": 5834408,
       "status": "active",
       "subnet_type": "application",
@@ -1523,11 +1775,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Poker44",
+      "native_name_quality": "chain",
       "netuid": 126,
       "participant_count": 256,
+      "raw_name": "Poker44",
       "registered_at_block": 7525773,
       "status": "active",
       "subnet_type": "application",
@@ -1535,11 +1789,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "Astrid",
+      "native_name_quality": "chain",
       "netuid": 127,
       "participant_count": 256,
+      "raw_name": "Astrid",
       "registered_at_block": 5848837,
       "status": "active",
       "subnet_type": "application",
@@ -1547,11 +1803,13 @@
       "tempo": 360
     },
     {
-      "block": 8344198,
+      "block": 8347420,
       "mechanism_count": 1,
       "name": "ByteLeap",
+      "native_name_quality": "chain",
       "netuid": 128,
       "participant_count": 256,
+      "raw_name": "ByteLeap",
       "registered_at_block": 5856038,
       "status": "active",
       "subnet_type": "application",

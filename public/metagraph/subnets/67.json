@@ -10,7 +10,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -73,7 +73,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -94,7 +94,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -104,6 +104,174 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/harnyx/harnyx"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-common-api",
+      "kind": "subnet-api",
+      "name": "Harnyx API",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-common-docs",
+      "kind": "docs",
+      "name": "Harnyx docs",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-common-health",
+      "kind": "subnet-api",
+      "name": "Harnyx health endpoint",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Harnyx OpenAPI JSON",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-common-swagger",
+      "kind": "openapi",
+      "name": "Harnyx Swagger UI",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Harnyx Swagger JSON",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-link-harnyx-ai-dashboard-1",
+      "kind": "dashboard",
+      "name": "Harnyx dashboard",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://dashboard.harnyx.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-link-harnyx-ai-website-2",
+      "kind": "website",
+      "name": "Harnyx website page",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/vision"
     }
   ],
   "candidates": [
@@ -117,7 +285,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -180,7 +348,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -201,7 +369,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -211,6 +379,174 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/harnyx/harnyx"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-common-api",
+      "kind": "subnet-api",
+      "name": "Harnyx API",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-common-docs",
+      "kind": "docs",
+      "name": "Harnyx docs",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-common-health",
+      "kind": "subnet-api",
+      "name": "Harnyx health endpoint",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Harnyx OpenAPI JSON",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-common-swagger",
+      "kind": "openapi",
+      "name": "Harnyx Swagger UI",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Harnyx Swagger JSON",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-link-harnyx-ai-dashboard-1",
+      "kind": "dashboard",
+      "name": "Harnyx dashboard",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://dashboard.harnyx.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-67-website-link-harnyx-ai-website-2",
+      "kind": "website",
+      "name": "Harnyx website page",
+      "netuid": 67,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://harnyx.ai/",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://harnyx.ai/vision"
     }
   ],
   "gaps": {
@@ -236,8 +572,8 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 5,
+    "block": 8347420,
+    "candidate_count": 13,
     "categories": [
       "baseline-curated"
     ],
@@ -252,8 +588,8 @@
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 3,
-      "verified_at": "2026-06-06T07:44:02.909Z"
+      "source_count": 4,
+      "verified_at": "2026-06-06T12:18:27.307Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://dashboard.harnyx.ai/benchmark",
@@ -282,18 +618,23 @@
     "mechanism_count": 1,
     "name": "Harnyx",
     "native_name": "Harnyx",
+    "native_name_quality": "chain",
     "native_slug": "harnyx",
     "netuid": 67,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 256,
-    "probed_surface_count": 5,
+    "probed_surface_count": 6,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -302,7 +643,7 @@
     "source_repo": "https://github.com/harnyx/harnyx",
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 5,
+    "surface_count": 6,
     "symbol": "ط",
     "tempo": 360,
     "website_url": "https://harnyx.ai/"
@@ -315,7 +656,7 @@
       "kind": "dashboard",
       "name": "Harnyx dashboard",
       "netuid": 67,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -343,11 +684,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 286,
+        "latency_ms": 666,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.818Z"
+        "verified_at": "2026-06-06T12:18:27.153Z"
       }
     },
     {
@@ -385,11 +726,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 185,
+        "latency_ms": 158,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.823Z"
+        "verified_at": "2026-06-06T12:18:27.153Z"
       }
     },
     {
@@ -427,11 +768,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 710,
+        "latency_ms": 272,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.845Z"
+        "verified_at": "2026-06-06T12:18:27.170Z"
       }
     },
     {
@@ -441,7 +782,7 @@
       "kind": "docs",
       "name": "Harnyx Tensorplex subnet docs",
       "netuid": 67,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -469,11 +810,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 411,
+        "latency_ms": 346,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.877Z"
+        "verified_at": "2026-06-06T12:18:27.186Z"
       }
     },
     {
@@ -483,7 +824,7 @@
       "kind": "source-repo",
       "name": "Harnyx source repository",
       "netuid": 67,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -512,11 +853,53 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/harnyx/harnyx",
-        "latency_ms": 559,
+        "latency_ms": 537,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.909Z"
+        "verified_at": "2026-06-06T12:18:27.191Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-67-website-link-harnyx-ai-dashboard-1",
+      "kind": "dashboard",
+      "name": "Harnyx dashboard",
+      "netuid": 67,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "subnet_name": "Harnyx",
+      "subnet_slug": "sn-67",
+      "url": "https://dashboard.harnyx.ai/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 719,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:27.307Z"
       }
     }
   ],
@@ -528,7 +911,7 @@
       "kind": "dashboard",
       "name": "Harnyx dashboard",
       "netuid": 67,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -556,11 +939,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 286,
+        "latency_ms": 666,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.818Z"
+        "verified_at": "2026-06-06T12:18:27.153Z"
       }
     },
     {
@@ -598,11 +981,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 185,
+        "latency_ms": 158,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.823Z"
+        "verified_at": "2026-06-06T12:18:27.153Z"
       }
     },
     {
@@ -640,11 +1023,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 710,
+        "latency_ms": 272,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.845Z"
+        "verified_at": "2026-06-06T12:18:27.170Z"
       }
     },
     {
@@ -654,7 +1037,7 @@
       "kind": "docs",
       "name": "Harnyx Tensorplex subnet docs",
       "netuid": 67,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -682,11 +1065,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 411,
+        "latency_ms": 346,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.877Z"
+        "verified_at": "2026-06-06T12:18:27.186Z"
       }
     },
     {
@@ -696,7 +1079,7 @@
       "kind": "source-repo",
       "name": "Harnyx source repository",
       "netuid": 67,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -725,11 +1108,53 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/harnyx/harnyx",
-        "latency_ms": 559,
+        "latency_ms": 537,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.909Z"
+        "verified_at": "2026-06-06T12:18:27.191Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-67-website-link-harnyx-ai-dashboard-1",
+      "kind": "dashboard",
+      "name": "Harnyx dashboard",
+      "netuid": 67,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://harnyx.ai/"
+      ],
+      "subnet_name": "Harnyx",
+      "subnet_slug": "sn-67",
+      "url": "https://dashboard.harnyx.ai/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 719,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:27.307Z"
       }
     }
   ]

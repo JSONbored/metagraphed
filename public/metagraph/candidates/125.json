@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 129,
+        "latency_ms": 215,
         "method_tested": "HEAD",
         "name": "8 Ball TaoMarketCap dashboard",
         "netuid": 125,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/125",
-        "verified_at": "2026-06-06T07:44:10.672Z"
+        "verified_at": "2026-06-06T12:18:44.706Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 397,
+        "latency_ms": 292,
         "method_tested": "HEAD",
         "name": "8 Ball Tensorplex subnet docs",
         "netuid": 125,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/125",
-        "verified_at": "2026-06-06T07:44:10.676Z"
+        "verified_at": "2026-06-06T12:18:44.806Z"
       }
     }
   ],

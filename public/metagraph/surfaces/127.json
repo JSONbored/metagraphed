@@ -9,6 +9,48 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-127-github-readme-astridintelligence-sn-127-subnet-api-1",
+      "kind": "subnet-api",
+      "name": "Astrid API surface",
+      "netuid": 127,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/astridintelligence/sn-127/blob/master/README.md"
+      ],
+      "subnet_name": "Astrid",
+      "subnet_slug": "sn-127",
+      "url": "https://api.astrid.global/v1",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "application/json; charset=utf-8",
+        "latency_ms": 443,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:45.626Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-127-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Astrid TaoMarketCap dashboard",
@@ -41,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 141,
+        "latency_ms": 144,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.853Z"
+        "verified_at": "2026-06-06T12:18:45.628Z"
       }
     },
     {
@@ -84,11 +126,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/astridintelligence/sn-127",
-        "latency_ms": 519,
+        "latency_ms": 481,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.854Z"
+        "verified_at": "2026-06-06T12:18:45.636Z"
       }
     },
     {
@@ -126,11 +168,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 367,
+        "latency_ms": 832,
         "method_tested": "HEAD",
         "redirect_target": "https://astrid.global/",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.854Z"
+        "verified_at": "2026-06-06T12:18:45.668Z"
       }
     },
     {
@@ -140,7 +182,7 @@
       "kind": "docs",
       "name": "Astrid Tensorplex subnet docs",
       "netuid": 127,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -168,11 +210,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 427,
+        "latency_ms": 270,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.855Z"
+        "verified_at": "2026-06-06T12:18:45.718Z"
       }
     }
   ]

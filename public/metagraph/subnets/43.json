@@ -2,6 +2,27 @@
   "candidate_surfaces": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-43-github-readme-graphiteai-graphite-subnet-subnet-api-1",
+      "kind": "subnet-api",
+      "name": "Graphite API surface",
+      "netuid": 43,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/GraphiteAI/Graphite-Subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/GraphiteAI/Graphite-Subnet/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://dcbadge.limes.pink/api/server/https://discord.gg/sN5NU32M"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-43-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -37,7 +58,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/43",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/43"
+        "https://api.taomarketcap.com/public/v1/subnets/43",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/43/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/GraphiteAI/Graphite-Subnet"
@@ -52,7 +74,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -67,6 +89,27 @@
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-43-github-readme-graphiteai-graphite-subnet-subnet-api-1",
+      "kind": "subnet-api",
+      "name": "Graphite API surface",
+      "netuid": 43,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/GraphiteAI/Graphite-Subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/GraphiteAI/Graphite-Subnet/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://dcbadge.limes.pink/api/server/https://discord.gg/sN5NU32M"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-43-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -102,7 +145,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/43",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/43"
+        "https://api.taomarketcap.com/public/v1/subnets/43",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/43/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/GraphiteAI/Graphite-Subnet"
@@ -117,7 +161,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -153,8 +197,8 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 3,
+    "block": 8347420,
+    "candidate_count": 4,
     "categories": [
       "baseline-curated"
     ],
@@ -171,7 +215,7 @@
       "review_state": "machine-generated",
       "reviewed_at": null,
       "source_count": 2,
-      "verified_at": "2026-06-06T07:43:57.104Z"
+      "verified_at": "2026-06-06T12:18:20.121Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/43",
@@ -201,6 +245,7 @@
     "mechanism_count": 1,
     "name": "Graphite",
     "native_name": "Graphite",
+    "native_name_quality": "chain",
     "native_slug": "graphite",
     "netuid": 43,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
@@ -209,10 +254,14 @@
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -262,11 +311,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 269,
+        "latency_ms": 161,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:57.089Z"
+        "verified_at": "2026-06-06T12:18:20.048Z"
       }
     },
     {
@@ -295,7 +344,8 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/43"
+        "https://api.taomarketcap.com/public/v1/subnets/43",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/43/subnet.json"
       ],
       "subnet_name": "Graphite",
       "subnet_slug": "sn-43",
@@ -305,11 +355,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/GraphiteAI/Graphite-Subnet",
-        "latency_ms": 613,
+        "latency_ms": 684,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:57.104Z"
+        "verified_at": "2026-06-06T12:18:20.065Z"
       }
     },
     {
@@ -319,7 +369,7 @@
       "kind": "docs",
       "name": "Graphite Tensorplex subnet docs",
       "netuid": 43,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -347,11 +397,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 478,
+        "latency_ms": 332,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:57.104Z"
+        "verified_at": "2026-06-06T12:18:20.121Z"
       }
     }
   ],
@@ -391,11 +441,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 269,
+        "latency_ms": 161,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:57.089Z"
+        "verified_at": "2026-06-06T12:18:20.048Z"
       }
     },
     {
@@ -424,7 +474,8 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/43"
+        "https://api.taomarketcap.com/public/v1/subnets/43",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/43/subnet.json"
       ],
       "subnet_name": "Graphite",
       "subnet_slug": "sn-43",
@@ -434,11 +485,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/GraphiteAI/Graphite-Subnet",
-        "latency_ms": 613,
+        "latency_ms": 684,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:57.104Z"
+        "verified_at": "2026-06-06T12:18:20.065Z"
       }
     },
     {
@@ -448,7 +499,7 @@
       "kind": "docs",
       "name": "Graphite Tensorplex subnet docs",
       "netuid": 43,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -476,11 +527,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 478,
+        "latency_ms": 332,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:57.104Z"
+        "verified_at": "2026-06-06T12:18:20.121Z"
       }
     }
   ]

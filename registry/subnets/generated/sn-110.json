@@ -6,14 +6,13 @@
     "gap_notes": [
       "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
-      "No verified SSE/event stream yet.",
-      "No verified data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 2,
-    "verified_at": "2026-06-06T07:44:08.698Z"
+    "source_count": 3,
+    "verified_at": "2026-06-06T12:18:41.434Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/110",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/110",
@@ -32,7 +31,7 @@
       "id": "sn-110-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Green Compute source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -59,11 +58,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Rich-Kids-of-TAO/rkt-subnet",
-        "latency_ms": 434,
+        "latency_ms": 432,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:08.698Z"
+        "verified_at": "2026-06-06T12:18:41.233Z"
       }
     },
     {
@@ -98,11 +97,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 222,
+        "latency_ms": 195,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:08.623Z"
+        "verified_at": "2026-06-06T12:18:41.147Z"
       }
     },
     {
@@ -111,7 +110,7 @@
       "id": "sn-110-tensorplex-docs",
       "kind": "docs",
       "name": "Green Compute Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +136,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 316,
+        "latency_ms": 328,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:08.689Z"
+        "verified_at": "2026-06-06T12:18:41.155Z"
       }
     },
     {
@@ -176,11 +175,128 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 135,
+        "latency_ms": 216,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:08.593Z"
+        "verified_at": "2026-06-06T12:18:40.939Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-110-website-link-www-green-compute-com-data-artifact-10",
+      "kind": "data-artifact",
+      "name": "Green Compute data artifact",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.green-compute.com/"
+      ],
+      "url": "https://www.green-compute.com/models?prefill=Qwen%2FQwen2.5-7B-Instruct",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 63,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 188,
+        "method_tested": "HEAD",
+        "redirect_target": "https://www.green-compute.com/login?callbackUrl=%2Fmodels%3Fprefill%3DQwen%252FQwen2.5-7B-Instruct",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:41.343Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-110-website-link-www-green-compute-com-data-artifact-6",
+      "kind": "data-artifact",
+      "name": "Green Compute data artifact",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.green-compute.com/"
+      ],
+      "url": "https://www.green-compute.com/models",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 63,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 239,
+        "method_tested": "HEAD",
+        "redirect_target": "https://www.green-compute.com/login?callbackUrl=%2Fmodels",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:41.392Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-110-website-link-www-green-compute-com-data-artifact-9",
+      "kind": "data-artifact",
+      "name": "Green Compute data artifact",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.green-compute.com/"
+      ],
+      "url": "https://www.green-compute.com/models?prefill=meta-llama%2FMeta-Llama-3.1-8B-Instruct",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 63,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 240,
+        "method_tested": "HEAD",
+        "redirect_target": "https://www.green-compute.com/login?callbackUrl=%2Fmodels%3Fprefill%3Dmeta-llama%252FMeta-Llama-3.1-8B-Instruct",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:41.434Z"
       }
     }
   ],

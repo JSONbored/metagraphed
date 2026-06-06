@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 142,
+        "latency_ms": 132,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.220Z"
+        "verified_at": "2026-06-06T12:18:21.533Z"
       }
     },
     {
@@ -84,11 +84,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/qbittensor-labs/quantum-compute",
-        "latency_ms": 354,
+        "latency_ms": 431,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.362Z"
+        "verified_at": "2026-06-06T12:18:21.538Z"
       }
     },
     {
@@ -126,11 +126,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 577,
+        "latency_ms": 276,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.363Z"
+        "verified_at": "2026-06-06T12:18:21.560Z"
       }
     },
     {
@@ -140,7 +140,7 @@
       "kind": "docs",
       "name": "Quantum Compute Tensorplex subnet docs",
       "netuid": 48,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -168,11 +168,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 259,
+        "latency_ms": 281,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.392Z"
+        "verified_at": "2026-06-06T12:18:21.572Z"
       }
     }
   ]

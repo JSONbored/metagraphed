@@ -73,7 +73,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -94,7 +94,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -115,7 +115,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -125,6 +125,132 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/Loosh-ai/loosh-public-documentation"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-78-website-common-api",
+      "kind": "subnet-api",
+      "name": "Vocence API",
+      "netuid": 78,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.vocence.ai/",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.vocence.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-78-website-common-docs",
+      "kind": "docs",
+      "name": "Vocence docs",
+      "netuid": 78,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.vocence.ai/",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.vocence.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-78-website-common-health",
+      "kind": "subnet-api",
+      "name": "Vocence health endpoint",
+      "netuid": 78,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.vocence.ai/",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.vocence.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-78-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Vocence OpenAPI JSON",
+      "netuid": 78,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.vocence.ai/",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.vocence.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-78-website-common-swagger",
+      "kind": "openapi",
+      "name": "Vocence Swagger UI",
+      "netuid": 78,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.vocence.ai/",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.vocence.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-78-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Vocence Swagger JSON",
+      "netuid": 78,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.vocence.ai/",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.vocence.ai/swagger.json"
     }
   ],
   "candidates": [
@@ -201,7 +327,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -222,7 +348,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -243,7 +369,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -253,17 +379,141 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/Loosh-ai/loosh-public-documentation"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-78-website-common-api",
+      "kind": "subnet-api",
+      "name": "Vocence API",
+      "netuid": 78,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.vocence.ai/",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.vocence.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-78-website-common-docs",
+      "kind": "docs",
+      "name": "Vocence docs",
+      "netuid": 78,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.vocence.ai/",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.vocence.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-78-website-common-health",
+      "kind": "subnet-api",
+      "name": "Vocence health endpoint",
+      "netuid": 78,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.vocence.ai/",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.vocence.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-78-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Vocence OpenAPI JSON",
+      "netuid": 78,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.vocence.ai/",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.vocence.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-78-website-common-swagger",
+      "kind": "openapi",
+      "name": "Vocence Swagger UI",
+      "netuid": 78,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.vocence.ai/",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.vocence.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-78-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Vocence Swagger JSON",
+      "netuid": 78,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.vocence.ai/",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.vocence.ai/swagger.json"
     }
   ],
   "gaps": {
     "gap_notes": [
-      "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
       "No verified SSE/event stream yet.",
       "No verified data artifact yet."
     ],
     "missing_kinds": [
-      "openapi",
       "subnet-api",
       "sse",
       "data-artifact"
@@ -271,6 +521,7 @@
     "supported_kinds": [
       "dashboard",
       "docs",
+      "openapi",
       "source-repo",
       "website"
     ]
@@ -278,15 +529,14 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 6,
+    "block": 8347420,
+    "candidate_count": 12,
     "categories": [
       "baseline-curated"
     ],
     "coverage_level": "probed",
     "curation": {
       "gap_notes": [
-        "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
         "No verified SSE/event stream yet.",
         "No verified data artifact yet."
@@ -294,21 +544,19 @@
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 2,
-      "verified_at": "2026-06-06T07:44:04.186Z"
+      "source_count": 3,
+      "verified_at": "2026-06-06T12:18:30.246Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/78",
     "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/78",
     "gaps": {
       "gap_notes": [
-        "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
         "No verified SSE/event stream yet.",
         "No verified data artifact yet."
       ],
       "missing_kinds": [
-        "openapi",
         "subnet-api",
         "sse",
         "data-artifact"
@@ -316,6 +564,7 @@
       "supported_kinds": [
         "dashboard",
         "docs",
+        "openapi",
         "source-repo",
         "website"
       ]
@@ -324,18 +573,23 @@
     "mechanism_count": 1,
     "name": "Vocence",
     "native_name": "Vocence",
+    "native_name_quality": "chain",
     "native_slug": "vocence",
     "netuid": 78,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 256,
-    "probed_surface_count": 6,
+    "probed_surface_count": 8,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -344,7 +598,7 @@
     "source_repo": "https://github.com/vocence-78/vocence",
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 6,
+    "surface_count": 8,
     "symbol": "و",
     "tempo": 360,
     "website_url": "https://www.vocence.ai/"
@@ -385,11 +639,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 142,
+        "latency_ms": 135,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.070Z"
+        "verified_at": "2026-06-06T12:18:30.064Z"
       }
     },
     {
@@ -428,11 +682,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/vocence-78/vocence",
-        "latency_ms": 533,
+        "latency_ms": 530,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.111Z"
+        "verified_at": "2026-06-06T12:18:30.102Z"
       }
     },
     {
@@ -470,11 +724,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 237,
+        "latency_ms": 134,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.151Z"
+        "verified_at": "2026-06-06T12:18:30.144Z"
       }
     },
     {
@@ -484,7 +738,7 @@
       "kind": "docs",
       "name": "Vocence Tensorplex subnet docs",
       "netuid": 78,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -512,11 +766,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 318,
+        "latency_ms": 384,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.160Z"
+        "verified_at": "2026-06-06T12:18:30.147Z"
       }
     },
     {
@@ -526,7 +780,7 @@
       "kind": "source-repo",
       "name": "Vocence source repository",
       "netuid": 78,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -554,11 +808,11 @@
         "classification": "live",
         "confidence_score": 65,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 448,
+        "latency_ms": 478,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.185Z"
+        "verified_at": "2026-06-06T12:18:30.154Z"
       }
     },
     {
@@ -568,7 +822,7 @@
       "kind": "source-repo",
       "name": "Vocence source repository",
       "netuid": 78,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -597,11 +851,96 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Loosh-ai/loosh-public-documentation",
-        "latency_ms": 689,
+        "latency_ms": 523,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.186Z"
+        "verified_at": "2026-06-06T12:18:30.166Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-78-website-common-docs",
+      "kind": "docs",
+      "name": "Vocence docs",
+      "netuid": 78,
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "subnet_name": "Vocence",
+      "subnet_slug": "sn-78",
+      "url": "https://www.vocence.ai/docs",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 129,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:30.199Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-78-website-common-swagger",
+      "kind": "openapi",
+      "name": "Vocence Swagger UI",
+      "netuid": 78,
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "schema_status": "ui-only",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "subnet_name": "Vocence",
+      "subnet_slug": "sn-78",
+      "url": "https://www.vocence.ai/swagger",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 184,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:30.246Z"
       }
     }
   ],
@@ -641,11 +980,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 142,
+        "latency_ms": 135,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.070Z"
+        "verified_at": "2026-06-06T12:18:30.064Z"
       }
     },
     {
@@ -684,11 +1023,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/vocence-78/vocence",
-        "latency_ms": 533,
+        "latency_ms": 530,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.111Z"
+        "verified_at": "2026-06-06T12:18:30.102Z"
       }
     },
     {
@@ -726,11 +1065,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 237,
+        "latency_ms": 134,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.151Z"
+        "verified_at": "2026-06-06T12:18:30.144Z"
       }
     },
     {
@@ -740,7 +1079,7 @@
       "kind": "docs",
       "name": "Vocence Tensorplex subnet docs",
       "netuid": 78,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -768,11 +1107,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 318,
+        "latency_ms": 384,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.160Z"
+        "verified_at": "2026-06-06T12:18:30.147Z"
       }
     },
     {
@@ -782,7 +1121,7 @@
       "kind": "source-repo",
       "name": "Vocence source repository",
       "netuid": 78,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -810,11 +1149,11 @@
         "classification": "live",
         "confidence_score": 65,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 448,
+        "latency_ms": 478,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.185Z"
+        "verified_at": "2026-06-06T12:18:30.154Z"
       }
     },
     {
@@ -824,7 +1163,7 @@
       "kind": "source-repo",
       "name": "Vocence source repository",
       "netuid": 78,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -853,11 +1192,96 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Loosh-ai/loosh-public-documentation",
-        "latency_ms": 689,
+        "latency_ms": 523,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.186Z"
+        "verified_at": "2026-06-06T12:18:30.166Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-78-website-common-docs",
+      "kind": "docs",
+      "name": "Vocence docs",
+      "netuid": 78,
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "subnet_name": "Vocence",
+      "subnet_slug": "sn-78",
+      "url": "https://www.vocence.ai/docs",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 129,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:30.199Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-78-website-common-swagger",
+      "kind": "openapi",
+      "name": "Vocence Swagger UI",
+      "netuid": 78,
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "schema_status": "ui-only",
+      "source_urls": [
+        "https://www.vocence.ai/"
+      ],
+      "subnet_name": "Vocence",
+      "subnet_slug": "sn-78",
+      "url": "https://www.vocence.ai/swagger",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 184,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:30.246Z"
       }
     }
   ]

@@ -1,5 +1,5 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 10,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Ridges",
@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 140,
+      "latency_ms": 166,
       "method_tested": "HEAD",
       "name": "Ridges TaoMarketCap dashboard",
       "netuid": 62,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/62",
-      "verified_at": "2026-06-06T07:44:01.848Z"
+      "verified_at": "2026-06-06T12:18:25.518Z"
     },
     {
       "candidate_id": "sn-62-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/ridgesai/ridges",
       "kind": "source-repo",
-      "latency_ms": 501,
+      "latency_ms": 383,
       "method_tested": "HEAD",
       "name": "Ridges source repository",
       "netuid": 62,
@@ -65,12 +65,13 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/62",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/62"
+        "https://api.taomarketcap.com/public/v1/subnets/62",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/62/subnet.json"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/ridgesai/ridges",
-      "verified_at": "2026-06-06T07:44:01.912Z"
+      "verified_at": "2026-06-06T12:18:25.532Z"
     },
     {
       "candidate_id": "sn-62-taomarketcap-website",
@@ -79,7 +80,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 64,
+      "latency_ms": 56,
       "method_tested": "GET",
       "name": "Ridges website",
       "netuid": 62,
@@ -103,7 +104,7 @@
       "status": "failed",
       "status_code": 429,
       "url": "https://www.ridges.ai/",
-      "verified_at": "2026-06-06T07:44:01.924Z"
+      "verified_at": "2026-06-06T12:18:25.573Z"
     },
     {
       "candidate_id": "sn-62-tensorplex-docs",
@@ -112,7 +113,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 413,
+      "latency_ms": 338,
       "method_tested": "HEAD",
       "name": "Ridges Tensorplex subnet docs",
       "netuid": 62,
@@ -136,7 +137,205 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/62",
-      "verified_at": "2026-06-06T07:44:01.988Z"
+      "verified_at": "2026-06-06T12:18:25.658Z"
+    },
+    {
+      "candidate_id": "sn-62-website-common-api",
+      "classification": "rate-limited",
+      "confidence_score": 8,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 48,
+      "method_tested": "GET",
+      "name": "Ridges API",
+      "netuid": 62,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": true,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.ridges.ai/",
+      "source_urls": [
+        "https://www.ridges.ai/"
+      ],
+      "status": "failed",
+      "status_code": 429,
+      "url": "https://www.ridges.ai/api",
+      "verified_at": "2026-06-06T12:18:25.665Z"
+    },
+    {
+      "candidate_id": "sn-62-website-common-docs",
+      "classification": "rate-limited",
+      "confidence_score": 16,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 50,
+      "method_tested": "GET",
+      "name": "Ridges docs",
+      "netuid": 62,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": true,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.ridges.ai/",
+      "source_urls": [
+        "https://www.ridges.ai/"
+      ],
+      "status": "failed",
+      "status_code": 429,
+      "url": "https://www.ridges.ai/docs",
+      "verified_at": "2026-06-06T12:18:25.683Z"
+    },
+    {
+      "candidate_id": "sn-62-website-common-health",
+      "classification": "rate-limited",
+      "confidence_score": 8,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 47,
+      "method_tested": "GET",
+      "name": "Ridges health endpoint",
+      "netuid": 62,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": true,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.ridges.ai/",
+      "source_urls": [
+        "https://www.ridges.ai/"
+      ],
+      "status": "failed",
+      "status_code": 429,
+      "url": "https://www.ridges.ai/health",
+      "verified_at": "2026-06-06T12:18:25.705Z"
+    },
+    {
+      "candidate_id": "sn-62-website-common-openapi-json",
+      "classification": "rate-limited",
+      "confidence_score": 8,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 48,
+      "method_tested": "GET",
+      "name": "Ridges OpenAPI JSON",
+      "netuid": 62,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": true,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.ridges.ai/",
+      "source_urls": [
+        "https://www.ridges.ai/"
+      ],
+      "status": "failed",
+      "status_code": 429,
+      "url": "https://www.ridges.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:25.740Z"
+    },
+    {
+      "candidate_id": "sn-62-website-common-swagger",
+      "classification": "rate-limited",
+      "confidence_score": 8,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 54,
+      "method_tested": "GET",
+      "name": "Ridges Swagger UI",
+      "netuid": 62,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": true,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.ridges.ai/",
+      "source_urls": [
+        "https://www.ridges.ai/"
+      ],
+      "status": "failed",
+      "status_code": 429,
+      "url": "https://www.ridges.ai/swagger",
+      "verified_at": "2026-06-06T12:18:25.793Z"
+    },
+    {
+      "candidate_id": "sn-62-website-common-swagger-json",
+      "classification": "rate-limited",
+      "confidence_score": 8,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 66,
+      "method_tested": "GET",
+      "name": "Ridges Swagger JSON",
+      "netuid": 62,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": true,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.ridges.ai/",
+      "source_urls": [
+        "https://www.ridges.ai/"
+      ],
+      "status": "failed",
+      "status_code": 429,
+      "url": "https://www.ridges.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:25.808Z"
     }
   ],
   "schema_version": 1,
@@ -144,16 +343,18 @@
   "summary": {
     "by_classification": {
       "live": 3,
-      "rate-limited": 1
+      "rate-limited": 7
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "docs": 2,
+      "openapi": 3,
       "source-repo": 1,
+      "subnet-api": 2,
       "website": 1
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 9,
       "tensorplex-subnet-docs": 1
     }
   }

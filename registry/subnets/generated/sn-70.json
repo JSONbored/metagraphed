@@ -6,14 +6,13 @@
     "gap_notes": [
       "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
-      "No verified SSE/event stream yet.",
-      "No verified data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 2,
-    "verified_at": "2026-06-06T07:44:03.183Z"
+    "source_count": 3,
+    "verified_at": "2026-06-06T12:18:28.004Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/70",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/70",
@@ -59,11 +58,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/RendixNetwork/nexisgen",
-        "latency_ms": 626,
+        "latency_ms": 477,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:03.104Z"
+        "verified_at": "2026-06-06T12:18:27.910Z"
       }
     },
     {
@@ -98,11 +97,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 532,
+        "latency_ms": 466,
         "method_tested": "HEAD",
         "redirect_target": "https://www.nexisgen.ai/",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:03.111Z"
+        "verified_at": "2026-06-06T12:18:27.911Z"
       }
     },
     {
@@ -111,7 +110,7 @@
       "id": "sn-70-tensorplex-docs",
       "kind": "docs",
       "name": "NexisGen Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +136,50 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 406,
+        "latency_ms": 382,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:03.183Z"
+        "verified_at": "2026-06-06T12:18:27.947Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-70-website-common-docs",
+      "kind": "docs",
+      "name": "NexisGen docs",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "url": "https://nexisgen.ai/docs",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 71,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 337,
+        "method_tested": "HEAD",
+        "redirect_target": "https://www.nexisgen.ai/docs",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:27.978Z"
       }
     },
     {
@@ -176,11 +214,50 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 175,
+        "latency_ms": 150,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:03.008Z"
+        "verified_at": "2026-06-06T12:18:27.848Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-70-website-link-nexisgen-ai-data-artifact-5",
+      "kind": "data-artifact",
+      "name": "NexisGen data artifact",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://nexisgen.ai/"
+      ],
+      "url": "https://nexisgen.ai/commission",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 63,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 278,
+        "method_tested": "HEAD",
+        "redirect_target": "https://www.nexisgen.ai/commission",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:28.004Z"
       }
     }
   ],

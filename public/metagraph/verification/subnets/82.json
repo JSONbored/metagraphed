@@ -1,5 +1,5 @@
 {
-  "candidate_count": 7,
+  "candidate_count": 23,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Compelle",
@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 223,
+      "latency_ms": 220,
       "method_tested": "HEAD",
       "name": "Compelle dashboard",
       "netuid": 82,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taostats.io/",
-      "verified_at": "2026-06-06T07:44:05.250Z"
+      "verified_at": "2026-06-06T12:18:31.154Z"
     },
     {
       "candidate_id": "sn-82-github-readme-sn-hermes-hermes-subnet-docs-2",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 83,
+      "latency_ms": 90,
       "method_tested": "HEAD",
       "name": "Compelle docs",
       "netuid": 82,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.bittensor.com/",
-      "verified_at": "2026-06-06T07:44:05.261Z"
+      "verified_at": "2026-06-06T12:18:31.179Z"
     },
     {
       "candidate_id": "sn-82-taomarketcap-dashboard",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 138,
+      "latency_ms": 139,
       "method_tested": "HEAD",
       "name": "Compelle TaoMarketCap dashboard",
       "netuid": 82,
@@ -102,17 +102,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/82",
-      "verified_at": "2026-06-06T07:44:05.271Z"
+      "verified_at": "2026-06-06T12:18:31.214Z"
     },
     {
       "candidate_id": "sn-82-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 429,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/compelle/compelle-validator",
       "kind": "source-repo",
-      "latency_ms": 436,
+      "latency_ms": 542,
       "method_tested": "HEAD",
       "name": "Compelle source repository",
       "netuid": 82,
@@ -136,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/compelle/compelle-validator",
-      "verified_at": "2026-06-06T07:44:05.272Z"
+      "verified_at": "2026-06-06T12:18:31.270Z"
     },
     {
       "candidate_id": "sn-82-taomarketcap-website",
@@ -145,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 620,
+      "latency_ms": 522,
       "method_tested": "HEAD",
       "name": "Compelle website",
       "netuid": 82,
@@ -169,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://compelle.com/",
-      "verified_at": "2026-06-06T07:44:05.285Z"
+      "verified_at": "2026-06-06T12:18:31.291Z"
     },
     {
       "candidate_id": "sn-82-tensorplex-docs",
@@ -178,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 395,
+      "latency_ms": 340,
       "method_tested": "HEAD",
       "name": "Compelle Tensorplex subnet docs",
       "netuid": 82,
@@ -202,17 +202,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/82",
-      "verified_at": "2026-06-06T07:44:05.298Z"
+      "verified_at": "2026-06-06T12:18:31.340Z"
     },
     {
       "candidate_id": "sn-82-tensorplex-source-repo-1",
       "classification": "live",
       "confidence_score": 55,
       "error": null,
-      "github_api_status": 429,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/SN-Hermes/hermes-subnet",
       "kind": "source-repo",
-      "latency_ms": 751,
+      "latency_ms": 520,
       "method_tested": "HEAD",
       "name": "Compelle source repository",
       "netuid": 82,
@@ -236,24 +236,555 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/SN-Hermes/hermes-subnet",
-      "verified_at": "2026-06-06T07:44:05.298Z"
+      "verified_at": "2026-06-06T12:18:31.353Z"
+    },
+    {
+      "candidate_id": "sn-82-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 174,
+      "method_tested": "GET",
+      "name": "Compelle API",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://compelle.com/api",
+      "verified_at": "2026-06-06T12:18:31.374Z"
+    },
+    {
+      "candidate_id": "sn-82-website-common-docs",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 172,
+      "method_tested": "GET",
+      "name": "Compelle docs",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://compelle.com/docs",
+      "verified_at": "2026-06-06T12:18:31.423Z"
+    },
+    {
+      "candidate_id": "sn-82-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 172,
+      "method_tested": "GET",
+      "name": "Compelle health endpoint",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://compelle.com/health",
+      "verified_at": "2026-06-06T12:18:31.430Z"
+    },
+    {
+      "candidate_id": "sn-82-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 175,
+      "method_tested": "GET",
+      "name": "Compelle OpenAPI JSON",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://compelle.com/openapi.json",
+      "verified_at": "2026-06-06T12:18:31.434Z"
+    },
+    {
+      "candidate_id": "sn-82-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 169,
+      "method_tested": "GET",
+      "name": "Compelle Swagger UI",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://compelle.com/swagger",
+      "verified_at": "2026-06-06T12:18:31.439Z"
+    },
+    {
+      "candidate_id": "sn-82-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 418,
+      "method_tested": "GET",
+      "name": "Compelle Swagger JSON",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://compelle.com/swagger.json",
+      "verified_at": "2026-06-06T12:18:31.466Z"
+    },
+    {
+      "candidate_id": "sn-82-website-link-compelle-com-website-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 526,
+      "method_tested": "HEAD",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://compelle.com/blog",
+      "verified_at": "2026-06-06T12:18:31.478Z"
+    },
+    {
+      "candidate_id": "sn-82-website-link-compelle-com-website-10",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 534,
+      "method_tested": "HEAD",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://compelle.com/profile.html",
+      "verified_at": "2026-06-06T12:18:31.606Z"
+    },
+    {
+      "candidate_id": "sn-82-website-link-compelle-com-website-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 529,
+      "method_tested": "HEAD",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://compelle.com/games.html",
+      "verified_at": "2026-06-06T12:18:31.611Z"
+    },
+    {
+      "candidate_id": "sn-82-website-link-compelle-com-website-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 775,
+      "method_tested": "HEAD",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://compelle.com/products.html",
+      "verified_at": "2026-06-06T12:18:31.679Z"
+    },
+    {
+      "candidate_id": "sn-82-website-link-compelle-com-website-4",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 169,
+      "method_tested": "HEAD",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://compelle.com/podcast",
+      "verified_at": "2026-06-06T12:18:31.814Z"
+    },
+    {
+      "candidate_id": "sn-82-website-link-compelle-com-website-5",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 782,
+      "method_tested": "HEAD",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://compelle.com/techniques/existence-proof-analogy.html",
+      "verified_at": "2026-06-06T12:18:31.888Z"
+    },
+    {
+      "candidate_id": "sn-82-website-link-compelle-com-website-6",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 762,
+      "method_tested": "HEAD",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://compelle.com/media",
+      "verified_at": "2026-06-06T12:18:31.906Z"
+    },
+    {
+      "candidate_id": "sn-82-website-link-compelle-com-website-7",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 725,
+      "method_tested": "HEAD",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://compelle.com/glossary.html",
+      "verified_at": "2026-06-06T12:18:31.950Z"
+    },
+    {
+      "candidate_id": "sn-82-website-link-compelle-com-website-8",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 244,
+      "method_tested": "HEAD",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://compelle.com/course.html",
+      "verified_at": "2026-06-06T12:18:31.982Z"
+    },
+    {
+      "candidate_id": "sn-82-website-link-compelle-com-website-9",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 255,
+      "method_tested": "HEAD",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://compelle.com/techniques",
+      "verified_at": "2026-06-06T12:18:32.004Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-82",
   "summary": {
     "by_classification": {
-      "live": 6,
+      "dead": 6,
+      "live": 16,
       "redirected": 1
     },
     "by_kind": {
       "dashboard": 2,
-      "docs": 2,
+      "docs": 3,
+      "openapi": 3,
       "source-repo": 2,
-      "website": 1
+      "subnet-api": 2,
+      "website": 11
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 19,
       "tensorplex-subnet-docs": 4
     }
   }

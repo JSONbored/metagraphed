@@ -2,6 +2,61 @@
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-124-github-readme-swarm-subnet-swarm-dashboard-1",
+      "kind": "dashboard",
+      "name": "Swarm dashboard",
+      "netuid": 124,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/swarm-subnet/swarm/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/swarm-subnet/swarm/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Swarm",
+      "url": "https://swarm124.com/benchmark",
+      "verification": {
+        "candidate_id": "sn-124-github-readme-swarm-subnet-swarm-dashboard-1",
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "dashboard",
+        "latency_ms": 541,
+        "method_tested": "HEAD",
+        "name": "Swarm dashboard",
+        "netuid": 124,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/swarm-subnet/swarm/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/swarm-subnet/swarm/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://swarm124.com/benchmark",
+        "verified_at": "2026-06-06T12:18:44.542Z"
+      }
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-124-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -28,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 143,
+        "latency_ms": 124,
         "method_tested": "HEAD",
         "name": "Swarm TaoMarketCap dashboard",
         "netuid": 124,
@@ -52,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/124",
-        "verified_at": "2026-06-06T07:44:10.533Z"
+        "verified_at": "2026-06-06T12:18:44.553Z"
       }
     },
     {
@@ -71,7 +126,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/124",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/124"
+        "https://api.taomarketcap.com/public/v1/subnets/124",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/124/subnet.json"
       ],
       "state": "schema-valid",
       "subnet_name": "Swarm",
@@ -84,7 +140,7 @@
         "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/swarm-subnet/swarm",
         "kind": "source-repo",
-        "latency_ms": 398,
+        "latency_ms": 446,
         "method_tested": "HEAD",
         "name": "Swarm source repository",
         "netuid": 124,
@@ -103,12 +159,13 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/124",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/124"
+          "https://api.taomarketcap.com/public/v1/subnets/124",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/124/subnet.json"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/swarm-subnet/swarm",
-        "verified_at": "2026-06-06T07:44:10.552Z"
+        "verified_at": "2026-06-06T12:18:44.556Z"
       }
     },
     {
@@ -139,7 +196,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 1200,
+        "latency_ms": 1069,
         "method_tested": "HEAD",
         "name": "Swarm website",
         "netuid": 124,
@@ -163,7 +220,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.swarm124.com/",
-        "verified_at": "2026-06-06T07:44:10.627Z"
+        "verified_at": "2026-06-06T12:18:44.557Z"
       }
     },
     {
@@ -176,7 +233,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +251,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 474,
+        "latency_ms": 277,
         "method_tested": "HEAD",
         "name": "Swarm Tensorplex subnet docs",
         "netuid": 124,
@@ -218,7 +275,337 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/124",
-        "verified_at": "2026-06-06T07:44:10.672Z"
+        "verified_at": "2026-06-06T12:18:44.557Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-124-website-common-api",
+      "kind": "subnet-api",
+      "name": "Swarm API",
+      "netuid": 124,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.swarm124.com/",
+      "source_urls": [
+        "https://www.swarm124.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Swarm",
+      "url": "https://www.swarm124.com/api",
+      "verification": {
+        "candidate_id": "sn-124-website-common-api",
+        "classification": "redirected",
+        "confidence_score": 63,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 1068,
+        "method_tested": "HEAD",
+        "name": "Swarm API",
+        "netuid": 124,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": "https://swarm124.com/api",
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.swarm124.com/",
+        "source_urls": [
+          "https://www.swarm124.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.swarm124.com/api",
+        "verified_at": "2026-06-06T12:18:44.568Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-124-website-common-docs",
+      "kind": "docs",
+      "name": "Swarm docs",
+      "netuid": 124,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.swarm124.com/",
+      "source_urls": [
+        "https://www.swarm124.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Swarm",
+      "url": "https://www.swarm124.com/docs",
+      "verification": {
+        "candidate_id": "sn-124-website-common-docs",
+        "classification": "redirected",
+        "confidence_score": 71,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 701,
+        "method_tested": "HEAD",
+        "name": "Swarm docs",
+        "netuid": 124,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": "https://swarm124.com/docs",
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.swarm124.com/",
+        "source_urls": [
+          "https://www.swarm124.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.swarm124.com/docs",
+        "verified_at": "2026-06-06T12:18:44.572Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-124-website-common-health",
+      "kind": "subnet-api",
+      "name": "Swarm health endpoint",
+      "netuid": 124,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.swarm124.com/",
+      "source_urls": [
+        "https://www.swarm124.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Swarm",
+      "url": "https://www.swarm124.com/health",
+      "verification": {
+        "candidate_id": "sn-124-website-common-health",
+        "classification": "redirected",
+        "confidence_score": 63,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 1047,
+        "method_tested": "HEAD",
+        "name": "Swarm health endpoint",
+        "netuid": 124,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": "https://swarm124.com/health",
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.swarm124.com/",
+        "source_urls": [
+          "https://www.swarm124.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.swarm124.com/health",
+        "verified_at": "2026-06-06T12:18:44.621Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-124-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Swarm OpenAPI JSON",
+      "netuid": 124,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.swarm124.com/",
+      "source_urls": [
+        "https://www.swarm124.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Swarm",
+      "url": "https://www.swarm124.com/openapi.json",
+      "verification": {
+        "candidate_id": "sn-124-website-common-openapi-json",
+        "classification": "content-mismatch",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 1000,
+        "method_tested": "HEAD",
+        "name": "Swarm OpenAPI JSON",
+        "netuid": 124,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": false,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": "https://swarm124.com/openapi.json",
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.swarm124.com/",
+        "source_urls": [
+          "https://www.swarm124.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.swarm124.com/openapi.json",
+        "verified_at": "2026-06-06T12:18:44.629Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-124-website-common-swagger",
+      "kind": "openapi",
+      "name": "Swarm Swagger UI",
+      "netuid": 124,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.swarm124.com/",
+      "source_urls": [
+        "https://www.swarm124.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Swarm",
+      "url": "https://www.swarm124.com/swagger",
+      "verification": {
+        "candidate_id": "sn-124-website-common-swagger",
+        "classification": "redirected",
+        "confidence_score": 63,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 1042,
+        "method_tested": "HEAD",
+        "name": "Swarm Swagger UI",
+        "netuid": 124,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": "https://swarm124.com/swagger",
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.swarm124.com/",
+        "source_urls": [
+          "https://www.swarm124.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.swarm124.com/swagger",
+        "verified_at": "2026-06-06T12:18:44.677Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-124-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Swarm Swagger JSON",
+      "netuid": 124,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.swarm124.com/",
+      "source_urls": [
+        "https://www.swarm124.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Swarm",
+      "url": "https://www.swarm124.com/swagger.json",
+      "verification": {
+        "candidate_id": "sn-124-website-common-swagger-json",
+        "classification": "content-mismatch",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 1065,
+        "method_tested": "HEAD",
+        "name": "Swarm Swagger JSON",
+        "netuid": 124,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": false,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": "https://swarm124.com/swagger.json",
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.swarm124.com/",
+        "source_urls": [
+          "https://www.swarm124.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.swarm124.com/swagger.json",
+        "verified_at": "2026-06-06T12:18:44.697Z"
       }
     }
   ],

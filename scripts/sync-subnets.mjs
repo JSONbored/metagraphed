@@ -1,6 +1,12 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { readJson, repoRoot, stableStringify, writeJson } from "./lib.mjs";
+import {
+  nativeNameQuality,
+  readJson,
+  repoRoot,
+  stableStringify,
+  writeJson,
+} from "./lib.mjs";
 
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
@@ -22,6 +28,8 @@ const summary = {
   added_netuids: diff.added,
   removed_netuids: diff.removed,
   renamed_netuids: diff.renamed,
+  identity_warnings: diff.identityWarnings,
+  symbol_changed_netuids: diff.symbolChanged,
   block_range: {
     min: Math.min(...snapshot.subnets.map((subnet) => subnet.block)),
     max: Math.max(...snapshot.subnets.map((subnet) => subnet.block)),
@@ -114,6 +122,8 @@ function diffSnapshots(existing, current) {
   const added = [];
   const removed = [];
   const renamed = [];
+  const identityWarnings = [];
+  const symbolChanged = [];
 
   for (const netuid of currentByNetuid.keys()) {
     if (!existingByNetuid.has(netuid)) {
@@ -122,8 +132,31 @@ function diffSnapshots(existing, current) {
     }
     const before = existingByNetuid.get(netuid);
     const after = currentByNetuid.get(netuid);
-    if (before.name !== after.name || before.symbol !== after.symbol) {
-      renamed.push({ netuid, before: before.name, after: after.name });
+    const beforeNameQuality = nativeNameQuality(before);
+    const afterNameQuality = nativeNameQuality(after);
+    if (before.name !== after.name) {
+      if (beforeNameQuality === "chain" && afterNameQuality === "chain") {
+        renamed.push({ netuid, before: before.name, after: after.name });
+      } else {
+        identityWarnings.push({
+          netuid,
+          before: before.name,
+          after: after.name,
+          before_quality: beforeNameQuality,
+          after_quality: afterNameQuality,
+          reason:
+            afterNameQuality === "chain"
+              ? "native-name-recovered"
+              : "native-name-placeholder",
+        });
+      }
+    }
+    if (before.symbol !== after.symbol) {
+      symbolChanged.push({
+        netuid,
+        before: before.symbol,
+        after: after.symbol,
+      });
     }
   }
 
@@ -133,5 +166,5 @@ function diffSnapshots(existing, current) {
     }
   }
 
-  return { added, removed, renamed };
+  return { added, removed, renamed, identityWarnings, symbolChanged };
 }

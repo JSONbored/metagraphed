@@ -14,7 +14,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-06T07:44:06.320Z"
+    "verified_at": "2026-06-06T12:18:33.835Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/91",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/91",
@@ -58,11 +58,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 823,
+        "latency_ms": 858,
         "method_tested": "HEAD",
         "redirect_target": "https://www.bitstarter.ai/",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:06.277Z"
+        "verified_at": "2026-06-06T12:18:33.799Z"
       }
     },
     {
@@ -71,7 +71,7 @@
       "id": "sn-91-tensorplex-docs",
       "kind": "docs",
       "name": "Bitstarter #1 Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -97,11 +97,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 377,
+        "latency_ms": 294,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:06.320Z"
+        "verified_at": "2026-06-06T12:18:33.835Z"
       }
     },
     {
@@ -136,11 +136,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 143,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:06.252Z"
+        "verified_at": "2026-06-06T12:18:33.751Z"
       }
     }
   ],

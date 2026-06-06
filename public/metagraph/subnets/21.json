@@ -52,7 +52,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -62,6 +62,216 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/21"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-common-api",
+      "kind": "subnet-api",
+      "name": "AdTAO API",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-common-docs",
+      "kind": "docs",
+      "name": "AdTAO docs",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-common-health",
+      "kind": "subnet-api",
+      "name": "AdTAO health endpoint",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "AdTAO OpenAPI JSON",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-common-swagger",
+      "kind": "openapi",
+      "name": "AdTAO Swagger UI",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "AdTAO Swagger JSON",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-link-ppcrebel-com-website-1",
+      "kind": "website",
+      "name": "AdTAO website page",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/login"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-link-ppcrebel-com-website-2",
+      "kind": "website",
+      "name": "AdTAO website page",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/contact"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-link-ppcrebel-com-website-3",
+      "kind": "website",
+      "name": "AdTAO website page",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/privacy-policy"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-link-ppcrebel-com-website-4",
+      "kind": "website",
+      "name": "AdTAO website page",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/terms-of-service"
     }
   ],
   "candidates": [
@@ -117,7 +327,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -127,6 +337,216 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/21"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-common-api",
+      "kind": "subnet-api",
+      "name": "AdTAO API",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-common-docs",
+      "kind": "docs",
+      "name": "AdTAO docs",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-common-health",
+      "kind": "subnet-api",
+      "name": "AdTAO health endpoint",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "AdTAO OpenAPI JSON",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-common-swagger",
+      "kind": "openapi",
+      "name": "AdTAO Swagger UI",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "AdTAO Swagger JSON",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-link-ppcrebel-com-website-1",
+      "kind": "website",
+      "name": "AdTAO website page",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/login"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-link-ppcrebel-com-website-2",
+      "kind": "website",
+      "name": "AdTAO website page",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/contact"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-link-ppcrebel-com-website-3",
+      "kind": "website",
+      "name": "AdTAO website page",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/privacy-policy"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-21-website-link-ppcrebel-com-website-4",
+      "kind": "website",
+      "name": "AdTAO website page",
+      "netuid": 21,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://ppcrebel.com/",
+      "source_urls": [
+        "https://ppcrebel.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://ppcrebel.com/terms-of-service"
     }
   ],
   "gaps": {
@@ -153,8 +573,8 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 3,
+    "block": 8347420,
+    "candidate_count": 13,
     "categories": [
       "baseline-curated"
     ],
@@ -171,7 +591,7 @@
       "review_state": "machine-generated",
       "reviewed_at": null,
       "source_count": 2,
-      "verified_at": "2026-06-06T07:43:55.157Z"
+      "verified_at": "2026-06-06T12:18:15.267Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/21",
@@ -201,6 +621,7 @@
     "mechanism_count": 1,
     "name": "AdTAO",
     "native_name": "AdTAO",
+    "native_name_quality": "chain",
     "native_slug": "adtao",
     "netuid": 21,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
@@ -209,10 +630,14 @@
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -262,11 +687,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 138,
+        "latency_ms": 157,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.082Z"
+        "verified_at": "2026-06-06T12:18:15.226Z"
       }
     },
     {
@@ -304,11 +729,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 583,
+        "latency_ms": 291,
         "method_tested": "HEAD",
         "redirect_target": "https://www.ppcrebel.com/",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.129Z"
+        "verified_at": "2026-06-06T12:18:15.261Z"
       }
     },
     {
@@ -318,7 +743,7 @@
       "kind": "docs",
       "name": "AdTAO Tensorplex subnet docs",
       "netuid": 21,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -346,11 +771,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 356,
+        "latency_ms": 302,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.157Z"
+        "verified_at": "2026-06-06T12:18:15.267Z"
       }
     }
   ],
@@ -390,11 +815,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 138,
+        "latency_ms": 157,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.082Z"
+        "verified_at": "2026-06-06T12:18:15.226Z"
       }
     },
     {
@@ -432,11 +857,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 583,
+        "latency_ms": 291,
         "method_tested": "HEAD",
         "redirect_target": "https://www.ppcrebel.com/",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.129Z"
+        "verified_at": "2026-06-06T12:18:15.261Z"
       }
     },
     {
@@ -446,7 +871,7 @@
       "kind": "docs",
       "name": "AdTAO Tensorplex subnet docs",
       "netuid": 21,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -474,11 +899,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 356,
+        "latency_ms": 302,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.157Z"
+        "verified_at": "2026-06-06T12:18:15.267Z"
       }
     }
   ]

@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 144,
+      "latency_ms": 130,
       "method_tested": "HEAD",
       "name": "gaia TaoMarketCap dashboard",
       "netuid": 57,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/57",
-      "verified_at": "2026-06-06T07:44:00.849Z"
+      "verified_at": "2026-06-06T12:18:24.485Z"
     },
     {
       "candidate_id": "sn-57-tensorplex-docs",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 315,
+      "latency_ms": 356,
       "method_tested": "HEAD",
       "name": "gaia Tensorplex subnet docs",
       "netuid": 57,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/57",
-      "verified_at": "2026-06-06T07:44:00.876Z"
+      "verified_at": "2026-06-06T12:18:24.488Z"
     },
     {
       "candidate_id": "sn-57-tensorplex-source-repo-1",
@@ -79,7 +79,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/sparket-ai/sparket-ai",
       "kind": "source-repo",
-      "latency_ms": 590,
+      "latency_ms": 485,
       "method_tested": "HEAD",
       "name": "gaia source repository",
       "netuid": 57,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/sparket-ai/sparket-ai",
-      "verified_at": "2026-06-06T07:44:00.893Z"
+      "verified_at": "2026-06-06T12:18:24.500Z"
     }
   ],
   "schema_version": 1,

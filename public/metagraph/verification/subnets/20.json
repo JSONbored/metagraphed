@@ -1,5 +1,5 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 12,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "GroundLayer",
@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 151,
+      "latency_ms": 135,
       "method_tested": "HEAD",
       "name": "GroundLayer TaoMarketCap dashboard",
       "netuid": 20,
@@ -36,17 +36,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/20",
-      "verified_at": "2026-06-06T07:43:55.012Z"
+      "verified_at": "2026-06-06T12:18:14.965Z"
     },
     {
       "candidate_id": "sn-20-taomarketcap-source-repo",
       "classification": "dead",
       "confidence_score": 0,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 404,
       "github_api_url": "https://api.github.com/repos/RogueTensor/comingsoon",
       "kind": "source-repo",
-      "latency_ms": 232,
+      "latency_ms": 197,
       "method_tested": "HEAD",
       "name": "GroundLayer source repository",
       "netuid": 20,
@@ -70,7 +70,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://github.com/RogueTensor/comingsoon",
-      "verified_at": "2026-06-06T07:43:55.018Z"
+      "verified_at": "2026-06-06T12:18:15.070Z"
     },
     {
       "candidate_id": "sn-20-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 411,
+      "latency_ms": 338,
       "method_tested": "HEAD",
       "name": "GroundLayer website",
       "netuid": 20,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://groundlayer.xyz/",
-      "verified_at": "2026-06-06T07:43:55.075Z"
+      "verified_at": "2026-06-06T12:18:15.070Z"
     },
     {
       "candidate_id": "sn-20-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 315,
+      "latency_ms": 347,
       "method_tested": "HEAD",
       "name": "GroundLayer Tensorplex subnet docs",
       "netuid": 20,
@@ -136,25 +136,291 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/20",
-      "verified_at": "2026-06-06T07:43:55.078Z"
+      "verified_at": "2026-06-06T12:18:15.071Z"
+    },
+    {
+      "candidate_id": "sn-20-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 113,
+      "method_tested": "GET",
+      "name": "GroundLayer API",
+      "netuid": 20,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.groundlayer.xyz/api",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://groundlayer.xyz/",
+      "source_urls": [
+        "https://groundlayer.xyz/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://groundlayer.xyz/api",
+      "verified_at": "2026-06-06T12:18:15.100Z"
+    },
+    {
+      "candidate_id": "sn-20-website-common-docs",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 168,
+      "method_tested": "GET",
+      "name": "GroundLayer docs",
+      "netuid": 20,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.groundlayer.xyz/docs",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://groundlayer.xyz/",
+      "source_urls": [
+        "https://groundlayer.xyz/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://groundlayer.xyz/docs",
+      "verified_at": "2026-06-06T12:18:15.109Z"
+    },
+    {
+      "candidate_id": "sn-20-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 120,
+      "method_tested": "GET",
+      "name": "GroundLayer health endpoint",
+      "netuid": 20,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.groundlayer.xyz/health",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://groundlayer.xyz/",
+      "source_urls": [
+        "https://groundlayer.xyz/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://groundlayer.xyz/health",
+      "verified_at": "2026-06-06T12:18:15.109Z"
+    },
+    {
+      "candidate_id": "sn-20-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 124,
+      "method_tested": "GET",
+      "name": "GroundLayer OpenAPI JSON",
+      "netuid": 20,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.groundlayer.xyz/openapi.json",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://groundlayer.xyz/",
+      "source_urls": [
+        "https://groundlayer.xyz/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://groundlayer.xyz/openapi.json",
+      "verified_at": "2026-06-06T12:18:15.112Z"
+    },
+    {
+      "candidate_id": "sn-20-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 117,
+      "method_tested": "GET",
+      "name": "GroundLayer Swagger UI",
+      "netuid": 20,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.groundlayer.xyz/swagger",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://groundlayer.xyz/",
+      "source_urls": [
+        "https://groundlayer.xyz/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://groundlayer.xyz/swagger",
+      "verified_at": "2026-06-06T12:18:15.216Z"
+    },
+    {
+      "candidate_id": "sn-20-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 125,
+      "method_tested": "GET",
+      "name": "GroundLayer Swagger JSON",
+      "netuid": 20,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.groundlayer.xyz/swagger.json",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://groundlayer.xyz/",
+      "source_urls": [
+        "https://groundlayer.xyz/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://groundlayer.xyz/swagger.json",
+      "verified_at": "2026-06-06T12:18:15.216Z"
+    },
+    {
+      "candidate_id": "sn-20-website-link-groundlayer-xyz-website-1",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 328,
+      "method_tested": "HEAD",
+      "name": "GroundLayer website page",
+      "netuid": 20,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.groundlayer.xyz/subnet",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://groundlayer.xyz/",
+      "source_urls": [
+        "https://groundlayer.xyz/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://groundlayer.xyz/subnet",
+      "verified_at": "2026-06-06T12:18:15.219Z"
+    },
+    {
+      "candidate_id": "sn-20-website-link-groundlayer-xyz-website-2",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 326,
+      "method_tested": "HEAD",
+      "name": "GroundLayer website page",
+      "netuid": 20,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.groundlayer.xyz/roadmap",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://groundlayer.xyz/",
+      "source_urls": [
+        "https://groundlayer.xyz/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://groundlayer.xyz/roadmap",
+      "verified_at": "2026-06-06T12:18:15.220Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-20",
   "summary": {
     "by_classification": {
-      "dead": 1,
+      "dead": 7,
       "live": 2,
-      "redirected": 1
+      "redirected": 3
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "docs": 2,
+      "openapi": 3,
       "source-repo": 1,
-      "website": 1
+      "subnet-api": 2,
+      "website": 3
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 11,
       "tensorplex-subnet-docs": 1
     }
   }

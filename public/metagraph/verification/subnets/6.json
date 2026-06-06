@@ -1,10 +1,76 @@
 {
-  "candidate_count": 5,
+  "candidate_count": 17,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Numinous",
   "netuid": 6,
   "results": [
+    {
+      "candidate_id": "sn-6-github-readme-numinouslabs-numinous-dashboard-1",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 231,
+      "method_tested": "HEAD",
+      "name": "Numinous dashboard",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/numinouslabs/numinous/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/numinouslabs/numinous/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://app.hex.tech/1644b22a-abe5-4113-9d5f-3ad05e4a8de7/app/Numinous-031erYRYSssIrH3W3KcyHg/latest",
+      "verified_at": "2026-06-06T12:18:10.382Z"
+    },
+    {
+      "candidate_id": "sn-6-github-readme-numinouslabs-numinous-dashboard-2",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 316,
+      "method_tested": "HEAD",
+      "name": "Numinous dashboard",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/numinouslabs/numinous/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/numinouslabs/numinous/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://taostats.io/subnets/6/chart",
+      "verified_at": "2026-06-06T12:18:10.386Z"
+    },
     {
       "candidate_id": "sn-6-taomarketcap-dashboard",
       "classification": "live",
@@ -12,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 140,
+      "latency_ms": 135,
       "method_tested": "HEAD",
       "name": "Numinous TaoMarketCap dashboard",
       "netuid": 6,
@@ -36,41 +102,41 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/6",
-      "verified_at": "2026-06-06T07:43:52.272Z"
+      "verified_at": "2026-06-06T12:18:10.399Z"
     },
     {
+      "archived": false,
       "candidate_id": "sn-6-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
-      "error": null,
-      "github_api_status": 403,
+      "confidence_score": 80,
+      "default_branch": "main",
+      "description": "Open source forecasting agent competition.",
       "github_api_url": "https://api.github.com/repos/numinouslabs/numinous",
+      "homepage": null,
+      "html_url": "https://github.com/numinouslabs/numinous",
       "kind": "source-repo",
-      "latency_ms": 1019,
-      "method_tested": "HEAD",
+      "last_push_at": "2026-06-05T09:27:27Z",
       "name": "Numinous source repository",
       "netuid": 6,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/6",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/6"
+        "https://api.taomarketcap.com/public/v1/subnets/6",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json"
       ],
       "status": "ok",
-      "status_code": 200,
+      "topics": [],
       "url": "https://github.com/numinouslabs/numinous",
-      "verified_at": "2026-06-06T07:43:52.319Z"
+      "verified_at": "2026-06-06T12:18:10.475Z"
     },
     {
       "candidate_id": "sn-6-taomarketcap-website",
@@ -79,7 +145,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 770,
+      "latency_ms": 163,
       "method_tested": "HEAD",
       "name": "Numinous website",
       "netuid": 6,
@@ -103,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://numinouslabs.io/",
-      "verified_at": "2026-06-06T07:43:52.344Z"
+      "verified_at": "2026-06-06T12:18:10.492Z"
     },
     {
       "candidate_id": "sn-6-taopedia-article",
@@ -112,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 1065,
+      "latency_ms": 384,
       "method_tested": "HEAD",
       "name": "Numinous Taopedia article",
       "netuid": 6,
@@ -136,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
-      "verified_at": "2026-06-06T07:43:52.347Z"
+      "verified_at": "2026-06-06T12:18:10.508Z"
     },
     {
       "candidate_id": "sn-6-tensorplex-docs",
@@ -145,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 1035,
+      "latency_ms": 280,
       "method_tested": "HEAD",
       "name": "Numinous Tensorplex subnet docs",
       "netuid": 6,
@@ -169,23 +235,357 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/6",
-      "verified_at": "2026-06-06T07:43:52.377Z"
+      "verified_at": "2026-06-06T12:18:10.508Z"
+    },
+    {
+      "candidate_id": "sn-6-website-common-api",
+      "classification": "auth-required",
+      "confidence_score": 23,
+      "content_type": "application/xml",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 94,
+      "method_tested": "GET",
+      "name": "Numinous API",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://numinouslabs.io/",
+      "source_urls": [
+        "https://numinouslabs.io/"
+      ],
+      "status": "failed",
+      "status_code": 403,
+      "url": "https://numinouslabs.io/api",
+      "verified_at": "2026-06-06T12:18:10.508Z"
+    },
+    {
+      "candidate_id": "sn-6-website-common-docs",
+      "classification": "auth-required",
+      "confidence_score": 23,
+      "content_type": "application/xml",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 93,
+      "method_tested": "GET",
+      "name": "Numinous docs",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://numinouslabs.io/",
+      "source_urls": [
+        "https://numinouslabs.io/"
+      ],
+      "status": "failed",
+      "status_code": 403,
+      "url": "https://numinouslabs.io/docs",
+      "verified_at": "2026-06-06T12:18:10.509Z"
+    },
+    {
+      "candidate_id": "sn-6-website-common-health",
+      "classification": "auth-required",
+      "confidence_score": 23,
+      "content_type": "application/xml",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 92,
+      "method_tested": "GET",
+      "name": "Numinous health endpoint",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://numinouslabs.io/",
+      "source_urls": [
+        "https://numinouslabs.io/"
+      ],
+      "status": "failed",
+      "status_code": 403,
+      "url": "https://numinouslabs.io/health",
+      "verified_at": "2026-06-06T12:18:10.522Z"
+    },
+    {
+      "candidate_id": "sn-6-website-common-openapi-json",
+      "classification": "auth-required",
+      "confidence_score": 23,
+      "content_type": "application/xml",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 92,
+      "method_tested": "GET",
+      "name": "Numinous OpenAPI JSON",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://numinouslabs.io/",
+      "source_urls": [
+        "https://numinouslabs.io/"
+      ],
+      "status": "failed",
+      "status_code": 403,
+      "url": "https://numinouslabs.io/openapi.json",
+      "verified_at": "2026-06-06T12:18:10.534Z"
+    },
+    {
+      "candidate_id": "sn-6-website-common-swagger",
+      "classification": "auth-required",
+      "confidence_score": 23,
+      "content_type": "application/xml",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 192,
+      "method_tested": "GET",
+      "name": "Numinous Swagger UI",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://numinouslabs.io/",
+      "source_urls": [
+        "https://numinouslabs.io/"
+      ],
+      "status": "failed",
+      "status_code": 403,
+      "url": "https://numinouslabs.io/swagger",
+      "verified_at": "2026-06-06T12:18:10.534Z"
+    },
+    {
+      "candidate_id": "sn-6-website-common-swagger-json",
+      "classification": "auth-required",
+      "confidence_score": 23,
+      "content_type": "application/xml",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 89,
+      "method_tested": "GET",
+      "name": "Numinous Swagger JSON",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://numinouslabs.io/",
+      "source_urls": [
+        "https://numinouslabs.io/"
+      ],
+      "status": "failed",
+      "status_code": 403,
+      "url": "https://numinouslabs.io/swagger.json",
+      "verified_at": "2026-06-06T12:18:10.550Z"
+    },
+    {
+      "candidate_id": "sn-6-website-link-numinouslabs-io-dashboard-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 162,
+      "method_tested": "HEAD",
+      "name": "Numinous dashboard",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://numinouslabs.io/",
+      "source_urls": [
+        "https://numinouslabs.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://leaderboard.numinouslabs.io/",
+      "verified_at": "2026-06-06T12:18:10.553Z"
+    },
+    {
+      "candidate_id": "sn-6-website-link-numinouslabs-io-subnet-api-2",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 295,
+      "method_tested": "HEAD",
+      "name": "Numinous API surface",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://numinouslabs.io/",
+      "source_urls": [
+        "https://numinouslabs.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://api.numinouslabs.io/api/docs",
+      "verified_at": "2026-06-06T12:18:10.563Z"
+    },
+    {
+      "candidate_id": "sn-6-website-link-numinouslabs-io-website-1",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 30,
+      "method_tested": "GET",
+      "name": "Numinous website page",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://numinouslabs.io/",
+      "source_urls": [
+        "https://numinouslabs.io/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://numinouslabs.io/cdn-cgi/l/email-protection",
+      "verified_at": "2026-06-06T12:18:10.571Z"
+    },
+    {
+      "candidate_id": "sn-6-website-link-numinouslabs-io-website-4",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 137,
+      "method_tested": "HEAD",
+      "name": "Numinous website page",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://numinouslabs.io/",
+      "source_urls": [
+        "https://numinouslabs.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://eversight.numinouslabs.io/",
+      "verified_at": "2026-06-06T12:18:10.588Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-6",
   "summary": {
     "by_classification": {
-      "live": 5
+      "auth-required": 6,
+      "dead": 1,
+      "live": 10
     },
     "by_kind": {
-      "dashboard": 1,
-      "docs": 2,
+      "dashboard": 4,
+      "docs": 3,
+      "openapi": 3,
       "source-repo": 1,
-      "website": 1
+      "subnet-api": 3,
+      "website": 3
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 15,
       "taopedia-articles": 1,
       "tensorplex-subnet-docs": 1
     }

@@ -1,10 +1,11 @@
 export const ARTIFACT_SIZE_BUDGETS = [
-  budget("candidates.json", 2_000_000, 5_000_000),
-  budget("review-queue.json", 2_000_000, 5_000_000),
-  budget("verification/latest.json", 1_500_000, 4_000_000),
+  budget("candidates.json", 4_000_000, 8_000_000),
+  budget("review-queue.json", 4_000_000, 8_000_000),
+  budget("verification/latest.json", 2_000_000, 5_000_000),
   budget("surfaces.json", 1_500_000, 4_000_000),
   budget("evidence-ledger.json", 1_000_000, 3_000_000),
   budget("health/latest.json", 1_000_000, 3_000_000),
+  budget("health/history/*.json", 400_000, 1_000_000),
   budget("search.json", 750_000, 2_000_000),
   budget("openapi.json", 500_000, 1_000_000),
 ];
@@ -40,8 +41,20 @@ export function summarizeArtifactBudgets(results) {
 
 function budgetForArtifact(path) {
   return (
-    ARTIFACT_SIZE_BUDGETS.find((entry) => entry.path === path) || DEFAULT_BUDGET
+    ARTIFACT_SIZE_BUDGETS.find((entry) => budgetMatches(entry.path, path)) ||
+    DEFAULT_BUDGET
   );
+}
+
+function budgetMatches(pattern, path) {
+  if (pattern === path) {
+    return true;
+  }
+  if (!pattern.includes("*")) {
+    return false;
+  }
+  const [prefix, suffix] = pattern.split("*");
+  return path.startsWith(prefix) && path.endsWith(suffix);
 }
 
 function budget(path, warnBytes, failBytes) {

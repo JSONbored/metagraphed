@@ -2,6 +2,48 @@
   "candidate_surfaces": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-1",
+      "kind": "data-artifact",
+      "name": "Quasar data artifact",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://huggingface.co/silx-ai/Quasar-3B-A1B-Preview"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-2",
+      "kind": "data-artifact",
+      "name": "Quasar data artifact",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://huggingface.co/Qwen/Qwen3.5-4B"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-24-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -37,7 +79,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/24",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/24"
+        "https://api.taomarketcap.com/public/v1/subnets/24",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/SILX-LABS/QUASAR-SUBNET"
@@ -73,7 +116,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -83,11 +126,242 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/24"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-common-api",
+      "kind": "subnet-api",
+      "name": "Quasar API",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-common-docs",
+      "kind": "docs",
+      "name": "Quasar docs",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-common-health",
+      "kind": "subnet-api",
+      "name": "Quasar health endpoint",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Quasar OpenAPI JSON",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-common-swagger",
+      "kind": "openapi",
+      "name": "Quasar Swagger UI",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Quasar Swagger JSON",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-link-silxinc-com-data-artifact-3",
+      "kind": "data-artifact",
+      "name": "Quasar data artifact",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/blog/silx-ai-partners-with-adaption-labs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-link-silxinc-com-website-1",
+      "kind": "website",
+      "name": "Quasar website page",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/blog"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-link-silxinc-com-website-2",
+      "kind": "website",
+      "name": "Quasar website page",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/about"
     }
   ],
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-1",
+      "kind": "data-artifact",
+      "name": "Quasar data artifact",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://huggingface.co/silx-ai/Quasar-3B-A1B-Preview"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-2",
+      "kind": "data-artifact",
+      "name": "Quasar data artifact",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://huggingface.co/Qwen/Qwen3.5-4B"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-24-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -123,7 +397,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/24",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/24"
+        "https://api.taomarketcap.com/public/v1/subnets/24",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/SILX-LABS/QUASAR-SUBNET"
@@ -159,7 +434,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -169,23 +444,211 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/24"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-common-api",
+      "kind": "subnet-api",
+      "name": "Quasar API",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-common-docs",
+      "kind": "docs",
+      "name": "Quasar docs",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-common-health",
+      "kind": "subnet-api",
+      "name": "Quasar health endpoint",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Quasar OpenAPI JSON",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-common-swagger",
+      "kind": "openapi",
+      "name": "Quasar Swagger UI",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Quasar Swagger JSON",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-link-silxinc-com-data-artifact-3",
+      "kind": "data-artifact",
+      "name": "Quasar data artifact",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/blog/silx-ai-partners-with-adaption-labs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-link-silxinc-com-website-1",
+      "kind": "website",
+      "name": "Quasar website page",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/blog"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-24-website-link-silxinc-com-website-2",
+      "kind": "website",
+      "name": "Quasar website page",
+      "netuid": 24,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://silxinc.com/",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://silxinc.com/about"
     }
   ],
   "gaps": {
     "gap_notes": [
       "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
-      "No verified SSE/event stream yet.",
-      "No verified data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "missing_kinds": [
       "openapi",
       "subnet-api",
-      "sse",
-      "data-artifact"
+      "sse"
     ],
     "supported_kinds": [
       "dashboard",
+      "data-artifact",
       "docs",
       "source-repo",
       "website"
@@ -194,8 +657,8 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 4,
+    "block": 8347420,
+    "candidate_count": 15,
     "categories": [
       "baseline-curated"
     ],
@@ -204,14 +667,13 @@
       "gap_notes": [
         "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
-        "No verified SSE/event stream yet.",
-        "No verified data artifact yet."
+        "No verified SSE/event stream yet."
       ],
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 2,
-      "verified_at": "2026-06-06T07:43:55.565Z"
+      "source_count": 4,
+      "verified_at": "2026-06-06T12:18:16.278Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/24",
@@ -220,17 +682,16 @@
       "gap_notes": [
         "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
-        "No verified SSE/event stream yet.",
-        "No verified data artifact yet."
+        "No verified SSE/event stream yet."
       ],
       "missing_kinds": [
         "openapi",
         "subnet-api",
-        "sse",
-        "data-artifact"
+        "sse"
       ],
       "supported_kinds": [
         "dashboard",
+        "data-artifact",
         "docs",
         "source-repo",
         "website"
@@ -240,18 +701,23 @@
     "mechanism_count": 1,
     "name": "Quasar",
     "native_name": "Quasar",
+    "native_name_quality": "chain",
     "native_slug": "quasar",
     "netuid": 24,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 256,
-    "probed_surface_count": 4,
+    "probed_surface_count": 7,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -260,7 +726,7 @@
     "source_repo": "https://github.com/SILX-LABS/QUASAR-SUBNET",
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 4,
+    "surface_count": 7,
     "symbol": "ω",
     "tempo": 360,
     "website_url": "https://silxinc.com/"
@@ -269,6 +735,90 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-1",
+      "kind": "data-artifact",
+      "name": "Quasar data artifact",
+      "netuid": 24,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "url": "https://huggingface.co/silx-ai/Quasar-3B-A1B-Preview",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 238,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:16.058Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-2",
+      "kind": "data-artifact",
+      "name": "Quasar data artifact",
+      "netuid": 24,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "url": "https://huggingface.co/Qwen/Qwen3.5-4B",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 383,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:16.062Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-24-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Quasar TaoMarketCap dashboard",
@@ -301,11 +851,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
+        "latency_ms": 134,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.536Z"
+        "verified_at": "2026-06-06T12:18:16.062Z"
       }
     },
     {
@@ -325,30 +875,38 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/24"
+        "https://api.taomarketcap.com/public/v1/subnets/24",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json"
       ],
       "subnet_name": "Quasar",
       "subnet_slug": "sn-24",
       "url": "https://github.com/SILX-LABS/QUASAR-SUBNET",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/SILX-LABS/QUASAR-SUBNET",
-        "latency_ms": 458,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-03T22:32:44Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.541Z"
+        "topics": [
+          "ai",
+          "bittensor",
+          "context-window",
+          "llm",
+          "tao"
+        ],
+        "verified_at": "2026-06-06T12:18:16.063Z"
       }
     },
     {
@@ -386,11 +944,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 239,
+        "latency_ms": 179,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.553Z"
+        "verified_at": "2026-06-06T12:18:16.123Z"
       }
     },
     {
@@ -400,7 +958,7 @@
       "kind": "docs",
       "name": "Quasar Tensorplex subnet docs",
       "netuid": 24,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -428,11 +986,53 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 252,
+        "latency_ms": 330,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.565Z"
+        "verified_at": "2026-06-06T12:18:16.138Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-24-website-link-silxinc-com-data-artifact-3",
+      "kind": "data-artifact",
+      "name": "Quasar data artifact",
+      "netuid": 24,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "url": "https://silxinc.com/blog/silx-ai-partners-with-adaption-labs",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 182,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:16.278Z"
       }
     }
   ],
@@ -440,6 +1040,90 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-1",
+      "kind": "data-artifact",
+      "name": "Quasar data artifact",
+      "netuid": 24,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "url": "https://huggingface.co/silx-ai/Quasar-3B-A1B-Preview",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 238,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:16.058Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-2",
+      "kind": "data-artifact",
+      "name": "Quasar data artifact",
+      "netuid": 24,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "url": "https://huggingface.co/Qwen/Qwen3.5-4B",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 383,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:16.062Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-24-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Quasar TaoMarketCap dashboard",
@@ -472,11 +1156,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
+        "latency_ms": 134,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.536Z"
+        "verified_at": "2026-06-06T12:18:16.062Z"
       }
     },
     {
@@ -496,30 +1180,38 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/24"
+        "https://api.taomarketcap.com/public/v1/subnets/24",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json"
       ],
       "subnet_name": "Quasar",
       "subnet_slug": "sn-24",
       "url": "https://github.com/SILX-LABS/QUASAR-SUBNET",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/SILX-LABS/QUASAR-SUBNET",
-        "latency_ms": 458,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-03T22:32:44Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.541Z"
+        "topics": [
+          "ai",
+          "bittensor",
+          "context-window",
+          "llm",
+          "tao"
+        ],
+        "verified_at": "2026-06-06T12:18:16.063Z"
       }
     },
     {
@@ -557,11 +1249,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 239,
+        "latency_ms": 179,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.553Z"
+        "verified_at": "2026-06-06T12:18:16.123Z"
       }
     },
     {
@@ -571,7 +1263,7 @@
       "kind": "docs",
       "name": "Quasar Tensorplex subnet docs",
       "netuid": 24,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -599,11 +1291,53 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 252,
+        "latency_ms": 330,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.565Z"
+        "verified_at": "2026-06-06T12:18:16.138Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-24-website-link-silxinc-com-data-artifact-3",
+      "kind": "data-artifact",
+      "name": "Quasar data artifact",
+      "netuid": 24,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "url": "https://silxinc.com/blog/silx-ai-partners-with-adaption-labs",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 182,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:16.278Z"
       }
     }
   ]

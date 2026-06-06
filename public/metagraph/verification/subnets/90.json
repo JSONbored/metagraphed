@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 166,
+      "latency_ms": 148,
       "method_tested": "HEAD",
       "name": "ogham TaoMarketCap dashboard",
       "netuid": 90,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/90",
-      "verified_at": "2026-06-06T07:44:06.241Z"
+      "verified_at": "2026-06-06T12:18:33.713Z"
     },
     {
       "candidate_id": "sn-90-tensorplex-docs",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 377,
+      "latency_ms": 316,
       "method_tested": "HEAD",
       "name": "ogham Tensorplex subnet docs",
       "netuid": 90,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/90",
-      "verified_at": "2026-06-06T07:44:06.245Z"
+      "verified_at": "2026-06-06T12:18:33.717Z"
     }
   ],
   "schema_version": 1,

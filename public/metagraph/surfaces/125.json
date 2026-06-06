@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 129,
+        "latency_ms": 215,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.672Z"
+        "verified_at": "2026-06-06T12:18:44.706Z"
       }
     },
     {
@@ -55,7 +55,7 @@
       "kind": "docs",
       "name": "8 Ball Tensorplex subnet docs",
       "netuid": 125,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 397,
+        "latency_ms": 292,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:10.676Z"
+        "verified_at": "2026-06-06T12:18:44.806Z"
       }
     }
   ]

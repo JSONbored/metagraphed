@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 220,
+        "latency_ms": 143,
         "method_tested": "HEAD",
         "name": "deprecated TaoMarketCap dashboard",
         "netuid": 39,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/39",
-        "verified_at": "2026-06-06T07:43:56.815Z"
+        "verified_at": "2026-06-06T12:18:19.675Z"
       }
     },
     {
@@ -84,7 +84,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/deprecated/deprecated",
         "kind": "source-repo",
-        "latency_ms": 208,
+        "latency_ms": 179,
         "method_tested": "HEAD",
         "name": "deprecated source repository",
         "netuid": 39,
@@ -108,7 +108,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://github.com/deprecated/deprecated",
-        "verified_at": "2026-06-06T07:43:56.825Z"
+        "verified_at": "2026-06-06T12:18:19.680Z"
       }
     },
     {
@@ -121,7 +121,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -139,7 +139,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 275,
+        "latency_ms": 321,
         "method_tested": "HEAD",
         "name": "deprecated Tensorplex subnet docs",
         "netuid": 39,
@@ -163,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/39",
-        "verified_at": "2026-06-06T07:43:56.829Z"
+        "verified_at": "2026-06-06T12:18:19.744Z"
       }
     },
     {
@@ -176,7 +176,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -195,7 +195,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/tplr-ai/basilica",
         "kind": "source-repo",
-        "latency_ms": 1084,
+        "latency_ms": 733,
         "method_tested": "HEAD",
         "name": "deprecated source repository",
         "netuid": 39,
@@ -219,7 +219,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tplr-ai/basilica",
-        "verified_at": "2026-06-06T07:43:56.876Z"
+        "verified_at": "2026-06-06T12:18:19.776Z"
       }
     }
   ],

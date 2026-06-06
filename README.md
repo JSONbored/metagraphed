@@ -72,55 +72,66 @@ Credentialed flows, wallet paths, validator-sensitive internals, private dashboa
 
 Generated public artifacts live under `public/metagraph`:
 
-- `subnets.json`
-- `api-index.json`
-- `changelog.json`
-- `surfaces.json`
-- `rpc-endpoints.json`
-- `rpc/pools.json`
-- `candidates.json`
-- `review-queue.json`
-- `curation.json`
-- `gaps.json`
-- `providers.json`
-- `search.json`
-- `freshness.json`
-- `source-health.json`
-- `source-snapshots.json`
-- `evidence-ledger.json`
-- `r2-manifest.json`
-- `metagraph/latest.json`
-- `health/latest.json`
-- `health/summary.json`
-- `health/subnets/{netuid}.json`
-- `health/badges/{netuid}.json`
-- `verification/latest.json`
-- `coverage.json`
-- `contracts.json`
-- `schema-drift.json`
-- `schemas/index.json`
-- `subnets/{netuid}.json`
-- `adapters/allways.json`
-- `adapters/gittensor.json`
-- `review/curation.json`
-- `review/gap-priorities.json`
-- `review/adapter-candidates.json`
-- `review/maintainer-decisions.json`
-- `build-summary.json`
+- `/metagraph/contracts.json`
+- `/metagraph/providers.json`
+- `/metagraph/providers/{slug}.json`
+- `/metagraph/api-index.json`
+- `/metagraph/openapi.json`
+- `/metagraph/types.d.ts`
+- `/metagraph/changelog.json`
+- `/metagraph/subnets.json`
+- `/metagraph/subnets/{netuid}.json`
+- `/metagraph/surfaces.json`
+- `/metagraph/surfaces/{netuid}.json`
+- `/metagraph/candidates.json`
+- `/metagraph/candidates/{netuid}.json`
+- `/metagraph/review-queue.json`
+- `/metagraph/search.json`
+- `/metagraph/coverage.json`
+- `/metagraph/curation.json`
+- `/metagraph/gaps.json`
+- `/metagraph/verification/latest.json`
+- `/metagraph/verification/subnets/{netuid}.json`
+- `/metagraph/freshness.json`
+- `/metagraph/source-health.json`
+- `/metagraph/source-snapshots.json`
+- `/metagraph/evidence-ledger.json`
+- `/metagraph/health/latest.json`
+- `/metagraph/health/summary.json`
+- `/metagraph/health/history/{date}.json`
+- `/metagraph/health/subnets/{netuid}.json`
+- `/metagraph/health/badges/{netuid}.json`
+- `/metagraph/rpc-endpoints.json`
+- `/metagraph/rpc/pools.json`
+- `/metagraph/schema-drift.json`
+- `/metagraph/schemas/index.json`
+- `/metagraph/adapters/{slug}.json`
+- `/metagraph/r2-manifest.json`
+- `/metagraph/review/curation.json`
+- `/metagraph/review/gap-priorities.json`
+- `/metagraph/review/adapter-candidates.json`
+- `/metagraph/review/maintainer-decisions.json`
+- `/metagraph/build-summary.json`
 
 The generated files are deterministic and suitable for static hosting, CI review, and downstream consumption.
 
 Worker API routes expose stable envelopes over the same canonical artifacts:
 
+- `/api/v1`
 - `/api/v1/subnets`
 - `/api/v1/subnets/{netuid}`
 - `/api/v1/surfaces`
+- `/api/v1/subnets/{netuid}/surfaces`
 - `/api/v1/candidates`
+- `/api/v1/subnets/{netuid}/candidates`
 - `/api/v1/providers`
+- `/api/v1/providers/{slug}`
 - `/api/v1/coverage`
 - `/api/v1/curation`
 - `/api/v1/gaps`
 - `/api/v1/health`
+- `/api/v1/health/history/{date}`
+- `/api/v1/subnets/{netuid}/health`
 - `/api/v1/freshness`
 - `/api/v1/source-health`
 - `/api/v1/evidence`
@@ -132,6 +143,7 @@ Worker API routes expose stable envelopes over the same canonical artifacts:
 - `/api/v1/adapters/{slug}`
 - `/api/v1/search`
 - `/api/v1/contracts`
+- `/api/v1/openapi.json`
 - `/api/v1/build`
 
 ## Local Commands
@@ -150,6 +162,7 @@ npm run schemas:snapshot:dry-run
 npm run adapters:snapshot:dry-run
 npm run validate:schemas
 npm run validate:api
+npm run validate:docs
 npm run validate:intake
 npm run validate:workflows
 npm run r2:manifest:dry-run

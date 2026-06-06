@@ -2,6 +2,115 @@
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-112-github-readme-subnet112-minotaur-subnet-dashboard-2",
+      "kind": "dashboard",
+      "name": "minotaur dashboard",
+      "netuid": 112,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/subnet112/minotaur_subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "minotaur",
+      "url": "https://taostats.io/subnets/112/chart",
+      "verification": {
+        "candidate_id": "sn-112-github-readme-subnet112-minotaur-subnet-dashboard-2",
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "dashboard",
+        "latency_ms": 216,
+        "method_tested": "HEAD",
+        "name": "minotaur dashboard",
+        "netuid": 112,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/subnet112/minotaur_subnet/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/subnet112/minotaur_subnet/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://taostats.io/subnets/112/chart",
+        "verified_at": "2026-06-06T12:18:41.590Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-112-github-readme-subnet112-minotaur-subnet-subnet-api-1",
+      "kind": "subnet-api",
+      "name": "minotaur API surface",
+      "netuid": 112,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/subnet112/minotaur_subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/subnet112/minotaur_subnet/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "minotaur",
+      "url": "http://peer1-api:8080,0xPeer2@http//peer2-api:8080",
+      "verification": {
+        "candidate_id": "sn-112-github-readme-subnet112-minotaur-subnet-subnet-api-1",
+        "classification": "unsupported",
+        "confidence_score": 13,
+        "content_type": null,
+        "error": "Request cannot be constructed from a URL that includes credentials: http://peer1-api:8080,0xPeer2@http//peer2-api:8080",
+        "kind": "subnet-api",
+        "latency_ms": 0,
+        "method_tested": "GET",
+        "name": "minotaur API surface",
+        "netuid": 112,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/subnet112/minotaur_subnet/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/subnet112/minotaur_subnet/blob/main/README.md"
+        ],
+        "status": "failed",
+        "status_code": null,
+        "url": "http://peer1-api:8080,0xPeer2@http//peer2-api:8080",
+        "verified_at": "2026-06-06T12:18:41.621Z"
+      }
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-112-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -28,7 +137,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 131,
+        "latency_ms": 156,
         "method_tested": "HEAD",
         "name": "minotaur TaoMarketCap dashboard",
         "netuid": 112,
@@ -52,7 +161,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/112",
-        "verified_at": "2026-06-06T07:44:08.801Z"
+        "verified_at": "2026-06-06T12:18:41.621Z"
       }
     },
     {
@@ -71,7 +180,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/112",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/112"
+        "https://api.taomarketcap.com/public/v1/subnets/112",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/112/subnet.json"
       ],
       "state": "schema-valid",
       "subnet_name": "minotaur",
@@ -81,10 +191,10 @@
         "classification": "live",
         "confidence_score": 59,
         "error": null,
-        "github_api_status": 429,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/subnet112/minotaur_subnet",
         "kind": "source-repo",
-        "latency_ms": 578,
+        "latency_ms": 441,
         "method_tested": "HEAD",
         "name": "minotaur source repository",
         "netuid": 112,
@@ -103,12 +213,13 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/112",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/112"
+          "https://api.taomarketcap.com/public/v1/subnets/112",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/112/subnet.json"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/subnet112/minotaur_subnet",
-        "verified_at": "2026-06-06T07:44:08.845Z"
+        "verified_at": "2026-06-06T12:18:41.631Z"
       }
     },
     {
@@ -139,7 +250,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 715,
+        "latency_ms": 155,
         "method_tested": "HEAD",
         "name": "minotaur website",
         "netuid": 112,
@@ -163,7 +274,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://minotaursubnet.com/",
-        "verified_at": "2026-06-06T07:44:08.845Z"
+        "verified_at": "2026-06-06T12:18:41.648Z"
       }
     },
     {
@@ -176,7 +287,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +305,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 532,
+        "latency_ms": 336,
         "method_tested": "HEAD",
         "name": "minotaur Tensorplex subnet docs",
         "netuid": 112,
@@ -218,7 +329,392 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/112",
-        "verified_at": "2026-06-06T07:44:08.869Z"
+        "verified_at": "2026-06-06T12:18:41.649Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-112-website-common-api",
+      "kind": "subnet-api",
+      "name": "minotaur API",
+      "netuid": 112,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://minotaursubnet.com/",
+      "source_urls": [
+        "https://minotaursubnet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "minotaur",
+      "url": "https://minotaursubnet.com/api",
+      "verification": {
+        "candidate_id": "sn-112-website-common-api",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 201,
+        "method_tested": "GET",
+        "name": "minotaur API",
+        "netuid": 112,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://minotaursubnet.com/",
+        "source_urls": [
+          "https://minotaursubnet.com/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://minotaursubnet.com/api",
+        "verified_at": "2026-06-06T12:18:41.665Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-112-website-common-docs",
+      "kind": "docs",
+      "name": "minotaur docs",
+      "netuid": 112,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://minotaursubnet.com/",
+      "source_urls": [
+        "https://minotaursubnet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "minotaur",
+      "url": "https://minotaursubnet.com/docs",
+      "verification": {
+        "candidate_id": "sn-112-website-common-docs",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 202,
+        "method_tested": "GET",
+        "name": "minotaur docs",
+        "netuid": 112,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://minotaursubnet.com/",
+        "source_urls": [
+          "https://minotaursubnet.com/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://minotaursubnet.com/docs",
+        "verified_at": "2026-06-06T12:18:41.669Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-112-website-common-health",
+      "kind": "subnet-api",
+      "name": "minotaur health endpoint",
+      "netuid": 112,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://minotaursubnet.com/",
+      "source_urls": [
+        "https://minotaursubnet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "minotaur",
+      "url": "https://minotaursubnet.com/health",
+      "verification": {
+        "candidate_id": "sn-112-website-common-health",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 209,
+        "method_tested": "GET",
+        "name": "minotaur health endpoint",
+        "netuid": 112,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://minotaursubnet.com/",
+        "source_urls": [
+          "https://minotaursubnet.com/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://minotaursubnet.com/health",
+        "verified_at": "2026-06-06T12:18:41.673Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-112-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "minotaur OpenAPI JSON",
+      "netuid": 112,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://minotaursubnet.com/",
+      "source_urls": [
+        "https://minotaursubnet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "minotaur",
+      "url": "https://minotaursubnet.com/openapi.json",
+      "verification": {
+        "candidate_id": "sn-112-website-common-openapi-json",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 198,
+        "method_tested": "GET",
+        "name": "minotaur OpenAPI JSON",
+        "netuid": 112,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://minotaursubnet.com/",
+        "source_urls": [
+          "https://minotaursubnet.com/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://minotaursubnet.com/openapi.json",
+        "verified_at": "2026-06-06T12:18:41.685Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-112-website-common-swagger",
+      "kind": "openapi",
+      "name": "minotaur Swagger UI",
+      "netuid": 112,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://minotaursubnet.com/",
+      "source_urls": [
+        "https://minotaursubnet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "minotaur",
+      "url": "https://minotaursubnet.com/swagger",
+      "verification": {
+        "candidate_id": "sn-112-website-common-swagger",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 271,
+        "method_tested": "GET",
+        "name": "minotaur Swagger UI",
+        "netuid": 112,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://minotaursubnet.com/",
+        "source_urls": [
+          "https://minotaursubnet.com/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://minotaursubnet.com/swagger",
+        "verified_at": "2026-06-06T12:18:41.689Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-112-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "minotaur Swagger JSON",
+      "netuid": 112,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://minotaursubnet.com/",
+      "source_urls": [
+        "https://minotaursubnet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "minotaur",
+      "url": "https://minotaursubnet.com/swagger.json",
+      "verification": {
+        "candidate_id": "sn-112-website-common-swagger-json",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 291,
+        "method_tested": "GET",
+        "name": "minotaur Swagger JSON",
+        "netuid": 112,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://minotaursubnet.com/",
+        "source_urls": [
+          "https://minotaursubnet.com/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://minotaursubnet.com/swagger.json",
+        "verified_at": "2026-06-06T12:18:41.709Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-112-website-link-minotaursubnet-com-website-1",
+      "kind": "website",
+      "name": "minotaur website page",
+      "netuid": 112,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://minotaursubnet.com/",
+      "source_urls": [
+        "https://minotaursubnet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "minotaur",
+      "url": "https://minotaursubnet.com/roadmap",
+      "verification": {
+        "candidate_id": "sn-112-website-link-minotaursubnet-com-website-1",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 199,
+        "method_tested": "HEAD",
+        "name": "minotaur website page",
+        "netuid": 112,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://minotaursubnet.com/",
+        "source_urls": [
+          "https://minotaursubnet.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://minotaursubnet.com/roadmap",
+        "verified_at": "2026-06-06T12:18:41.745Z"
       }
     }
   ],

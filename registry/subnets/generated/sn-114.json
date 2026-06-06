@@ -6,14 +6,13 @@
     "gap_notes": [
       "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
-      "No verified SSE/event stream yet.",
-      "No verified data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T07:44:09.152Z"
+    "verified_at": "2026-06-06T12:18:42.849Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/114",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/114",
@@ -59,11 +58,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/DendriteHQ/SOMA",
-        "latency_ms": 382,
+        "latency_ms": 406,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:09.064Z"
+        "verified_at": "2026-06-06T12:18:42.469Z"
       }
     },
     {
@@ -72,7 +71,7 @@
       "id": "sn-114-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "SOMA source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -99,50 +98,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Level114/level114-subnet",
-        "latency_ms": 481,
+        "latency_ms": 550,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:09.152Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-114-github-readme-level114-level114-subnet-website-1",
-      "kind": "website",
-      "name": "SOMA website page",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/Level114/level114-subnet/blob/main/README.md"
-      ],
-      "url": "https://github.com/level114/level114-subnet.git",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 61,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 577,
-        "method_tested": "HEAD",
-        "redirect_target": "https://github.com/level114/level114-subnet",
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:09.025Z"
+        "verified_at": "2026-06-06T12:18:42.568Z"
       }
     },
     {
@@ -177,11 +137,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 404,
+        "latency_ms": 348,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:09.108Z"
+        "verified_at": "2026-06-06T12:18:42.484Z"
       }
     },
     {
@@ -190,7 +150,7 @@
       "id": "sn-114-tensorplex-docs",
       "kind": "docs",
       "name": "SOMA Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -216,11 +176,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 377,
+        "latency_ms": 278,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:09.121Z"
+        "verified_at": "2026-06-06T12:18:42.492Z"
       }
     },
     {
@@ -255,13 +215,91 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 124,
+        "latency_ms": 145,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:09.027Z"
+        "verified_at": "2026-06-06T12:18:42.347Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-114-website-link-thesoma-ai-dashboard-6",
+      "kind": "dashboard",
+      "name": "SOMA dashboard",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://thesoma.ai/"
+      ],
+      "url": "https://thesoma.ai/dashboard",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 304,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:42.832Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-114-website-link-thesoma-ai-data-artifact-4",
+      "kind": "data-artifact",
+      "name": "SOMA data artifact",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://thesoma.ai/"
+      ],
+      "url": "https://thesoma.ai/mcp",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 356,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:42.849Z"
       }
     }
   ],
-  "website_url": "https://github.com/level114/level114-subnet.git"
+  "website_url": "https://thesoma.ai/"
 }

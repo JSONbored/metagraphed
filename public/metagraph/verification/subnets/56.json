@@ -1,5 +1,5 @@
 {
-  "candidate_count": 5,
+  "candidate_count": 21,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Gradients",
@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 168,
+      "latency_ms": 153,
       "method_tested": "HEAD",
       "name": "Gradients TaoMarketCap dashboard",
       "netuid": 56,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/56",
-      "verified_at": "2026-06-06T07:44:00.708Z"
+      "verified_at": "2026-06-06T12:18:24.018Z"
     },
     {
       "candidate_id": "sn-56-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/gradients-ai/G.O.D",
       "kind": "source-repo",
-      "latency_ms": 537,
+      "latency_ms": 646,
       "method_tested": "HEAD",
       "name": "Gradients source repository",
       "netuid": 56,
@@ -70,7 +70,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/gradients-ai/G.O.D",
-      "verified_at": "2026-06-06T07:44:00.724Z"
+      "verified_at": "2026-06-06T12:18:24.025Z"
     },
     {
       "candidate_id": "sn-56-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 646,
+      "latency_ms": 224,
       "method_tested": "HEAD",
       "name": "Gradients website",
       "netuid": 56,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.gradients.io/",
-      "verified_at": "2026-06-06T07:44:00.744Z"
+      "verified_at": "2026-06-06T12:18:24.026Z"
     },
     {
       "candidate_id": "sn-56-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 283,
+      "latency_ms": 339,
       "method_tested": "HEAD",
       "name": "Gradients Tensorplex subnet docs",
       "netuid": 56,
@@ -136,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/56",
-      "verified_at": "2026-06-06T07:44:00.778Z"
+      "verified_at": "2026-06-06T12:18:24.031Z"
     },
     {
       "candidate_id": "sn-56-tensorplex-source-repo-1",
@@ -146,7 +146,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/rayonlabs/G.O.D",
       "kind": "source-repo",
-      "latency_ms": 441,
+      "latency_ms": 636,
       "method_tested": "HEAD",
       "name": "Gradients source repository",
       "netuid": 56,
@@ -170,24 +170,556 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/rayonlabs/G.O.D",
-      "verified_at": "2026-06-06T07:44:00.825Z"
+      "verified_at": "2026-06-06T12:18:24.031Z"
+    },
+    {
+      "candidate_id": "sn-56-website-common-api",
+      "classification": "redirected",
+      "confidence_score": 63,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 392,
+      "method_tested": "HEAD",
+      "name": "Gradients API",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.gradients.io/auth",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/api",
+      "verified_at": "2026-06-06T12:18:24.041Z"
+    },
+    {
+      "candidate_id": "sn-56-website-common-docs",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 359,
+      "method_tested": "HEAD",
+      "name": "Gradients docs",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.gradients.io/auth",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/docs",
+      "verified_at": "2026-06-06T12:18:24.041Z"
+    },
+    {
+      "candidate_id": "sn-56-website-common-health",
+      "classification": "redirected",
+      "confidence_score": 63,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 351,
+      "method_tested": "HEAD",
+      "name": "Gradients health endpoint",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.gradients.io/auth",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/health",
+      "verified_at": "2026-06-06T12:18:24.082Z"
+    },
+    {
+      "candidate_id": "sn-56-website-common-openapi-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 319,
+      "method_tested": "HEAD",
+      "name": "Gradients OpenAPI JSON",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.gradients.io/auth",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/openapi.json",
+      "verified_at": "2026-06-06T12:18:24.096Z"
+    },
+    {
+      "candidate_id": "sn-56-website-common-swagger",
+      "classification": "redirected",
+      "confidence_score": 63,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 342,
+      "method_tested": "HEAD",
+      "name": "Gradients Swagger UI",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.gradients.io/auth",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/swagger",
+      "verified_at": "2026-06-06T12:18:24.162Z"
+    },
+    {
+      "candidate_id": "sn-56-website-common-swagger-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 323,
+      "method_tested": "HEAD",
+      "name": "Gradients Swagger JSON",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.gradients.io/auth",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/swagger.json",
+      "verified_at": "2026-06-06T12:18:24.162Z"
+    },
+    {
+      "candidate_id": "sn-56-website-link-www-gradients-io-data-artifact-9",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "data-artifact",
+      "latency_ms": 195,
+      "method_tested": "HEAD",
+      "name": "Gradients data artifact",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/app/my-models",
+      "verified_at": "2026-06-06T12:18:24.171Z"
+    },
+    {
+      "candidate_id": "sn-56-website-link-www-gradients-io-website-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 164,
+      "method_tested": "HEAD",
+      "name": "Gradients website page",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/platform",
+      "verified_at": "2026-06-06T12:18:24.250Z"
+    },
+    {
+      "candidate_id": "sn-56-website-link-www-gradients-io-website-10",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 461,
+      "method_tested": "HEAD",
+      "name": "Gradients website page",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.gradients.io/app",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/app/research",
+      "verified_at": "2026-06-06T12:18:24.261Z"
+    },
+    {
+      "candidate_id": "sn-56-website-link-www-gradients-io-website-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 134,
+      "method_tested": "HEAD",
+      "name": "Gradients website page",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/pricing",
+      "verified_at": "2026-06-06T12:18:24.366Z"
+    },
+    {
+      "candidate_id": "sn-56-website-link-www-gradients-io-website-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 187,
+      "method_tested": "HEAD",
+      "name": "Gradients website page",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/news",
+      "verified_at": "2026-06-06T12:18:24.370Z"
+    },
+    {
+      "candidate_id": "sn-56-website-link-www-gradients-io-website-4",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 276,
+      "method_tested": "HEAD",
+      "name": "Gradients website page",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.gradients.io/auth",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/team",
+      "verified_at": "2026-06-06T12:18:24.400Z"
+    },
+    {
+      "candidate_id": "sn-56-website-link-www-gradients-io-website-5",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 139,
+      "method_tested": "HEAD",
+      "name": "Gradients website page",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/auth",
+      "verified_at": "2026-06-06T12:18:24.414Z"
+    },
+    {
+      "candidate_id": "sn-56-website-link-www-gradients-io-website-6",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 129,
+      "method_tested": "HEAD",
+      "name": "Gradients website page",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/app/explore",
+      "verified_at": "2026-06-06T12:18:24.416Z"
+    },
+    {
+      "candidate_id": "sn-56-website-link-www-gradients-io-website-7",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 140,
+      "method_tested": "HEAD",
+      "name": "Gradients website page",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/app",
+      "verified_at": "2026-06-06T12:18:24.433Z"
+    },
+    {
+      "candidate_id": "sn-56-website-link-www-gradients-io-website-8",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 271,
+      "method_tested": "HEAD",
+      "name": "Gradients website page",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.gradients.io/auth",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.gradients.io/",
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.gradients.io/login",
+      "verified_at": "2026-06-06T12:18:24.434Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-56",
   "summary": {
     "by_classification": {
-      "live": 4,
-      "redirected": 1
+      "content-mismatch": 2,
+      "live": 11,
+      "redirected": 8
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "data-artifact": 1,
+      "docs": 2,
+      "openapi": 3,
       "source-repo": 2,
-      "website": 1
+      "subnet-api": 2,
+      "website": 10
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 19,
       "tensorplex-subnet-docs": 2
     }
   }

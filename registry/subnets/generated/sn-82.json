@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T07:44:05.298Z"
+    "verified_at": "2026-06-06T12:18:31.353Z"
   },
   "dashboard_url": "https://taostats.io/",
   "docs_url": "https://docs.bittensor.com/",
@@ -59,11 +59,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/compelle/compelle-validator",
-        "latency_ms": 436,
+        "latency_ms": 542,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.272Z"
+        "verified_at": "2026-06-06T12:18:31.270Z"
       }
     },
     {
@@ -72,7 +72,7 @@
       "id": "sn-82-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Compelle source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -99,11 +99,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/SN-Hermes/hermes-subnet",
-        "latency_ms": 751,
+        "latency_ms": 520,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.298Z"
+        "verified_at": "2026-06-06T12:18:31.353Z"
       }
     },
     {
@@ -138,11 +138,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 620,
+        "latency_ms": 522,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.285Z"
+        "verified_at": "2026-06-06T12:18:31.291Z"
       }
     },
     {
@@ -151,7 +151,7 @@
       "id": "sn-82-github-readme-sn-hermes-hermes-subnet-docs-2",
       "kind": "docs",
       "name": "Compelle docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -177,11 +177,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 83,
+        "latency_ms": 90,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.261Z"
+        "verified_at": "2026-06-06T12:18:31.179Z"
       }
     },
     {
@@ -190,7 +190,7 @@
       "id": "sn-82-tensorplex-docs",
       "kind": "docs",
       "name": "Compelle Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -216,11 +216,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 395,
+        "latency_ms": 340,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.298Z"
+        "verified_at": "2026-06-06T12:18:31.340Z"
       }
     },
     {
@@ -229,7 +229,7 @@
       "id": "sn-82-github-readme-sn-hermes-hermes-subnet-dashboard-1",
       "kind": "dashboard",
       "name": "Compelle dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -255,11 +255,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 223,
+        "latency_ms": 220,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.250Z"
+        "verified_at": "2026-06-06T12:18:31.154Z"
       }
     },
     {
@@ -294,11 +294,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 138,
+        "latency_ms": 139,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.271Z"
+        "verified_at": "2026-06-06T12:18:31.214Z"
       }
     }
   ],

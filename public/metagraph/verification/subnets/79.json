@@ -1,43 +1,10 @@
 {
-  "candidate_count": 31,
+  "candidate_count": 22,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "MVTRX",
   "netuid": 79,
   "results": [
-    {
-      "candidate_id": "sn-79-github-readme-taos-im-sn-79-dashboard-7",
-      "classification": "live",
-      "confidence_score": 58,
-      "content_type": "image/svg+xml;charset=utf-8",
-      "error": null,
-      "kind": "dashboard",
-      "latency_ms": 26,
-      "method_tested": "HEAD",
-      "name": "MVTRX dashboard",
-      "netuid": 79,
-      "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://img.shields.io/badge/dashboard-white?logo=grafana",
-      "verified_at": "2026-06-06T07:44:04.201Z"
-    },
     {
       "candidate_id": "sn-79-github-readme-taos-im-sn-79-docs-1",
       "classification": "redirected",
@@ -45,7 +12,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 648,
+      "latency_ms": 575,
       "method_tested": "HEAD",
       "name": "MVTRX docs",
       "netuid": 79,
@@ -69,16 +36,16 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://simulate.trading/taos-im-paper",
-      "verified_at": "2026-06-06T07:44:04.212Z"
+      "verified_at": "2026-06-06T12:18:30.284Z"
     },
     {
-      "candidate_id": "sn-79-github-readme-taos-im-sn-79-docs-3",
+      "candidate_id": "sn-79-github-readme-taos-im-sn-79-docs-2",
       "classification": "auth-required",
       "confidence_score": 21,
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 30,
+      "latency_ms": 29,
       "method_tested": "GET",
       "name": "MVTRX docs",
       "netuid": 79,
@@ -102,172 +69,7 @@
       "status": "failed",
       "status_code": 403,
       "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2336772",
-      "verified_at": "2026-06-06T07:44:04.228Z"
-    },
-    {
-      "candidate_id": "sn-79-github-readme-taos-im-sn-79-docs-6",
-      "classification": "live",
-      "confidence_score": 58,
-      "content_type": "image/svg+xml;charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "latency_ms": 30,
-      "method_tested": "HEAD",
-      "name": "MVTRX docs",
-      "netuid": 79,
-      "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://img.shields.io/badge/whitepaper-white?logo=proton",
-      "verified_at": "2026-06-06T07:44:04.289Z"
-    },
-    {
-      "candidate_id": "sn-79-github-readme-taos-im-sn-79-website-2",
-      "classification": "live",
-      "confidence_score": 66,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "latency_ms": 506,
-      "method_tested": "HEAD",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://github.com/maxe-team/maxe",
-      "verified_at": "2026-06-06T07:44:04.291Z"
-    },
-    {
-      "candidate_id": "sn-79-github-readme-taos-im-sn-79-website-4",
-      "classification": "live",
-      "confidence_score": 66,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "latency_ms": 473,
-      "method_tested": "HEAD",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://github.com/microsoft/MarS",
-      "verified_at": "2026-06-06T07:44:04.320Z"
-    },
-    {
-      "candidate_id": "sn-79-github-readme-taos-im-sn-79-website-5",
-      "classification": "redirected",
-      "confidence_score": 61,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "latency_ms": 502,
-      "method_tested": "HEAD",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "redirect_target": "https://github.com/one-covenant/templar",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://github.com/tplr-ai/templar",
-      "verified_at": "2026-06-06T07:44:04.374Z"
-    },
-    {
-      "candidate_id": "sn-79-github-readme-taos-im-sn-79-website-8",
-      "classification": "live",
-      "confidence_score": 66,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "latency_ms": 457,
-      "method_tested": "HEAD",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://github.com/taos-im/sn-79",
-      "verified_at": "2026-06-06T07:44:04.388Z"
+      "verified_at": "2026-06-06T12:18:30.303Z"
     },
     {
       "candidate_id": "sn-79-taomarketcap-dashboard",
@@ -276,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 150,
+      "latency_ms": 128,
       "method_tested": "HEAD",
       "name": "MVTRX TaoMarketCap dashboard",
       "netuid": 79,
@@ -300,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/79",
-      "verified_at": "2026-06-06T07:44:04.450Z"
+      "verified_at": "2026-06-06T12:18:30.306Z"
     },
     {
       "candidate_id": "sn-79-taomarketcap-website",
@@ -309,7 +111,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 206,
+      "latency_ms": 224,
       "method_tested": "HEAD",
       "name": "MVTRX website",
       "netuid": 79,
@@ -333,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taos.im/",
-      "verified_at": "2026-06-06T07:44:04.454Z"
+      "verified_at": "2026-06-06T12:18:30.328Z"
     },
     {
       "candidate_id": "sn-79-tensorplex-docs",
@@ -342,7 +144,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 375,
+      "latency_ms": 339,
       "method_tested": "HEAD",
       "name": "MVTRX Tensorplex subnet docs",
       "netuid": 79,
@@ -366,7 +168,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/79",
-      "verified_at": "2026-06-06T07:44:04.478Z"
+      "verified_at": "2026-06-06T12:18:30.328Z"
     },
     {
       "candidate_id": "sn-79-tensorplex-source-repo-1",
@@ -376,7 +178,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/taos-im/sn-79",
       "kind": "source-repo",
-      "latency_ms": 605,
+      "latency_ms": 485,
       "method_tested": "HEAD",
       "name": "MVTRX source repository",
       "netuid": 79,
@@ -400,21 +202,21 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/taos-im/sn-79",
-      "verified_at": "2026-06-06T07:44:04.513Z"
+      "verified_at": "2026-06-06T12:18:30.328Z"
     },
     {
-      "candidate_id": "sn-79-website-common-api-1hh6mts",
+      "candidate_id": "sn-79-website-common-api",
       "classification": "dead",
       "confidence_score": 0,
-      "content_type": "text/html; charset=utf-8",
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 84,
+      "latency_ms": 225,
       "method_tested": "GET",
       "name": "MVTRX API",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -426,28 +228,28 @@
       "redirect_target": null,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "status": "failed",
       "status_code": 404,
-      "url": "https://github.com/api",
-      "verified_at": "2026-06-06T07:44:04.544Z"
+      "url": "https://taos.im/api",
+      "verified_at": "2026-06-06T12:18:30.330Z"
     },
     {
-      "candidate_id": "sn-79-website-common-docs-o36adh",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-common-docs",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 73,
-      "method_tested": "HEAD",
+      "latency_ms": 193,
+      "method_tested": "GET",
       "name": "MVTRX docs",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -459,28 +261,28 @@
       "redirect_target": null,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://github.com/docs",
-      "verified_at": "2026-06-06T07:44:04.600Z"
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://taos.im/docs",
+      "verified_at": "2026-06-06T12:18:30.350Z"
     },
     {
-      "candidate_id": "sn-79-website-common-health-1tfwazq",
-      "classification": "live",
-      "confidence_score": 68,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 75,
-      "method_tested": "HEAD",
+      "latency_ms": 197,
+      "method_tested": "GET",
       "name": "MVTRX health endpoint",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -492,28 +294,28 @@
       "redirect_target": null,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://github.com/health",
-      "verified_at": "2026-06-06T07:44:04.633Z"
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://taos.im/health",
+      "verified_at": "2026-06-06T12:18:30.362Z"
     },
     {
-      "candidate_id": "sn-79-website-common-openapi-json-61w4sw",
+      "candidate_id": "sn-79-website-common-openapi-json",
       "classification": "dead",
       "confidence_score": 0,
-      "content_type": "application/json; charset=utf-8",
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 80,
+      "latency_ms": 206,
       "method_tested": "GET",
       "name": "MVTRX OpenAPI JSON",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -525,28 +327,28 @@
       "redirect_target": null,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "status": "failed",
-      "status_code": 410,
-      "url": "https://github.com/openapi.json",
-      "verified_at": "2026-06-06T07:44:04.660Z"
+      "status_code": 404,
+      "url": "https://taos.im/openapi.json",
+      "verified_at": "2026-06-06T12:18:30.430Z"
     },
     {
-      "candidate_id": "sn-79-website-common-swagger-1vqiohs",
-      "classification": "live",
-      "confidence_score": 68,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 73,
-      "method_tested": "HEAD",
+      "latency_ms": 193,
+      "method_tested": "GET",
       "name": "MVTRX Swagger UI",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -558,28 +360,28 @@
       "redirect_target": null,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://github.com/swagger",
-      "verified_at": "2026-06-06T07:44:04.665Z"
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://taos.im/swagger",
+      "verified_at": "2026-06-06T12:18:30.434Z"
     },
     {
-      "candidate_id": "sn-79-website-common-swagger-json-18juwly",
+      "candidate_id": "sn-79-website-common-swagger-json",
       "classification": "dead",
       "confidence_score": 0,
-      "content_type": "application/json; charset=utf-8",
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 76,
+      "latency_ms": 191,
       "method_tested": "GET",
       "name": "MVTRX Swagger JSON",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -591,443 +393,344 @@
       "redirect_target": null,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "status": "failed",
-      "status_code": 410,
-      "url": "https://github.com/swagger.json",
-      "verified_at": "2026-06-06T07:44:04.673Z"
+      "status_code": 404,
+      "url": "https://taos.im/swagger.json",
+      "verified_at": "2026-06-06T12:18:30.463Z"
     },
     {
-      "candidate_id": "sn-79-website-link-github-com-website-1",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-link-taos-im-website-1",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 87,
+      "latency_ms": 229,
       "method_tested": "HEAD",
       "name": "MVTRX website page",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": null,
+      "redirect_target": "https://taos.im/bizz/",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "status": "ok",
       "status_code": 200,
-      "url": "https://github.com/",
-      "verified_at": "2026-06-06T07:44:04.706Z"
+      "url": "https://taos.im/bizz",
+      "verified_at": "2026-06-06T12:18:30.531Z"
     },
     {
-      "candidate_id": "sn-79-website-link-github-com-website-10",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-link-taos-im-website-10",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 387,
+      "latency_ms": 236,
       "method_tested": "HEAD",
       "name": "MVTRX website page",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": null,
+      "redirect_target": "https://taos.im/tag/bittensor/",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "status": "ok",
       "status_code": 200,
-      "url": "https://github.com/security/advanced-security/code-security",
-      "verified_at": "2026-06-06T07:44:04.709Z"
+      "url": "https://taos.im/tag/bittensor",
+      "verified_at": "2026-06-06T12:18:30.551Z"
     },
     {
-      "candidate_id": "sn-79-website-link-github-com-website-2",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-link-taos-im-website-2",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 196,
+      "latency_ms": 120,
       "method_tested": "HEAD",
       "name": "MVTRX website page",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": null,
+      "redirect_target": "https://taos.im/goaling/",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "status": "ok",
       "status_code": 200,
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fmaxe-team%2Fmaxe",
-      "verified_at": "2026-06-06T07:44:04.729Z"
+      "url": "https://taos.im/goaling",
+      "verified_at": "2026-06-06T12:18:30.552Z"
     },
     {
-      "candidate_id": "sn-79-website-link-github-com-website-2-1328k8j",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-link-taos-im-website-3",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 171,
+      "latency_ms": 210,
       "method_tested": "HEAD",
       "name": "MVTRX website page",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": null,
+      "redirect_target": "https://taos.im/idea/",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/taos-im/sn-79",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/taos-im/sn-79"
+        "https://taos.im/"
       ],
       "status": "ok",
       "status_code": 200,
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Ftaos-im%2Fsn-79",
-      "verified_at": "2026-06-06T07:44:04.730Z"
+      "url": "https://taos.im/idea",
+      "verified_at": "2026-06-06T12:18:30.631Z"
     },
     {
-      "candidate_id": "sn-79-website-link-github-com-website-2-19g4x6b",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-link-taos-im-website-4",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 204,
+      "latency_ms": 211,
       "method_tested": "HEAD",
       "name": "MVTRX website page",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": null,
+      "redirect_target": "https://taos.im/about/",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/tplr-ai/templar",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/tplr-ai/templar"
+        "https://taos.im/"
       ],
       "status": "ok",
       "status_code": 200,
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fone-covenant%2Ftemplar",
-      "verified_at": "2026-06-06T07:44:04.738Z"
+      "url": "https://taos.im/about",
+      "verified_at": "2026-06-06T12:18:30.667Z"
     },
     {
-      "candidate_id": "sn-79-website-link-github-com-website-2-341bk8",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-link-taos-im-website-5",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 179,
+      "latency_ms": 98,
       "method_tested": "HEAD",
       "name": "MVTRX website page",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": null,
+      "redirect_target": "https://taos.im/matrix/",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/microsoft/MarS",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/microsoft/MarS"
+        "https://taos.im/"
       ],
       "status": "ok",
       "status_code": 200,
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fmicrosoft%2FMarS",
-      "verified_at": "2026-06-06T07:44:04.793Z"
+      "url": "https://taos.im/matrix",
+      "verified_at": "2026-06-06T12:18:30.671Z"
     },
     {
-      "candidate_id": "sn-79-website-link-github-com-website-3",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-link-taos-im-website-6",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 72,
+      "latency_ms": 216,
       "method_tested": "HEAD",
       "name": "MVTRX website page",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": null,
+      "redirect_target": "https://taos.im/features/",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "status": "ok",
       "status_code": 200,
-      "url": "https://github.com/features/copilot",
-      "verified_at": "2026-06-06T07:44:04.793Z"
+      "url": "https://taos.im/features",
+      "verified_at": "2026-06-06T12:18:30.707Z"
     },
     {
-      "candidate_id": "sn-79-website-link-github-com-website-4",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-link-taos-im-website-7",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 76,
+      "latency_ms": 118,
       "method_tested": "HEAD",
       "name": "MVTRX website page",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": null,
+      "redirect_target": "https://taos.im/2026/01/27/upgrade-to-mvtrx/",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "status": "ok",
       "status_code": 200,
-      "url": "https://github.com/features/ai/github-app",
-      "verified_at": "2026-06-06T07:44:04.797Z"
+      "url": "https://taos.im/2026/01/27/upgrade-to-mvtrx",
+      "verified_at": "2026-06-06T12:18:30.759Z"
     },
     {
-      "candidate_id": "sn-79-website-link-github-com-website-5",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-link-taos-im-website-8",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 76,
+      "latency_ms": 234,
       "method_tested": "HEAD",
       "name": "MVTRX website page",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": null,
+      "redirect_target": "https://taos.im/category/major-update/",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "status": "ok",
       "status_code": 200,
-      "url": "https://github.com/mcp",
-      "verified_at": "2026-06-06T07:44:04.817Z"
+      "url": "https://taos.im/category/major-update",
+      "verified_at": "2026-06-06T12:18:30.762Z"
     },
     {
-      "candidate_id": "sn-79-website-link-github-com-website-6",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "candidate_id": "sn-79-website-link-taos-im-website-9",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 76,
+      "latency_ms": 112,
       "method_tested": "HEAD",
       "name": "MVTRX website page",
       "netuid": 79,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": false,
+        "redirected": true,
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": null,
+      "redirect_target": "https://taos.im/2025/12/02/dis/",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "status": "ok",
       "status_code": 200,
-      "url": "https://github.com/features/actions",
-      "verified_at": "2026-06-06T07:44:04.821Z"
-    },
-    {
-      "candidate_id": "sn-79-website-link-github-com-website-7",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "latency_ms": 72,
-      "method_tested": "HEAD",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
-      "source_urls": [
-        "https://github.com/maxe-team/maxe"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://github.com/features/codespaces",
-      "verified_at": "2026-06-06T07:44:04.845Z"
-    },
-    {
-      "candidate_id": "sn-79-website-link-github-com-website-8",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "latency_ms": 72,
-      "method_tested": "HEAD",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
-      "source_urls": [
-        "https://github.com/maxe-team/maxe"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://github.com/features/code-review",
-      "verified_at": "2026-06-06T07:44:04.853Z"
-    },
-    {
-      "candidate_id": "sn-79-website-link-github-com-website-9",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "latency_ms": 81,
-      "method_tested": "HEAD",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
-      "source_urls": [
-        "https://github.com/maxe-team/maxe"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://github.com/security/advanced-security",
-      "verified_at": "2026-06-06T07:44:04.860Z"
+      "url": "https://taos.im/2025/12/02/dis",
+      "verified_at": "2026-06-06T12:18:30.770Z"
     }
   ],
   "schema_version": 1,
@@ -1035,21 +738,21 @@
   "summary": {
     "by_classification": {
       "auth-required": 1,
-      "dead": 3,
-      "live": 25,
-      "redirected": 2
+      "dead": 6,
+      "live": 4,
+      "redirected": 11
     },
     "by_kind": {
-      "dashboard": 2,
-      "docs": 5,
+      "dashboard": 1,
+      "docs": 4,
       "openapi": 3,
       "source-repo": 1,
       "subnet-api": 2,
-      "website": 18
+      "website": 11
     },
     "by_provider": {
-      "taomarketcap": 2,
-      "tensorplex-subnet-docs": 29
+      "taomarketcap": 18,
+      "tensorplex-subnet-docs": 4
     }
   }
 }

@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 160,
+        "latency_ms": 203,
         "method_tested": "HEAD",
         "name": "Chunking TaoMarketCap dashboard",
         "netuid": 40,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/40",
-        "verified_at": "2026-06-06T07:43:56.910Z"
+        "verified_at": "2026-06-06T12:18:19.802Z"
       }
     },
     {
@@ -71,7 +71,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/40",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/40"
+        "https://api.taomarketcap.com/public/v1/subnets/40",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json"
       ],
       "state": "schema-valid",
       "subnet_name": "Chunking",
@@ -84,7 +85,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/VectorChat/chunking_subnet",
         "kind": "source-repo",
-        "latency_ms": 364,
+        "latency_ms": 405,
         "method_tested": "HEAD",
         "name": "Chunking source repository",
         "netuid": 40,
@@ -103,12 +104,13 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/40",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/40"
+          "https://api.taomarketcap.com/public/v1/subnets/40",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json"
         ],
         "status": "failed",
         "status_code": 404,
         "url": "https://github.com/VectorChat/chunking_subnet",
-        "verified_at": "2026-06-06T07:43:56.924Z"
+        "verified_at": "2026-06-06T12:18:19.802Z"
       }
     },
     {
@@ -121,7 +123,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -139,7 +141,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 404,
+        "latency_ms": 394,
         "method_tested": "HEAD",
         "name": "Chunking Tensorplex subnet docs",
         "netuid": 40,
@@ -163,7 +165,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/40",
-        "verified_at": "2026-06-06T07:43:56.933Z"
+        "verified_at": "2026-06-06T12:18:19.802Z"
       }
     }
   ],

@@ -9,6 +9,48 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-49-github-readme-nepher-ai-nepher-subnet-docs-1",
+      "kind": "docs",
+      "name": "Nepher Robotics docs",
+      "netuid": 49,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/nepher-ai/nepher-subnet/blob/main/README.md"
+      ],
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "url": "https://docs.nepher.ai/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html",
+        "latency_ms": 304,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:22.046Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-49-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Nepher Robotics TaoMarketCap dashboard",
@@ -41,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 140,
+        "latency_ms": 133,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.596Z"
+        "verified_at": "2026-06-06T12:18:22.100Z"
       }
     },
     {
@@ -84,11 +126,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/nepher-ai/nepher-subnet",
-        "latency_ms": 597,
+        "latency_ms": 488,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.651Z"
+        "verified_at": "2026-06-06T12:18:22.122Z"
       }
     },
     {
@@ -98,7 +140,7 @@
       "kind": "docs",
       "name": "Nepher Robotics Tensorplex subnet docs",
       "netuid": 49,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -126,11 +168,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 391,
+        "latency_ms": 344,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.654Z"
+        "verified_at": "2026-06-06T12:18:22.150Z"
       }
     }
   ]

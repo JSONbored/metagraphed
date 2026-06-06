@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 140,
+        "latency_ms": 166,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:01.848Z"
+        "verified_at": "2026-06-06T12:18:25.518Z"
       }
     },
     {
@@ -74,7 +74,8 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/62"
+        "https://api.taomarketcap.com/public/v1/subnets/62",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/62/subnet.json"
       ],
       "subnet_name": "Ridges",
       "subnet_slug": "sn-62",
@@ -84,11 +85,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/ridgesai/ridges",
-        "latency_ms": 501,
+        "latency_ms": 383,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:01.912Z"
+        "verified_at": "2026-06-06T12:18:25.532Z"
       }
     },
     {
@@ -98,7 +99,7 @@
       "kind": "docs",
       "name": "Ridges Tensorplex subnet docs",
       "netuid": 62,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -126,11 +127,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 413,
+        "latency_ms": 338,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:01.988Z"
+        "verified_at": "2026-06-06T12:18:25.658Z"
       }
     }
   ]

@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 156,
+      "latency_ms": 134,
       "method_tested": "HEAD",
       "name": "eni TaoMarketCap dashboard",
       "netuid": 101,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/101",
-      "verified_at": "2026-06-06T07:44:07.757Z"
+      "verified_at": "2026-06-06T12:18:38.392Z"
     },
     {
       "candidate_id": "sn-101-tensorplex-docs",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 384,
+      "latency_ms": 291,
       "method_tested": "HEAD",
       "name": "eni Tensorplex subnet docs",
       "netuid": 101,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/101",
-      "verified_at": "2026-06-06T07:44:07.781Z"
+      "verified_at": "2026-06-06T12:18:38.399Z"
     }
   ],
   "schema_version": 1,

@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-06T07:43:53.560Z"
+    "verified_at": "2026-06-06T12:18:11.470Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/10",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/10",
@@ -42,28 +42,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/10"
+        "https://api.taomarketcap.com/public/v1/subnets/10",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/10/subnet.json"
       ],
       "url": "https://github.com/Swap-Subnet/swap-subnet",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/Swap-Subnet/swap-subnet",
-        "latency_ms": 516,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2025-11-05T05:40:17Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:53.531Z"
+        "topics": [],
+        "verified_at": "2026-06-06T12:18:11.462Z"
       }
     },
     {
@@ -98,11 +100,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 442,
+        "latency_ms": 316,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:53.531Z"
+        "verified_at": "2026-06-06T12:18:11.462Z"
       }
     },
     {
@@ -111,7 +113,7 @@
       "id": "sn-10-tensorplex-docs",
       "kind": "docs",
       "name": "Swap Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +139,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 389,
+        "latency_ms": 340,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:53.560Z"
+        "verified_at": "2026-06-06T12:18:11.470Z"
       }
     },
     {
@@ -176,11 +178,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 158,
+        "latency_ms": 127,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:53.413Z"
+        "verified_at": "2026-06-06T12:18:11.454Z"
       }
     }
   ],

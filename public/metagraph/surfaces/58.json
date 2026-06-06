@@ -9,11 +9,11 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-58-github-readme-handshake58-hs58-docs-2",
+      "id": "sn-58-github-readme-handshake58-hs58-docs-1",
       "kind": "docs",
       "name": "Pending docs",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,21 +41,21 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/markdown; charset=UTF-8",
-        "latency_ms": 241,
+        "latency_ms": 297,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:00.903Z"
+        "verified_at": "2026-06-06T12:18:24.504Z"
       }
     },
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-58-github-readme-handshake58-hs58-subnet-api-3",
+      "id": "sn-58-github-readme-handshake58-hs58-subnet-api-2",
       "kind": "subnet-api",
       "name": "Pending API surface",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -83,21 +83,21 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 215,
+        "latency_ms": 264,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:00.937Z"
+        "verified_at": "2026-06-06T12:18:24.545Z"
       }
     },
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-58-github-readme-handshake58-hs58-subnet-api-7",
+      "id": "sn-58-github-readme-handshake58-hs58-subnet-api-3",
       "kind": "subnet-api",
       "name": "Pending API surface",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -125,21 +125,21 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 267,
+        "latency_ms": 302,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:00.957Z"
+        "verified_at": "2026-06-06T12:18:24.553Z"
       }
     },
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-58-github-readme-handshake58-hs58-subnet-api-8",
+      "id": "sn-58-github-readme-handshake58-hs58-subnet-api-4",
       "kind": "subnet-api",
       "name": "Pending API surface",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -167,95 +167,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 179,
+        "latency_ms": 256,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:00.993Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-58-github-readme-handshake58-hs58-website-1",
-      "kind": "website",
-      "name": "Pending website page",
-      "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/Handshake58/HS58/blob/main/README.md"
-      ],
-      "subnet_name": "Pending",
-      "subnet_slug": "sn-58",
-      "url": "https://github.com/Handshake58/HS58-subnet",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 715,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:01.020Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-58-github-readme-handshake58-hs58-website-4",
-      "kind": "website",
-      "name": "Pending website page",
-      "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/Handshake58/HS58/blob/main/README.md"
-      ],
-      "subnet_name": "Pending",
-      "subnet_slug": "sn-58",
-      "url": "https://github.com/Handshake58/HS58",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1108,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:01.061Z"
+        "verified_at": "2026-06-06T12:18:24.557Z"
       }
     },
     {
@@ -293,11 +209,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 151,
+        "latency_ms": 159,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:01.152Z"
+        "verified_at": "2026-06-06T12:18:24.573Z"
       }
     },
     {
@@ -307,7 +223,7 @@
       "kind": "docs",
       "name": "Pending Tensorplex subnet docs",
       "netuid": 58,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -335,11 +251,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 378,
+        "latency_ms": 326,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:01.172Z"
+        "verified_at": "2026-06-06T12:18:24.615Z"
       }
     },
     {
@@ -349,7 +265,7 @@
       "kind": "source-repo",
       "name": "Pending source repository",
       "netuid": 58,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -378,53 +294,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Handshake58/HS58",
-        "latency_ms": 1353,
+        "latency_ms": 530,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:01.190Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-58-website-common-docs",
-      "kind": "docs",
-      "name": "Pending docs",
-      "netuid": 58,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/Handshake58/HS58-subnet"
-      ],
-      "subnet_name": "Pending",
-      "subnet_slug": "sn-58",
-      "url": "https://github.com/docs",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 80,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:01.257Z"
+        "verified_at": "2026-06-06T12:18:24.644Z"
       }
     }
   ]

@@ -12,11 +12,11 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 4,
-    "verified_at": "2026-06-06T07:43:54.689Z"
+    "source_count": 3,
+    "verified_at": "2026-06-06T12:18:13.610Z"
   },
   "dashboard_url": "https://dashboard.404.xyz/d/main/404-gen",
-  "docs_url": "https://github.com/404-Repo/three-gen-subnet/blob/main/docs/running_validator.md",
+  "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/17",
   "links": [],
   "name": "404—GEN",
   "netuid": 17,
@@ -42,6 +42,88 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
+        "public_safe": true,
+        "source_tier": "third-party-index"
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/17"
+      ],
+      "url": "https://github.com/404-Repo/404-gen-subnet",
+      "verification": {
+        "archived": false,
+        "classification": "live",
+        "confidence_score": 80,
+        "content_type": null,
+        "default_branch": "main",
+        "github_api_url": "https://api.github.com/repos/404-Repo/404-gen-subnet",
+        "homepage": null,
+        "last_push_at": "2026-05-27T05:59:46Z",
+        "redirect_target": null,
+        "topics": [],
+        "verified_at": "2026-06-06T12:18:13.566Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-17-tensorplex-source-repo-1",
+      "kind": "source-repo",
+      "name": "404—GEN source repository",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "quality_signals": {
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
+        "public_safe": true,
+        "source_tier": "community-docs"
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json"
+      ],
+      "url": "https://github.com/404-Repo/three-gen-subnet",
+      "verification": {
+        "archived": false,
+        "classification": "live",
+        "confidence_score": 80,
+        "content_type": null,
+        "default_branch": "main",
+        "github_api_url": "https://api.github.com/repos/404-Repo/three-gen-subnet",
+        "homepage": null,
+        "last_push_at": "2025-11-17T16:01:31Z",
+        "redirect_target": null,
+        "topics": [],
+        "verified_at": "2026-06-06T12:18:13.610Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-17-taomarketcap-website",
+      "kind": "website",
+      "name": "404—GEN website",
+      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
@@ -53,174 +135,16 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/17"
       ],
-      "url": "https://github.com/404-Repo/404-gen-subnet",
+      "url": "https://www.404.xyz/",
       "verification": {
         "classification": "live",
-        "confidence_score": 59,
-        "content_type": null,
-        "github_api_url": "https://api.github.com/repos/404-Repo/404-gen-subnet",
-        "latency_ms": 517,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.621Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-17-tensorplex-source-repo-1",
-      "kind": "source-repo",
-      "name": "404—GEN source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json"
-      ],
-      "url": "https://github.com/404-Repo/three-gen-subnet",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 55,
-        "content_type": null,
-        "github_api_url": "https://api.github.com/repos/404-Repo/three-gen-subnet",
-        "latency_ms": 502,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.657Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-17-github-readme-404-repo-three-gen-subnet-website-3",
-      "kind": "website",
-      "name": "404—GEN website page",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/404-Repo/three-gen-subnet/blob/main/README.md"
-      ],
-      "url": "https://github.com/404-Repo/text-prompt-generator/blob/main/configs/pipeline_config.yml",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
+        "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 426,
+        "latency_ms": 91,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.404Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-17-github-readme-404-repo-three-gen-subnet-website-4",
-      "kind": "website",
-      "name": "404—GEN website page",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/404-Repo/three-gen-subnet/blob/main/README.md"
-      ],
-      "url": "https://github.com/404-Repo/get-prompts",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 61,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 546,
-        "method_tested": "HEAD",
-        "redirect_target": "https://github.com/404-Repo/three-gen-get-prompts",
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.448Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-17-github-readme-404-repo-three-gen-subnet-docs-2",
-      "kind": "docs",
-      "name": "404—GEN docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/404-Repo/three-gen-subnet/blob/main/README.md"
-      ],
-      "url": "https://github.com/404-Repo/three-gen-subnet/blob/main/docs/running_validator.md",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 368,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.401Z"
+        "verified_at": "2026-06-06T12:18:13.574Z"
       }
     },
     {
@@ -229,7 +153,7 @@
       "id": "sn-17-tensorplex-docs",
       "kind": "docs",
       "name": "404—GEN Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -255,50 +179,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 337,
+        "latency_ms": 280,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.652Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-17-website-common-docs-o36adh",
-      "kind": "docs",
-      "name": "404—GEN docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/404-Repo/text-prompt-generator/blob/main/configs/pipeline_config.yml"
-      ],
-      "url": "https://github.com/docs",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 80,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.689Z"
+        "verified_at": "2026-06-06T12:18:13.609Z"
       }
     },
     {
@@ -307,7 +192,7 @@
       "id": "sn-17-github-readme-404-repo-three-gen-subnet-dashboard-1",
       "kind": "dashboard",
       "name": "404—GEN dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -333,11 +218,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 755,
+        "latency_ms": 730,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.373Z"
+        "verified_at": "2026-06-06T12:18:13.558Z"
       }
     },
     {
@@ -372,13 +257,13 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 179,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.569Z"
+        "verified_at": "2026-06-06T12:18:13.564Z"
       }
     }
   ],
-  "website_url": "https://github.com/404-Repo/text-prompt-generator/blob/main/configs/pipeline_config.yml"
+  "website_url": "https://www.404.xyz/"
 }

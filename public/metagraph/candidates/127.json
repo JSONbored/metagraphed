@@ -2,6 +2,61 @@
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-127-github-readme-astridintelligence-sn-127-subnet-api-1",
+      "kind": "subnet-api",
+      "name": "Astrid API surface",
+      "netuid": 127,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/astridintelligence/sn-127/blob/master/README.md",
+      "source_urls": [
+        "https://github.com/astridintelligence/sn-127/blob/master/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Astrid",
+      "url": "https://api.astrid.global/v1",
+      "verification": {
+        "candidate_id": "sn-127-github-readme-astridintelligence-sn-127-subnet-api-1",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "application/json; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 443,
+        "method_tested": "HEAD",
+        "name": "Astrid API surface",
+        "netuid": 127,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/astridintelligence/sn-127/blob/master/README.md",
+        "source_urls": [
+          "https://github.com/astridintelligence/sn-127/blob/master/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://api.astrid.global/v1",
+        "verified_at": "2026-06-06T12:18:45.626Z"
+      }
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-127-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -28,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 141,
+        "latency_ms": 144,
         "method_tested": "HEAD",
         "name": "Astrid TaoMarketCap dashboard",
         "netuid": 127,
@@ -52,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/127",
-        "verified_at": "2026-06-06T07:44:10.853Z"
+        "verified_at": "2026-06-06T12:18:45.628Z"
       }
     },
     {
@@ -84,7 +139,7 @@
         "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/astridintelligence/sn-127",
         "kind": "source-repo",
-        "latency_ms": 519,
+        "latency_ms": 481,
         "method_tested": "HEAD",
         "name": "Astrid source repository",
         "netuid": 127,
@@ -108,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/astridintelligence/sn-127",
-        "verified_at": "2026-06-06T07:44:10.854Z"
+        "verified_at": "2026-06-06T12:18:45.636Z"
       }
     },
     {
@@ -139,7 +194,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 367,
+        "latency_ms": 832,
         "method_tested": "HEAD",
         "name": "Astrid website",
         "netuid": 127,
@@ -163,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.astrid.global/",
-        "verified_at": "2026-06-06T07:44:10.854Z"
+        "verified_at": "2026-06-06T12:18:45.668Z"
       }
     },
     {
@@ -176,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 427,
+        "latency_ms": 270,
         "method_tested": "HEAD",
         "name": "Astrid Tensorplex subnet docs",
         "netuid": 127,
@@ -218,7 +273,502 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/127",
-        "verified_at": "2026-06-06T07:44:10.855Z"
+        "verified_at": "2026-06-06T12:18:45.718Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-127-website-common-api",
+      "kind": "subnet-api",
+      "name": "Astrid API",
+      "netuid": 127,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.astrid.global/",
+      "source_urls": [
+        "https://www.astrid.global/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Astrid",
+      "url": "https://www.astrid.global/api",
+      "verification": {
+        "candidate_id": "sn-127-website-common-api",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 247,
+        "method_tested": "GET",
+        "name": "Astrid API",
+        "netuid": 127,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": "https://astrid.global/api",
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.astrid.global/",
+        "source_urls": [
+          "https://www.astrid.global/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.astrid.global/api",
+        "verified_at": "2026-06-06T12:18:45.718Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-127-website-common-docs",
+      "kind": "docs",
+      "name": "Astrid docs",
+      "netuid": 127,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.astrid.global/",
+      "source_urls": [
+        "https://www.astrid.global/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Astrid",
+      "url": "https://www.astrid.global/docs",
+      "verification": {
+        "candidate_id": "sn-127-website-common-docs",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 248,
+        "method_tested": "GET",
+        "name": "Astrid docs",
+        "netuid": 127,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": "https://astrid.global/docs",
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.astrid.global/",
+        "source_urls": [
+          "https://www.astrid.global/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.astrid.global/docs",
+        "verified_at": "2026-06-06T12:18:45.727Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-127-website-common-health",
+      "kind": "subnet-api",
+      "name": "Astrid health endpoint",
+      "netuid": 127,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.astrid.global/",
+      "source_urls": [
+        "https://www.astrid.global/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Astrid",
+      "url": "https://www.astrid.global/health",
+      "verification": {
+        "candidate_id": "sn-127-website-common-health",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 247,
+        "method_tested": "GET",
+        "name": "Astrid health endpoint",
+        "netuid": 127,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": "https://astrid.global/health",
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.astrid.global/",
+        "source_urls": [
+          "https://www.astrid.global/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.astrid.global/health",
+        "verified_at": "2026-06-06T12:18:45.762Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-127-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Astrid OpenAPI JSON",
+      "netuid": 127,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.astrid.global/",
+      "source_urls": [
+        "https://www.astrid.global/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Astrid",
+      "url": "https://www.astrid.global/openapi.json",
+      "verification": {
+        "candidate_id": "sn-127-website-common-openapi-json",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 246,
+        "method_tested": "GET",
+        "name": "Astrid OpenAPI JSON",
+        "netuid": 127,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": "https://astrid.global/openapi.json",
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.astrid.global/",
+        "source_urls": [
+          "https://www.astrid.global/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.astrid.global/openapi.json",
+        "verified_at": "2026-06-06T12:18:45.772Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-127-website-common-swagger",
+      "kind": "openapi",
+      "name": "Astrid Swagger UI",
+      "netuid": 127,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.astrid.global/",
+      "source_urls": [
+        "https://www.astrid.global/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Astrid",
+      "url": "https://www.astrid.global/swagger",
+      "verification": {
+        "candidate_id": "sn-127-website-common-swagger",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 253,
+        "method_tested": "GET",
+        "name": "Astrid Swagger UI",
+        "netuid": 127,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": "https://astrid.global/swagger",
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.astrid.global/",
+        "source_urls": [
+          "https://www.astrid.global/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.astrid.global/swagger",
+        "verified_at": "2026-06-06T12:18:45.777Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-127-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Astrid Swagger JSON",
+      "netuid": 127,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.astrid.global/",
+      "source_urls": [
+        "https://www.astrid.global/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Astrid",
+      "url": "https://www.astrid.global/swagger.json",
+      "verification": {
+        "candidate_id": "sn-127-website-common-swagger-json",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 246,
+        "method_tested": "GET",
+        "name": "Astrid Swagger JSON",
+        "netuid": 127,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": "https://astrid.global/swagger.json",
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.astrid.global/",
+        "source_urls": [
+          "https://www.astrid.global/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.astrid.global/swagger.json",
+        "verified_at": "2026-06-06T12:18:45.818Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-127-website-link-www-astrid-global-website-1",
+      "kind": "website",
+      "name": "Astrid website page",
+      "netuid": 127,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.astrid.global/",
+      "source_urls": [
+        "https://www.astrid.global/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Astrid",
+      "url": "https://arena.astrid.global/",
+      "verification": {
+        "candidate_id": "sn-127-website-link-www-astrid-global-website-1",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 318,
+        "method_tested": "HEAD",
+        "name": "Astrid website page",
+        "netuid": 127,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://www.astrid.global/",
+        "source_urls": [
+          "https://www.astrid.global/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://arena.astrid.global/",
+        "verified_at": "2026-06-06T12:18:45.819Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-127-website-link-www-astrid-global-website-2",
+      "kind": "website",
+      "name": "Astrid website page",
+      "netuid": 127,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.astrid.global/",
+      "source_urls": [
+        "https://www.astrid.global/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Astrid",
+      "url": "https://vault.astrid.global/",
+      "verification": {
+        "candidate_id": "sn-127-website-link-www-astrid-global-website-2",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 599,
+        "method_tested": "HEAD",
+        "name": "Astrid website page",
+        "netuid": 127,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://www.astrid.global/",
+        "source_urls": [
+          "https://www.astrid.global/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://vault.astrid.global/",
+        "verified_at": "2026-06-06T12:18:45.825Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-127-website-link-www-astrid-global-website-3",
+      "kind": "website",
+      "name": "Astrid website page",
+      "netuid": 127,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.astrid.global/",
+      "source_urls": [
+        "https://www.astrid.global/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Astrid",
+      "url": "https://investors.astrid.global/",
+      "verification": {
+        "candidate_id": "sn-127-website-link-www-astrid-global-website-3",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 122,
+        "method_tested": "HEAD",
+        "name": "Astrid website page",
+        "netuid": 127,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://www.astrid.global/",
+        "source_urls": [
+          "https://www.astrid.global/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://investors.astrid.global/",
+        "verified_at": "2026-06-06T12:18:45.838Z"
       }
     }
   ],

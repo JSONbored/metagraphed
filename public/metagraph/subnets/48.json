@@ -73,7 +73,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -94,7 +94,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -104,6 +104,321 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/qbittensor-labs/quantum"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-common-api",
+      "kind": "subnet-api",
+      "name": "Quantum Compute API",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-common-docs",
+      "kind": "docs",
+      "name": "Quantum Compute docs",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-common-health",
+      "kind": "subnet-api",
+      "name": "Quantum Compute health endpoint",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Quantum Compute OpenAPI JSON",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-common-swagger",
+      "kind": "openapi",
+      "name": "Quantum Compute Swagger UI",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Quantum Compute Swagger JSON",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-1",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/enigma"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-2",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/quantum"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-3",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/about"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-4",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/news"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-5",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/enigma/contracts"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-6",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/terms"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-7",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/privacy"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-8",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/payment-processing"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-9",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/enigma/rules"
     }
   ],
   "candidates": [
@@ -180,7 +495,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -201,7 +516,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -211,6 +526,321 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/qbittensor-labs/quantum"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-common-api",
+      "kind": "subnet-api",
+      "name": "Quantum Compute API",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-common-docs",
+      "kind": "docs",
+      "name": "Quantum Compute docs",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-common-health",
+      "kind": "subnet-api",
+      "name": "Quantum Compute health endpoint",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Quantum Compute OpenAPI JSON",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-common-swagger",
+      "kind": "openapi",
+      "name": "Quantum Compute Swagger UI",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Quantum Compute Swagger JSON",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-1",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/enigma"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-2",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/quantum"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-3",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/about"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-4",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/news"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-5",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/enigma/contracts"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-6",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/terms"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-7",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/privacy"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-8",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/payment-processing"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-48-website-link-www-qbittensorlabs-com-website-9",
+      "kind": "website",
+      "name": "Quantum Compute website page",
+      "netuid": 48,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.qbittensorlabs.com/",
+      "source_urls": [
+        "https://www.qbittensorlabs.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.qbittensorlabs.com/enigma/rules"
     }
   ],
   "gaps": {
@@ -236,8 +866,8 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 5,
+    "block": 8347420,
+    "candidate_count": 20,
     "categories": [
       "baseline-curated"
     ],
@@ -253,7 +883,7 @@
       "review_state": "machine-generated",
       "reviewed_at": null,
       "source_count": 2,
-      "verified_at": "2026-06-06T07:43:59.392Z"
+      "verified_at": "2026-06-06T12:18:21.572Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/48",
@@ -282,6 +912,7 @@
     "mechanism_count": 1,
     "name": "Quantum Compute",
     "native_name": "Quantum Compute",
+    "native_name_quality": "chain",
     "native_slug": "quantum-compute",
     "netuid": 48,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
@@ -290,10 +921,14 @@
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -343,11 +978,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 142,
+        "latency_ms": 132,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.220Z"
+        "verified_at": "2026-06-06T12:18:21.533Z"
       }
     },
     {
@@ -386,11 +1021,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/qbittensor-labs/quantum-compute",
-        "latency_ms": 354,
+        "latency_ms": 431,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.362Z"
+        "verified_at": "2026-06-06T12:18:21.538Z"
       }
     },
     {
@@ -428,11 +1063,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 577,
+        "latency_ms": 276,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.363Z"
+        "verified_at": "2026-06-06T12:18:21.560Z"
       }
     },
     {
@@ -442,7 +1077,7 @@
       "kind": "docs",
       "name": "Quantum Compute Tensorplex subnet docs",
       "netuid": 48,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -470,11 +1105,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 259,
+        "latency_ms": 281,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.392Z"
+        "verified_at": "2026-06-06T12:18:21.572Z"
       }
     }
   ],
@@ -514,11 +1149,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 142,
+        "latency_ms": 132,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.220Z"
+        "verified_at": "2026-06-06T12:18:21.533Z"
       }
     },
     {
@@ -557,11 +1192,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/qbittensor-labs/quantum-compute",
-        "latency_ms": 354,
+        "latency_ms": 431,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.362Z"
+        "verified_at": "2026-06-06T12:18:21.538Z"
       }
     },
     {
@@ -599,11 +1234,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 577,
+        "latency_ms": 276,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.363Z"
+        "verified_at": "2026-06-06T12:18:21.560Z"
       }
     },
     {
@@ -613,7 +1248,7 @@
       "kind": "docs",
       "name": "Quantum Compute Tensorplex subnet docs",
       "netuid": 48,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -641,11 +1276,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 259,
+        "latency_ms": 281,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:59.392Z"
+        "verified_at": "2026-06-06T12:18:21.572Z"
       }
     }
   ]

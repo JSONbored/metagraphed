@@ -52,12 +52,16 @@ jobs:
           npm run validate:openapi
           npm run validate:types
           npm run validate:artifact-budgets
+          npm run validate:docs
           npm run validate:intake
           npm run validate:workflows
+          npm run cloudflare:verify:dry-run
           npm run r2:manifest:dry-run
           npm run r2:download:dry-run
           npm run kv:publish:dry-run
           npm run worker:deploy:dry-run
+        env:
+          METAGRAPH_REQUIRE_KV_BINDING: ${{ env.METAGRAPH_KV_NAMESPACE_ID != '' && '1' || '0' }}
 
       - name: Public-safety scan
         run: npm run scan:public-safety

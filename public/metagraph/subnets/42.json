@@ -5,7 +5,7 @@
       "confidence": "medium",
       "id": "sn-42-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "Unknown TaoMarketCap dashboard",
+      "name": "Subnet 42 TaoMarketCap dashboard",
       "netuid": 42,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -26,12 +26,12 @@
       "confidence": "medium",
       "id": "sn-42-tensorplex-docs",
       "kind": "docs",
-      "name": "Unknown Tensorplex subnet docs",
+      "name": "Subnet 42 Tensorplex subnet docs",
       "netuid": 42,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -49,7 +49,7 @@
       "confidence": "medium",
       "id": "sn-42-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "Unknown TaoMarketCap dashboard",
+      "name": "Subnet 42 TaoMarketCap dashboard",
       "netuid": 42,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -70,12 +70,12 @@
       "confidence": "medium",
       "id": "sn-42-tensorplex-docs",
       "kind": "docs",
-      "name": "Unknown Tensorplex subnet docs",
+      "name": "Subnet 42 Tensorplex subnet docs",
       "netuid": 42,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -112,7 +112,7 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
+    "block": 8347420,
     "candidate_count": 2,
     "categories": [
       "baseline-curated"
@@ -131,7 +131,7 @@
       "review_state": "machine-generated",
       "reviewed_at": null,
       "source_count": 2,
-      "verified_at": "2026-06-06T07:43:57.070Z"
+      "verified_at": "2026-06-06T12:18:20.025Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/42",
@@ -160,9 +160,10 @@
     },
     "links": [],
     "mechanism_count": 1,
-    "name": "Unknown",
+    "name": "Subnet 42",
     "native_name": "Unknown",
-    "native_slug": "unknown",
+    "native_name_quality": "placeholder",
+    "native_slug": "sn-42",
     "netuid": 42,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 256,
@@ -170,10 +171,14 @@
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "placeholder"
       },
       "interface_metadata": "machine-verified"
     },
@@ -193,7 +198,7 @@
       "authority": "registry-observed",
       "id": "sn-42-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "Unknown TaoMarketCap dashboard",
+      "name": "Subnet 42 TaoMarketCap dashboard",
       "netuid": 42,
       "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "probe": {
@@ -216,18 +221,18 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/42"
       ],
-      "subnet_name": "Unknown",
+      "subnet_name": "Subnet 42",
       "subnet_slug": "sn-42",
       "url": "https://taomarketcap.com/subnets/42",
       "verification": {
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 290,
+        "latency_ms": 164,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:57.069Z"
+        "verified_at": "2026-06-06T12:18:20.005Z"
       }
     },
     {
@@ -235,9 +240,9 @@
       "authority": "registry-observed",
       "id": "sn-42-tensorplex-docs",
       "kind": "docs",
-      "name": "Unknown Tensorplex subnet docs",
+      "name": "Subnet 42 Tensorplex subnet docs",
       "netuid": 42,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -258,18 +263,18 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/42/subnet.json"
       ],
-      "subnet_name": "Unknown",
+      "subnet_name": "Subnet 42",
       "subnet_slug": "sn-42",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/42",
       "verification": {
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 464,
+        "latency_ms": 425,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:57.070Z"
+        "verified_at": "2026-06-06T12:18:20.025Z"
       }
     }
   ],
@@ -279,7 +284,7 @@
       "authority": "registry-observed",
       "id": "sn-42-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "Unknown TaoMarketCap dashboard",
+      "name": "Subnet 42 TaoMarketCap dashboard",
       "netuid": 42,
       "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "probe": {
@@ -302,18 +307,18 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/42"
       ],
-      "subnet_name": "Unknown",
+      "subnet_name": "Subnet 42",
       "subnet_slug": "sn-42",
       "url": "https://taomarketcap.com/subnets/42",
       "verification": {
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 290,
+        "latency_ms": 164,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:57.069Z"
+        "verified_at": "2026-06-06T12:18:20.005Z"
       }
     },
     {
@@ -321,9 +326,9 @@
       "authority": "registry-observed",
       "id": "sn-42-tensorplex-docs",
       "kind": "docs",
-      "name": "Unknown Tensorplex subnet docs",
+      "name": "Subnet 42 Tensorplex subnet docs",
       "netuid": 42,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -344,18 +349,18 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/42/subnet.json"
       ],
-      "subnet_name": "Unknown",
+      "subnet_name": "Subnet 42",
       "subnet_slug": "sn-42",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/42",
       "verification": {
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 464,
+        "latency_ms": 425,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:57.070Z"
+        "verified_at": "2026-06-06T12:18:20.025Z"
       }
     }
   ]

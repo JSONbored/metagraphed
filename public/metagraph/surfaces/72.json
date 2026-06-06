@@ -9,6 +9,48 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-72-github-readme-natixnetwork-streetvision-subnet-data-artifact-1",
+      "kind": "data-artifact",
+      "name": "StreetVision by NATIX data artifact",
+      "netuid": 72,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/natixnetwork/streetvision-subnet/blob/main/README.md"
+      ],
+      "subnet_name": "StreetVision by NATIX",
+      "subnet_slug": "sn-72",
+      "url": "https://huggingface.co/natix-network-org",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 122,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:28.407Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-72-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "StreetVision by NATIX TaoMarketCap dashboard",
@@ -41,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 142,
+        "latency_ms": 148,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:03.257Z"
+        "verified_at": "2026-06-06T12:18:28.467Z"
       }
     },
     {
@@ -74,7 +116,8 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/72"
+        "https://api.taomarketcap.com/public/v1/subnets/72",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/72/subnet.json"
       ],
       "subnet_name": "StreetVision by NATIX",
       "subnet_slug": "sn-72",
@@ -84,11 +127,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/natixnetwork/streetvision-subnet",
-        "latency_ms": 537,
+        "latency_ms": 348,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:03.285Z"
+        "verified_at": "2026-06-06T12:18:28.488Z"
       }
     },
     {
@@ -126,11 +169,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 152,
+        "latency_ms": 156,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:03.288Z"
+        "verified_at": "2026-06-06T12:18:28.522Z"
       }
     },
     {
@@ -140,7 +183,7 @@
       "kind": "docs",
       "name": "StreetVision by NATIX Tensorplex subnet docs",
       "netuid": 72,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -168,11 +211,53 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 392,
+        "latency_ms": 286,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:03.345Z"
+        "verified_at": "2026-06-06T12:18:28.530Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-72-website-link-www-natix-network-docs-10",
+      "kind": "docs",
+      "name": "StreetVision by NATIX docs",
+      "netuid": 72,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "subnet_name": "StreetVision by NATIX",
+      "subnet_slug": "sn-72",
+      "url": "https://docs.natix.network/whitepaper",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 211,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:28.759Z"
       }
     }
   ]

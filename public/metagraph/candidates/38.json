@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 264,
+        "latency_ms": 133,
         "method_tested": "HEAD",
         "name": "colosseum TaoMarketCap dashboard",
         "netuid": 38,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/38",
-        "verified_at": "2026-06-06T07:43:56.755Z"
+        "verified_at": "2026-06-06T12:18:19.542Z"
       }
     },
     {
@@ -71,7 +71,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/38"
+        "https://api.taomarketcap.com/public/v1/subnets/38",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json"
       ],
       "state": "schema-valid",
       "subnet_name": "colosseum",
@@ -84,7 +85,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/TAO-Colosseum/tao-colosseum-subnet",
         "kind": "source-repo",
-        "latency_ms": 433,
+        "latency_ms": 525,
         "method_tested": "HEAD",
         "name": "colosseum source repository",
         "netuid": 38,
@@ -103,12 +104,13 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/38"
+          "https://api.taomarketcap.com/public/v1/subnets/38",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
-        "verified_at": "2026-06-06T07:43:56.785Z"
+        "verified_at": "2026-06-06T12:18:19.544Z"
       }
     },
     {
@@ -139,7 +141,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 531,
+        "latency_ms": 225,
         "method_tested": "HEAD",
         "name": "colosseum website",
         "netuid": 38,
@@ -163,7 +165,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.taocolosseum.com/",
-        "verified_at": "2026-06-06T07:43:56.791Z"
+        "verified_at": "2026-06-06T12:18:19.552Z"
       }
     },
     {
@@ -176,7 +178,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +196,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 325,
+        "latency_ms": 375,
         "method_tested": "HEAD",
         "name": "colosseum Tensorplex subnet docs",
         "netuid": 38,
@@ -218,7 +220,337 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/38",
-        "verified_at": "2026-06-06T07:43:56.808Z"
+        "verified_at": "2026-06-06T12:18:19.575Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-38-website-common-api",
+      "kind": "subnet-api",
+      "name": "colosseum API",
+      "netuid": 38,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.taocolosseum.com/",
+      "source_urls": [
+        "https://www.taocolosseum.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "colosseum",
+      "url": "https://www.taocolosseum.com/api",
+      "verification": {
+        "candidate_id": "sn-38-website-common-api",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 222,
+        "method_tested": "HEAD",
+        "name": "colosseum API",
+        "netuid": 38,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.taocolosseum.com/",
+        "source_urls": [
+          "https://www.taocolosseum.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.taocolosseum.com/api",
+        "verified_at": "2026-06-06T12:18:19.580Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-38-website-common-docs",
+      "kind": "docs",
+      "name": "colosseum docs",
+      "netuid": 38,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.taocolosseum.com/",
+      "source_urls": [
+        "https://www.taocolosseum.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "colosseum",
+      "url": "https://www.taocolosseum.com/docs",
+      "verification": {
+        "candidate_id": "sn-38-website-common-docs",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 214,
+        "method_tested": "HEAD",
+        "name": "colosseum docs",
+        "netuid": 38,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.taocolosseum.com/",
+        "source_urls": [
+          "https://www.taocolosseum.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.taocolosseum.com/docs",
+        "verified_at": "2026-06-06T12:18:19.594Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-38-website-common-health",
+      "kind": "subnet-api",
+      "name": "colosseum health endpoint",
+      "netuid": 38,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.taocolosseum.com/",
+      "source_urls": [
+        "https://www.taocolosseum.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "colosseum",
+      "url": "https://www.taocolosseum.com/health",
+      "verification": {
+        "candidate_id": "sn-38-website-common-health",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 199,
+        "method_tested": "HEAD",
+        "name": "colosseum health endpoint",
+        "netuid": 38,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.taocolosseum.com/",
+        "source_urls": [
+          "https://www.taocolosseum.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.taocolosseum.com/health",
+        "verified_at": "2026-06-06T12:18:19.602Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-38-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "colosseum OpenAPI JSON",
+      "netuid": 38,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.taocolosseum.com/",
+      "source_urls": [
+        "https://www.taocolosseum.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "colosseum",
+      "url": "https://www.taocolosseum.com/openapi.json",
+      "verification": {
+        "candidate_id": "sn-38-website-common-openapi-json",
+        "classification": "content-mismatch",
+        "confidence_score": 0,
+        "content_type": "text/html",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 197,
+        "method_tested": "HEAD",
+        "name": "colosseum OpenAPI JSON",
+        "netuid": 38,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": false,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.taocolosseum.com/",
+        "source_urls": [
+          "https://www.taocolosseum.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.taocolosseum.com/openapi.json",
+        "verified_at": "2026-06-06T12:18:19.605Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-38-website-common-swagger",
+      "kind": "openapi",
+      "name": "colosseum Swagger UI",
+      "netuid": 38,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.taocolosseum.com/",
+      "source_urls": [
+        "https://www.taocolosseum.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "colosseum",
+      "url": "https://www.taocolosseum.com/swagger",
+      "verification": {
+        "candidate_id": "sn-38-website-common-swagger",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 203,
+        "method_tested": "HEAD",
+        "name": "colosseum Swagger UI",
+        "netuid": 38,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.taocolosseum.com/",
+        "source_urls": [
+          "https://www.taocolosseum.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.taocolosseum.com/swagger",
+        "verified_at": "2026-06-06T12:18:19.621Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-38-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "colosseum Swagger JSON",
+      "netuid": 38,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.taocolosseum.com/",
+      "source_urls": [
+        "https://www.taocolosseum.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "colosseum",
+      "url": "https://www.taocolosseum.com/swagger.json",
+      "verification": {
+        "candidate_id": "sn-38-website-common-swagger-json",
+        "classification": "content-mismatch",
+        "confidence_score": 0,
+        "content_type": "text/html",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 239,
+        "method_tested": "HEAD",
+        "name": "colosseum Swagger JSON",
+        "netuid": 38,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": false,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.taocolosseum.com/",
+        "source_urls": [
+          "https://www.taocolosseum.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.taocolosseum.com/swagger.json",
+        "verified_at": "2026-06-06T12:18:19.630Z"
       }
     }
   ],

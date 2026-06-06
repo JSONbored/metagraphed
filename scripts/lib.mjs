@@ -124,6 +124,42 @@ export function stableStringify(value) {
   return JSON.stringify(sortValue(value), null, 2);
 }
 
+export function nativeNameQuality(subnet) {
+  const rawName =
+    typeof subnet?.raw_name === "string" ? subnet.raw_name : subnet?.name;
+  return classifyNativeName(rawName, subnet?.netuid).quality;
+}
+
+export function nativeDisplayName(subnet, fallbackName = null) {
+  const quality = nativeNameQuality(subnet);
+  const candidate =
+    quality === "chain"
+      ? typeof subnet?.raw_name === "string"
+        ? subnet.raw_name
+        : subnet?.name
+      : fallbackName;
+  return candidate || `Subnet ${subnet?.netuid ?? "unknown"}`;
+}
+
+export function classifyNativeName(value, netuid) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (!raw) {
+    return { raw_name: null, quality: "empty" };
+  }
+
+  const normalized = raw.toLowerCase();
+  const genericName =
+    Number.isInteger(netuid) && normalized === `subnet ${netuid}`.toLowerCase();
+  if (
+    genericName ||
+    ["unknown", "none", "null", "n/a", "na", "unnamed"].includes(normalized)
+  ) {
+    return { raw_name: raw, quality: "placeholder" };
+  }
+
+  return { raw_name: raw, quality: "chain" };
+}
+
 export function sortValue(value) {
   if (Array.isArray(value)) {
     return value.map(sortValue);
@@ -227,6 +263,17 @@ export function normalizePublicUrl(value) {
   } catch {
     return null;
   }
+}
+
+export function registrySurfaceKey(entry) {
+  const normalizedUrl = normalizePublicUrl(entry?.url);
+  return [
+    entry?.netuid ?? "unknown",
+    entry?.kind || "unknown",
+    normalizedUrl || entry?.url || "unknown",
+  ]
+    .join("|")
+    .toLowerCase();
 }
 
 export function sha256Hex(value) {

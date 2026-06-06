@@ -37,7 +37,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/68",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/68"
+        "https://api.taomarketcap.com/public/v1/subnets/68",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/68/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/metanova-labs/nova"
@@ -73,7 +74,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -83,6 +84,237 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/68"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-common-api",
+      "kind": "subnet-api",
+      "name": "NOVA API",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-common-docs",
+      "kind": "docs",
+      "name": "NOVA docs",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-common-health",
+      "kind": "subnet-api",
+      "name": "NOVA health endpoint",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "NOVA OpenAPI JSON",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-common-swagger",
+      "kind": "openapi",
+      "name": "NOVA Swagger UI",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "NOVA Swagger JSON",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-link-www-metanova-labs-ai-dashboard-5",
+      "kind": "dashboard",
+      "name": "NOVA dashboard",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/dashboard"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
+      "kind": "data-artifact",
+      "name": "NOVA data artifact",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/models"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-link-www-metanova-labs-ai-docs-3",
+      "kind": "docs",
+      "name": "NOVA docs",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/whitepapers"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-link-www-metanova-labs-ai-website-1",
+      "kind": "website",
+      "name": "NOVA website page",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/about"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-link-www-metanova-labs-ai-website-2",
+      "kind": "website",
+      "name": "NOVA website page",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/nova"
     }
   ],
   "candidates": [
@@ -123,7 +355,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/68",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/68"
+        "https://api.taomarketcap.com/public/v1/subnets/68",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/68/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/metanova-labs/nova"
@@ -159,7 +392,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -169,23 +402,253 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/68"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-common-api",
+      "kind": "subnet-api",
+      "name": "NOVA API",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-common-docs",
+      "kind": "docs",
+      "name": "NOVA docs",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-common-health",
+      "kind": "subnet-api",
+      "name": "NOVA health endpoint",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "NOVA OpenAPI JSON",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-common-swagger",
+      "kind": "openapi",
+      "name": "NOVA Swagger UI",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "NOVA Swagger JSON",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-link-www-metanova-labs-ai-dashboard-5",
+      "kind": "dashboard",
+      "name": "NOVA dashboard",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/dashboard"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
+      "kind": "data-artifact",
+      "name": "NOVA data artifact",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/models"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-link-www-metanova-labs-ai-docs-3",
+      "kind": "docs",
+      "name": "NOVA docs",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/whitepapers"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-link-www-metanova-labs-ai-website-1",
+      "kind": "website",
+      "name": "NOVA website page",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/about"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-68-website-link-www-metanova-labs-ai-website-2",
+      "kind": "website",
+      "name": "NOVA website page",
+      "netuid": 68,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.metanova-labs.ai/",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.metanova-labs.ai/nova"
     }
   ],
   "gaps": {
     "gap_notes": [
       "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
-      "No verified SSE/event stream yet.",
-      "No verified data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "missing_kinds": [
       "openapi",
       "subnet-api",
-      "sse",
-      "data-artifact"
+      "sse"
     ],
     "supported_kinds": [
       "dashboard",
+      "data-artifact",
       "docs",
       "source-repo",
       "website"
@@ -194,8 +657,8 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 4,
+    "block": 8347420,
+    "candidate_count": 15,
     "categories": [
       "baseline-curated"
     ],
@@ -204,14 +667,13 @@
       "gap_notes": [
         "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
-        "No verified SSE/event stream yet.",
-        "No verified data artifact yet."
+        "No verified SSE/event stream yet."
       ],
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 2,
-      "verified_at": "2026-06-06T07:44:02.998Z"
+      "source_count": 3,
+      "verified_at": "2026-06-06T12:18:27.779Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/68",
@@ -220,17 +682,16 @@
       "gap_notes": [
         "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
-        "No verified SSE/event stream yet.",
-        "No verified data artifact yet."
+        "No verified SSE/event stream yet."
       ],
       "missing_kinds": [
         "openapi",
         "subnet-api",
-        "sse",
-        "data-artifact"
+        "sse"
       ],
       "supported_kinds": [
         "dashboard",
+        "data-artifact",
         "docs",
         "source-repo",
         "website"
@@ -240,18 +701,23 @@
     "mechanism_count": 2,
     "name": "NOVA",
     "native_name": "NOVA",
+    "native_name_quality": "chain",
     "native_slug": "nova",
     "netuid": 68,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 64,
-    "probed_surface_count": 4,
+    "probed_surface_count": 7,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -260,7 +726,7 @@
     "source_repo": "https://github.com/metanova-labs/nova",
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 4,
+    "surface_count": 7,
     "symbol": "ظ",
     "tempo": 360,
     "website_url": "https://www.metanova-labs.ai/"
@@ -301,11 +767,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 188,
+        "latency_ms": 147,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.923Z"
+        "verified_at": "2026-06-06T12:18:27.311Z"
       }
     },
     {
@@ -334,7 +800,8 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/68"
+        "https://api.taomarketcap.com/public/v1/subnets/68",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/68/subnet.json"
       ],
       "subnet_name": "NOVA",
       "subnet_slug": "sn-68",
@@ -344,11 +811,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/metanova-labs/nova",
-        "latency_ms": 408,
+        "latency_ms": 524,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.962Z"
+        "verified_at": "2026-06-06T12:18:27.359Z"
       }
     },
     {
@@ -386,11 +853,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 239,
+        "latency_ms": 248,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.964Z"
+        "verified_at": "2026-06-06T12:18:27.442Z"
       }
     },
     {
@@ -400,7 +867,7 @@
       "kind": "docs",
       "name": "NOVA Tensorplex subnet docs",
       "netuid": 68,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -428,11 +895,137 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 347,
+        "latency_ms": 321,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.998Z"
+        "verified_at": "2026-06-06T12:18:27.458Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-68-website-link-www-metanova-labs-ai-dashboard-5",
+      "kind": "dashboard",
+      "name": "NOVA dashboard",
+      "netuid": 68,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "subnet_name": "NOVA",
+      "subnet_slug": "sn-68",
+      "url": "https://www.metanova-labs.ai/dashboard",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html",
+        "latency_ms": 218,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:27.772Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
+      "kind": "data-artifact",
+      "name": "NOVA data artifact",
+      "netuid": 68,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "subnet_name": "NOVA",
+      "subnet_slug": "sn-68",
+      "url": "https://www.metanova-labs.ai/models",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html",
+        "latency_ms": 71,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:27.772Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-68-website-link-www-metanova-labs-ai-docs-3",
+      "kind": "docs",
+      "name": "NOVA docs",
+      "netuid": 68,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "subnet_name": "NOVA",
+      "subnet_slug": "sn-68",
+      "url": "https://www.metanova-labs.ai/whitepapers",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html",
+        "latency_ms": 69,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:27.779Z"
       }
     }
   ],
@@ -472,11 +1065,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 188,
+        "latency_ms": 147,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.923Z"
+        "verified_at": "2026-06-06T12:18:27.311Z"
       }
     },
     {
@@ -505,7 +1098,8 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/68"
+        "https://api.taomarketcap.com/public/v1/subnets/68",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/68/subnet.json"
       ],
       "subnet_name": "NOVA",
       "subnet_slug": "sn-68",
@@ -515,11 +1109,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/metanova-labs/nova",
-        "latency_ms": 408,
+        "latency_ms": 524,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.962Z"
+        "verified_at": "2026-06-06T12:18:27.359Z"
       }
     },
     {
@@ -557,11 +1151,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 239,
+        "latency_ms": 248,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.964Z"
+        "verified_at": "2026-06-06T12:18:27.442Z"
       }
     },
     {
@@ -571,7 +1165,7 @@
       "kind": "docs",
       "name": "NOVA Tensorplex subnet docs",
       "netuid": 68,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -599,11 +1193,137 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 347,
+        "latency_ms": 321,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:02.998Z"
+        "verified_at": "2026-06-06T12:18:27.458Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-68-website-link-www-metanova-labs-ai-dashboard-5",
+      "kind": "dashboard",
+      "name": "NOVA dashboard",
+      "netuid": 68,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "subnet_name": "NOVA",
+      "subnet_slug": "sn-68",
+      "url": "https://www.metanova-labs.ai/dashboard",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html",
+        "latency_ms": 218,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:27.772Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
+      "kind": "data-artifact",
+      "name": "NOVA data artifact",
+      "netuid": 68,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "subnet_name": "NOVA",
+      "subnet_slug": "sn-68",
+      "url": "https://www.metanova-labs.ai/models",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html",
+        "latency_ms": 71,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:27.772Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-68-website-link-www-metanova-labs-ai-docs-3",
+      "kind": "docs",
+      "name": "NOVA docs",
+      "netuid": 68,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.metanova-labs.ai/"
+      ],
+      "subnet_name": "NOVA",
+      "subnet_slug": "sn-68",
+      "url": "https://www.metanova-labs.ai/whitepapers",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html",
+        "latency_ms": 69,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:27.779Z"
       }
     }
   ]

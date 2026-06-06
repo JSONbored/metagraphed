@@ -1,10 +1,76 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 22,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "StreetVision by NATIX",
   "netuid": 72,
   "results": [
+    {
+      "candidate_id": "sn-72-github-readme-natixnetwork-streetvision-subnet-data-artifact-1",
+      "classification": "live",
+      "confidence_score": 58,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "data-artifact",
+      "latency_ms": 122,
+      "method_tested": "HEAD",
+      "name": "StreetVision by NATIX data artifact",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/natixnetwork/streetvision-subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/natixnetwork/streetvision-subnet/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://huggingface.co/natix-network-org",
+      "verified_at": "2026-06-06T12:18:28.407Z"
+    },
+    {
+      "candidate_id": "sn-72-github-readme-natixnetwork-streetvision-subnet-docs-2",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 90,
+      "method_tested": "GET",
+      "name": "StreetVision by NATIX docs",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": "https://docs.learnbittensor.org/learn/bittensor-building-blocks",
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/natixnetwork/streetvision-subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/natixnetwork/streetvision-subnet/blob/main/README.md"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://docs.bittensor.com/learn/bittensor-building-blocks",
+      "verified_at": "2026-06-06T12:18:28.434Z"
+    },
     {
       "candidate_id": "sn-72-taomarketcap-dashboard",
       "classification": "live",
@@ -12,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 142,
+      "latency_ms": 148,
       "method_tested": "HEAD",
       "name": "StreetVision by NATIX TaoMarketCap dashboard",
       "netuid": 72,
@@ -36,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/72",
-      "verified_at": "2026-06-06T07:44:03.257Z"
+      "verified_at": "2026-06-06T12:18:28.467Z"
     },
     {
       "candidate_id": "sn-72-taomarketcap-source-repo",
@@ -46,7 +112,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/natixnetwork/streetvision-subnet",
       "kind": "source-repo",
-      "latency_ms": 537,
+      "latency_ms": 348,
       "method_tested": "HEAD",
       "name": "StreetVision by NATIX source repository",
       "netuid": 72,
@@ -65,12 +131,13 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/72",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/72"
+        "https://api.taomarketcap.com/public/v1/subnets/72",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/72/subnet.json"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/natixnetwork/streetvision-subnet",
-      "verified_at": "2026-06-06T07:44:03.285Z"
+      "verified_at": "2026-06-06T12:18:28.488Z"
     },
     {
       "candidate_id": "sn-72-taomarketcap-website",
@@ -79,7 +146,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 152,
+      "latency_ms": 156,
       "method_tested": "HEAD",
       "name": "StreetVision by NATIX website",
       "netuid": 72,
@@ -103,7 +170,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.natix.network/?utm_source=bittensor",
-      "verified_at": "2026-06-06T07:44:03.288Z"
+      "verified_at": "2026-06-06T12:18:28.522Z"
     },
     {
       "candidate_id": "sn-72-tensorplex-docs",
@@ -112,7 +179,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 392,
+      "latency_ms": 286,
       "method_tested": "HEAD",
       "name": "StreetVision by NATIX Tensorplex subnet docs",
       "netuid": 72,
@@ -136,23 +203,556 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/72",
-      "verified_at": "2026-06-06T07:44:03.345Z"
+      "verified_at": "2026-06-06T12:18:28.530Z"
+    },
+    {
+      "candidate_id": "sn-72-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 37,
+      "method_tested": "GET",
+      "name": "StreetVision by NATIX API",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.natix.network/api",
+      "verified_at": "2026-06-06T12:18:28.615Z"
+    },
+    {
+      "candidate_id": "sn-72-website-common-docs",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 41,
+      "method_tested": "GET",
+      "name": "StreetVision by NATIX docs",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.natix.network/docs",
+      "verified_at": "2026-06-06T12:18:28.616Z"
+    },
+    {
+      "candidate_id": "sn-72-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 37,
+      "method_tested": "GET",
+      "name": "StreetVision by NATIX health endpoint",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.natix.network/health",
+      "verified_at": "2026-06-06T12:18:28.675Z"
+    },
+    {
+      "candidate_id": "sn-72-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 36,
+      "method_tested": "GET",
+      "name": "StreetVision by NATIX OpenAPI JSON",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.natix.network/openapi.json",
+      "verified_at": "2026-06-06T12:18:28.678Z"
+    },
+    {
+      "candidate_id": "sn-72-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 44,
+      "method_tested": "GET",
+      "name": "StreetVision by NATIX Swagger UI",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.natix.network/swagger",
+      "verified_at": "2026-06-06T12:18:28.730Z"
+    },
+    {
+      "candidate_id": "sn-72-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 38,
+      "method_tested": "GET",
+      "name": "StreetVision by NATIX Swagger JSON",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.natix.network/swagger.json",
+      "verified_at": "2026-06-06T12:18:28.742Z"
+    },
+    {
+      "candidate_id": "sn-72-website-link-www-natix-network-docs-10",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 211,
+      "method_tested": "HEAD",
+      "name": "StreetVision by NATIX docs",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.natix.network/whitepaper",
+      "verified_at": "2026-06-06T12:18:28.759Z"
+    },
+    {
+      "candidate_id": "sn-72-website-link-www-natix-network-website-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 37,
+      "method_tested": "HEAD",
+      "name": "StreetVision by NATIX website page",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.natix.network/vx360-depin-dashcam",
+      "verified_at": "2026-06-06T12:18:28.779Z"
+    },
+    {
+      "candidate_id": "sn-72-website-link-www-natix-network-website-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 134,
+      "method_tested": "HEAD",
+      "name": "StreetVision by NATIX website page",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://staking.natix.network/?_gl=1*gkaumg*_gcl_au*MTQyNTIwNDgxNS4xNzcyNTI1Njg3LjIxMDE0MzE4MzcuMTc3NDk3MDkzMy4xNzc0OTcwOTMz",
+      "verified_at": "2026-06-06T12:18:28.779Z"
+    },
+    {
+      "candidate_id": "sn-72-website-link-www-natix-network-website-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 40,
+      "method_tested": "HEAD",
+      "name": "StreetVision by NATIX website page",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.natix.network/use-cases",
+      "verified_at": "2026-06-06T12:18:28.806Z"
+    },
+    {
+      "candidate_id": "sn-72-website-link-www-natix-network-website-4",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 43,
+      "method_tested": "HEAD",
+      "name": "StreetVision by NATIX website page",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.natix.network/",
+      "verified_at": "2026-06-06T12:18:28.810Z"
+    },
+    {
+      "candidate_id": "sn-72-website-link-www-natix-network-website-5",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 311,
+      "method_tested": "HEAD",
+      "name": "StreetVision by NATIX website page",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.natix.network/blog/closing-a-chapter-in-the-evolution-of-natix-network",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.natix.network/drive-earn-app",
+      "verified_at": "2026-06-06T12:18:28.815Z"
+    },
+    {
+      "candidate_id": "sn-72-website-link-www-natix-network-website-6",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 38,
+      "method_tested": "GET",
+      "name": "StreetVision by NATIX website page",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.natix.network/drones",
+      "verified_at": "2026-06-06T12:18:28.816Z"
+    },
+    {
+      "candidate_id": "sn-72-website-link-www-natix-network-website-7",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 36,
+      "method_tested": "GET",
+      "name": "StreetVision by NATIX website page",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://www.natix.network/data-console",
+      "verified_at": "2026-06-06T12:18:28.816Z"
+    },
+    {
+      "candidate_id": "sn-72-website-link-www-natix-network-website-8",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 47,
+      "method_tested": "HEAD",
+      "name": "StreetVision by NATIX website page",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://www.natix.network/tokens",
+      "verified_at": "2026-06-06T12:18:28.840Z"
+    },
+    {
+      "candidate_id": "sn-72-website-link-www-natix-network-website-9",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 105,
+      "method_tested": "HEAD",
+      "name": "StreetVision by NATIX website page",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.natix.network/?utm_source=bittensor",
+      "source_urls": [
+        "https://www.natix.network/?utm_source=bittensor"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://staking.natix.network/",
+      "verified_at": "2026-06-06T12:18:28.841Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-72",
   "summary": {
     "by_classification": {
-      "live": 4
+      "dead": 9,
+      "live": 12,
+      "redirected": 1
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "data-artifact": 1,
+      "docs": 4,
+      "openapi": 3,
       "source-repo": 1,
-      "website": 1
+      "subnet-api": 2,
+      "website": 10
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 21,
       "tensorplex-subnet-docs": 1
     }
   }

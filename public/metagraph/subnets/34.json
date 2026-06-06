@@ -2,6 +2,48 @@
   "candidate_surfaces": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-34-github-readme-bitmind-ai-bitmind-subnet-data-artifact-2",
+      "kind": "data-artifact",
+      "name": "BitMind data artifact",
+      "netuid": 34,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/BitMind-AI/bitmind-subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/BitMind-AI/bitmind-subnet/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://huggingface.co/gasstation"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-34-github-readme-bitmind-ai-bitmind-subnet-docs-1",
+      "kind": "docs",
+      "name": "BitMind docs",
+      "netuid": 34,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/BitMind-AI/bitmind-subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/BitMind-AI/bitmind-subnet/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.bittensor.com/learn/bittensor-building-blocks"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-34-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -37,7 +79,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/34",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/34"
+        "https://api.taomarketcap.com/public/v1/subnets/34",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/34/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/BitMind-AI/bitmind-subnet"
@@ -52,7 +95,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -67,6 +110,48 @@
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-34-github-readme-bitmind-ai-bitmind-subnet-data-artifact-2",
+      "kind": "data-artifact",
+      "name": "BitMind data artifact",
+      "netuid": 34,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/BitMind-AI/bitmind-subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/BitMind-AI/bitmind-subnet/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://huggingface.co/gasstation"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-34-github-readme-bitmind-ai-bitmind-subnet-docs-1",
+      "kind": "docs",
+      "name": "BitMind docs",
+      "netuid": 34,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/BitMind-AI/bitmind-subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/BitMind-AI/bitmind-subnet/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.bittensor.com/learn/bittensor-building-blocks"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-34-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -102,7 +187,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/34",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/34"
+        "https://api.taomarketcap.com/public/v1/subnets/34",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/34/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/BitMind-AI/bitmind-subnet"
@@ -117,7 +203,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -134,18 +220,17 @@
       "No verified project website yet.",
       "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
-      "No verified SSE/event stream yet.",
-      "No verified data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "missing_kinds": [
       "website",
       "openapi",
       "subnet-api",
-      "sse",
-      "data-artifact"
+      "sse"
     ],
     "supported_kinds": [
       "dashboard",
+      "data-artifact",
       "docs",
       "source-repo"
     ]
@@ -153,8 +238,8 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 3,
+    "block": 8347420,
+    "candidate_count": 5,
     "categories": [
       "baseline-curated"
     ],
@@ -164,14 +249,13 @@
         "No verified project website yet.",
         "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
-        "No verified SSE/event stream yet.",
-        "No verified data artifact yet."
+        "No verified SSE/event stream yet."
       ],
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 2,
-      "verified_at": "2026-06-06T07:43:56.303Z"
+      "source_count": 3,
+      "verified_at": "2026-06-06T12:18:18.616Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/34",
@@ -181,18 +265,17 @@
         "No verified project website yet.",
         "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
-        "No verified SSE/event stream yet.",
-        "No verified data artifact yet."
+        "No verified SSE/event stream yet."
       ],
       "missing_kinds": [
         "website",
         "openapi",
         "subnet-api",
-        "sse",
-        "data-artifact"
+        "sse"
       ],
       "supported_kinds": [
         "dashboard",
+        "data-artifact",
         "docs",
         "source-repo"
       ]
@@ -201,18 +284,23 @@
     "mechanism_count": 1,
     "name": "BitMind",
     "native_name": "BitMind",
+    "native_name_quality": "chain",
     "native_slug": "bitmind",
     "netuid": 34,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 256,
-    "probed_surface_count": 3,
+    "probed_surface_count": 4,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -221,7 +309,7 @@
     "source_repo": "https://github.com/BitMind-AI/bitmind-subnet",
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 3,
+    "surface_count": 4,
     "symbol": "י",
     "tempo": 360,
     "website_url": null
@@ -230,6 +318,48 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-34-github-readme-bitmind-ai-bitmind-subnet-data-artifact-2",
+      "kind": "data-artifact",
+      "name": "BitMind data artifact",
+      "netuid": 34,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/BitMind-AI/bitmind-subnet/blob/main/README.md"
+      ],
+      "subnet_name": "BitMind",
+      "subnet_slug": "sn-34",
+      "url": "https://huggingface.co/gasstation",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 135,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:18.509Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-34-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "BitMind TaoMarketCap dashboard",
@@ -262,11 +392,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 156,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.297Z"
+        "verified_at": "2026-06-06T12:18:18.585Z"
       }
     },
     {
@@ -286,30 +416,32 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/34"
+        "https://api.taomarketcap.com/public/v1/subnets/34",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/34/subnet.json"
       ],
       "subnet_name": "BitMind",
       "subnet_slug": "sn-34",
       "url": "https://github.com/BitMind-AI/bitmind-subnet",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/BitMind-AI/bitmind-subnet",
-        "latency_ms": 384,
-        "method_tested": "HEAD",
+        "homepage": "https://bitmind.ai/",
+        "last_push_at": "2026-06-05T02:16:46Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.301Z"
+        "topics": [],
+        "verified_at": "2026-06-06T12:18:18.600Z"
       }
     },
     {
@@ -319,7 +451,7 @@
       "kind": "docs",
       "name": "BitMind Tensorplex subnet docs",
       "netuid": 34,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -347,11 +479,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 318,
+        "latency_ms": 333,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.303Z"
+        "verified_at": "2026-06-06T12:18:18.616Z"
       }
     }
   ],
@@ -359,6 +491,48 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-34-github-readme-bitmind-ai-bitmind-subnet-data-artifact-2",
+      "kind": "data-artifact",
+      "name": "BitMind data artifact",
+      "netuid": 34,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/BitMind-AI/bitmind-subnet/blob/main/README.md"
+      ],
+      "subnet_name": "BitMind",
+      "subnet_slug": "sn-34",
+      "url": "https://huggingface.co/gasstation",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 135,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:18.509Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-34-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "BitMind TaoMarketCap dashboard",
@@ -391,11 +565,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 156,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.297Z"
+        "verified_at": "2026-06-06T12:18:18.585Z"
       }
     },
     {
@@ -415,30 +589,32 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/34"
+        "https://api.taomarketcap.com/public/v1/subnets/34",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/34/subnet.json"
       ],
       "subnet_name": "BitMind",
       "subnet_slug": "sn-34",
       "url": "https://github.com/BitMind-AI/bitmind-subnet",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/BitMind-AI/bitmind-subnet",
-        "latency_ms": 384,
-        "method_tested": "HEAD",
+        "homepage": "https://bitmind.ai/",
+        "last_push_at": "2026-06-05T02:16:46Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.301Z"
+        "topics": [],
+        "verified_at": "2026-06-06T12:18:18.600Z"
       }
     },
     {
@@ -448,7 +624,7 @@
       "kind": "docs",
       "name": "BitMind Tensorplex subnet docs",
       "netuid": 34,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -476,11 +652,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 318,
+        "latency_ms": 333,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.303Z"
+        "verified_at": "2026-06-06T12:18:18.616Z"
       }
     }
   ]

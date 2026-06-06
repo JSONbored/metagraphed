@@ -68,6 +68,7 @@ function checkCommands() {
     step("validate:openapi"),
     step("validate:types"),
     step("validate:artifact-budgets"),
+    step("validate:docs"),
     step("validate:intake"),
     step("validate:workflows"),
     step("worker:test"),
@@ -92,6 +93,7 @@ function refreshCommands() {
 
   if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
     commands.splice(8, 0, step("probes:smoke"));
+    commands.splice(9, 0, step("build-summary:refresh"));
   }
 
   return [
@@ -102,6 +104,7 @@ function refreshCommands() {
     step("validate:openapi"),
     step("validate:types"),
     step("validate:artifact-budgets"),
+    step("validate:docs"),
     step("validate:intake"),
     step("validate:workflows"),
     step("worker:test"),

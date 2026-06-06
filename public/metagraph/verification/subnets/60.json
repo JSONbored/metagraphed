@@ -1,10 +1,109 @@
 {
-  "candidate_count": 7,
+  "candidate_count": 16,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Bitsec.ai",
   "netuid": 60,
   "results": [
+    {
+      "candidate_id": "sn-60-github-readme-bitsec-ai-sandbox-dashboard-1",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 222,
+      "method_tested": "HEAD",
+      "name": "Bitsec.ai dashboard",
+      "netuid": 60,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Bitsec-AI/sandbox/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Bitsec-AI/sandbox/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://taostats.io/",
+      "verified_at": "2026-06-06T12:18:25.010Z"
+    },
+    {
+      "candidate_id": "sn-60-github-readme-bitsec-ai-sandbox-docs-2",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 170,
+      "method_tested": "HEAD",
+      "name": "Bitsec.ai docs",
+      "netuid": 60,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Bitsec-AI/sandbox/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Bitsec-AI/sandbox/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://bittensor.com/whitepaper",
+      "verified_at": "2026-06-06T12:18:25.011Z"
+    },
+    {
+      "candidate_id": "sn-60-github-readme-bitsec-ai-sandbox-docs-3",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 173,
+      "method_tested": "HEAD",
+      "name": "Bitsec.ai docs",
+      "netuid": 60,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Bitsec-AI/sandbox/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Bitsec-AI/sandbox/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.bitsec.ai/",
+      "verified_at": "2026-06-06T12:18:25.011Z"
+    },
     {
       "candidate_id": "sn-60-github-readme-bitsec-ai-subnet-docs-1",
       "classification": "dead",
@@ -12,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 97,
+      "latency_ms": 88,
       "method_tested": "GET",
       "name": "Bitsec.ai docs",
       "netuid": 60,
@@ -36,7 +135,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://docs.bittensor.com/learn/bittensor-building-blocks",
-      "verified_at": "2026-06-06T07:44:01.630Z"
+      "verified_at": "2026-06-06T12:18:25.022Z"
     },
     {
       "candidate_id": "sn-60-github-readme-bitsec-ai-subnet-docs-2",
@@ -45,7 +144,7 @@
       "content_type": "text/html;charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 1130,
+      "latency_ms": 466,
       "method_tested": "HEAD",
       "name": "Bitsec.ai docs",
       "netuid": 60,
@@ -69,7 +168,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://learnbittensor.org/guides",
-      "verified_at": "2026-06-06T07:44:01.638Z"
+      "verified_at": "2026-06-06T12:18:25.066Z"
     },
     {
       "candidate_id": "sn-60-taomarketcap-dashboard",
@@ -78,7 +177,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 133,
+      "latency_ms": 231,
       "method_tested": "HEAD",
       "name": "Bitsec.ai TaoMarketCap dashboard",
       "netuid": 60,
@@ -102,7 +201,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/60",
-      "verified_at": "2026-06-06T07:44:01.642Z"
+      "verified_at": "2026-06-06T12:18:25.073Z"
     },
     {
       "candidate_id": "sn-60-taomarketcap-source-repo",
@@ -112,7 +211,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/Bitsec-AI/sandbox",
       "kind": "source-repo",
-      "latency_ms": 544,
+      "latency_ms": 543,
       "method_tested": "HEAD",
       "name": "Bitsec.ai source repository",
       "netuid": 60,
@@ -136,7 +235,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Bitsec-AI/sandbox",
-      "verified_at": "2026-06-06T07:44:01.657Z"
+      "verified_at": "2026-06-06T12:18:25.078Z"
     },
     {
       "candidate_id": "sn-60-taomarketcap-website",
@@ -145,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 179,
+      "latency_ms": 130,
       "method_tested": "HEAD",
       "name": "Bitsec.ai website",
       "netuid": 60,
@@ -169,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://bitsec.ai/",
-      "verified_at": "2026-06-06T07:44:01.669Z"
+      "verified_at": "2026-06-06T12:18:25.079Z"
     },
     {
       "candidate_id": "sn-60-tensorplex-docs",
@@ -178,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 357,
+      "latency_ms": 352,
       "method_tested": "HEAD",
       "name": "Bitsec.ai Tensorplex subnet docs",
       "netuid": 60,
@@ -202,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/60",
-      "verified_at": "2026-06-06T07:44:01.732Z"
+      "verified_at": "2026-06-06T12:18:25.086Z"
     },
     {
       "candidate_id": "sn-60-tensorplex-source-repo-1",
@@ -212,7 +311,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/Bitsec-AI/subnet",
       "kind": "source-repo",
-      "latency_ms": 342,
+      "latency_ms": 394,
       "method_tested": "HEAD",
       "name": "Bitsec.ai source repository",
       "netuid": 60,
@@ -236,24 +335,225 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Bitsec-AI/subnet",
-      "verified_at": "2026-06-06T07:44:01.736Z"
+      "verified_at": "2026-06-06T12:18:25.110Z"
+    },
+    {
+      "candidate_id": "sn-60-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "application/json",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 132,
+      "method_tested": "GET",
+      "name": "Bitsec.ai API",
+      "netuid": 60,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://bitsec.ai/",
+      "source_urls": [
+        "https://bitsec.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://bitsec.ai/api",
+      "verified_at": "2026-06-06T12:18:25.169Z"
+    },
+    {
+      "candidate_id": "sn-60-website-common-docs",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 184,
+      "method_tested": "HEAD",
+      "name": "Bitsec.ai docs",
+      "netuid": 60,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://bitsec.ai/",
+      "source_urls": [
+        "https://bitsec.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://bitsec.ai/docs",
+      "verified_at": "2026-06-06T12:18:25.181Z"
+    },
+    {
+      "candidate_id": "sn-60-website-common-health",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 145,
+      "method_tested": "HEAD",
+      "name": "Bitsec.ai health endpoint",
+      "netuid": 60,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://bitsec.ai/",
+      "source_urls": [
+        "https://bitsec.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://bitsec.ai/health",
+      "verified_at": "2026-06-06T12:18:25.184Z"
+    },
+    {
+      "candidate_id": "sn-60-website-common-openapi-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 130,
+      "method_tested": "HEAD",
+      "name": "Bitsec.ai OpenAPI JSON",
+      "netuid": 60,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://bitsec.ai/",
+      "source_urls": [
+        "https://bitsec.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://bitsec.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:25.198Z"
+    },
+    {
+      "candidate_id": "sn-60-website-common-swagger",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 38,
+      "method_tested": "HEAD",
+      "name": "Bitsec.ai Swagger UI",
+      "netuid": 60,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://bitsec.ai/",
+      "source_urls": [
+        "https://bitsec.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://bitsec.ai/swagger",
+      "verified_at": "2026-06-06T12:18:25.209Z"
+    },
+    {
+      "candidate_id": "sn-60-website-common-swagger-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 144,
+      "method_tested": "HEAD",
+      "name": "Bitsec.ai Swagger JSON",
+      "netuid": 60,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://bitsec.ai/",
+      "source_urls": [
+        "https://bitsec.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://bitsec.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:25.233Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-60",
   "summary": {
     "by_classification": {
-      "dead": 1,
-      "live": 6
+      "content-mismatch": 2,
+      "dead": 2,
+      "live": 12
     },
     "by_kind": {
-      "dashboard": 1,
-      "docs": 3,
+      "dashboard": 2,
+      "docs": 6,
+      "openapi": 3,
       "source-repo": 2,
+      "subnet-api": 2,
       "website": 1
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 12,
       "tensorplex-subnet-docs": 4
     }
   }

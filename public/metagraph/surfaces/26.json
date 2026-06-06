@@ -9,6 +9,48 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-26-github-readme-0xsigurd-perturb-subnet-api-1",
+      "kind": "subnet-api",
+      "name": "Perturb API surface",
+      "netuid": 26,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/0xsigurd/Perturb/blob/main/README.md"
+      ],
+      "subnet_name": "Perturb",
+      "subnet_slug": "sn-26",
+      "url": "https://api.pexels.com/v1/search",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "application/json; charset=utf-8",
+        "latency_ms": 167,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:16.619Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-26-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Perturb TaoMarketCap dashboard",
@@ -41,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
+        "latency_ms": 182,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.673Z"
+        "verified_at": "2026-06-06T12:18:16.625Z"
       }
     },
     {
@@ -65,12 +107,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -80,15 +121,17 @@
       "subnet_slug": "sn-26",
       "url": "https://github.com/0xsigurd/Perturb",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/0xsigurd/Perturb",
-        "latency_ms": 541,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-05-27T18:44:37Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.680Z"
+        "topics": [],
+        "verified_at": "2026-06-06T12:18:16.627Z"
       }
     },
     {
@@ -126,11 +169,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 204,
+        "latency_ms": 166,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.712Z"
+        "verified_at": "2026-06-06T12:18:16.656Z"
       }
     },
     {
@@ -140,7 +183,7 @@
       "kind": "docs",
       "name": "Perturb Tensorplex subnet docs",
       "netuid": 26,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -168,11 +211,53 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 273,
+        "latency_ms": 371,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:55.756Z"
+        "verified_at": "2026-06-06T12:18:16.690Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-26-website-link-www-perturbai-io-docs-2",
+      "kind": "docs",
+      "name": "Perturb docs",
+      "netuid": 26,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.perturbai.io/"
+      ],
+      "subnet_name": "Perturb",
+      "subnet_slug": "sn-26",
+      "url": "https://www.perturbai.io/whitepaper",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 145,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:16.810Z"
       }
     }
   ]

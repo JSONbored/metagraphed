@@ -679,7 +679,7 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
   const day = artifact.latest.probe_finished_at.slice(0, 10);
   await writeJson(
     path.join(outputRoot, `health/history/${day}.json`),
-    artifact.latest,
+    buildHealthHistoryArtifact(artifact.latest, day),
   );
   await fs.rm(path.join(outputRoot, "health/subnets"), {
     recursive: true,
@@ -793,6 +793,37 @@ function buildHealthArtifacts(surfaceHealth, options) {
     },
     subnets: subnetArtifacts,
     badges: badgeArtifacts,
+  };
+}
+
+function buildHealthHistoryArtifact(latest, date) {
+  return {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: latest.generated_at,
+    date,
+    probe_started_at: latest.probe_started_at || null,
+    probe_finished_at: latest.probe_finished_at || null,
+    source: latest.source,
+    summary: latest.summary,
+    surfaces: latest.surfaces.map((surface) => ({
+      classification: surface.classification || "unknown",
+      error_class: surface.error_class || null,
+      kind: surface.kind,
+      last_checked: surface.last_checked || null,
+      last_ok: surface.last_ok || null,
+      latency_ms: Number.isFinite(surface.latency_ms)
+        ? surface.latency_ms
+        : null,
+      netuid: surface.netuid,
+      provider: surface.provider,
+      status: surface.status,
+      status_code: Number.isInteger(surface.status_code)
+        ? surface.status_code
+        : null,
+      surface_id: surface.surface_id,
+      verified_at: surface.verified_at || null,
+    })),
   };
 }
 

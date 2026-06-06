@@ -169,6 +169,12 @@ export const PUBLIC_ARTIFACTS = [
     "HealthSummaryArtifact",
   ),
   artifact(
+    "health-history",
+    "/metagraph/health/history/{date}.json",
+    "Compact daily health-history snapshot.",
+    "HealthHistoryArtifact",
+  ),
+  artifact(
     "health-subnet",
     "/metagraph/health/subnets/{netuid}.json",
     "Per-subnet health payload for metagraph.sh consumers.",
@@ -386,6 +392,22 @@ export const API_ROUTES = [
     "short",
     ["health"],
     listQuery("netuid", "status"),
+  ),
+  route(
+    "health-history",
+    "GET",
+    "/api/v1/health/history/{date}",
+    "/metagraph/health/history/{date}.json",
+    "Fetch compact daily health history.",
+    "short",
+    ["health"],
+    listQuery("netuid", "status", "classification"),
+    [
+      {
+        name: "date",
+        schema: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+      },
+    ],
   ),
   route(
     "subnet-health",
@@ -648,6 +670,14 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
           304: {
             description: "ETag matched and the cached response is still valid.",
           },
+          400: {
+            description: "Query parameters were malformed or unsupported.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorEnvelope" },
+              },
+            },
+          },
           404: {
             description: "Artifact or API route was not found.",
             content: {
@@ -722,17 +752,20 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
 export function artifactPathFromTemplate(template, params = {}) {
   return template
     .replace("{netuid}", String(params.netuid ?? ""))
-    .replace("{slug}", String(params.slug ?? ""));
+    .replace("{slug}", String(params.slug ?? ""))
+    .replace("{date}", String(params.date ?? ""));
 }
 
 export function compileRoutePattern(pathTemplate) {
   const tokenized = pathTemplate
     .replace(/\{netuid\}/g, "__METAGRAPH_NETUID__")
-    .replace(/\{slug\}/g, "__METAGRAPH_SLUG__");
+    .replace(/\{slug\}/g, "__METAGRAPH_SLUG__")
+    .replace(/\{date\}/g, "__METAGRAPH_DATE__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
-    .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)");
+    .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
+    .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})");
   return new RegExp(`^${pattern}\\/?$`);
 }
 
@@ -810,7 +843,15 @@ function schemaRefForArtifactPath(artifactPath) {
   const contract = PUBLIC_ARTIFACTS.find((entry) =>
     pathTemplatesMatch(entry.path, artifactPath),
   );
-  return contract?.schema_ref || "JsonObject";
+  if (!contract) {
+    throw new Error(
+      `No public artifact contract maps API artifact ${artifactPath}`,
+    );
+  }
+  if (!contract.schema_ref) {
+    throw new Error(`Public artifact ${contract.id} has no JSON schema ref`);
+  }
+  return contract.schema_ref;
 }
 
 function pathTemplatesMatch(contractPath, artifactPath) {
@@ -819,10 +860,12 @@ function pathTemplatesMatch(contractPath, artifactPath) {
   }
   const contractPattern = contractPath
     .replace("{netuid}", ":netuid")
-    .replace("{slug}", ":slug");
+    .replace("{slug}", ":slug")
+    .replace("{date}", ":date");
   const artifactPattern = artifactPath
     .replace("{netuid}", ":netuid")
-    .replace("{slug}", ":slug");
+    .replace("{slug}", ":slug")
+    .replace("{date}", ":date");
   return contractPattern === artifactPattern;
 }
 

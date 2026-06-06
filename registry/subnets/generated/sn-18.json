@@ -12,8 +12,8 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 2,
-    "verified_at": "2026-06-06T07:43:54.993Z"
+    "source_count": 3,
+    "verified_at": "2026-06-06T12:18:14.245Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/18",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/18",
@@ -42,28 +42,34 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/18"
+        "https://api.taomarketcap.com/public/v1/subnets/18",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/18/subnet.json"
       ],
       "url": "https://github.com/Orpheus-AI/Zeus",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/Orpheus-AI/Zeus",
-        "latency_ms": 528,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-04T16:21:46Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.961Z"
+        "topics": [
+          "bittensor",
+          "climate-forecasting",
+          "weather-forecasting"
+        ],
+        "verified_at": "2026-06-06T12:18:13.912Z"
       }
     },
     {
@@ -98,11 +104,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 627,
+        "latency_ms": 591,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.989Z"
+        "verified_at": "2026-06-06T12:18:13.938Z"
       }
     },
     {
@@ -111,7 +117,7 @@
       "id": "sn-18-tensorplex-docs",
       "kind": "docs",
       "name": "Zeus Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +143,50 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 417,
+        "latency_ms": 303,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.993Z"
+        "verified_at": "2026-06-06T12:18:13.939Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-18-website-link-www-zeussubnet-com-docs-4",
+      "kind": "docs",
+      "name": "Zeus docs",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.zeussubnet.com/"
+      ],
+      "url": "https://docs.zeussubnet.com/docs/introduction",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 532,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:14.245Z"
       }
     },
     {
@@ -176,11 +221,50 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 143,
+        "latency_ms": 176,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:54.935Z"
+        "verified_at": "2026-06-06T12:18:13.900Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-18-website-link-www-zeussubnet-com-dashboard-5",
+      "kind": "dashboard",
+      "name": "Zeus dashboard",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.zeussubnet.com/"
+      ],
+      "url": "https://www.zeussubnet.com/dashboard",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 505,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:14.242Z"
       }
     }
   ],

@@ -45,6 +45,9 @@ test("public artifacts are internally consistent", () => {
   const healthSummary = JSON.parse(
     readFileSync("public/metagraph/health/summary.json", "utf8"),
   );
+  const healthHistory = JSON.parse(
+    readFileSync("public/metagraph/health/history/2026-06-06.json", "utf8"),
+  );
   const rpcEndpoints = JSON.parse(
     readFileSync("public/metagraph/rpc-endpoints.json", "utf8"),
   );
@@ -119,6 +122,12 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   assert.equal(healthSummary.subnets.length, native.subnets.length);
+  assert.equal(healthHistory.date, "2026-06-06");
+  assert.equal(healthHistory.surfaces.length, health.surfaces.length);
+  assert.equal(
+    healthHistory.surfaces.every((surface) => !Object.hasOwn(surface, "url")),
+    true,
+  );
   assert.equal(coverage.chain_subnet_count, native.subnets.length);
   assert.equal(coverage.curated_overlay_count, native.subnets.length);
   assert.equal(coverage.native_only_count, 0);
@@ -135,6 +144,14 @@ test("public artifacts are internally consistent", () => {
       (artifact) =>
         artifact.id === "contracts" &&
         artifact.schema_ref === "#/components/schemas/ContractsArtifact",
+    ),
+    true,
+  );
+  assert.equal(
+    contracts.artifacts.some(
+      (artifact) =>
+        artifact.id === "health-history" &&
+        artifact.schema_ref === "#/components/schemas/HealthHistoryArtifact",
     ),
     true,
   );

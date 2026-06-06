@@ -10,7 +10,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -31,7 +31,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -115,7 +115,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -136,7 +136,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -146,6 +146,342 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/SN-Hermes/hermes-subnet"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-common-api",
+      "kind": "subnet-api",
+      "name": "Compelle API",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-common-docs",
+      "kind": "docs",
+      "name": "Compelle docs",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-common-health",
+      "kind": "subnet-api",
+      "name": "Compelle health endpoint",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Compelle OpenAPI JSON",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-common-swagger",
+      "kind": "openapi",
+      "name": "Compelle Swagger UI",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Compelle Swagger JSON",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-1",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/blog"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-10",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/profile.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-2",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/games.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-3",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/products.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-4",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/podcast"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-5",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/techniques/existence-proof-analogy.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-6",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/media"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-7",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/glossary.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-8",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/course.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-9",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/techniques"
     }
   ],
   "candidates": [
@@ -159,7 +495,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -180,7 +516,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -264,7 +600,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -285,7 +621,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -295,6 +631,342 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/SN-Hermes/hermes-subnet"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-common-api",
+      "kind": "subnet-api",
+      "name": "Compelle API",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-common-docs",
+      "kind": "docs",
+      "name": "Compelle docs",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-common-health",
+      "kind": "subnet-api",
+      "name": "Compelle health endpoint",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Compelle OpenAPI JSON",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-common-swagger",
+      "kind": "openapi",
+      "name": "Compelle Swagger UI",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Compelle Swagger JSON",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-1",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/blog"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-10",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/profile.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-2",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/games.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-3",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/products.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-4",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/podcast"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-5",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/techniques/existence-proof-analogy.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-6",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/media"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-7",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/glossary.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-8",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/course.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-link-compelle-com-website-9",
+      "kind": "website",
+      "name": "Compelle website page",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://compelle.com/techniques"
     }
   ],
   "gaps": {
@@ -320,8 +992,8 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 7,
+    "block": 8347420,
+    "candidate_count": 23,
     "categories": [
       "baseline-curated"
     ],
@@ -337,7 +1009,7 @@
       "review_state": "machine-generated",
       "reviewed_at": null,
       "source_count": 3,
-      "verified_at": "2026-06-06T07:44:05.298Z"
+      "verified_at": "2026-06-06T12:18:31.353Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taostats.io/",
@@ -366,6 +1038,7 @@
     "mechanism_count": 1,
     "name": "Compelle",
     "native_name": "Compelle",
+    "native_name_quality": "chain",
     "native_slug": "compelle",
     "netuid": 82,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
@@ -374,10 +1047,14 @@
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -399,7 +1076,7 @@
       "kind": "dashboard",
       "name": "Compelle dashboard",
       "netuid": 82,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -427,11 +1104,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 223,
+        "latency_ms": 220,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.250Z"
+        "verified_at": "2026-06-06T12:18:31.154Z"
       }
     },
     {
@@ -441,7 +1118,7 @@
       "kind": "docs",
       "name": "Compelle docs",
       "netuid": 82,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -469,11 +1146,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 83,
+        "latency_ms": 90,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.261Z"
+        "verified_at": "2026-06-06T12:18:31.179Z"
       }
     },
     {
@@ -511,11 +1188,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 138,
+        "latency_ms": 139,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.271Z"
+        "verified_at": "2026-06-06T12:18:31.214Z"
       }
     },
     {
@@ -554,11 +1231,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/compelle/compelle-validator",
-        "latency_ms": 436,
+        "latency_ms": 542,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.272Z"
+        "verified_at": "2026-06-06T12:18:31.270Z"
       }
     },
     {
@@ -596,11 +1273,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 620,
+        "latency_ms": 522,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.285Z"
+        "verified_at": "2026-06-06T12:18:31.291Z"
       }
     },
     {
@@ -610,7 +1287,7 @@
       "kind": "docs",
       "name": "Compelle Tensorplex subnet docs",
       "netuid": 82,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -638,11 +1315,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 395,
+        "latency_ms": 340,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.298Z"
+        "verified_at": "2026-06-06T12:18:31.340Z"
       }
     },
     {
@@ -652,7 +1329,7 @@
       "kind": "source-repo",
       "name": "Compelle source repository",
       "netuid": 82,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -681,11 +1358,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/SN-Hermes/hermes-subnet",
-        "latency_ms": 751,
+        "latency_ms": 520,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.298Z"
+        "verified_at": "2026-06-06T12:18:31.353Z"
       }
     }
   ],
@@ -697,7 +1374,7 @@
       "kind": "dashboard",
       "name": "Compelle dashboard",
       "netuid": 82,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -725,11 +1402,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 223,
+        "latency_ms": 220,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.250Z"
+        "verified_at": "2026-06-06T12:18:31.154Z"
       }
     },
     {
@@ -739,7 +1416,7 @@
       "kind": "docs",
       "name": "Compelle docs",
       "netuid": 82,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -767,11 +1444,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 83,
+        "latency_ms": 90,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.261Z"
+        "verified_at": "2026-06-06T12:18:31.179Z"
       }
     },
     {
@@ -809,11 +1486,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 138,
+        "latency_ms": 139,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.271Z"
+        "verified_at": "2026-06-06T12:18:31.214Z"
       }
     },
     {
@@ -852,11 +1529,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/compelle/compelle-validator",
-        "latency_ms": 436,
+        "latency_ms": 542,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.272Z"
+        "verified_at": "2026-06-06T12:18:31.270Z"
       }
     },
     {
@@ -894,11 +1571,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 620,
+        "latency_ms": 522,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.285Z"
+        "verified_at": "2026-06-06T12:18:31.291Z"
       }
     },
     {
@@ -908,7 +1585,7 @@
       "kind": "docs",
       "name": "Compelle Tensorplex subnet docs",
       "netuid": 82,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -936,11 +1613,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 395,
+        "latency_ms": 340,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.298Z"
+        "verified_at": "2026-06-06T12:18:31.340Z"
       }
     },
     {
@@ -950,7 +1627,7 @@
       "kind": "source-repo",
       "name": "Compelle source repository",
       "netuid": 82,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -979,11 +1656,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/SN-Hermes/hermes-subnet",
-        "latency_ms": 751,
+        "latency_ms": 520,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:05.298Z"
+        "verified_at": "2026-06-06T12:18:31.353Z"
       }
     }
   ]

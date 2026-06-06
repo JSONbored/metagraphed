@@ -9,6 +9,48 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-103-github-readme-djinn-inc-djinn-docs-1",
+      "kind": "docs",
+      "name": "Djinn docs",
+      "netuid": 103,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/Djinn-Inc/djinn/blob/main/README.md"
+      ],
+      "subnet_name": "Djinn",
+      "subnet_slug": "sn-103",
+      "url": "https://docs.astral.sh/uv",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 61,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 83,
+        "method_tested": "HEAD",
+        "redirect_target": "https://docs.astral.sh/uv/",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:38.661Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-103-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Djinn TaoMarketCap dashboard",
@@ -41,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 136,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.933Z"
+        "verified_at": "2026-06-06T12:18:38.687Z"
       }
     },
     {
@@ -84,11 +126,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Djinn-Inc/djinn",
-        "latency_ms": 460,
+        "latency_ms": 577,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.938Z"
+        "verified_at": "2026-06-06T12:18:38.690Z"
       }
     },
     {
@@ -126,11 +168,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 482,
+        "latency_ms": 459,
         "method_tested": "HEAD",
         "redirect_target": "https://www.djinn.gg/",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.939Z"
+        "verified_at": "2026-06-06T12:18:38.706Z"
       }
     },
     {
@@ -140,7 +182,7 @@
       "kind": "docs",
       "name": "Djinn Tensorplex subnet docs",
       "netuid": 103,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -168,11 +210,95 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 345,
+        "latency_ms": 285,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.988Z"
+        "verified_at": "2026-06-06T12:18:38.706Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-103-website-common-docs",
+      "kind": "docs",
+      "name": "Djinn docs",
+      "netuid": 103,
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://djinn.gg/"
+      ],
+      "subnet_name": "Djinn",
+      "subnet_slug": "sn-103",
+      "url": "https://djinn.gg/docs",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 71,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 457,
+        "method_tested": "HEAD",
+        "redirect_target": "https://www.djinn.gg/docs",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:38.722Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-103-website-link-djinn-gg-dashboard-4",
+      "kind": "dashboard",
+      "name": "Djinn dashboard",
+      "netuid": 103,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://djinn.gg/"
+      ],
+      "subnet_name": "Djinn",
+      "subnet_slug": "sn-103",
+      "url": "https://djinn.gg/leaderboard",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 71,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 352,
+        "method_tested": "HEAD",
+        "redirect_target": "https://www.djinn.gg/leaderboard",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:38.811Z"
       }
     }
   ]

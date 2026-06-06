@@ -57,11 +57,17 @@ jobs:
       - name: Validate artifact size budgets
         run: npm run validate:artifact-budgets
 
+      - name: Validate documentation contracts
+        run: npm run validate:docs
+
       - name: Validate intake templates
         run: npm run validate:intake
 
       - name: Validate workflows
         run: npm run validate:workflows
+
+      - name: Validate Cloudflare config
+        run: npm run cloudflare:verify:dry-run
 
       - name: Validate R2 manifest
         run: |

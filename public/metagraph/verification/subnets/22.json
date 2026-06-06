@@ -1,5 +1,5 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 10,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Desearch",
@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 152,
+      "latency_ms": 127,
       "method_tested": "HEAD",
       "name": "Desearch TaoMarketCap dashboard",
       "netuid": 22,
@@ -36,41 +36,41 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/22",
-      "verified_at": "2026-06-06T07:43:55.163Z"
+      "verified_at": "2026-06-06T12:18:15.569Z"
     },
     {
+      "archived": false,
       "candidate_id": "sn-22-taomarketcap-source-repo",
-      "classification": "redirected",
-      "confidence_score": 54,
-      "error": null,
-      "github_api_status": 403,
+      "classification": "live",
+      "confidence_score": 80,
+      "default_branch": "main",
+      "description": "Subnet 22",
       "github_api_url": "https://api.github.com/repos/datura-ai/desearch",
+      "homepage": "https://desearch.ai/",
+      "html_url": "https://github.com/Desearch-ai/subnet-22",
       "kind": "source-repo",
-      "latency_ms": 573,
-      "method_tested": "HEAD",
+      "last_push_at": "2026-05-29T13:00:54Z",
       "name": "Desearch source repository",
       "netuid": 22,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": "https://github.com/Desearch-ai/subnet-22",
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/22",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/22"
+        "https://api.taomarketcap.com/public/v1/subnets/22",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json"
       ],
       "status": "ok",
-      "status_code": 200,
+      "topics": [],
       "url": "https://github.com/datura-ai/desearch",
-      "verified_at": "2026-06-06T07:43:55.213Z"
+      "verified_at": "2026-06-06T12:18:15.611Z"
     },
     {
       "candidate_id": "sn-22-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 408,
+      "latency_ms": 295,
       "method_tested": "HEAD",
       "name": "Desearch website",
       "netuid": 22,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://desearch.ai/",
-      "verified_at": "2026-06-06T07:43:55.220Z"
+      "verified_at": "2026-06-06T12:18:15.669Z"
     },
     {
       "candidate_id": "sn-22-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 311,
+      "latency_ms": 390,
       "method_tested": "HEAD",
       "name": "Desearch Tensorplex subnet docs",
       "netuid": 22,
@@ -136,24 +136,225 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/22",
-      "verified_at": "2026-06-06T07:43:55.230Z"
+      "verified_at": "2026-06-06T12:18:15.672Z"
+    },
+    {
+      "candidate_id": "sn-22-website-common-api",
+      "classification": "redirected",
+      "confidence_score": 63,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 329,
+      "method_tested": "HEAD",
+      "name": "Desearch API",
+      "netuid": 22,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.desearch.ai/api",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://desearch.ai/api",
+      "verified_at": "2026-06-06T12:18:15.697Z"
+    },
+    {
+      "candidate_id": "sn-22-website-common-docs",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 306,
+      "method_tested": "HEAD",
+      "name": "Desearch docs",
+      "netuid": 22,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.desearch.ai/docs",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://desearch.ai/docs",
+      "verified_at": "2026-06-06T12:18:15.714Z"
+    },
+    {
+      "candidate_id": "sn-22-website-common-health",
+      "classification": "redirected",
+      "confidence_score": 63,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 306,
+      "method_tested": "HEAD",
+      "name": "Desearch health endpoint",
+      "netuid": 22,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.desearch.ai/health",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://desearch.ai/health",
+      "verified_at": "2026-06-06T12:18:15.722Z"
+    },
+    {
+      "candidate_id": "sn-22-website-common-openapi-json",
+      "classification": "redirected",
+      "confidence_score": 73,
+      "content_type": "application/json; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 320,
+      "method_tested": "HEAD",
+      "name": "Desearch OpenAPI JSON",
+      "netuid": 22,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.desearch.ai/openapi.json",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://desearch.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:15.742Z"
+    },
+    {
+      "candidate_id": "sn-22-website-common-swagger",
+      "classification": "redirected",
+      "confidence_score": 63,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 308,
+      "method_tested": "HEAD",
+      "name": "Desearch Swagger UI",
+      "netuid": 22,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.desearch.ai/swagger",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://desearch.ai/swagger",
+      "verified_at": "2026-06-06T12:18:15.743Z"
+    },
+    {
+      "candidate_id": "sn-22-website-common-swagger-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 304,
+      "method_tested": "HEAD",
+      "name": "Desearch Swagger JSON",
+      "netuid": 22,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.desearch.ai/swagger.json",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://desearch.ai/",
+      "source_urls": [
+        "https://desearch.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://desearch.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:15.754Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-22",
   "summary": {
     "by_classification": {
-      "live": 2,
-      "redirected": 2
+      "content-mismatch": 1,
+      "live": 3,
+      "redirected": 6
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "docs": 2,
+      "openapi": 3,
       "source-repo": 1,
+      "subnet-api": 2,
       "website": 1
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 9,
       "tensorplex-subnet-docs": 1
     }
   }

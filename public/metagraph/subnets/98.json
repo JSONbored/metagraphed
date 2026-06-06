@@ -73,7 +73,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -94,7 +94,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -104,6 +104,279 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/orgs/SN98-ForeverMoney/repositories"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-common-api",
+      "kind": "subnet-api",
+      "name": "ForeverMoney API",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-common-docs",
+      "kind": "docs",
+      "name": "ForeverMoney docs",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-common-health",
+      "kind": "subnet-api",
+      "name": "ForeverMoney health endpoint",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "ForeverMoney OpenAPI JSON",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-common-swagger",
+      "kind": "openapi",
+      "name": "ForeverMoney Swagger UI",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "ForeverMoney Swagger JSON",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-dashboard-1",
+      "kind": "dashboard",
+      "name": "ForeverMoney dashboard",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://dashboard.forevermoney.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-docs-2",
+      "kind": "docs",
+      "name": "ForeverMoney docs",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.forevermoney.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-website-3",
+      "kind": "website",
+      "name": "ForeverMoney website page",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/vaults"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-website-4",
+      "kind": "website",
+      "name": "ForeverMoney website page",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/vaults?create=1"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-website-5",
+      "kind": "website",
+      "name": "ForeverMoney website page",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/legal/tos"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-website-6",
+      "kind": "website",
+      "name": "ForeverMoney website page",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/legal/privacy"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-website-7",
+      "kind": "website",
+      "name": "ForeverMoney website page",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/legal/cookie"
     }
   ],
   "candidates": [
@@ -180,7 +453,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -201,7 +474,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -211,6 +484,279 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/orgs/SN98-ForeverMoney/repositories"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-common-api",
+      "kind": "subnet-api",
+      "name": "ForeverMoney API",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-common-docs",
+      "kind": "docs",
+      "name": "ForeverMoney docs",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-common-health",
+      "kind": "subnet-api",
+      "name": "ForeverMoney health endpoint",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "ForeverMoney OpenAPI JSON",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-common-swagger",
+      "kind": "openapi",
+      "name": "ForeverMoney Swagger UI",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "ForeverMoney Swagger JSON",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-dashboard-1",
+      "kind": "dashboard",
+      "name": "ForeverMoney dashboard",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://dashboard.forevermoney.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-docs-2",
+      "kind": "docs",
+      "name": "ForeverMoney docs",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.forevermoney.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-website-3",
+      "kind": "website",
+      "name": "ForeverMoney website page",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/vaults"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-website-4",
+      "kind": "website",
+      "name": "ForeverMoney website page",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/vaults?create=1"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-website-5",
+      "kind": "website",
+      "name": "ForeverMoney website page",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/legal/tos"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-website-6",
+      "kind": "website",
+      "name": "ForeverMoney website page",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/legal/privacy"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-98-website-link-forevermoney-ai-website-7",
+      "kind": "website",
+      "name": "ForeverMoney website page",
+      "netuid": 98,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://forevermoney.ai/",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://forevermoney.ai/legal/cookie"
     }
   ],
   "gaps": {
@@ -236,8 +782,8 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 5,
+    "block": 8347420,
+    "candidate_count": 18,
     "categories": [
       "baseline-curated"
     ],
@@ -252,8 +798,8 @@
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 2,
-      "verified_at": "2026-06-06T07:44:07.381Z"
+      "source_count": 3,
+      "verified_at": "2026-06-06T12:18:37.639Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/98",
@@ -282,18 +828,23 @@
     "mechanism_count": 1,
     "name": "ForeverMoney",
     "native_name": "ForeverMoney",
+    "native_name_quality": "chain",
     "native_slug": "forevermoney",
     "netuid": 98,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 256,
-    "probed_surface_count": 5,
+    "probed_surface_count": 7,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -302,7 +853,7 @@
     "source_repo": "https://github.com/SN98-ForeverMoney/forever-money",
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 5,
+    "surface_count": 7,
     "symbol": "ბ",
     "tempo": 360,
     "website_url": "https://forevermoney.ai/"
@@ -343,11 +894,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
+        "latency_ms": 124,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.281Z"
+        "verified_at": "2026-06-06T12:18:37.258Z"
       }
     },
     {
@@ -386,11 +937,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/SN98-ForeverMoney/forever-money",
-        "latency_ms": 570,
+        "latency_ms": 475,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.293Z"
+        "verified_at": "2026-06-06T12:18:37.259Z"
       }
     },
     {
@@ -428,11 +979,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 332,
+        "latency_ms": 201,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.344Z"
+        "verified_at": "2026-06-06T12:18:37.336Z"
       }
     },
     {
@@ -442,7 +993,7 @@
       "kind": "docs",
       "name": "ForeverMoney Tensorplex subnet docs",
       "netuid": 98,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -470,11 +1021,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 380,
+        "latency_ms": 317,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.377Z"
+        "verified_at": "2026-06-06T12:18:37.350Z"
       }
     },
     {
@@ -484,7 +1035,7 @@
       "kind": "source-repo",
       "name": "ForeverMoney source repository",
       "netuid": 98,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -513,11 +1064,95 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/orgs/SN98-ForeverMoney",
-        "latency_ms": 329,
+        "latency_ms": 335,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.381Z"
+        "verified_at": "2026-06-06T12:18:37.382Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-98-website-link-forevermoney-ai-dashboard-1",
+      "kind": "dashboard",
+      "name": "ForeverMoney dashboard",
+      "netuid": 98,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "subnet_name": "ForeverMoney",
+      "subnet_slug": "sn-98",
+      "url": "https://dashboard.forevermoney.ai/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html",
+        "latency_ms": 316,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.598Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-98-website-link-forevermoney-ai-docs-2",
+      "kind": "docs",
+      "name": "ForeverMoney docs",
+      "netuid": 98,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "subnet_name": "ForeverMoney",
+      "subnet_slug": "sn-98",
+      "url": "https://docs.forevermoney.ai/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 221,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.639Z"
       }
     }
   ],
@@ -557,11 +1192,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
+        "latency_ms": 124,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.281Z"
+        "verified_at": "2026-06-06T12:18:37.258Z"
       }
     },
     {
@@ -600,11 +1235,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/SN98-ForeverMoney/forever-money",
-        "latency_ms": 570,
+        "latency_ms": 475,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.293Z"
+        "verified_at": "2026-06-06T12:18:37.259Z"
       }
     },
     {
@@ -642,11 +1277,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 332,
+        "latency_ms": 201,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.344Z"
+        "verified_at": "2026-06-06T12:18:37.336Z"
       }
     },
     {
@@ -656,7 +1291,7 @@
       "kind": "docs",
       "name": "ForeverMoney Tensorplex subnet docs",
       "netuid": 98,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -684,11 +1319,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 380,
+        "latency_ms": 317,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.377Z"
+        "verified_at": "2026-06-06T12:18:37.350Z"
       }
     },
     {
@@ -698,7 +1333,7 @@
       "kind": "source-repo",
       "name": "ForeverMoney source repository",
       "netuid": 98,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -727,11 +1362,95 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/orgs/SN98-ForeverMoney",
-        "latency_ms": 329,
+        "latency_ms": 335,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:07.381Z"
+        "verified_at": "2026-06-06T12:18:37.382Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-98-website-link-forevermoney-ai-dashboard-1",
+      "kind": "dashboard",
+      "name": "ForeverMoney dashboard",
+      "netuid": 98,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "subnet_name": "ForeverMoney",
+      "subnet_slug": "sn-98",
+      "url": "https://dashboard.forevermoney.ai/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html",
+        "latency_ms": 316,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.598Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-98-website-link-forevermoney-ai-docs-2",
+      "kind": "docs",
+      "name": "ForeverMoney docs",
+      "netuid": 98,
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://forevermoney.ai/"
+      ],
+      "subnet_name": "ForeverMoney",
+      "subnet_slug": "sn-98",
+      "url": "https://docs.forevermoney.ai/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 221,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:37.639Z"
       }
     }
   ]

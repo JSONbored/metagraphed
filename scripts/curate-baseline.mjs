@@ -5,7 +5,10 @@ import {
   loadCandidates,
   loadNativeSnapshot,
   loadVerification,
+  nativeDisplayName,
+  nativeNameQuality,
   readJson,
+  registrySurfaceKey,
   repoRoot,
   stableStringify,
   writeJson,
@@ -18,7 +21,11 @@ const nativeSnapshot = await loadNativeSnapshot();
 const candidates = await loadCandidates();
 const verification = await loadVerification();
 const manualOverlays = await loadManualOverlays();
+const existingGeneratedOverlays = await loadExistingGeneratedOverlays();
 const manualNetuids = new Set(manualOverlays.map((overlay) => overlay.netuid));
+const existingGeneratedByNetuid = new Map(
+  existingGeneratedOverlays.map((overlay) => [overlay.netuid, overlay]),
+);
 const verificationByCandidate = new Map(
   verification.results.map((result) => [result.candidate_id, result]),
 );
@@ -66,6 +73,16 @@ async function loadManualOverlays() {
   );
 }
 
+async function loadExistingGeneratedOverlays() {
+  const files = await listJsonFiles(
+    path.join(repoRoot, "registry/subnets/generated"),
+  );
+  const overlays = await Promise.all(files.map(readJson));
+  return overlays.sort(
+    (a, b) => a.netuid - b.netuid || a.slug.localeCompare(b.slug),
+  );
+}
+
 function buildGeneratedOverlay(nativeSubnet) {
   const subnetCandidates = candidatesByNetuid.get(nativeSubnet.netuid) || [];
   const promotedSurfaces = subnetCandidates
@@ -79,6 +96,7 @@ function buildGeneratedOverlay(nativeSubnet) {
     .map(({ candidate, verification }) =>
       promoteCandidate(candidate, verification),
     )
+    .filter(uniqueSurfaceLocator())
     .filter(limitPromotedSurfaceKinds())
     .sort(
       (a, b) =>
@@ -97,7 +115,12 @@ function buildGeneratedOverlay(nativeSubnet) {
       .at(-1) || null;
 
   const slug = nativeSubnet.netuid === 0 ? "root" : `sn-${nativeSubnet.netuid}`;
-  const name = nativeSubnet.name || `Subnet ${nativeSubnet.netuid}`;
+  const existingOverlay = existingGeneratedByNetuid.get(nativeSubnet.netuid);
+  const existingName =
+    existingOverlay && nativeNameQuality(existingOverlay) === "chain"
+      ? existingOverlay.name
+      : null;
+  const name = nativeDisplayName(nativeSubnet, existingName);
 
   return {
     schema_version: 1,
@@ -229,6 +252,18 @@ function isHtmlContentType(contentType) {
   return String(contentType || "")
     .toLowerCase()
     .includes("html");
+}
+
+function uniqueSurfaceLocator() {
+  const seen = new Set();
+  return (surface) => {
+    const key = registrySurfaceKey(surface);
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  };
 }
 
 function promoteCandidate(candidate, verification) {

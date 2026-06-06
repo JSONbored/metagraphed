@@ -16,6 +16,14 @@ const apiIndex = await readJson(
 );
 const errors = [];
 const warnings = [];
+const kvBinding = Array.isArray(config.kv_namespaces)
+  ? config.kv_namespaces.find(
+      (namespace) => namespace.binding === "METAGRAPH_CONTROL",
+    )
+  : null;
+const requireKvBinding =
+  process.env.METAGRAPH_REQUIRE_KV_BINDING === "1" ||
+  Boolean(process.env.METAGRAPH_KV_NAMESPACE_ID);
 
 check(config.name === "metagraphed", "wrangler name must be metagraphed");
 check(
@@ -80,14 +88,22 @@ check(
   "api index primary domain must be metagraph.sh",
 );
 
-if (
-  !Array.isArray(config.kv_namespaces) ||
-  !config.kv_namespaces.some(
-    (namespace) => namespace.binding === "METAGRAPH_CONTROL",
-  )
-) {
+if (!kvBinding && requireKvBinding) {
+  errors.push(
+    "METAGRAPH_CONTROL KV binding is required when METAGRAPH_KV_NAMESPACE_ID is configured.",
+  );
+} else if (!kvBinding) {
   warnings.push(
     "METAGRAPH_CONTROL KV binding is not configured in wrangler.jsonc; Worker will still serve static assets and R2 fallback can use METAGRAPH_R2_LATEST_PREFIX.",
+  );
+}
+if (
+  kvBinding?.id &&
+  process.env.METAGRAPH_KV_NAMESPACE_ID &&
+  kvBinding.id !== process.env.METAGRAPH_KV_NAMESPACE_ID
+) {
+  errors.push(
+    "METAGRAPH_CONTROL KV binding id does not match METAGRAPH_KV_NAMESPACE_ID.",
   );
 }
 if (!process.env.METAGRAPH_KV_NAMESPACE_ID) {

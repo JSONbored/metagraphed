@@ -208,6 +208,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/health/history/{date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch compact daily health history. */
+        get: operations["healthHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/openapi.json": {
         parameters: {
             query?: never;
@@ -794,6 +811,32 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        HealthHistoryArtifact: components["schemas"]["ArtifactBase"] & ({
+            date: string;
+            probe_finished_at?: string | null;
+            probe_started_at?: string | null;
+            source?: string;
+            summary: {
+                [key: string]: unknown;
+            };
+            surfaces: components["schemas"]["HealthHistorySurface"][];
+        } & {
+            [key: string]: unknown;
+        });
+        HealthHistorySurface: {
+            classification: components["schemas"]["Classification"];
+            error_class?: string | null;
+            kind: components["schemas"]["SurfaceKind"];
+            last_checked?: string | null;
+            last_ok?: string | null;
+            latency_ms?: number | null;
+            netuid: number;
+            provider: string;
+            status: components["schemas"]["HealthStatus"];
+            status_code?: number | null;
+            surface_id: string;
+            verified_at?: string | null;
+        };
         HealthLatestArtifact: components["schemas"]["ArtifactBase"] & ({
             summary: {
                 [key: string]: unknown;
@@ -1102,20 +1145,22 @@ export interface components {
             schema_backed_surface_count: number;
             source: string;
             /** @enum {unknown} */
-            status: "captured" | "changed" | "error" | "not-snapshotted" | "pending-snapshot" | "unchanged";
+            status: "captured" | "error" | "not-found" | "not-snapshotted" | "unsafe";
             surfaces: components["schemas"]["SchemaDriftSurface"][];
         } & {
             [key: string]: unknown;
         });
         SchemaDriftSurface: {
+            /** @enum {unknown} */
+            drift_status?: "changed" | "missing-after-previous-capture" | "new" | "not-captured" | "unchanged";
             error?: string | null;
-            hash?: string;
+            hash?: string | null;
             netuid: number;
             previous_hash?: string | null;
             /** Format: uri */
-            schema_url: string;
+            schema_url: string | null;
             /** @enum {unknown} */
-            status: "captured" | "changed" | "error" | "not-snapshotted" | "pending-snapshot" | "unchanged";
+            status: "captured" | "error" | "not-found" | "pending-snapshot" | "ui-only-or-undiscovered" | "unsafe";
             subnet_slug: string;
             surface_id: string;
             /** Format: uri */
@@ -1130,11 +1175,25 @@ export interface components {
             [key: string]: unknown;
         });
         SchemaIndexEntry: {
-            hash: string;
-            path: string;
+            content_type?: string | null;
+            /** @enum {unknown} */
+            drift_status: "changed" | "missing-after-previous-capture" | "new" | "not-captured" | "unchanged";
+            error?: string | null;
+            hash?: string | null;
+            netuid?: number;
+            path?: string | null;
+            previous_hash?: string | null;
             /** Format: uri */
-            schema_url: string;
+            schema_url: string | null;
+            snapshot?: {
+                [key: string]: unknown;
+            };
+            /** @enum {unknown} */
+            status: "captured" | "error" | "not-found" | "unsafe";
+            subnet_slug?: string;
             surface_id: string;
+            /** Format: uri */
+            url?: string;
         } & {
             [key: string]: unknown;
         };
@@ -1244,6 +1303,8 @@ export interface components {
             mechanism_count?: number;
             name: string;
             native_name?: string | null;
+            /** @enum {unknown} */
+            native_name_quality?: "chain" | "placeholder" | "empty";
             netuid: number;
             participant_count?: number;
             probed_surface_count?: number;
@@ -1392,6 +1453,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -1453,6 +1523,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -1511,6 +1590,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Artifact or API route was not found. */
             404: {
@@ -1580,6 +1668,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -1638,6 +1735,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Artifact or API route was not found. */
             404: {
@@ -1698,6 +1804,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -1756,6 +1871,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Artifact or API route was not found. */
             404: {
@@ -1823,6 +1947,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -1888,6 +2021,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -1946,6 +2088,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Artifact or API route was not found. */
             404: {
@@ -2014,6 +2165,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -2080,6 +2240,93 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    healthHistory: {
+        parameters: {
+            query?: {
+                netuid?: number;
+                status?: string;
+                classification?: string;
+                limit?: number;
+                cursor?: number;
+                sort?: string;
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path: {
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["HealthHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -2138,6 +2385,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Artifact or API route was not found. */
             404: {
@@ -2206,6 +2462,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -2266,6 +2531,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Artifact or API route was not found. */
             404: {
@@ -2334,6 +2608,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -2393,6 +2676,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -2451,6 +2743,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Artifact or API route was not found. */
             404: {
@@ -2517,6 +2818,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -2575,6 +2885,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Artifact or API route was not found. */
             404: {
@@ -2640,6 +2959,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Artifact or API route was not found. */
             404: {
@@ -2710,6 +3038,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -2770,6 +3107,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Artifact or API route was not found. */
             404: {
@@ -2839,6 +3185,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Artifact or API route was not found. */
             404: {
@@ -2910,6 +3265,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -2980,6 +3344,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Artifact or API route was not found. */
             404: {
                 headers: {
@@ -3048,6 +3421,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Artifact or API route was not found. */
             404: {

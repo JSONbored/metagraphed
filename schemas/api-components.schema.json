@@ -401,6 +401,9 @@
           "netuid": { "type": "integer", "minimum": 0 },
           "name": { "type": "string" },
           "native_name": { "type": ["string", "null"] },
+          "native_name_quality": {
+            "enum": ["chain", "placeholder", "empty"]
+          },
           "slug": { "type": "string" },
           "status": { "$ref": "#/components/schemas/SubnetStatus" },
           "subnet_type": { "$ref": "#/components/schemas/SubnetType" },
@@ -470,6 +473,32 @@
           }
         },
         "additionalProperties": true
+      },
+      "HealthHistorySurface": {
+        "type": "object",
+        "required": [
+          "surface_id",
+          "netuid",
+          "kind",
+          "provider",
+          "status",
+          "classification"
+        ],
+        "properties": {
+          "surface_id": { "type": "string" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "kind": { "$ref": "#/components/schemas/SurfaceKind" },
+          "provider": { "type": "string" },
+          "status": { "$ref": "#/components/schemas/HealthStatus" },
+          "classification": { "$ref": "#/components/schemas/Classification" },
+          "latency_ms": { "type": ["integer", "null"], "minimum": 0 },
+          "status_code": { "type": ["integer", "null"] },
+          "last_checked": { "type": ["string", "null"] },
+          "last_ok": { "type": ["string", "null"] },
+          "verified_at": { "type": ["string", "null"] },
+          "error_class": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
       },
       "HealthSubnetSummary": {
         "type": "object",
@@ -827,21 +856,30 @@
         ],
         "properties": {
           "netuid": { "type": "integer", "minimum": 0 },
-          "schema_url": { "type": "string", "format": "uri" },
+          "schema_url": { "type": ["string", "null"], "format": "uri" },
           "status": {
             "enum": [
               "captured",
-              "changed",
               "error",
-              "not-snapshotted",
+              "not-found",
               "pending-snapshot",
+              "ui-only-or-undiscovered",
+              "unsafe"
+            ]
+          },
+          "drift_status": {
+            "enum": [
+              "changed",
+              "missing-after-previous-capture",
+              "new",
+              "not-captured",
               "unchanged"
             ]
           },
           "subnet_slug": { "type": "string" },
           "surface_id": { "type": "string" },
           "url": { "type": "string", "format": "uri" },
-          "hash": { "type": "string" },
+          "hash": { "type": ["string", "null"] },
           "previous_hash": { "type": ["string", "null"] },
           "error": { "type": ["string", "null"] }
         },
@@ -849,12 +887,31 @@
       },
       "SchemaIndexEntry": {
         "type": "object",
-        "required": ["hash", "path", "schema_url", "surface_id"],
+        "required": ["drift_status", "schema_url", "status", "surface_id"],
         "properties": {
-          "hash": { "type": "string" },
-          "path": { "type": "string" },
-          "schema_url": { "type": "string", "format": "uri" },
-          "surface_id": { "type": "string" }
+          "content_type": { "type": ["string", "null"] },
+          "drift_status": {
+            "enum": [
+              "changed",
+              "missing-after-previous-capture",
+              "new",
+              "not-captured",
+              "unchanged"
+            ]
+          },
+          "error": { "type": ["string", "null"] },
+          "hash": { "type": ["string", "null"] },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "path": { "type": ["string", "null"] },
+          "previous_hash": { "type": ["string", "null"] },
+          "schema_url": { "type": ["string", "null"], "format": "uri" },
+          "snapshot": { "type": "object", "additionalProperties": true },
+          "status": {
+            "enum": ["captured", "error", "not-found", "unsafe"]
+          },
+          "subnet_slug": { "type": "string" },
+          "surface_id": { "type": "string" },
+          "url": { "type": "string", "format": "uri" }
         },
         "additionalProperties": true
       },
@@ -1616,6 +1673,29 @@
           }
         ]
       },
+      "HealthHistoryArtifact": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["date", "summary", "surfaces"],
+            "properties": {
+              "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+              "source": { "type": "string" },
+              "probe_started_at": { "type": ["string", "null"] },
+              "probe_finished_at": { "type": ["string", "null"] },
+              "summary": { "type": "object", "additionalProperties": true },
+              "surfaces": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/HealthHistorySurface"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
       "HealthSubnetArtifact": {
         "allOf": [
           { "$ref": "#/components/schemas/ArtifactBase" },
@@ -1720,11 +1800,10 @@
               "status": {
                 "enum": [
                   "captured",
-                  "changed",
                   "error",
+                  "not-found",
                   "not-snapshotted",
-                  "pending-snapshot",
-                  "unchanged"
+                  "unsafe"
                 ]
               },
               "surfaces": {

@@ -2,6 +2,116 @@
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-41-github-readme-sportstensor-sn41-docs-1",
+      "kind": "docs",
+      "name": "Almanac docs",
+      "netuid": 41,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/sportstensor/sn41/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/sportstensor/sn41/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Almanac",
+      "url": "https://docs.learnbittensor.org/keys/wallets",
+      "verification": {
+        "candidate_id": "sn-41-github-readme-sportstensor-sn41-docs-1",
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 40,
+        "method_tested": "HEAD",
+        "name": "Almanac docs",
+        "netuid": 41,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/sportstensor/sn41/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/sportstensor/sn41/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://docs.learnbittensor.org/keys/wallets",
+        "verified_at": "2026-06-06T12:18:19.809Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-41-github-readme-sportstensor-sn41-docs-2",
+      "kind": "docs",
+      "name": "Almanac docs",
+      "netuid": 41,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/sportstensor/sn41/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/sportstensor/sn41/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Almanac",
+      "url": "https://docs.learnbittensor.org/miners",
+      "verification": {
+        "candidate_id": "sn-41-github-readme-sportstensor-sn41-docs-2",
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 40,
+        "method_tested": "HEAD",
+        "name": "Almanac docs",
+        "netuid": 41,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/sportstensor/sn41/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/sportstensor/sn41/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://docs.learnbittensor.org/miners",
+        "verified_at": "2026-06-06T12:18:19.809Z"
+      }
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-41-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -28,7 +138,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 457,
+        "latency_ms": 149,
         "method_tested": "HEAD",
         "name": "Almanac TaoMarketCap dashboard",
         "netuid": 41,
@@ -52,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/41",
-        "verified_at": "2026-06-06T07:43:57.008Z"
+        "verified_at": "2026-06-06T12:18:19.818Z"
       }
     },
     {
@@ -71,7 +181,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/41",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/41"
+        "https://api.taomarketcap.com/public/v1/subnets/41",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/41/subnet.json"
       ],
       "state": "schema-valid",
       "subnet_name": "Almanac",
@@ -84,7 +195,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/sportstensor/sn41",
         "kind": "source-repo",
-        "latency_ms": 420,
+        "latency_ms": 725,
         "method_tested": "HEAD",
         "name": "Almanac source repository",
         "netuid": 41,
@@ -103,12 +214,13 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/41",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/41"
+          "https://api.taomarketcap.com/public/v1/subnets/41",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/41/subnet.json"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/sportstensor/sn41",
-        "verified_at": "2026-06-06T07:43:57.008Z"
+        "verified_at": "2026-06-06T12:18:19.824Z"
       }
     },
     {
@@ -139,7 +251,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 2201,
+        "latency_ms": 176,
         "method_tested": "HEAD",
         "name": "Almanac website",
         "netuid": 41,
@@ -163,7 +275,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://almanac.market/",
-        "verified_at": "2026-06-06T07:43:57.020Z"
+        "verified_at": "2026-06-06T12:18:19.849Z"
       }
     },
     {
@@ -176,7 +288,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +306,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 665,
+        "latency_ms": 341,
         "method_tested": "HEAD",
         "name": "Almanac Tensorplex subnet docs",
         "netuid": 41,
@@ -218,7 +330,392 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/41",
-        "verified_at": "2026-06-06T07:43:57.036Z"
+        "verified_at": "2026-06-06T12:18:19.849Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-41-website-common-api",
+      "kind": "subnet-api",
+      "name": "Almanac API",
+      "netuid": 41,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Almanac",
+      "url": "https://almanac.market/api",
+      "verification": {
+        "candidate_id": "sn-41-website-common-api",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 160,
+        "method_tested": "HEAD",
+        "name": "Almanac API",
+        "netuid": 41,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://almanac.market/",
+        "source_urls": [
+          "https://almanac.market/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://almanac.market/api",
+        "verified_at": "2026-06-06T12:18:19.869Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-41-website-common-docs",
+      "kind": "docs",
+      "name": "Almanac docs",
+      "netuid": 41,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Almanac",
+      "url": "https://almanac.market/docs",
+      "verification": {
+        "candidate_id": "sn-41-website-common-docs",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 159,
+        "method_tested": "HEAD",
+        "name": "Almanac docs",
+        "netuid": 41,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://almanac.market/",
+        "source_urls": [
+          "https://almanac.market/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://almanac.market/docs",
+        "verified_at": "2026-06-06T12:18:19.889Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-41-website-common-health",
+      "kind": "subnet-api",
+      "name": "Almanac health endpoint",
+      "netuid": 41,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Almanac",
+      "url": "https://almanac.market/health",
+      "verification": {
+        "candidate_id": "sn-41-website-common-health",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 193,
+        "method_tested": "HEAD",
+        "name": "Almanac health endpoint",
+        "netuid": 41,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://almanac.market/",
+        "source_urls": [
+          "https://almanac.market/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://almanac.market/health",
+        "verified_at": "2026-06-06T12:18:19.931Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-41-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Almanac OpenAPI JSON",
+      "netuid": 41,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Almanac",
+      "url": "https://almanac.market/openapi.json",
+      "verification": {
+        "candidate_id": "sn-41-website-common-openapi-json",
+        "classification": "content-mismatch",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 180,
+        "method_tested": "HEAD",
+        "name": "Almanac OpenAPI JSON",
+        "netuid": 41,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": false,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://almanac.market/",
+        "source_urls": [
+          "https://almanac.market/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://almanac.market/openapi.json",
+        "verified_at": "2026-06-06T12:18:19.950Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-41-website-common-swagger",
+      "kind": "openapi",
+      "name": "Almanac Swagger UI",
+      "netuid": 41,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Almanac",
+      "url": "https://almanac.market/swagger",
+      "verification": {
+        "candidate_id": "sn-41-website-common-swagger",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 190,
+        "method_tested": "HEAD",
+        "name": "Almanac Swagger UI",
+        "netuid": 41,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://almanac.market/",
+        "source_urls": [
+          "https://almanac.market/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://almanac.market/swagger",
+        "verified_at": "2026-06-06T12:18:19.951Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-41-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Almanac Swagger JSON",
+      "netuid": 41,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Almanac",
+      "url": "https://almanac.market/swagger.json",
+      "verification": {
+        "candidate_id": "sn-41-website-common-swagger-json",
+        "classification": "content-mismatch",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 154,
+        "method_tested": "HEAD",
+        "name": "Almanac Swagger JSON",
+        "netuid": 41,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": false,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://almanac.market/",
+        "source_urls": [
+          "https://almanac.market/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://almanac.market/swagger.json",
+        "verified_at": "2026-06-06T12:18:19.967Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-41-website-link-almanac-market-website-1",
+      "kind": "website",
+      "name": "Almanac website page",
+      "netuid": 41,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://almanac.market/",
+      "source_urls": [
+        "https://almanac.market/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Almanac",
+      "url": "https://beta.almanac.market/",
+      "verification": {
+        "candidate_id": "sn-41-website-link-almanac-market-website-1",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 701,
+        "method_tested": "HEAD",
+        "name": "Almanac website page",
+        "netuid": 41,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://almanac.market/",
+        "source_urls": [
+          "https://almanac.market/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://beta.almanac.market/",
+        "verified_at": "2026-06-06T12:18:19.967Z"
       }
     }
   ],

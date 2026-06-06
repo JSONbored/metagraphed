@@ -2,6 +2,61 @@
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-71-github-readme-leadpoet-leadpoet-subnet-api-1",
+      "kind": "subnet-api",
+      "name": "Leadpoet API surface",
+      "netuid": 71,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/leadpoet/leadpoet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/leadpoet/leadpoet/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Leadpoet",
+      "url": "https://www.scrapingdog.com/",
+      "verification": {
+        "candidate_id": "sn-71-github-readme-leadpoet-leadpoet-subnet-api-1",
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=UTF-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 460,
+        "method_tested": "HEAD",
+        "name": "Leadpoet API surface",
+        "netuid": 71,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/leadpoet/leadpoet/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/leadpoet/leadpoet/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.scrapingdog.com/",
+        "verified_at": "2026-06-06T12:18:28.282Z"
+      }
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-71-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -28,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 228,
+        "latency_ms": 139,
         "method_tested": "HEAD",
         "name": "Leadpoet TaoMarketCap dashboard",
         "netuid": 71,
@@ -52,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/71",
-        "verified_at": "2026-06-06T07:44:03.204Z"
+        "verified_at": "2026-06-06T12:18:28.295Z"
       }
     },
     {
@@ -71,7 +126,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/71",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/71"
+        "https://api.taomarketcap.com/public/v1/subnets/71",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/71/subnet.json"
       ],
       "state": "schema-valid",
       "subnet_name": "Leadpoet",
@@ -84,7 +140,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/leadpoet/leadpoet",
         "kind": "source-repo",
-        "latency_ms": 476,
+        "latency_ms": 491,
         "method_tested": "HEAD",
         "name": "Leadpoet source repository",
         "netuid": 71,
@@ -103,12 +159,13 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/71",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/71"
+          "https://api.taomarketcap.com/public/v1/subnets/71",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/71/subnet.json"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/leadpoet/leadpoet",
-        "verified_at": "2026-06-06T07:44:03.208Z"
+        "verified_at": "2026-06-06T12:18:28.311Z"
       }
     },
     {
@@ -139,7 +196,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 519,
+        "latency_ms": 415,
         "method_tested": "HEAD",
         "name": "Leadpoet website",
         "netuid": 71,
@@ -163,7 +220,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://leadpoet.com/",
-        "verified_at": "2026-06-06T07:44:03.213Z"
+        "verified_at": "2026-06-06T12:18:28.315Z"
       }
     },
     {
@@ -176,7 +233,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +251,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 428,
+        "latency_ms": 347,
         "method_tested": "HEAD",
         "name": "Leadpoet Tensorplex subnet docs",
         "netuid": 71,
@@ -218,7 +275,337 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/71",
-        "verified_at": "2026-06-06T07:44:03.229Z"
+        "verified_at": "2026-06-06T12:18:28.329Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-71-website-common-api",
+      "kind": "subnet-api",
+      "name": "Leadpoet API",
+      "netuid": 71,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leadpoet.com/",
+      "source_urls": [
+        "https://leadpoet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Leadpoet",
+      "url": "https://leadpoet.com/api",
+      "verification": {
+        "candidate_id": "sn-71-website-common-api",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=UTF-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 438,
+        "method_tested": "HEAD",
+        "name": "Leadpoet API",
+        "netuid": 71,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://leadpoet.com/",
+        "source_urls": [
+          "https://leadpoet.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://leadpoet.com/api",
+        "verified_at": "2026-06-06T12:18:28.373Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-71-website-common-docs",
+      "kind": "docs",
+      "name": "Leadpoet docs",
+      "netuid": 71,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leadpoet.com/",
+      "source_urls": [
+        "https://leadpoet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Leadpoet",
+      "url": "https://leadpoet.com/docs",
+      "verification": {
+        "candidate_id": "sn-71-website-common-docs",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=UTF-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 430,
+        "method_tested": "HEAD",
+        "name": "Leadpoet docs",
+        "netuid": 71,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://leadpoet.com/",
+        "source_urls": [
+          "https://leadpoet.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://leadpoet.com/docs",
+        "verified_at": "2026-06-06T12:18:28.376Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-71-website-common-health",
+      "kind": "subnet-api",
+      "name": "Leadpoet health endpoint",
+      "netuid": 71,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leadpoet.com/",
+      "source_urls": [
+        "https://leadpoet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Leadpoet",
+      "url": "https://leadpoet.com/health",
+      "verification": {
+        "candidate_id": "sn-71-website-common-health",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=UTF-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 439,
+        "method_tested": "HEAD",
+        "name": "Leadpoet health endpoint",
+        "netuid": 71,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://leadpoet.com/",
+        "source_urls": [
+          "https://leadpoet.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://leadpoet.com/health",
+        "verified_at": "2026-06-06T12:18:28.401Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-71-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Leadpoet OpenAPI JSON",
+      "netuid": 71,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leadpoet.com/",
+      "source_urls": [
+        "https://leadpoet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Leadpoet",
+      "url": "https://leadpoet.com/openapi.json",
+      "verification": {
+        "candidate_id": "sn-71-website-common-openapi-json",
+        "classification": "content-mismatch",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=UTF-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 439,
+        "method_tested": "HEAD",
+        "name": "Leadpoet OpenAPI JSON",
+        "netuid": 71,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": false,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://leadpoet.com/",
+        "source_urls": [
+          "https://leadpoet.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://leadpoet.com/openapi.json",
+        "verified_at": "2026-06-06T12:18:28.402Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-71-website-common-swagger",
+      "kind": "openapi",
+      "name": "Leadpoet Swagger UI",
+      "netuid": 71,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leadpoet.com/",
+      "source_urls": [
+        "https://leadpoet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Leadpoet",
+      "url": "https://leadpoet.com/swagger",
+      "verification": {
+        "candidate_id": "sn-71-website-common-swagger",
+        "classification": "live",
+        "confidence_score": 68,
+        "content_type": "text/html; charset=UTF-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 445,
+        "method_tested": "HEAD",
+        "name": "Leadpoet Swagger UI",
+        "netuid": 71,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://leadpoet.com/",
+        "source_urls": [
+          "https://leadpoet.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://leadpoet.com/swagger",
+        "verified_at": "2026-06-06T12:18:28.402Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-71-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Leadpoet Swagger JSON",
+      "netuid": 71,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://leadpoet.com/",
+      "source_urls": [
+        "https://leadpoet.com/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "Leadpoet",
+      "url": "https://leadpoet.com/swagger.json",
+      "verification": {
+        "candidate_id": "sn-71-website-common-swagger-json",
+        "classification": "content-mismatch",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=UTF-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 445,
+        "method_tested": "HEAD",
+        "name": "Leadpoet Swagger JSON",
+        "netuid": 71,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": false,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://leadpoet.com/",
+        "source_urls": [
+          "https://leadpoet.com/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://leadpoet.com/swagger.json",
+        "verified_at": "2026-06-06T12:18:28.402Z"
       }
     }
   ],

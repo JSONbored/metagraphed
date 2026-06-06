@@ -1,10 +1,142 @@
 {
-  "candidate_count": 5,
+  "candidate_count": 23,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "iota",
   "netuid": 9,
   "results": [
+    {
+      "candidate_id": "sn-9-github-readme-macrocosm-os-iota-dashboard-1",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 287,
+      "method_tested": "HEAD",
+      "name": "iota dashboard",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/macrocosm-os/iota/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/macrocosm-os/iota/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://iota.macrocosmos.ai/dashboard/mainnet",
+      "verified_at": "2026-06-06T12:18:11.075Z"
+    },
+    {
+      "candidate_id": "sn-9-github-readme-macrocosm-os-iota-docs-2",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 136,
+      "method_tested": "GET",
+      "name": "iota docs",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/macrocosm-os/iota/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/macrocosm-os/iota/blob/main/README.md"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://docs.macrocosmos.ai/subnets/subnet-9-pre-training/subnet-9-iota-mining-setup-guide",
+      "verified_at": "2026-06-06T12:18:11.107Z"
+    },
+    {
+      "candidate_id": "sn-9-github-readme-macrocosm-os-iota-docs-3",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 129,
+      "method_tested": "GET",
+      "name": "iota docs",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/macrocosm-os/iota/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/macrocosm-os/iota/blob/main/README.md"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://docs.macrocosmos.ai/subnets/subnet-9-pre-training/subnet-9-validating",
+      "verified_at": "2026-06-06T12:18:11.108Z"
+    },
+    {
+      "candidate_id": "sn-9-github-readme-macrocosm-os-iota-docs-4",
+      "classification": "redirected",
+      "confidence_score": 61,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 184,
+      "method_tested": "HEAD",
+      "name": "iota docs",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": "https://docs.astral.sh/uv/",
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/macrocosm-os/iota/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/macrocosm-os/iota/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.astral.sh/uv",
+      "verified_at": "2026-06-06T12:18:11.128Z"
+    },
     {
       "candidate_id": "sn-9-taomarketcap-dashboard",
       "classification": "live",
@@ -12,7 +144,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 152,
+      "latency_ms": 137,
       "method_tested": "HEAD",
       "name": "iota TaoMarketCap dashboard",
       "netuid": 9,
@@ -36,41 +168,41 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/9",
-      "verified_at": "2026-06-06T07:43:53.262Z"
+      "verified_at": "2026-06-06T12:18:11.136Z"
     },
     {
+      "archived": false,
       "candidate_id": "sn-9-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
-      "error": null,
-      "github_api_status": 403,
+      "confidence_score": 80,
+      "default_branch": "main",
+      "description": "IOTA: Incentivized Orchestrated Training Architecture",
       "github_api_url": "https://api.github.com/repos/macrocosm-os/iota",
+      "homepage": null,
+      "html_url": "https://github.com/macrocosm-os/iota",
       "kind": "source-repo",
-      "latency_ms": 453,
-      "method_tested": "HEAD",
+      "last_push_at": "2026-05-20T11:19:59Z",
       "name": "iota source repository",
       "netuid": 9,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/9",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/9"
+        "https://api.taomarketcap.com/public/v1/subnets/9",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/9/subnet.json"
       ],
       "status": "ok",
-      "status_code": 200,
+      "topics": [],
       "url": "https://github.com/macrocosm-os/iota",
-      "verified_at": "2026-06-06T07:43:53.411Z"
+      "verified_at": "2026-06-06T12:18:11.155Z"
     },
     {
       "candidate_id": "sn-9-taomarketcap-website",
@@ -79,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 352,
+      "latency_ms": 249,
       "method_tested": "HEAD",
       "name": "iota website",
       "netuid": 9,
@@ -103,7 +235,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://iota.macrocosmos.ai/",
-      "verified_at": "2026-06-06T07:43:53.411Z"
+      "verified_at": "2026-06-06T12:18:11.181Z"
     },
     {
       "candidate_id": "sn-9-taopedia-article",
@@ -112,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 337,
+      "latency_ms": 398,
       "method_tested": "HEAD",
       "name": "iota Taopedia article",
       "netuid": 9,
@@ -136,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_9/index.mdx",
-      "verified_at": "2026-06-06T07:43:53.413Z"
+      "verified_at": "2026-06-06T12:18:11.182Z"
     },
     {
       "candidate_id": "sn-9-tensorplex-docs",
@@ -145,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 328,
+      "latency_ms": 381,
       "method_tested": "HEAD",
       "name": "iota Tensorplex subnet docs",
       "netuid": 9,
@@ -169,23 +301,489 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/9",
-      "verified_at": "2026-06-06T07:43:53.413Z"
+      "verified_at": "2026-06-06T12:18:11.183Z"
+    },
+    {
+      "candidate_id": "sn-9-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 115,
+      "method_tested": "GET",
+      "name": "iota API",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://iota.macrocosmos.ai/api",
+      "verified_at": "2026-06-06T12:18:11.184Z"
+    },
+    {
+      "candidate_id": "sn-9-website-common-docs",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 270,
+      "method_tested": "HEAD",
+      "name": "iota docs",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://docs.macrocosmos.ai/",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://iota.macrocosmos.ai/docs",
+      "verified_at": "2026-06-06T12:18:11.185Z"
+    },
+    {
+      "candidate_id": "sn-9-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 80,
+      "method_tested": "GET",
+      "name": "iota health endpoint",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://iota.macrocosmos.ai/health",
+      "verified_at": "2026-06-06T12:18:11.252Z"
+    },
+    {
+      "candidate_id": "sn-9-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 72,
+      "method_tested": "GET",
+      "name": "iota OpenAPI JSON",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://iota.macrocosmos.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:11.253Z"
+    },
+    {
+      "candidate_id": "sn-9-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 157,
+      "method_tested": "GET",
+      "name": "iota Swagger UI",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://iota.macrocosmos.ai/swagger",
+      "verified_at": "2026-06-06T12:18:11.266Z"
+    },
+    {
+      "candidate_id": "sn-9-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 73,
+      "method_tested": "GET",
+      "name": "iota Swagger JSON",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://iota.macrocosmos.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:11.274Z"
+    },
+    {
+      "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-dashboard-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 284,
+      "method_tested": "HEAD",
+      "name": "iota dashboard",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://iota.macrocosmos.ai/dashboard",
+      "verified_at": "2026-06-06T12:18:11.288Z"
+    },
+    {
+      "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-docs-5",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 122,
+      "method_tested": "HEAD",
+      "name": "iota docs",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.macrocosmos.ai/",
+      "verified_at": "2026-06-06T12:18:11.312Z"
+    },
+    {
+      "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-docs-7",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 108,
+      "method_tested": "HEAD",
+      "name": "iota docs",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.macrocosmos.ai/product-and-services/tah/faqs",
+      "verified_at": "2026-06-06T12:18:11.355Z"
+    },
+    {
+      "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-docs-8",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 107,
+      "method_tested": "HEAD",
+      "name": "iota docs",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.macrocosmos.ai/product-and-services/tah",
+      "verified_at": "2026-06-06T12:18:11.355Z"
+    },
+    {
+      "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-website-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 141,
+      "method_tested": "HEAD",
+      "name": "iota website page",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://iota.macrocosmos.ai/overview",
+      "verified_at": "2026-06-06T12:18:11.362Z"
+    },
+    {
+      "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-website-3",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 164,
+      "method_tested": "HEAD",
+      "name": "iota website page",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.macrocosmos.ai/about",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://macrocosmos.ai/about",
+      "verified_at": "2026-06-06T12:18:11.372Z"
+    },
+    {
+      "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-website-4",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 152,
+      "method_tested": "HEAD",
+      "name": "iota website page",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://www.macrocosmos.ai/",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://macrocosmos.ai/",
+      "verified_at": "2026-06-06T12:18:11.430Z"
+    },
+    {
+      "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-website-6",
+      "classification": "redirected",
+      "confidence_score": 63,
+      "content_type": "binary/octet-stream",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 578,
+      "method_tested": "GET",
+      "name": "iota website page",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://ams3.digitaloceanspaces.com/iota-train-at-home-releases/releases/prod/darwin/arm64/IOTA%20Train%20at%20Home-3.3.4-arm64.dmg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=DO801VW62ENXU4TLZHMF%2F20260606%2Fams3%2Fs3%2Faws4_request&X-Amz-Date=20260606T121812Z&X-Amz-Expires=600&X-Amz-Signature=43fe1d747b9ce85c23ef931469e2d6c6499d1357ebc4b9e2f883b239b6085c22&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://tah.iota.macrocosmos.ai/download/token/release-iota-signup",
+      "verified_at": "2026-06-06T12:18:11.434Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-9",
   "summary": {
     "by_classification": {
-      "live": 5
+      "dead": 7,
+      "live": 11,
+      "redirected": 5
     },
     "by_kind": {
-      "dashboard": 1,
-      "docs": 2,
+      "dashboard": 3,
+      "docs": 9,
+      "openapi": 3,
       "source-repo": 1,
-      "website": 1
+      "subnet-api": 2,
+      "website": 5
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 21,
       "taopedia-articles": 1,
       "tensorplex-subnet-docs": 1
     }

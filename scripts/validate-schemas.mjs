@@ -103,21 +103,13 @@ async function artifactValidationTargets() {
       continue;
     }
 
-    if (artifact.path.includes("{netuid}")) {
-      const directory = netuidArtifactDirectory(artifact.id);
-      for (const filePath of await listJsonFiles(directory)) {
-        targets.push({
-          file_path: filePath,
-          label: `${artifact.id}:${path.basename(filePath)}`,
-          schema_ref: artifact.schema_ref,
-        });
-      }
-      continue;
-    }
-
-    if (artifact.path.includes("{slug}")) {
+    if (
+      artifact.path.includes("{netuid}") ||
+      artifact.path.includes("{slug}") ||
+      artifact.path.includes("{date}")
+    ) {
       for (const filePath of await listJsonFiles(
-        slugArtifactDirectory(artifact.id),
+        templatedArtifactDirectory(artifact.id),
       )) {
         targets.push({
           file_path: filePath,
@@ -141,8 +133,17 @@ async function artifactValidationTargets() {
   return targets.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function netuidArtifactDirectory(artifactId) {
+function templatedArtifactDirectory(artifactId) {
   const directories = {
+    ...netuidArtifactDirectories(),
+    ...slugArtifactDirectories(),
+    "health-history": "health/history",
+  };
+  return path.join(repoRoot, "public/metagraph", directories[artifactId]);
+}
+
+function netuidArtifactDirectories() {
+  return {
     "candidates-subnet": "candidates",
     "health-badge": "health/badges",
     "health-subnet": "health/subnets",
@@ -150,15 +151,13 @@ function netuidArtifactDirectory(artifactId) {
     "surfaces-subnet": "surfaces",
     "verification-subnet": "verification/subnets",
   };
-  return path.join(repoRoot, "public/metagraph", directories[artifactId]);
 }
 
-function slugArtifactDirectory(artifactId) {
-  const directories = {
+function slugArtifactDirectories() {
+  return {
     adapter: "adapters",
     "provider-detail": "providers",
   };
-  return path.join(repoRoot, "public/metagraph", directories[artifactId]);
 }
 
 function compileComponentValidator(schemaRef) {

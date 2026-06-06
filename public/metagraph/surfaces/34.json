@@ -9,6 +9,48 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-34-github-readme-bitmind-ai-bitmind-subnet-data-artifact-2",
+      "kind": "data-artifact",
+      "name": "BitMind data artifact",
+      "netuid": 34,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/BitMind-AI/bitmind-subnet/blob/main/README.md"
+      ],
+      "subnet_name": "BitMind",
+      "subnet_slug": "sn-34",
+      "url": "https://huggingface.co/gasstation",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 135,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:18.509Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-34-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "BitMind TaoMarketCap dashboard",
@@ -41,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 156,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.297Z"
+        "verified_at": "2026-06-06T12:18:18.585Z"
       }
     },
     {
@@ -65,30 +107,32 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/34"
+        "https://api.taomarketcap.com/public/v1/subnets/34",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/34/subnet.json"
       ],
       "subnet_name": "BitMind",
       "subnet_slug": "sn-34",
       "url": "https://github.com/BitMind-AI/bitmind-subnet",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/BitMind-AI/bitmind-subnet",
-        "latency_ms": 384,
-        "method_tested": "HEAD",
+        "homepage": "https://bitmind.ai/",
+        "last_push_at": "2026-06-05T02:16:46Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.301Z"
+        "topics": [],
+        "verified_at": "2026-06-06T12:18:18.600Z"
       }
     },
     {
@@ -98,7 +142,7 @@
       "kind": "docs",
       "name": "BitMind Tensorplex subnet docs",
       "netuid": 34,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -126,11 +170,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 318,
+        "latency_ms": 333,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:56.303Z"
+        "verified_at": "2026-06-06T12:18:18.616Z"
       }
     }
   ]

@@ -113,6 +113,9 @@ dist
 .wrangler/
 tmp/
 
+# Local-only internal research notes
+docs/research/
+
 # FuseBox cache
 .fusebox/
 

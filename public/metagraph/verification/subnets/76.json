@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 134,
+      "latency_ms": 146,
       "method_tested": "HEAD",
       "name": "Byzantium TaoMarketCap dashboard",
       "netuid": 76,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/76",
-      "verified_at": "2026-06-06T07:44:03.978Z"
+      "verified_at": "2026-06-06T12:18:29.750Z"
     },
     {
       "candidate_id": "sn-76-tensorplex-docs",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 508,
+      "latency_ms": 362,
       "method_tested": "HEAD",
       "name": "Byzantium Tensorplex subnet docs",
       "netuid": 76,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/76",
-      "verified_at": "2026-06-06T07:44:04.005Z"
+      "verified_at": "2026-06-06T12:18:29.782Z"
     }
   ],
   "schema_version": 1,

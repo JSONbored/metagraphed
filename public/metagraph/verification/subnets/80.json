@@ -1,10 +1,274 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 20,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "dogelayer",
   "netuid": 80,
   "results": [
+    {
+      "candidate_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-1",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 39,
+      "method_tested": "HEAD",
+      "name": "dogelayer docs",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.learnbittensor.org/learn/introduction",
+      "verified_at": "2026-06-06T12:18:30.787Z"
+    },
+    {
+      "candidate_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-2",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 44,
+      "method_tested": "HEAD",
+      "name": "dogelayer docs",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.learnbittensor.org/miners",
+      "verified_at": "2026-06-06T12:18:30.826Z"
+    },
+    {
+      "candidate_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-3",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 44,
+      "method_tested": "GET",
+      "name": "dogelayer docs",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://docs-git-permissions-list-bittensor.vercel.app/questions-and-answers",
+      "verified_at": "2026-06-06T12:18:30.842Z"
+    },
+    {
+      "candidate_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-4",
+      "classification": "redirected",
+      "confidence_score": 61,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 71,
+      "method_tested": "HEAD",
+      "name": "dogelayer docs",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": "https://docs.learnbittensor.org/getting-started/wallets/",
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.learnbittensor.org/getting-started/wallets",
+      "verified_at": "2026-06-06T12:18:30.858Z"
+    },
+    {
+      "candidate_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-5",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 46,
+      "method_tested": "GET",
+      "name": "dogelayer docs",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://docs.learnbittensor.org/miners/index.md",
+      "verified_at": "2026-06-06T12:18:30.870Z"
+    },
+    {
+      "candidate_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-6",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 44,
+      "method_tested": "GET",
+      "name": "dogelayer docs",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://docs.learnbittensor.org/validators/index.md",
+      "verified_at": "2026-06-06T12:18:30.877Z"
+    },
+    {
+      "candidate_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-7",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 149,
+      "method_tested": "HEAD",
+      "name": "dogelayer docs",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.learnbittensor.org/",
+      "verified_at": "2026-06-06T12:18:30.878Z"
+    },
+    {
+      "candidate_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-8",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 272,
+      "method_tested": "HEAD",
+      "name": "dogelayer docs",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.docker.com/engine/install",
+      "verified_at": "2026-06-06T12:18:30.882Z"
+    },
     {
       "candidate_id": "sn-80-taomarketcap-dashboard",
       "classification": "live",
@@ -12,7 +276,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 130,
+      "latency_ms": 148,
       "method_tested": "HEAD",
       "name": "dogelayer TaoMarketCap dashboard",
       "netuid": 80,
@@ -36,7 +300,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/80",
-      "verified_at": "2026-06-06T07:44:04.865Z"
+      "verified_at": "2026-06-06T12:18:30.887Z"
     },
     {
       "candidate_id": "sn-80-taomarketcap-source-repo",
@@ -46,7 +310,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/dogelayer-ai/dogelayer",
       "kind": "source-repo",
-      "latency_ms": 437,
+      "latency_ms": 458,
       "method_tested": "HEAD",
       "name": "dogelayer source repository",
       "netuid": 80,
@@ -70,7 +334,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/dogelayer-ai/dogelayer",
-      "verified_at": "2026-06-06T07:44:04.873Z"
+      "verified_at": "2026-06-06T12:18:30.895Z"
     },
     {
       "candidate_id": "sn-80-taomarketcap-website",
@@ -79,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 720,
+      "latency_ms": 691,
       "method_tested": "HEAD",
       "name": "dogelayer website",
       "netuid": 80,
@@ -103,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://dogelayer.ai/",
-      "verified_at": "2026-06-06T07:44:04.877Z"
+      "verified_at": "2026-06-06T12:18:30.915Z"
     },
     {
       "candidate_id": "sn-80-tensorplex-docs",
@@ -136,24 +400,292 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/80",
-      "verified_at": "2026-06-06T07:44:04.893Z"
+      "verified_at": "2026-06-06T12:18:30.923Z"
+    },
+    {
+      "candidate_id": "sn-80-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "application/json",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 652,
+      "method_tested": "GET",
+      "name": "dogelayer API",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "http://47.128.213.45/api/",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://dogelayer.ai/",
+      "source_urls": [
+        "https://dogelayer.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://dogelayer.ai/api",
+      "verified_at": "2026-06-06T12:18:30.927Z"
+    },
+    {
+      "candidate_id": "sn-80-website-common-docs",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 681,
+      "method_tested": "HEAD",
+      "name": "dogelayer docs",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://dogelayer.ai/en/docs",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://dogelayer.ai/",
+      "source_urls": [
+        "https://dogelayer.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://dogelayer.ai/docs",
+      "verified_at": "2026-06-06T12:18:30.930Z"
+    },
+    {
+      "candidate_id": "sn-80-website-common-health",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 279,
+      "method_tested": "HEAD",
+      "name": "dogelayer health endpoint",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://dogelayer.ai/",
+      "source_urls": [
+        "https://dogelayer.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://dogelayer.ai/health",
+      "verified_at": "2026-06-06T12:18:30.935Z"
+    },
+    {
+      "candidate_id": "sn-80-website-common-openapi-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 487,
+      "method_tested": "HEAD",
+      "name": "dogelayer OpenAPI JSON",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://dogelayer.ai/",
+      "source_urls": [
+        "https://dogelayer.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://dogelayer.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:30.952Z"
+    },
+    {
+      "candidate_id": "sn-80-website-common-swagger",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 470,
+      "method_tested": "HEAD",
+      "name": "dogelayer Swagger UI",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://dogelayer.ai/",
+      "source_urls": [
+        "https://dogelayer.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://dogelayer.ai/swagger",
+      "verified_at": "2026-06-06T12:18:30.963Z"
+    },
+    {
+      "candidate_id": "sn-80-website-common-swagger-json",
+      "classification": "content-mismatch",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 464,
+      "method_tested": "HEAD",
+      "name": "dogelayer Swagger JSON",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://dogelayer.ai/",
+      "source_urls": [
+        "https://dogelayer.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://dogelayer.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:30.966Z"
+    },
+    {
+      "candidate_id": "sn-80-website-link-dogelayer-ai-dashboard-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 493,
+      "method_tested": "HEAD",
+      "name": "dogelayer dashboard",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://dogelayer.ai/",
+      "source_urls": [
+        "https://dogelayer.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://dogelayer.ai/en/dashboard",
+      "verified_at": "2026-06-06T12:18:30.984Z"
+    },
+    {
+      "candidate_id": "sn-80-website-link-dogelayer-ai-docs-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 470,
+      "method_tested": "HEAD",
+      "name": "dogelayer docs",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://dogelayer.ai/",
+      "source_urls": [
+        "https://dogelayer.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://dogelayer.ai/en/docs",
+      "verified_at": "2026-06-06T12:18:30.996Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-80",
   "summary": {
     "by_classification": {
-      "live": 3,
-      "redirected": 1
+      "content-mismatch": 2,
+      "dead": 4,
+      "live": 11,
+      "redirected": 3
     },
     "by_kind": {
-      "dashboard": 1,
-      "docs": 1,
+      "dashboard": 2,
+      "docs": 11,
+      "openapi": 3,
       "source-repo": 1,
+      "subnet-api": 2,
       "website": 1
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 19,
       "tensorplex-subnet-docs": 1
     }
   }

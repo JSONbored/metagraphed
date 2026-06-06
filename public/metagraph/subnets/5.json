@@ -2,6 +2,69 @@
   "candidate_surfaces": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-github-readme-manifold-inc-hone-data-artifact-1",
+      "kind": "data-artifact",
+      "name": "Hone data artifact",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/manifold-inc/hone/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/manifold-inc/hone/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://arcprize.org/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-github-readme-manifold-inc-hone-docs-2",
+      "kind": "docs",
+      "name": "Hone docs",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/manifold-inc/hone/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/manifold-inc/hone/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.bittensor.com/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-github-readme-manifold-inc-hone-docs-3",
+      "kind": "docs",
+      "name": "Hone docs",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/manifold-inc/hone/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/manifold-inc/hone/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.bittensor.com/subnets"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-5-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -37,7 +100,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/5",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/5"
+        "https://api.taomarketcap.com/public/v1/subnets/5",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/5/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/manifold-inc/hone"
@@ -73,7 +137,7 @@
       "provider": "taopedia-articles",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "taopedia-article",
@@ -94,7 +158,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -104,11 +168,263 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/5"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-common-api",
+      "kind": "subnet-api",
+      "name": "Hone API",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-common-docs",
+      "kind": "docs",
+      "name": "Hone docs",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-common-health",
+      "kind": "subnet-api",
+      "name": "Hone health endpoint",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Hone OpenAPI JSON",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-common-swagger",
+      "kind": "openapi",
+      "name": "Hone Swagger UI",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Hone Swagger JSON",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-link-www-hone-training-website-1",
+      "kind": "website",
+      "name": "Hone website page",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/network"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-link-www-hone-training-website-2",
+      "kind": "website",
+      "name": "Hone website page",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/nodes"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-link-www-hone-training-website-3",
+      "kind": "website",
+      "name": "Hone website page",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/projects"
     }
   ],
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-github-readme-manifold-inc-hone-data-artifact-1",
+      "kind": "data-artifact",
+      "name": "Hone data artifact",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/manifold-inc/hone/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/manifold-inc/hone/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://arcprize.org/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-github-readme-manifold-inc-hone-docs-2",
+      "kind": "docs",
+      "name": "Hone docs",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/manifold-inc/hone/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/manifold-inc/hone/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.bittensor.com/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-github-readme-manifold-inc-hone-docs-3",
+      "kind": "docs",
+      "name": "Hone docs",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/manifold-inc/hone/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/manifold-inc/hone/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.bittensor.com/subnets"
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-5-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -144,7 +460,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/5",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/5"
+        "https://api.taomarketcap.com/public/v1/subnets/5",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/5/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/manifold-inc/hone"
@@ -180,7 +497,7 @@
       "provider": "taopedia-articles",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "taopedia-article",
@@ -201,7 +518,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -211,23 +528,211 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/5"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-common-api",
+      "kind": "subnet-api",
+      "name": "Hone API",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-common-docs",
+      "kind": "docs",
+      "name": "Hone docs",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-common-health",
+      "kind": "subnet-api",
+      "name": "Hone health endpoint",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/health"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "Hone OpenAPI JSON",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-common-swagger",
+      "kind": "openapi",
+      "name": "Hone Swagger UI",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/swagger"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "Hone Swagger JSON",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-link-www-hone-training-website-1",
+      "kind": "website",
+      "name": "Hone website page",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/network"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-link-www-hone-training-website-2",
+      "kind": "website",
+      "name": "Hone website page",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/nodes"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-link-www-hone-training-website-3",
+      "kind": "website",
+      "name": "Hone website page",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://www.hone.training/projects"
     }
   ],
   "gaps": {
     "gap_notes": [
       "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
-      "No verified SSE/event stream yet.",
-      "No verified data artifact yet."
+      "No verified SSE/event stream yet."
     ],
     "missing_kinds": [
       "openapi",
       "subnet-api",
-      "sse",
-      "data-artifact"
+      "sse"
     ],
     "supported_kinds": [
       "dashboard",
+      "data-artifact",
       "docs",
       "source-repo",
       "website"
@@ -236,8 +741,8 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 5,
+    "block": 8347420,
+    "candidate_count": 17,
     "categories": [
       "baseline-curated"
     ],
@@ -246,33 +751,31 @@
       "gap_notes": [
         "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
-        "No verified SSE/event stream yet.",
-        "No verified data artifact yet."
+        "No verified SSE/event stream yet."
       ],
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 3,
-      "verified_at": "2026-06-06T07:43:52.194Z"
+      "source_count": 4,
+      "verified_at": "2026-06-06T12:18:10.254Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/5",
-    "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx",
+    "docs_url": "https://docs.bittensor.com/",
     "gaps": {
       "gap_notes": [
         "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
-        "No verified SSE/event stream yet.",
-        "No verified data artifact yet."
+        "No verified SSE/event stream yet."
       ],
       "missing_kinds": [
         "openapi",
         "subnet-api",
-        "sse",
-        "data-artifact"
+        "sse"
       ],
       "supported_kinds": [
         "dashboard",
+        "data-artifact",
         "docs",
         "source-repo",
         "website"
@@ -282,18 +785,23 @@
     "mechanism_count": 1,
     "name": "Hone",
     "native_name": "Hone",
+    "native_name_quality": "chain",
     "native_slug": "hone",
     "netuid": 5,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 256,
-    "probed_surface_count": 5,
+    "probed_surface_count": 7,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -302,7 +810,7 @@
     "source_repo": "https://github.com/manifold-inc/hone",
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 5,
+    "surface_count": 7,
     "symbol": "ε",
     "tempo": 360,
     "website_url": "https://www.hone.training/"
@@ -311,6 +819,90 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-5-github-readme-manifold-inc-hone-data-artifact-1",
+      "kind": "data-artifact",
+      "name": "Hone data artifact",
+      "netuid": 5,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/manifold-inc/hone/blob/main/README.md"
+      ],
+      "subnet_name": "Hone",
+      "subnet_slug": "sn-5",
+      "url": "https://arcprize.org/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 188,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:10.171Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-5-github-readme-manifold-inc-hone-docs-2",
+      "kind": "docs",
+      "name": "Hone docs",
+      "netuid": 5,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/manifold-inc/hone/blob/main/README.md"
+      ],
+      "subnet_name": "Hone",
+      "subnet_slug": "sn-5",
+      "url": "https://docs.bittensor.com/",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 61,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 108,
+        "method_tested": "HEAD",
+        "redirect_target": "https://docs.learnbittensor.org/",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:10.181Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-5-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Hone TaoMarketCap dashboard",
@@ -343,11 +935,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 202,
+        "latency_ms": 129,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.142Z"
+        "verified_at": "2026-06-06T12:18:10.198Z"
       }
     },
     {
@@ -367,30 +959,32 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/5"
+        "https://api.taomarketcap.com/public/v1/subnets/5",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/5/subnet.json"
       ],
       "subnet_name": "Hone",
       "subnet_slug": "sn-5",
       "url": "https://github.com/manifold-inc/hone",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/manifold-inc/hone",
-        "latency_ms": 1311,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-05-04T03:53:15Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.145Z"
+        "topics": [],
+        "verified_at": "2026-06-06T12:18:10.203Z"
       }
     },
     {
@@ -428,11 +1022,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 198,
+        "latency_ms": 183,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.149Z"
+        "verified_at": "2026-06-06T12:18:10.203Z"
       }
     },
     {
@@ -442,7 +1036,7 @@
       "kind": "docs",
       "name": "Hone Taopedia article",
       "netuid": 5,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -470,11 +1064,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1396,
+        "latency_ms": 359,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.169Z"
+        "verified_at": "2026-06-06T12:18:10.212Z"
       }
     },
     {
@@ -484,7 +1078,7 @@
       "kind": "docs",
       "name": "Hone Tensorplex subnet docs",
       "netuid": 5,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -512,11 +1106,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 296,
+        "latency_ms": 333,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.194Z"
+        "verified_at": "2026-06-06T12:18:10.254Z"
       }
     }
   ],
@@ -524,6 +1118,90 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-5-github-readme-manifold-inc-hone-data-artifact-1",
+      "kind": "data-artifact",
+      "name": "Hone data artifact",
+      "netuid": 5,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/manifold-inc/hone/blob/main/README.md"
+      ],
+      "subnet_name": "Hone",
+      "subnet_slug": "sn-5",
+      "url": "https://arcprize.org/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 188,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:10.171Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-5-github-readme-manifold-inc-hone-docs-2",
+      "kind": "docs",
+      "name": "Hone docs",
+      "netuid": 5,
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/manifold-inc/hone/blob/main/README.md"
+      ],
+      "subnet_name": "Hone",
+      "subnet_slug": "sn-5",
+      "url": "https://docs.bittensor.com/",
+      "verification": {
+        "classification": "redirected",
+        "confidence_score": 61,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 108,
+        "method_tested": "HEAD",
+        "redirect_target": "https://docs.learnbittensor.org/",
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:10.181Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-5-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Hone TaoMarketCap dashboard",
@@ -556,11 +1234,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 202,
+        "latency_ms": 129,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.142Z"
+        "verified_at": "2026-06-06T12:18:10.198Z"
       }
     },
     {
@@ -580,30 +1258,32 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/5"
+        "https://api.taomarketcap.com/public/v1/subnets/5",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/5/subnet.json"
       ],
       "subnet_name": "Hone",
       "subnet_slug": "sn-5",
       "url": "https://github.com/manifold-inc/hone",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/manifold-inc/hone",
-        "latency_ms": 1311,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-05-04T03:53:15Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.145Z"
+        "topics": [],
+        "verified_at": "2026-06-06T12:18:10.203Z"
       }
     },
     {
@@ -641,11 +1321,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 198,
+        "latency_ms": 183,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.149Z"
+        "verified_at": "2026-06-06T12:18:10.203Z"
       }
     },
     {
@@ -655,7 +1335,7 @@
       "kind": "docs",
       "name": "Hone Taopedia article",
       "netuid": 5,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -683,11 +1363,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1396,
+        "latency_ms": 359,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.169Z"
+        "verified_at": "2026-06-06T12:18:10.212Z"
       }
     },
     {
@@ -697,7 +1377,7 @@
       "kind": "docs",
       "name": "Hone Tensorplex subnet docs",
       "netuid": 5,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -725,11 +1405,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 296,
+        "latency_ms": 333,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:43:52.194Z"
+        "verified_at": "2026-06-06T12:18:10.254Z"
       }
     }
   ]

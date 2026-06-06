@@ -1,10 +1,109 @@
 {
-  "candidate_count": 9,
+  "candidate_count": 20,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Minos",
   "netuid": 107,
   "results": [
+    {
+      "candidate_id": "sn-107-github-readme-minos-protocol-minos-subnet-subnet-api-1",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "application/json",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 94,
+      "method_tested": "GET",
+      "name": "Minos API surface",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/minos-protocol/minos_subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://api.theminos.ai/",
+      "verified_at": "2026-06-06T12:18:39.635Z"
+    },
+    {
+      "candidate_id": "sn-107-github-readme-minos-protocol-minos-subnet-subnet-api-2",
+      "classification": "unsupported",
+      "confidence_score": 18,
+      "content_type": "application/json",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 339,
+      "method_tested": "GET",
+      "name": "Minos API surface",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": "https://api.theminos.ai/reference/",
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/minos-protocol/minos_subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "status": "failed",
+      "status_code": 400,
+      "url": "https://api.theminos.ai/reference",
+      "verified_at": "2026-06-06T12:18:39.637Z"
+    },
+    {
+      "candidate_id": "sn-107-github-readme-minos-protocol-minos-subnet-subnet-api-3",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "application/json",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 85,
+      "method_tested": "GET",
+      "name": "Minos API surface",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/minos-protocol/minos_subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://api.theminos.ai/health",
+      "verified_at": "2026-06-06T12:18:39.650Z"
+    },
     {
       "candidate_id": "sn-107-github-readme-tigerinvests-com-sn107-alpha-dashboard-1",
       "classification": "live",
@@ -12,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 214,
+      "latency_ms": 226,
       "method_tested": "HEAD",
       "name": "Minos dashboard",
       "netuid": 107,
@@ -36,16 +135,16 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taostats.io/subnets/107/chart",
-      "verified_at": "2026-06-06T07:44:08.234Z"
+      "verified_at": "2026-06-06T12:18:39.655Z"
     },
     {
-      "candidate_id": "sn-107-github-readme-tigerinvests-com-sn107-alpha-subnet-api-3",
+      "candidate_id": "sn-107-github-readme-tigerinvests-com-sn107-alpha-subnet-api-2",
       "classification": "unsupported",
       "confidence_score": 13,
       "content_type": null,
       "error": "fetch failed",
       "kind": "subnet-api",
-      "latency_ms": 554,
+      "latency_ms": 544,
       "method_tested": "GET",
       "name": "Minos API surface",
       "netuid": 107,
@@ -68,40 +167,7 @@
       "status": "failed",
       "status_code": null,
       "url": "https://your-api.com/",
-      "verified_at": "2026-06-06T07:44:08.234Z"
-    },
-    {
-      "candidate_id": "sn-107-github-readme-tigerinvests-com-sn107-alpha-website-2",
-      "classification": "live",
-      "confidence_score": 66,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "latency_ms": 463,
-      "method_tested": "HEAD",
-      "name": "Minos website page",
-      "netuid": 107,
-      "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/tigerinvests-com/sn107-alpha/blob/main/readme.md",
-      "source_urls": [
-        "https://github.com/tigerinvests-com/sn107-alpha/blob/main/readme.md"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://github.com/tigerinvests-com/sn107-alpha",
-      "verified_at": "2026-06-06T07:44:08.281Z"
+      "verified_at": "2026-06-06T12:18:39.659Z"
     },
     {
       "candidate_id": "sn-107-taomarketcap-dashboard",
@@ -110,7 +176,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 125,
+      "latency_ms": 142,
       "method_tested": "HEAD",
       "name": "Minos TaoMarketCap dashboard",
       "netuid": 107,
@@ -134,17 +200,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/107",
-      "verified_at": "2026-06-06T07:44:08.315Z"
+      "verified_at": "2026-06-06T12:18:39.660Z"
     },
     {
       "candidate_id": "sn-107-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 429,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/minos-protocol/minos_subnet",
       "kind": "source-repo",
-      "latency_ms": 439,
+      "latency_ms": 419,
       "method_tested": "HEAD",
       "name": "Minos source repository",
       "netuid": 107,
@@ -168,7 +234,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/minos-protocol/minos_subnet",
-      "verified_at": "2026-06-06T07:44:08.333Z"
+      "verified_at": "2026-06-06T12:18:39.719Z"
     },
     {
       "candidate_id": "sn-107-taomarketcap-website",
@@ -177,7 +243,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 260,
+      "latency_ms": 200,
       "method_tested": "HEAD",
       "name": "Minos website",
       "netuid": 107,
@@ -201,7 +267,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://theminos.ai/",
-      "verified_at": "2026-06-06T07:44:08.333Z"
+      "verified_at": "2026-06-06T12:18:39.767Z"
     },
     {
       "candidate_id": "sn-107-tensorplex-docs",
@@ -210,7 +276,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 416,
+      "latency_ms": 359,
       "method_tested": "HEAD",
       "name": "Minos Tensorplex subnet docs",
       "netuid": 107,
@@ -234,17 +300,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/107",
-      "verified_at": "2026-06-06T07:44:08.357Z"
+      "verified_at": "2026-06-06T12:18:39.802Z"
     },
     {
       "candidate_id": "sn-107-tensorplex-source-repo-1",
       "classification": "live",
       "confidence_score": 55,
       "error": null,
-      "github_api_status": 429,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/tigerinvests-com/sn107-alpha",
       "kind": "source-repo",
-      "latency_ms": 627,
+      "latency_ms": 500,
       "method_tested": "HEAD",
       "name": "Minos source repository",
       "netuid": 107,
@@ -268,21 +334,219 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tigerinvests-com/sn107-alpha",
-      "verified_at": "2026-06-06T07:44:08.409Z"
+      "verified_at": "2026-06-06T12:18:39.882Z"
     },
     {
-      "candidate_id": "sn-107-website-link-github-com-website-2-1586m34",
+      "candidate_id": "sn-107-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 128,
+      "method_tested": "GET",
+      "name": "Minos API",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://theminos.ai/",
+      "source_urls": [
+        "https://theminos.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://theminos.ai/api",
+      "verified_at": "2026-06-06T12:18:39.944Z"
+    },
+    {
+      "candidate_id": "sn-107-website-common-docs",
       "classification": "live",
       "confidence_score": 76,
       "content_type": "text/html; charset=utf-8",
       "error": null,
-      "kind": "website",
-      "latency_ms": 172,
+      "kind": "docs",
+      "latency_ms": 216,
       "method_tested": "HEAD",
-      "name": "Minos website page",
+      "name": "Minos docs",
       "netuid": 107,
       "private_redirect_blocked": false,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://theminos.ai/",
+      "source_urls": [
+        "https://theminos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://theminos.ai/docs",
+      "verified_at": "2026-06-06T12:18:39.946Z"
+    },
+    {
+      "candidate_id": "sn-107-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 129,
+      "method_tested": "GET",
+      "name": "Minos health endpoint",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://theminos.ai/",
+      "source_urls": [
+        "https://theminos.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://theminos.ai/health",
+      "verified_at": "2026-06-06T12:18:39.967Z"
+    },
+    {
+      "candidate_id": "sn-107-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 145,
+      "method_tested": "GET",
+      "name": "Minos OpenAPI JSON",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://theminos.ai/",
+      "source_urls": [
+        "https://theminos.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://theminos.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:39.986Z"
+    },
+    {
+      "candidate_id": "sn-107-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 138,
+      "method_tested": "GET",
+      "name": "Minos Swagger UI",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://theminos.ai/",
+      "source_urls": [
+        "https://theminos.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://theminos.ai/swagger",
+      "verified_at": "2026-06-06T12:18:40.040Z"
+    },
+    {
+      "candidate_id": "sn-107-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 130,
+      "method_tested": "GET",
+      "name": "Minos Swagger JSON",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://theminos.ai/",
+      "source_urls": [
+        "https://theminos.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://theminos.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:40.161Z"
+    },
+    {
+      "candidate_id": "sn-107-website-link-theminos-ai-docs-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 120,
+      "method_tested": "HEAD",
+      "name": "Minos docs",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -294,33 +558,135 @@
       "redirect_target": null,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/tigerinvests-com/sn107-alpha",
+      "source_url": "https://theminos.ai/",
       "source_urls": [
-        "https://github.com/tigerinvests-com/sn107-alpha"
+        "https://theminos.ai/"
       ],
       "status": "ok",
       "status_code": 200,
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Ftigerinvests-com%2Fsn107-alpha",
-      "verified_at": "2026-06-06T07:44:08.421Z"
+      "url": "https://theminos.ai/whitepaper",
+      "verified_at": "2026-06-06T12:18:40.162Z"
+    },
+    {
+      "candidate_id": "sn-107-website-link-theminos-ai-docs-4",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 522,
+      "method_tested": "HEAD",
+      "name": "Minos docs",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://docs.theminos.ai/overview",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://theminos.ai/",
+      "source_urls": [
+        "https://theminos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.theminos.ai/",
+      "verified_at": "2026-06-06T12:18:40.208Z"
+    },
+    {
+      "candidate_id": "sn-107-website-link-theminos-ai-website-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 114,
+      "method_tested": "HEAD",
+      "name": "Minos website page",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://theminos.ai/",
+      "source_urls": [
+        "https://theminos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://theminos.ai/about",
+      "verified_at": "2026-06-06T12:18:40.220Z"
+    },
+    {
+      "candidate_id": "sn-107-website-link-theminos-ai-website-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 196,
+      "method_tested": "HEAD",
+      "name": "Minos website page",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://theminos.ai/",
+      "source_urls": [
+        "https://theminos.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://theminos.ai/roadmap",
+      "verified_at": "2026-06-06T12:18:40.278Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-107",
   "summary": {
     "by_classification": {
-      "live": 8,
-      "unsupported": 1
+      "dead": 5,
+      "live": 12,
+      "redirected": 1,
+      "unsupported": 2
     },
     "by_kind": {
       "dashboard": 2,
-      "docs": 1,
+      "docs": 4,
+      "openapi": 3,
       "source-repo": 2,
-      "subnet-api": 1,
+      "subnet-api": 6,
       "website": 3
     },
     "by_provider": {
-      "taomarketcap": 3,
-      "tensorplex-subnet-docs": 6
+      "taomarketcap": 16,
+      "tensorplex-subnet-docs": 4
     }
   }
 }

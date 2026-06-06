@@ -3,27 +3,6 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-dashboard-7",
-      "kind": "dashboard",
-      "name": "MVTRX dashboard",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "url": "https://img.shields.io/badge/dashboard-white?logo=grafana"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
       "id": "sn-79-github-readme-taos-im-sn-79-docs-1",
       "kind": "docs",
       "name": "MVTRX docs",
@@ -31,7 +10,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -45,14 +24,14 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-docs-3",
+      "id": "sn-79-github-readme-taos-im-sn-79-docs-2",
       "kind": "docs",
       "name": "MVTRX docs",
       "netuid": 79,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -62,111 +41,6 @@
       ],
       "state": "schema-valid",
       "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2336772"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-docs-6",
-      "kind": "docs",
-      "name": "MVTRX docs",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "url": "https://img.shields.io/badge/whitepaper-white?logo=proton"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-website-2",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/maxe-team/maxe"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-website-4",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/microsoft/MarS"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-website-5",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/tplr-ai/templar"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-website-8",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/taos-im/sn-79"
     },
     {
       "auth_required": false,
@@ -220,7 +94,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -241,7 +115,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -255,428 +129,344 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-common-api-1hh6mts",
+      "id": "sn-79-website-common-api",
       "kind": "subnet-api",
       "name": "MVTRX API",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/api"
+      "url": "https://taos.im/api"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-common-docs-o36adh",
+      "id": "sn-79-website-common-docs",
       "kind": "docs",
       "name": "MVTRX docs",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/docs"
+      "url": "https://taos.im/docs"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-common-health-1tfwazq",
+      "id": "sn-79-website-common-health",
       "kind": "subnet-api",
       "name": "MVTRX health endpoint",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/health"
+      "url": "https://taos.im/health"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-common-openapi-json-61w4sw",
+      "id": "sn-79-website-common-openapi-json",
       "kind": "openapi",
       "name": "MVTRX OpenAPI JSON",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/openapi.json"
+      "url": "https://taos.im/openapi.json"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-common-swagger-1vqiohs",
+      "id": "sn-79-website-common-swagger",
       "kind": "openapi",
       "name": "MVTRX Swagger UI",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/swagger"
+      "url": "https://taos.im/swagger"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-common-swagger-json-18juwly",
+      "id": "sn-79-website-common-swagger-json",
       "kind": "openapi",
       "name": "MVTRX Swagger JSON",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/swagger.json"
+      "url": "https://taos.im/swagger.json"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-1",
+      "id": "sn-79-website-link-taos-im-website-1",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/"
+      "url": "https://taos.im/bizz"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-10",
+      "id": "sn-79-website-link-taos-im-website-10",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/security/advanced-security/code-security"
+      "url": "https://taos.im/tag/bittensor"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-2",
+      "id": "sn-79-website-link-taos-im-website-2",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fmaxe-team%2Fmaxe"
+      "url": "https://taos.im/goaling"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-2-1328k8j",
+      "id": "sn-79-website-link-taos-im-website-3",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/taos-im/sn-79",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/taos-im/sn-79"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Ftaos-im%2Fsn-79"
+      "url": "https://taos.im/idea"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-2-19g4x6b",
+      "id": "sn-79-website-link-taos-im-website-4",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/tplr-ai/templar",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/tplr-ai/templar"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fone-covenant%2Ftemplar"
+      "url": "https://taos.im/about"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-2-341bk8",
+      "id": "sn-79-website-link-taos-im-website-5",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/microsoft/MarS",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/microsoft/MarS"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fmicrosoft%2FMarS"
+      "url": "https://taos.im/matrix"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-3",
+      "id": "sn-79-website-link-taos-im-website-6",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/features/copilot"
+      "url": "https://taos.im/features"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-4",
+      "id": "sn-79-website-link-taos-im-website-7",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/features/ai/github-app"
+      "url": "https://taos.im/2026/01/27/upgrade-to-mvtrx"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-5",
+      "id": "sn-79-website-link-taos-im-website-8",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/mcp"
+      "url": "https://taos.im/category/major-update"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-6",
+      "id": "sn-79-website-link-taos-im-website-9",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/features/actions"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-7",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
-      "source_urls": [
-        "https://github.com/maxe-team/maxe"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/features/codespaces"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-8",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
-      "source_urls": [
-        "https://github.com/maxe-team/maxe"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/features/code-review"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-9",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
-      "source_urls": [
-        "https://github.com/maxe-team/maxe"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/security/advanced-security"
+      "url": "https://taos.im/2025/12/02/dis"
     }
   ],
   "candidates": [
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-dashboard-7",
-      "kind": "dashboard",
-      "name": "MVTRX dashboard",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "url": "https://img.shields.io/badge/dashboard-white?logo=grafana"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
       "id": "sn-79-github-readme-taos-im-sn-79-docs-1",
       "kind": "docs",
       "name": "MVTRX docs",
@@ -684,7 +474,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -698,14 +488,14 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-docs-3",
+      "id": "sn-79-github-readme-taos-im-sn-79-docs-2",
       "kind": "docs",
       "name": "MVTRX docs",
       "netuid": 79,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -715,111 +505,6 @@
       ],
       "state": "schema-valid",
       "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2336772"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-docs-6",
-      "kind": "docs",
-      "name": "MVTRX docs",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "url": "https://img.shields.io/badge/whitepaper-white?logo=proton"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-website-2",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/maxe-team/maxe"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-website-4",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/microsoft/MarS"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-website-5",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/tplr-ai/templar"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-github-readme-taos-im-sn-79-website-8",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/taos-im/sn-79/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/taos-im/sn-79"
     },
     {
       "auth_required": false,
@@ -873,7 +558,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -894,7 +579,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -908,401 +593,338 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-common-api-1hh6mts",
+      "id": "sn-79-website-common-api",
       "kind": "subnet-api",
       "name": "MVTRX API",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/api"
+      "url": "https://taos.im/api"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-common-docs-o36adh",
+      "id": "sn-79-website-common-docs",
       "kind": "docs",
       "name": "MVTRX docs",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/docs"
+      "url": "https://taos.im/docs"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-common-health-1tfwazq",
+      "id": "sn-79-website-common-health",
       "kind": "subnet-api",
       "name": "MVTRX health endpoint",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/health"
+      "url": "https://taos.im/health"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-common-openapi-json-61w4sw",
+      "id": "sn-79-website-common-openapi-json",
       "kind": "openapi",
       "name": "MVTRX OpenAPI JSON",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/openapi.json"
+      "url": "https://taos.im/openapi.json"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-common-swagger-1vqiohs",
+      "id": "sn-79-website-common-swagger",
       "kind": "openapi",
       "name": "MVTRX Swagger UI",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/swagger"
+      "url": "https://taos.im/swagger"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-common-swagger-json-18juwly",
+      "id": "sn-79-website-common-swagger-json",
       "kind": "openapi",
       "name": "MVTRX Swagger JSON",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/swagger.json"
+      "url": "https://taos.im/swagger.json"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-1",
+      "id": "sn-79-website-link-taos-im-website-1",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/"
+      "url": "https://taos.im/bizz"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-10",
+      "id": "sn-79-website-link-taos-im-website-10",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/security/advanced-security/code-security"
+      "url": "https://taos.im/tag/bittensor"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-2",
+      "id": "sn-79-website-link-taos-im-website-2",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fmaxe-team%2Fmaxe"
+      "url": "https://taos.im/goaling"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-2-1328k8j",
+      "id": "sn-79-website-link-taos-im-website-3",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/taos-im/sn-79",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/taos-im/sn-79"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Ftaos-im%2Fsn-79"
+      "url": "https://taos.im/idea"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-2-19g4x6b",
+      "id": "sn-79-website-link-taos-im-website-4",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/tplr-ai/templar",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/tplr-ai/templar"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fone-covenant%2Ftemplar"
+      "url": "https://taos.im/about"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-2-341bk8",
+      "id": "sn-79-website-link-taos-im-website-5",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/microsoft/MarS",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/microsoft/MarS"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fmicrosoft%2FMarS"
+      "url": "https://taos.im/matrix"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-3",
+      "id": "sn-79-website-link-taos-im-website-6",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/features/copilot"
+      "url": "https://taos.im/features"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-4",
+      "id": "sn-79-website-link-taos-im-website-7",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/features/ai/github-app"
+      "url": "https://taos.im/2026/01/27/upgrade-to-mvtrx"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-5",
+      "id": "sn-79-website-link-taos-im-website-8",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/mcp"
+      "url": "https://taos.im/category/major-update"
     },
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-6",
+      "id": "sn-79-website-link-taos-im-website-9",
       "kind": "website",
       "name": "MVTRX website page",
       "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
+      "source_url": "https://taos.im/",
       "source_urls": [
-        "https://github.com/maxe-team/maxe"
+        "https://taos.im/"
       ],
       "state": "schema-valid",
-      "url": "https://github.com/features/actions"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-7",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
-      "source_urls": [
-        "https://github.com/maxe-team/maxe"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/features/codespaces"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-8",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
-      "source_urls": [
-        "https://github.com/maxe-team/maxe"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/features/code-review"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-79-website-link-github-com-website-9",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://github.com/maxe-team/maxe",
-      "source_urls": [
-        "https://github.com/maxe-team/maxe"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/security/advanced-security"
+      "url": "https://taos.im/2025/12/02/dis"
     }
   ],
   "gaps": {
@@ -1328,8 +950,8 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8344198,
-    "candidate_count": 31,
+    "block": 8347420,
+    "candidate_count": 22,
     "categories": [
       "baseline-curated"
     ],
@@ -1344,11 +966,11 @@
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 4,
-      "verified_at": "2026-06-06T07:44:04.600Z"
+      "source_count": 3,
+      "verified_at": "2026-06-06T12:18:30.328Z"
     },
     "curation_level": "machine-verified",
-    "dashboard_url": "https://img.shields.io/badge/dashboard-white?logo=grafana",
+    "dashboard_url": "https://taomarketcap.com/subnets/79",
     "docs_url": "https://simulate.trading/taos-im-paper",
     "gaps": {
       "gap_notes": [
@@ -1374,18 +996,23 @@
     "mechanism_count": 1,
     "name": "MVTRX",
     "native_name": "MVTRX",
+    "native_name_quality": "chain",
     "native_slug": "mvtrx",
     "netuid": 79,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 256,
-    "probed_surface_count": 9,
+    "probed_surface_count": 5,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T01:19:40Z",
+        "captured_at": "2026-06-06T12:04:01Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
+      },
+      "identity": {
+        "display_name_source": "curated-overlay",
+        "native_name_quality": "chain"
       },
       "interface_metadata": "machine-verified"
     },
@@ -1394,54 +1021,12 @@
     "source_repo": "https://github.com/taos-im/sn-79",
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 9,
+    "surface_count": 5,
     "symbol": "ي",
     "tempo": 360,
-    "website_url": "https://github.com/maxe-team/maxe"
+    "website_url": "https://taos.im/"
   },
   "surfaces": [
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-github-readme-taos-im-sn-79-dashboard-7",
-      "kind": "dashboard",
-      "name": "MVTRX dashboard",
-      "netuid": 79,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://img.shields.io/badge/dashboard-white?logo=grafana",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 58,
-        "content_type": "image/svg+xml;charset=utf-8",
-        "latency_ms": 26,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.201Z"
-      }
-    },
     {
       "auth_required": false,
       "authority": "registry-observed",
@@ -1449,7 +1034,7 @@
       "kind": "docs",
       "name": "MVTRX docs",
       "netuid": 79,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1477,137 +1062,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 648,
+        "latency_ms": 575,
         "method_tested": "HEAD",
         "redirect_target": "https://drive.proton.me/urls/ZAQRQ25584#XhWrGYo6VEc4",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.212Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-github-readme-taos-im-sn-79-docs-6",
-      "kind": "docs",
-      "name": "MVTRX docs",
-      "netuid": 79,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://img.shields.io/badge/whitepaper-white?logo=proton",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 58,
-        "content_type": "image/svg+xml;charset=utf-8",
-        "latency_ms": 30,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.289Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-github-readme-taos-im-sn-79-website-2",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://github.com/maxe-team/maxe",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 506,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.291Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-github-readme-taos-im-sn-79-website-4",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://github.com/microsoft/MarS",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 473,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.320Z"
+        "verified_at": "2026-06-06T12:18:30.284Z"
       }
     },
     {
@@ -1645,11 +1104,53 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 150,
+        "latency_ms": 128,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.450Z"
+        "verified_at": "2026-06-06T12:18:30.306Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-79-taomarketcap-website",
+      "kind": "website",
+      "name": "MVTRX website",
+      "netuid": 79,
+      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/79"
+      ],
+      "subnet_name": "MVTRX",
+      "subnet_slug": "sn-79",
+      "url": "https://taos.im/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html; charset=UTF-8",
+        "latency_ms": 224,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:30.328Z"
       }
     },
     {
@@ -1659,7 +1160,7 @@
       "kind": "docs",
       "name": "MVTRX Tensorplex subnet docs",
       "netuid": 79,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1687,11 +1188,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 375,
+        "latency_ms": 339,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.478Z"
+        "verified_at": "2026-06-06T12:18:30.328Z"
       }
     },
     {
@@ -1701,7 +1202,7 @@
       "kind": "source-repo",
       "name": "MVTRX source repository",
       "netuid": 79,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1730,53 +1231,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/taos-im/sn-79",
-        "latency_ms": 605,
+        "latency_ms": 485,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.513Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-website-common-docs-o36adh",
-      "kind": "docs",
-      "name": "MVTRX docs",
-      "netuid": 79,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/maxe-team/maxe"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://github.com/docs",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 73,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.600Z"
+        "verified_at": "2026-06-06T12:18:30.328Z"
       }
     }
   ],
@@ -1784,53 +1243,11 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-79-github-readme-taos-im-sn-79-dashboard-7",
-      "kind": "dashboard",
-      "name": "MVTRX dashboard",
-      "netuid": 79,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://img.shields.io/badge/dashboard-white?logo=grafana",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 58,
-        "content_type": "image/svg+xml;charset=utf-8",
-        "latency_ms": 26,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.201Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-79-github-readme-taos-im-sn-79-docs-1",
       "kind": "docs",
       "name": "MVTRX docs",
       "netuid": 79,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1858,137 +1275,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 648,
+        "latency_ms": 575,
         "method_tested": "HEAD",
         "redirect_target": "https://drive.proton.me/urls/ZAQRQ25584#XhWrGYo6VEc4",
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.212Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-github-readme-taos-im-sn-79-docs-6",
-      "kind": "docs",
-      "name": "MVTRX docs",
-      "netuid": 79,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://img.shields.io/badge/whitepaper-white?logo=proton",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 58,
-        "content_type": "image/svg+xml;charset=utf-8",
-        "latency_ms": 30,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.289Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-github-readme-taos-im-sn-79-website-2",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://github.com/maxe-team/maxe",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 506,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.291Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-github-readme-taos-im-sn-79-website-4",
-      "kind": "website",
-      "name": "MVTRX website page",
-      "netuid": 79,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/taos-im/sn-79/blob/main/README.md"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://github.com/microsoft/MarS",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 473,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.320Z"
+        "verified_at": "2026-06-06T12:18:30.284Z"
       }
     },
     {
@@ -2026,11 +1317,53 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 150,
+        "latency_ms": 128,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.450Z"
+        "verified_at": "2026-06-06T12:18:30.306Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-79-taomarketcap-website",
+      "kind": "website",
+      "name": "MVTRX website",
+      "netuid": 79,
+      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/79"
+      ],
+      "subnet_name": "MVTRX",
+      "subnet_slug": "sn-79",
+      "url": "https://taos.im/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html; charset=UTF-8",
+        "latency_ms": 224,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:30.328Z"
       }
     },
     {
@@ -2040,7 +1373,7 @@
       "kind": "docs",
       "name": "MVTRX Tensorplex subnet docs",
       "netuid": 79,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -2068,11 +1401,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 375,
+        "latency_ms": 339,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.478Z"
+        "verified_at": "2026-06-06T12:18:30.328Z"
       }
     },
     {
@@ -2082,7 +1415,7 @@
       "kind": "source-repo",
       "name": "MVTRX source repository",
       "netuid": 79,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -2111,53 +1444,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/taos-im/sn-79",
-        "latency_ms": 605,
+        "latency_ms": 485,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.513Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-website-common-docs-o36adh",
-      "kind": "docs",
-      "name": "MVTRX docs",
-      "netuid": 79,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/maxe-team/maxe"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://github.com/docs",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 73,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T07:44:04.600Z"
+        "verified_at": "2026-06-06T12:18:30.328Z"
       }
     }
   ]

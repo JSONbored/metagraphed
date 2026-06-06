@@ -12,10 +12,10 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 2,
-    "verified_at": "2026-06-06T07:44:00.624Z"
+    "source_count": 3,
+    "verified_at": "2026-06-06T12:18:23.582Z"
   },
-  "dashboard_url": "https://taomarketcap.com/subnets/54",
+  "dashboard_url": "https://tao-ui-dashboard.yanez.ai/",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/54",
   "links": [],
   "name": "Yanez MIID",
@@ -51,7 +51,8 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/54"
+        "https://api.taomarketcap.com/public/v1/subnets/54",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/54/subnet.json"
       ],
       "url": "https://github.com/yanez-compliance/MIID-subnet",
       "verification": {
@@ -59,11 +60,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/yanez-compliance/MIID-subnet",
-        "latency_ms": 437,
+        "latency_ms": 589,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:00.581Z"
+        "verified_at": "2026-06-06T12:18:23.500Z"
       }
     },
     {
@@ -98,11 +99,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 163,
+        "latency_ms": 137,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:00.581Z"
+        "verified_at": "2026-06-06T12:18:23.504Z"
       }
     },
     {
@@ -111,7 +112,7 @@
       "id": "sn-54-tensorplex-docs",
       "kind": "docs",
       "name": "Yanez MIID Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +138,50 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 994,
+        "latency_ms": 374,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:00.624Z"
+        "verified_at": "2026-06-06T12:18:23.582Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-54-github-readme-yanez-compliance-miid-subnet-dashboard-1",
+      "kind": "dashboard",
+      "name": "Yanez MIID dashboard",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/yanez-compliance/MIID-subnet/blob/main/README.md"
+      ],
+      "url": "https://tao-ui-dashboard.yanez.ai/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 66,
+        "content_type": "text/html",
+        "latency_ms": 139,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-06T12:18:23.365Z"
       }
     },
     {
@@ -176,11 +216,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 146,
+        "latency_ms": 132,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T07:44:00.578Z"
+        "verified_at": "2026-06-06T12:18:23.481Z"
       }
     }
   ],

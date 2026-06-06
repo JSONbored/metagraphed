@@ -6,7 +6,7 @@
   "sources": [
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
-      "hash": "e7b2980528c4f6ed68cc90741b67c8fe8448d1218cdca15187036c9fdcf39114",
+      "hash": "dd652428c480cef7b8d41f66525a5468313bc8cdcf8b40520140f64dad7d44c4",
       "id": "adapter:allways",
       "kind": "adapter-snapshot",
       "path": "registry/adapters/latest/allways.json",
@@ -14,7 +14,7 @@
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
-      "hash": "be6f6617f99651c011c7cd39c96b36636a1a45d69c8291cd4d7fc045aa818676",
+      "hash": "bf856be7c74e15a4fe591f37c826379b50b949998800f078680959a2927b0294",
       "id": "adapter:gittensor",
       "kind": "adapter-snapshot",
       "path": "registry/adapters/latest/gittensor.json",
@@ -22,19 +22,19 @@
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
-      "hash": "28a0f0d3145f51e025b39c214f7990ac429c6d1c1d6dde8a9a4e2521600d8c79",
+      "hash": "c62564f72b91a1e457c6b4913dfa6d8aa2d6605e139b76431a33e9022a3c2ffb",
       "id": "candidate-surfaces",
       "kind": "candidate-discovery",
       "path": "registry/candidates",
-      "record_count": 845
+      "record_count": 1634
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
-      "hash": "32fdf17e1b3ead49e448fb09e3fcd6a4fcf8c953a6aae4a7d4a2fb9c1b847542",
+      "hash": "2c1de5e71ae116d4ad92c5fa8c5e0e63a062c7e9e67db26b82f48f323b7cc67c",
       "id": "candidate-verification",
       "kind": "probe-results",
       "path": "registry/verification/latest.json",
-      "record_count": 845
+      "record_count": 1634
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
@@ -45,8 +45,8 @@
       "record_count": 3
     },
     {
-      "captured_at": "2026-06-06T01:19:40Z",
-      "hash": "8e845acc7933e58f282d55b6b4132036b4924acdd85fd3d1836b7e588736ce56",
+      "captured_at": "2026-06-06T12:04:01Z",
+      "hash": "92d5c68aebe44363aafe35eab49d3c444f49e9920a1bdde1bc526d0ef95ff97d",
       "id": "native-subnets",
       "kind": "native-chain",
       "path": "registry/native/finney-subnets.json",
@@ -62,7 +62,7 @@
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
-      "hash": "7e00659346f60c58a12a785c55bec3acf1224d9546271b61b39e97d8fa29c275",
+      "hash": "69920fdec8616ae3e87b40100b83dc658b8c7edc8dd12a9557a03191877e1822",
       "id": "subnet-overlays",
       "kind": "registry-manifest",
       "path": "registry/subnets",
@@ -71,10 +71,10 @@
   ],
   "summary": {
     "adapter_snapshot_count": 2,
-    "candidate_count": 845,
+    "candidate_count": 1634,
     "overlay_count": 129,
     "provider_count": 14,
     "source_count": 8,
-    "verification_result_count": 845
+    "verification_result_count": 1634
   }
 }

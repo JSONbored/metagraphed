@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 142,
+        "latency_ms": 150,
         "method_tested": "HEAD",
         "name": "EfficientFrontier TaoMarketCap dashboard",
         "netuid": 53,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/53",
-        "verified_at": "2026-06-06T07:44:00.565Z"
+        "verified_at": "2026-06-06T12:18:23.330Z"
       }
     },
     {
@@ -71,7 +71,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/53",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/53"
+        "https://api.taomarketcap.com/public/v1/subnets/53",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json"
       ],
       "state": "schema-valid",
       "subnet_name": "EfficientFrontier",
@@ -84,7 +85,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/EfficientFrontier-SignalPlus/EfficientFrontier",
         "kind": "source-repo",
-        "latency_ms": 173,
+        "latency_ms": 280,
         "method_tested": "HEAD",
         "name": "EfficientFrontier source repository",
         "netuid": 53,
@@ -103,12 +104,13 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/53",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/53"
+          "https://api.taomarketcap.com/public/v1/subnets/53",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json"
         ],
         "status": "failed",
         "status_code": 404,
         "url": "https://github.com/EfficientFrontier-SignalPlus/EfficientFrontier",
-        "verified_at": "2026-06-06T07:44:00.577Z"
+        "verified_at": "2026-06-06T12:18:23.332Z"
       }
     },
     {
@@ -121,7 +123,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -139,7 +141,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 360,
+        "latency_ms": 413,
         "method_tested": "HEAD",
         "name": "EfficientFrontier Tensorplex subnet docs",
         "netuid": 53,
@@ -163,7 +165,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/53",
-        "verified_at": "2026-06-06T07:44:00.578Z"
+        "verified_at": "2026-06-06T12:18:23.361Z"
       }
     }
   ],

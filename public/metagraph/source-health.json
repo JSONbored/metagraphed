@@ -114,20 +114,23 @@
     },
     {
       "authority": "provider-claimed",
-      "candidate_count": 325,
+      "candidate_count": 1395,
       "classifications": {
-        "dead": 7,
-        "live": 295,
-        "rate-limited": 1,
-        "redirected": 19,
-        "unsupported": 3
+        "auth-required": 11,
+        "content-mismatch": 46,
+        "dead": 395,
+        "live": 724,
+        "rate-limited": 7,
+        "redirected": 181,
+        "transient": 4,
+        "unsupported": 27
       },
       "id": "taomarketcap",
       "kind": "data-provider",
       "name": "TaoMarketCap",
       "rpc_endpoint_count": 0,
       "status": "ok",
-      "verification_result_count": 325
+      "verification_result_count": 1395
     },
     {
       "authority": "community",
@@ -155,12 +158,12 @@
     },
     {
       "authority": "community",
-      "candidate_count": 512,
+      "candidate_count": 231,
       "classifications": {
         "auth-required": 1,
-        "dead": 52,
-        "live": 418,
-        "redirected": 28,
+        "dead": 12,
+        "live": 188,
+        "redirected": 17,
         "unsupported": 13
       },
       "id": "tensorplex-subnet-docs",
@@ -168,19 +171,19 @@
       "name": "Tensorplex subnet-docs",
       "rpc_endpoint_count": 0,
       "status": "ok",
-      "verification_result_count": 512
+      "verification_result_count": 231
     }
   ],
   "schema_version": 1,
   "source": "generated-provider-and-verification-summary",
   "summary": {
-    "candidate_count": 845,
+    "candidate_count": 1634,
     "provider_count": 14,
     "rpc_endpoint_count": 6,
     "status_counts": {
       "ok": 6,
       "unknown": 8
     },
-    "verification_result_count": 845
+    "verification_result_count": 1634
   }
 }

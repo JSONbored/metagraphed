@@ -11,6 +11,7 @@ import {
   buildOpenApiArtifact,
   compileRoutePattern,
 } from "../src/contracts.mjs";
+import { evaluateArtifactBudgets } from "../scripts/artifact-budgets.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 
 describe("public contract registry", () => {
@@ -62,6 +63,19 @@ describe("public contract registry", () => {
         slug: "allways",
       }),
       "/metagraph/adapters/allways.json",
+    );
+
+    const historyPattern = compileRoutePattern("/api/v1/health/history/{date}");
+    const historyMatch = historyPattern.exec(
+      "/api/v1/health/history/2026-06-06",
+    );
+    assert.equal(historyMatch.groups.date, "2026-06-06");
+    assert.equal(historyPattern.test("/api/v1/health/history/today"), false);
+    assert.equal(
+      artifactPathFromTemplate("/metagraph/health/history/{date}.json", {
+        date: "2026-06-06",
+      }),
+      "/metagraph/health/history/2026-06-06.json",
     );
   });
 
@@ -115,5 +129,17 @@ describe("public contract registry", () => {
       assert.notEqual(dataRef, "#/components/schemas/JsonObject");
       assert.notEqual(dataRef, "#/components/schemas/GenericArtifact");
     }
+  });
+
+  test("applies wildcard artifact budgets to dated health history", () => {
+    const [result] = evaluateArtifactBudgets([
+      {
+        path: "health/history/2026-06-06.json",
+        size_bytes: 350_000,
+      },
+    ]);
+
+    assert.equal(result.status, "ok");
+    assert.equal(result.warn_bytes, 400_000);
   });
 });

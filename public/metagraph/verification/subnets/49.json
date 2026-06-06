@@ -1,10 +1,76 @@
 {
-  "candidate_count": 4,
+  "candidate_count": 12,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Nepher Robotics",
   "netuid": 49,
   "results": [
+    {
+      "candidate_id": "sn-49-github-readme-nepher-ai-nepher-subnet-docs-1",
+      "classification": "live",
+      "confidence_score": 66,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 304,
+      "method_tested": "HEAD",
+      "name": "Nepher Robotics docs",
+      "netuid": 49,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/nepher-ai/nepher-subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/nepher-ai/nepher-subnet/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.nepher.ai/",
+      "verified_at": "2026-06-06T12:18:22.046Z"
+    },
+    {
+      "candidate_id": "sn-49-github-readme-nepher-ai-nepher-subnet-subnet-api-2",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "application/json",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 286,
+      "method_tested": "GET",
+      "name": "Nepher Robotics API surface",
+      "netuid": 49,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/nepher-ai/nepher-subnet/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/nepher-ai/nepher-subnet/blob/main/README.md"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://tournament-api.nepher.ai/",
+      "verified_at": "2026-06-06T12:18:22.046Z"
+    },
     {
       "candidate_id": "sn-49-taomarketcap-dashboard",
       "classification": "live",
@@ -12,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 140,
+      "latency_ms": 133,
       "method_tested": "HEAD",
       "name": "Nepher Robotics TaoMarketCap dashboard",
       "netuid": 49,
@@ -36,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/49",
-      "verified_at": "2026-06-06T07:43:59.596Z"
+      "verified_at": "2026-06-06T12:18:22.100Z"
     },
     {
       "candidate_id": "sn-49-taomarketcap-source-repo",
@@ -46,7 +112,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/nepher-ai/nepher-subnet",
       "kind": "source-repo",
-      "latency_ms": 597,
+      "latency_ms": 488,
       "method_tested": "HEAD",
       "name": "Nepher Robotics source repository",
       "netuid": 49,
@@ -70,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/nepher-ai/nepher-subnet",
-      "verified_at": "2026-06-06T07:43:59.651Z"
+      "verified_at": "2026-06-06T12:18:22.122Z"
     },
     {
       "candidate_id": "sn-49-taomarketcap-website",
@@ -79,7 +145,7 @@
       "content_type": null,
       "error": "fetch failed",
       "kind": "website",
-      "latency_ms": 184,
+      "latency_ms": 186,
       "method_tested": "GET",
       "name": "Nepher Robotics website",
       "netuid": 49,
@@ -102,7 +168,7 @@
       "status": "failed",
       "status_code": null,
       "url": "https://www.nepher.ai/",
-      "verified_at": "2026-06-06T07:43:59.652Z"
+      "verified_at": "2026-06-06T12:18:22.141Z"
     },
     {
       "candidate_id": "sn-49-tensorplex-docs",
@@ -111,7 +177,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 391,
+      "latency_ms": 344,
       "method_tested": "HEAD",
       "name": "Nepher Robotics Tensorplex subnet docs",
       "netuid": 49,
@@ -135,24 +201,219 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/49",
-      "verified_at": "2026-06-06T07:43:59.654Z"
+      "verified_at": "2026-06-06T12:18:22.150Z"
+    },
+    {
+      "candidate_id": "sn-49-website-common-api",
+      "classification": "unsupported",
+      "confidence_score": 23,
+      "content_type": null,
+      "error": "fetch failed",
+      "kind": "subnet-api",
+      "latency_ms": 187,
+      "method_tested": "GET",
+      "name": "Nepher Robotics API",
+      "netuid": 49,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.nepher.ai/",
+      "source_urls": [
+        "https://www.nepher.ai/"
+      ],
+      "status": "failed",
+      "status_code": null,
+      "url": "https://www.nepher.ai/api",
+      "verified_at": "2026-06-06T12:18:22.157Z"
+    },
+    {
+      "candidate_id": "sn-49-website-common-docs",
+      "classification": "unsupported",
+      "confidence_score": 23,
+      "content_type": null,
+      "error": "fetch failed",
+      "kind": "docs",
+      "latency_ms": 194,
+      "method_tested": "GET",
+      "name": "Nepher Robotics docs",
+      "netuid": 49,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.nepher.ai/",
+      "source_urls": [
+        "https://www.nepher.ai/"
+      ],
+      "status": "failed",
+      "status_code": null,
+      "url": "https://www.nepher.ai/docs",
+      "verified_at": "2026-06-06T12:18:22.158Z"
+    },
+    {
+      "candidate_id": "sn-49-website-common-health",
+      "classification": "unsupported",
+      "confidence_score": 23,
+      "content_type": null,
+      "error": "fetch failed",
+      "kind": "subnet-api",
+      "latency_ms": 185,
+      "method_tested": "GET",
+      "name": "Nepher Robotics health endpoint",
+      "netuid": 49,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.nepher.ai/",
+      "source_urls": [
+        "https://www.nepher.ai/"
+      ],
+      "status": "failed",
+      "status_code": null,
+      "url": "https://www.nepher.ai/health",
+      "verified_at": "2026-06-06T12:18:22.200Z"
+    },
+    {
+      "candidate_id": "sn-49-website-common-openapi-json",
+      "classification": "unsupported",
+      "confidence_score": 23,
+      "content_type": null,
+      "error": "fetch failed",
+      "kind": "openapi",
+      "latency_ms": 196,
+      "method_tested": "GET",
+      "name": "Nepher Robotics OpenAPI JSON",
+      "netuid": 49,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.nepher.ai/",
+      "source_urls": [
+        "https://www.nepher.ai/"
+      ],
+      "status": "failed",
+      "status_code": null,
+      "url": "https://www.nepher.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:22.209Z"
+    },
+    {
+      "candidate_id": "sn-49-website-common-swagger",
+      "classification": "unsupported",
+      "confidence_score": 23,
+      "content_type": null,
+      "error": "fetch failed",
+      "kind": "openapi",
+      "latency_ms": 181,
+      "method_tested": "GET",
+      "name": "Nepher Robotics Swagger UI",
+      "netuid": 49,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.nepher.ai/",
+      "source_urls": [
+        "https://www.nepher.ai/"
+      ],
+      "status": "failed",
+      "status_code": null,
+      "url": "https://www.nepher.ai/swagger",
+      "verified_at": "2026-06-06T12:18:22.233Z"
+    },
+    {
+      "candidate_id": "sn-49-website-common-swagger-json",
+      "classification": "unsupported",
+      "confidence_score": 23,
+      "content_type": null,
+      "error": "fetch failed",
+      "kind": "openapi",
+      "latency_ms": 192,
+      "method_tested": "GET",
+      "name": "Nepher Robotics Swagger JSON",
+      "netuid": 49,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.nepher.ai/",
+      "source_urls": [
+        "https://www.nepher.ai/"
+      ],
+      "status": "failed",
+      "status_code": null,
+      "url": "https://www.nepher.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:22.244Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-49",
   "summary": {
     "by_classification": {
-      "live": 3,
-      "unsupported": 1
+      "dead": 1,
+      "live": 4,
+      "unsupported": 7
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1,
+      "docs": 3,
+      "openapi": 3,
       "source-repo": 1,
+      "subnet-api": 3,
       "website": 1
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 11,
       "tensorplex-subnet-docs": 1
     }
   }

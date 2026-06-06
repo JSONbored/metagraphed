@@ -1,10 +1,208 @@
 {
-  "candidate_count": 5,
+  "candidate_count": 21,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Aurelius",
   "netuid": 37,
   "results": [
+    {
+      "candidate_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-dashboard-2",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 235,
+      "method_tested": "GET",
+      "name": "Aurelius dashboard",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://taostats.io/subnet/455",
+      "verified_at": "2026-06-06T12:18:19.159Z"
+    },
+    {
+      "candidate_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-dashboard-3",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "latency_ms": 210,
+      "method_tested": "GET",
+      "name": "Aurelius dashboard",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://taostats.io/subnet/37",
+      "verified_at": "2026-06-06T12:18:19.166Z"
+    },
+    {
+      "candidate_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-docs-1",
+      "classification": "redirected",
+      "confidence_score": 61,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 94,
+      "method_tested": "HEAD",
+      "name": "Aurelius docs",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": "https://docs.learnbittensor.org/",
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://docs.bittensor.com/",
+      "verified_at": "2026-06-06T12:18:19.178Z"
+    },
+    {
+      "candidate_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-4",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "application/json",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 216,
+      "method_tested": "GET",
+      "name": "Aurelius API surface",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://new-collector-api-production.up.railway.app/",
+      "verified_at": "2026-06-06T12:18:19.178Z"
+    },
+    {
+      "candidate_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-5",
+      "classification": "live",
+      "confidence_score": 68,
+      "content_type": "application/json",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 357,
+      "method_tested": "GET",
+      "name": "Aurelius API surface",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://new-collector-api-production.up.railway.app/health",
+      "verified_at": "2026-06-06T12:18:19.197Z"
+    },
+    {
+      "candidate_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-6",
+      "classification": "auth-required",
+      "confidence_score": 13,
+      "content_type": null,
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 306,
+      "method_tested": "GET",
+      "name": "Aurelius API surface",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/Aurelius-Protocol/Aurelius-Protocol/blob/main/README.md"
+      ],
+      "status": "failed",
+      "status_code": 401,
+      "url": "https://api.deepseek.com/v1",
+      "verified_at": "2026-06-06T12:18:19.206Z"
+    },
     {
       "candidate_id": "sn-37-taomarketcap-dashboard",
       "classification": "live",
@@ -12,7 +210,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 275,
+      "latency_ms": 136,
       "method_tested": "HEAD",
       "name": "Aurelius TaoMarketCap dashboard",
       "netuid": 37,
@@ -36,7 +234,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/37",
-      "verified_at": "2026-06-06T07:43:56.601Z"
+      "verified_at": "2026-06-06T12:18:19.272Z"
     },
     {
       "candidate_id": "sn-37-taomarketcap-source-repo",
@@ -46,7 +244,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/Aurelius-Protocol/Aurelius-Protocol",
       "kind": "source-repo",
-      "latency_ms": 460,
+      "latency_ms": 582,
       "method_tested": "HEAD",
       "name": "Aurelius source repository",
       "netuid": 37,
@@ -70,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
-      "verified_at": "2026-06-06T07:43:56.609Z"
+      "verified_at": "2026-06-06T12:18:19.303Z"
     },
     {
       "candidate_id": "sn-37-taomarketcap-website",
@@ -79,7 +277,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 171,
+      "latency_ms": 167,
       "method_tested": "HEAD",
       "name": "Aurelius website",
       "netuid": 37,
@@ -103,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://aureliusaligned.ai/",
-      "verified_at": "2026-06-06T07:43:56.621Z"
+      "verified_at": "2026-06-06T12:18:19.305Z"
     },
     {
       "candidate_id": "sn-37-tensorplex-docs",
@@ -112,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 345,
+      "latency_ms": 349,
       "method_tested": "HEAD",
       "name": "Aurelius Tensorplex subnet docs",
       "netuid": 37,
@@ -136,7 +334,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/37",
-      "verified_at": "2026-06-06T07:43:56.663Z"
+      "verified_at": "2026-06-06T12:18:19.330Z"
     },
     {
       "candidate_id": "sn-37-tensorplex-source-repo-1",
@@ -145,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "source-repo",
-      "latency_ms": 303,
+      "latency_ms": 296,
       "method_tested": "HEAD",
       "name": "Aurelius source repository",
       "netuid": 37,
@@ -169,23 +367,358 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Aurelius-Protocol",
-      "verified_at": "2026-06-06T07:43:56.705Z"
+      "verified_at": "2026-06-06T12:18:19.334Z"
+    },
+    {
+      "candidate_id": "sn-37-website-common-api",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=iso-8859-1",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 24,
+      "method_tested": "GET",
+      "name": "Aurelius API",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://aureliusaligned.ai/api",
+      "verified_at": "2026-06-06T12:18:19.336Z"
+    },
+    {
+      "candidate_id": "sn-37-website-common-docs",
+      "classification": "auth-required",
+      "confidence_score": 26,
+      "content_type": "text/html; charset=iso-8859-1",
+      "error": null,
+      "kind": "docs",
+      "latency_ms": 68,
+      "method_tested": "GET",
+      "name": "Aurelius docs",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://aureliusaligned.ai/docs/",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "status": "failed",
+      "status_code": 403,
+      "url": "https://aureliusaligned.ai/docs",
+      "verified_at": "2026-06-06T12:18:19.362Z"
+    },
+    {
+      "candidate_id": "sn-37-website-common-health",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=iso-8859-1",
+      "error": null,
+      "kind": "subnet-api",
+      "latency_ms": 36,
+      "method_tested": "GET",
+      "name": "Aurelius health endpoint",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://aureliusaligned.ai/health",
+      "verified_at": "2026-06-06T12:18:19.364Z"
+    },
+    {
+      "candidate_id": "sn-37-website-common-openapi-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=iso-8859-1",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 32,
+      "method_tested": "GET",
+      "name": "Aurelius OpenAPI JSON",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://aureliusaligned.ai/openapi.json",
+      "verified_at": "2026-06-06T12:18:19.408Z"
+    },
+    {
+      "candidate_id": "sn-37-website-common-swagger",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=iso-8859-1",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 29,
+      "method_tested": "GET",
+      "name": "Aurelius Swagger UI",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://aureliusaligned.ai/swagger",
+      "verified_at": "2026-06-06T12:18:19.420Z"
+    },
+    {
+      "candidate_id": "sn-37-website-common-swagger-json",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=iso-8859-1",
+      "error": null,
+      "kind": "openapi",
+      "latency_ms": 31,
+      "method_tested": "GET",
+      "name": "Aurelius Swagger JSON",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://aureliusaligned.ai/swagger.json",
+      "verified_at": "2026-06-06T12:18:19.446Z"
+    },
+    {
+      "candidate_id": "sn-37-website-link-aureliusaligned-ai-website-1",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 71,
+      "method_tested": "HEAD",
+      "name": "Aurelius website page",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://aureliusaligned.ai/about/alignment/",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://aureliusaligned.ai/about/alignment",
+      "verified_at": "2026-06-06T12:18:19.473Z"
+    },
+    {
+      "candidate_id": "sn-37-website-link-aureliusaligned-ai-website-2",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 139,
+      "method_tested": "HEAD",
+      "name": "Aurelius website page",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://aureliusaligned.ai/about/",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://aureliusaligned.ai/about",
+      "verified_at": "2026-06-06T12:18:19.482Z"
+    },
+    {
+      "candidate_id": "sn-37-website-link-aureliusaligned-ai-website-3",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 46,
+      "method_tested": "HEAD",
+      "name": "Aurelius website page",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://aureliusaligned.ai/team/",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://aureliusaligned.ai/team",
+      "verified_at": "2026-06-06T12:18:19.506Z"
+    },
+    {
+      "candidate_id": "sn-37-website-link-aureliusaligned-ai-website-4",
+      "classification": "redirected",
+      "confidence_score": 71,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 64,
+      "method_tested": "HEAD",
+      "name": "Aurelius website page",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": "https://aureliusaligned.ai/roadmap/",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://aureliusaligned.ai/",
+      "source_urls": [
+        "https://aureliusaligned.ai/"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://aureliusaligned.ai/roadmap",
+      "verified_at": "2026-06-06T12:18:19.541Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-37",
   "summary": {
     "by_classification": {
-      "live": 5
+      "auth-required": 2,
+      "dead": 8,
+      "live": 6,
+      "redirected": 5
     },
     "by_kind": {
-      "dashboard": 1,
-      "docs": 1,
+      "dashboard": 3,
+      "docs": 3,
+      "openapi": 3,
       "source-repo": 2,
-      "website": 1
+      "subnet-api": 5,
+      "website": 5
     },
     "by_provider": {
-      "taomarketcap": 3,
+      "taomarketcap": 19,
       "tensorplex-subnet-docs": 2
     }
   }

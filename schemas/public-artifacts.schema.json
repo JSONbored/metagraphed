@@ -57,6 +57,9 @@
     "health": {
       "$ref": "#/$defs/healthArtifact"
     },
+    "health_history": {
+      "$ref": "#/$defs/healthHistoryArtifact"
+    },
     "rpc_endpoints": {
       "$ref": "#/$defs/rpcEndpointsArtifact"
     },
@@ -315,6 +318,28 @@
         }
       ]
     },
+    "healthHistoryArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["date", "summary", "surfaces"],
+          "properties": {
+            "date": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "summary": {
+              "type": "object"
+            },
+            "surfaces": {
+              "type": "array"
+            }
+          }
+        }
+      ]
+    },
     "rpcEndpointsArtifact": {
       "allOf": [
         {
@@ -389,6 +414,12 @@
         },
         "name": {
           "type": "string"
+        },
+        "native_name": {
+          "type": ["string", "null"]
+        },
+        "native_name_quality": {
+          "enum": ["chain", "placeholder", "empty"]
         },
         "slug": {
           "type": "string"

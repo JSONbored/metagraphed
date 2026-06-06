@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 190,
+        "latency_ms": 145,
         "method_tested": "HEAD",
         "name": "for sale (burn to uid1) TaoMarketCap dashboard",
         "netuid": 104,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/104",
-        "verified_at": "2026-06-06T07:44:08.013Z"
+        "verified_at": "2026-06-06T12:18:39.180Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 376,
+        "latency_ms": 347,
         "method_tested": "HEAD",
         "name": "for sale (burn to uid1) Tensorplex subnet docs",
         "netuid": 104,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/104",
-        "verified_at": "2026-06-06T07:44:08.033Z"
+        "verified_at": "2026-06-06T12:18:39.180Z"
       }
     }
   ],

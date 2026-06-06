@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 143,
+        "latency_ms": 144,
         "method_tested": "HEAD",
         "name": "TalkHead TaoMarketCap dashboard",
         "netuid": 108,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/108",
-        "verified_at": "2026-06-06T07:44:08.440Z"
+        "verified_at": "2026-06-06T12:18:40.282Z"
       }
     },
     {
@@ -71,7 +71,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/108",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/108"
+        "https://api.taomarketcap.com/public/v1/subnets/108",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/108/subnet.json"
       ],
       "state": "schema-valid",
       "subnet_name": "TalkHead",
@@ -81,10 +82,10 @@
         "classification": "live",
         "confidence_score": 59,
         "error": null,
-        "github_api_status": 429,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/talkheadai/talkhead-subnet",
         "kind": "source-repo",
-        "latency_ms": 502,
+        "latency_ms": 443,
         "method_tested": "HEAD",
         "name": "TalkHead source repository",
         "netuid": 108,
@@ -103,12 +104,13 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/108",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/108"
+          "https://api.taomarketcap.com/public/v1/subnets/108",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/108/subnet.json"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/talkheadai/talkhead-subnet",
-        "verified_at": "2026-06-06T07:44:08.448Z"
+        "verified_at": "2026-06-06T12:18:40.334Z"
       }
     },
     {
@@ -139,7 +141,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 616,
+        "latency_ms": 603,
         "method_tested": "HEAD",
         "name": "TalkHead website",
         "netuid": 108,
@@ -163,7 +165,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.talkhead.ai/",
-        "verified_at": "2026-06-06T07:44:08.448Z"
+        "verified_at": "2026-06-06T12:18:40.336Z"
       }
     },
     {
@@ -176,7 +178,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +196,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 393,
+        "latency_ms": 414,
         "method_tested": "HEAD",
         "name": "TalkHead Tensorplex subnet docs",
         "netuid": 108,
@@ -218,7 +220,667 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/108",
-        "verified_at": "2026-06-06T07:44:08.476Z"
+        "verified_at": "2026-06-06T12:18:40.350Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-108-website-common-api",
+      "kind": "subnet-api",
+      "name": "TalkHead API",
+      "netuid": 108,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.talkhead.ai/",
+      "source_urls": [
+        "https://www.talkhead.ai/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TalkHead",
+      "url": "https://www.talkhead.ai/api",
+      "verification": {
+        "candidate_id": "sn-108-website-common-api",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 193,
+        "method_tested": "GET",
+        "name": "TalkHead API",
+        "netuid": 108,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.talkhead.ai/",
+        "source_urls": [
+          "https://www.talkhead.ai/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.talkhead.ai/api",
+        "verified_at": "2026-06-06T12:18:40.376Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-108-website-common-docs",
+      "kind": "docs",
+      "name": "TalkHead docs",
+      "netuid": 108,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.talkhead.ai/",
+      "source_urls": [
+        "https://www.talkhead.ai/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TalkHead",
+      "url": "https://www.talkhead.ai/docs",
+      "verification": {
+        "candidate_id": "sn-108-website-common-docs",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 195,
+        "method_tested": "GET",
+        "name": "TalkHead docs",
+        "netuid": 108,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.talkhead.ai/",
+        "source_urls": [
+          "https://www.talkhead.ai/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.talkhead.ai/docs",
+        "verified_at": "2026-06-06T12:18:40.427Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-108-website-common-health",
+      "kind": "subnet-api",
+      "name": "TalkHead health endpoint",
+      "netuid": 108,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.talkhead.ai/",
+      "source_urls": [
+        "https://www.talkhead.ai/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TalkHead",
+      "url": "https://www.talkhead.ai/health",
+      "verification": {
+        "candidate_id": "sn-108-website-common-health",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 193,
+        "method_tested": "GET",
+        "name": "TalkHead health endpoint",
+        "netuid": 108,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.talkhead.ai/",
+        "source_urls": [
+          "https://www.talkhead.ai/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.talkhead.ai/health",
+        "verified_at": "2026-06-06T12:18:40.463Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-108-website-common-openapi-json",
+      "kind": "openapi",
+      "name": "TalkHead OpenAPI JSON",
+      "netuid": 108,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.talkhead.ai/",
+      "source_urls": [
+        "https://www.talkhead.ai/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TalkHead",
+      "url": "https://www.talkhead.ai/openapi.json",
+      "verification": {
+        "candidate_id": "sn-108-website-common-openapi-json",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 200,
+        "method_tested": "GET",
+        "name": "TalkHead OpenAPI JSON",
+        "netuid": 108,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.talkhead.ai/",
+        "source_urls": [
+          "https://www.talkhead.ai/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.talkhead.ai/openapi.json",
+        "verified_at": "2026-06-06T12:18:40.475Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-108-website-common-swagger",
+      "kind": "openapi",
+      "name": "TalkHead Swagger UI",
+      "netuid": 108,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.talkhead.ai/",
+      "source_urls": [
+        "https://www.talkhead.ai/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TalkHead",
+      "url": "https://www.talkhead.ai/swagger",
+      "verification": {
+        "candidate_id": "sn-108-website-common-swagger",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 199,
+        "method_tested": "GET",
+        "name": "TalkHead Swagger UI",
+        "netuid": 108,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.talkhead.ai/",
+        "source_urls": [
+          "https://www.talkhead.ai/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.talkhead.ai/swagger",
+        "verified_at": "2026-06-06T12:18:40.492Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-108-website-common-swagger-json",
+      "kind": "openapi",
+      "name": "TalkHead Swagger JSON",
+      "netuid": 108,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-common-path",
+      "source_url": "https://www.talkhead.ai/",
+      "source_urls": [
+        "https://www.talkhead.ai/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TalkHead",
+      "url": "https://www.talkhead.ai/swagger.json",
+      "verification": {
+        "candidate_id": "sn-108-website-common-swagger-json",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "openapi",
+        "latency_ms": 205,
+        "method_tested": "GET",
+        "name": "TalkHead Swagger JSON",
+        "netuid": 108,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-common-path",
+        "source_url": "https://www.talkhead.ai/",
+        "source_urls": [
+          "https://www.talkhead.ai/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.talkhead.ai/swagger.json",
+        "verified_at": "2026-06-06T12:18:40.588Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-108-website-link-www-talkhead-ai-dashboard-3",
+      "kind": "dashboard",
+      "name": "TalkHead dashboard",
+      "netuid": 108,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.talkhead.ai/",
+      "source_urls": [
+        "https://www.talkhead.ai/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TalkHead",
+      "url": "https://www.talkhead.ai/leaderboard",
+      "verification": {
+        "candidate_id": "sn-108-website-link-www-talkhead-ai-dashboard-3",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "dashboard",
+        "latency_ms": 197,
+        "method_tested": "GET",
+        "name": "TalkHead dashboard",
+        "netuid": 108,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://www.talkhead.ai/",
+        "source_urls": [
+          "https://www.talkhead.ai/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.talkhead.ai/leaderboard",
+        "verified_at": "2026-06-06T12:18:40.663Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-108-website-link-www-talkhead-ai-website-1",
+      "kind": "website",
+      "name": "TalkHead website page",
+      "netuid": 108,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.talkhead.ai/",
+      "source_urls": [
+        "https://www.talkhead.ai/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TalkHead",
+      "url": "https://www.talkhead.ai/contact-us",
+      "verification": {
+        "candidate_id": "sn-108-website-link-www-talkhead-ai-website-1",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 584,
+        "method_tested": "HEAD",
+        "name": "TalkHead website page",
+        "netuid": 108,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://www.talkhead.ai/",
+        "source_urls": [
+          "https://www.talkhead.ai/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.talkhead.ai/contact-us",
+        "verified_at": "2026-06-06T12:18:40.719Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-108-website-link-www-talkhead-ai-website-2",
+      "kind": "website",
+      "name": "TalkHead website page",
+      "netuid": 108,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.talkhead.ai/",
+      "source_urls": [
+        "https://www.talkhead.ai/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TalkHead",
+      "url": "https://www.talkhead.ai/coming-soon",
+      "verification": {
+        "candidate_id": "sn-108-website-link-www-talkhead-ai-website-2",
+        "classification": "live",
+        "confidence_score": 76,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 612,
+        "method_tested": "HEAD",
+        "name": "TalkHead website page",
+        "netuid": 108,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://www.talkhead.ai/",
+        "source_urls": [
+          "https://www.talkhead.ai/"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://www.talkhead.ai/coming-soon",
+        "verified_at": "2026-06-06T12:18:40.720Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-108-website-link-www-talkhead-ai-website-4",
+      "kind": "website",
+      "name": "TalkHead website page",
+      "netuid": 108,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.talkhead.ai/",
+      "source_urls": [
+        "https://www.talkhead.ai/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TalkHead",
+      "url": "https://www.talkhead.ai/about-us",
+      "verification": {
+        "candidate_id": "sn-108-website-link-www-talkhead-ai-website-4",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 199,
+        "method_tested": "GET",
+        "name": "TalkHead website page",
+        "netuid": 108,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://www.talkhead.ai/",
+        "source_urls": [
+          "https://www.talkhead.ai/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.talkhead.ai/about-us",
+        "verified_at": "2026-06-06T12:18:40.731Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-108-website-link-www-talkhead-ai-website-5",
+      "kind": "website",
+      "name": "TalkHead website page",
+      "netuid": 108,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.talkhead.ai/",
+      "source_urls": [
+        "https://www.talkhead.ai/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TalkHead",
+      "url": "https://www.talkhead.ai/tos",
+      "verification": {
+        "candidate_id": "sn-108-website-link-www-talkhead-ai-website-5",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 200,
+        "method_tested": "GET",
+        "name": "TalkHead website page",
+        "netuid": 108,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://www.talkhead.ai/",
+        "source_urls": [
+          "https://www.talkhead.ai/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.talkhead.ai/tos",
+        "verified_at": "2026-06-06T12:18:40.764Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-108-website-link-www-talkhead-ai-website-6",
+      "kind": "website",
+      "name": "TalkHead website page",
+      "netuid": 108,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://www.talkhead.ai/",
+      "source_urls": [
+        "https://www.talkhead.ai/"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "TalkHead",
+      "url": "https://www.talkhead.ai/privacy-policy",
+      "verification": {
+        "candidate_id": "sn-108-website-link-www-talkhead-ai-website-6",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "website",
+        "latency_ms": 189,
+        "method_tested": "GET",
+        "name": "TalkHead website page",
+        "netuid": 108,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "provider-claimed",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "provider-claimed",
+        "source_type": "project-website-link",
+        "source_url": "https://www.talkhead.ai/",
+        "source_urls": [
+          "https://www.talkhead.ai/"
+        ],
+        "status": "failed",
+        "status_code": 404,
+        "url": "https://www.talkhead.ai/privacy-policy",
+        "verified_at": "2026-06-06T12:18:40.768Z"
       }
     }
   ],

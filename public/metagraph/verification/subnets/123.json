@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 247,
+      "latency_ms": 144,
       "method_tested": "HEAD",
       "name": "MANTIS TaoMarketCap dashboard",
       "netuid": 123,
@@ -36,17 +36,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/123",
-      "verified_at": "2026-06-06T07:44:10.437Z"
+      "verified_at": "2026-06-06T12:18:44.412Z"
     },
     {
       "candidate_id": "sn-123-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 429,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/Barbariandev/MANTIS",
       "kind": "source-repo",
-      "latency_ms": 665,
+      "latency_ms": 472,
       "method_tested": "HEAD",
       "name": "MANTIS source repository",
       "netuid": 123,
@@ -65,12 +65,13 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/123",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/123"
+        "https://api.taomarketcap.com/public/v1/subnets/123",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/123/subnet.json"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Barbariandev/MANTIS",
-      "verified_at": "2026-06-06T07:44:10.509Z"
+      "verified_at": "2026-06-06T12:18:44.416Z"
     },
     {
       "candidate_id": "sn-123-tensorplex-docs",
@@ -79,7 +80,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 326,
+      "latency_ms": 325,
       "method_tested": "HEAD",
       "name": "MANTIS Tensorplex subnet docs",
       "netuid": 123,
@@ -103,7 +104,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/123",
-      "verified_at": "2026-06-06T07:44:10.528Z"
+      "verified_at": "2026-06-06T12:18:44.481Z"
     }
   ],
   "schema_version": 1,

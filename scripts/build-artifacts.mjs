@@ -12,6 +12,8 @@ import {
   loadProviders,
   loadSubnets,
   loadVerification,
+  nativeDisplayName,
+  nativeNameQuality,
   readJson,
   repoRoot,
   sha256Hex,
@@ -81,6 +83,7 @@ const subnetIndex = mergedSubnets.map((subnet) => ({
   mechanism_count: subnet.mechanism_count,
   name: subnet.name,
   native_name: subnet.native_name,
+  native_name_quality: subnet.native_name_quality,
   netuid: subnet.netuid,
   participant_count: subnet.participant_count,
   probed_surface_count: subnet.probed_surface_count,
@@ -601,6 +604,20 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
         ? "probed"
         : "manifested";
   const slug = overlay?.slug || `sn-${nativeSubnet.netuid}`;
+  const nameQuality = nativeNameQuality(nativeSubnet);
+  const nativeName =
+    typeof nativeSubnet.raw_name === "string"
+      ? nativeSubnet.raw_name
+      : nativeSubnet.name || null;
+  const displayName =
+    overlay?.name ||
+    nativeDisplayName(nativeSubnet, `Subnet ${nativeSubnet.netuid}`);
+  const nativeSlug =
+    nameQuality === "chain" && nativeName
+      ? slugify(nativeName)
+      : nativeSubnet.netuid === 0
+        ? "root"
+        : `sn-${nativeSubnet.netuid}`;
 
   return {
     block: nativeSubnet.block,
@@ -615,9 +632,10 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
     docs_url: overlay?.docs_url || null,
     gaps: buildGaps(overlay?.surfaces || [], overlay),
     mechanism_count: nativeSubnet.mechanism_count,
-    name: overlay?.name || nativeSubnet.name || `Subnet ${nativeSubnet.netuid}`,
-    native_name: nativeSubnet.name || null,
-    native_slug: slugify(nativeSubnet.name || `subnet-${nativeSubnet.netuid}`),
+    name: displayName,
+    native_name: nativeName,
+    native_name_quality: nameQuality,
+    native_slug: nativeSlug,
     netuid: nativeSubnet.netuid,
     notes: overlay?.notes || null,
     participant_count: nativeSubnet.participant_count,
@@ -629,6 +647,14 @@ function mergeSubnet(nativeSubnet, overlay, candidateCount) {
         method: nativeSnapshot.source.method,
         network: nativeSnapshot.network,
         source_kind: nativeSnapshot.source.kind,
+      },
+      identity: {
+        display_name_source: overlay?.name
+          ? "curated-overlay"
+          : nameQuality === "chain"
+            ? "native-chain"
+            : "fallback",
+        native_name_quality: nameQuality,
       },
       interface_metadata: overlay
         ? overlay.curation?.level || "curated-overlay"
@@ -950,6 +976,10 @@ function buildSchemaDriftPlaceholder(surfaces) {
       surface_id: surface.id,
       url: surface.url,
       schema_url: surface.schema_url || null,
+      drift_status: "not-captured",
+      hash: null,
+      previous_hash: null,
+      error: null,
       status: surface.schema_url
         ? "pending-snapshot"
         : "ui-only-or-undiscovered",

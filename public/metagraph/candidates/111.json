@@ -2,6 +2,226 @@
   "candidates": [
     {
       "auth_required": false,
+      "confidence": "low",
+      "id": "sn-111-github-readme-oneoneone-io-subnet-111-subnet-api-1",
+      "kind": "subnet-api",
+      "name": "oneoneone API surface",
+      "netuid": 111,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/oneoneone-io/subnet-111/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/oneoneone-io/subnet-111/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "oneoneone",
+      "url": "https://apify.com/",
+      "verification": {
+        "candidate_id": "sn-111-github-readme-oneoneone-io-subnet-111-subnet-api-1",
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 126,
+        "method_tested": "HEAD",
+        "name": "oneoneone API surface",
+        "netuid": 111,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/oneoneone-io/subnet-111/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/oneoneone-io/subnet-111/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://apify.com/",
+        "verified_at": "2026-06-06T12:18:41.523Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-111-github-readme-oneoneone-io-subnet-111-subnet-api-2",
+      "kind": "subnet-api",
+      "name": "oneoneone API surface",
+      "netuid": 111,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/oneoneone-io/subnet-111/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/oneoneone-io/subnet-111/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "oneoneone",
+      "url": "https://chutes.ai/app/api",
+      "verification": {
+        "candidate_id": "sn-111-github-readme-oneoneone-io-subnet-111-subnet-api-2",
+        "classification": "redirected",
+        "confidence_score": 53,
+        "content_type": "text/html",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 347,
+        "method_tested": "HEAD",
+        "name": "oneoneone API surface",
+        "netuid": 111,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": "https://chutes.ai/auth",
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/oneoneone-io/subnet-111/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/oneoneone-io/subnet-111/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://chutes.ai/app/api",
+        "verified_at": "2026-06-06T12:18:41.531Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-111-github-readme-oneoneone-io-subnet-111-subnet-api-3",
+      "kind": "subnet-api",
+      "name": "oneoneone API surface",
+      "netuid": 111,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/oneoneone-io/subnet-111/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/oneoneone-io/subnet-111/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "oneoneone",
+      "url": "https://console.desearch.ai/api-keys",
+      "verification": {
+        "candidate_id": "sn-111-github-readme-oneoneone-io-subnet-111-subnet-api-3",
+        "classification": "live",
+        "confidence_score": 58,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 158,
+        "method_tested": "HEAD",
+        "name": "oneoneone API surface",
+        "netuid": 111,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/oneoneone-io/subnet-111/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/oneoneone-io/subnet-111/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://console.desearch.ai/api-keys",
+        "verified_at": "2026-06-06T12:18:41.531Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-111-github-readme-oneoneone-io-subnet-111-subnet-api-4",
+      "kind": "subnet-api",
+      "name": "oneoneone API surface",
+      "netuid": 111,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/oneoneone-io/subnet-111/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/oneoneone-io/subnet-111/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "oneoneone",
+      "url": "https://app.macrocosmos.ai/account?tab=api-keys",
+      "verification": {
+        "candidate_id": "sn-111-github-readme-oneoneone-io-subnet-111-subnet-api-4",
+        "classification": "redirected",
+        "confidence_score": 53,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "subnet-api",
+        "latency_ms": 734,
+        "method_tested": "GET",
+        "name": "oneoneone API surface",
+        "netuid": 111,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": "https://auth.cloud.macrocosmos.ai/en/login?error=unauthorized",
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/oneoneone-io/subnet-111/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/oneoneone-io/subnet-111/blob/main/README.md"
+        ],
+        "status": "ok",
+        "status_code": 200,
+        "url": "https://app.macrocosmos.ai/account?tab=api-keys",
+        "verified_at": "2026-06-06T12:18:41.535Z"
+      }
+    },
+    {
+      "auth_required": false,
       "confidence": "medium",
       "id": "sn-111-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -28,7 +248,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 159,
+        "latency_ms": 138,
         "method_tested": "HEAD",
         "name": "oneoneone TaoMarketCap dashboard",
         "netuid": 111,
@@ -52,7 +272,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/111",
-        "verified_at": "2026-06-06T07:44:08.728Z"
+        "verified_at": "2026-06-06T12:18:41.547Z"
       }
     },
     {
@@ -71,7 +291,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/111",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/111"
+        "https://api.taomarketcap.com/public/v1/subnets/111",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/111/subnet.json"
       ],
       "state": "schema-valid",
       "subnet_name": "oneoneone",
@@ -81,10 +302,10 @@
         "classification": "live",
         "confidence_score": 59,
         "error": null,
-        "github_api_status": 429,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/oneoneone-io/subnet-111",
         "kind": "source-repo",
-        "latency_ms": 408,
+        "latency_ms": 525,
         "method_tested": "HEAD",
         "name": "oneoneone source repository",
         "netuid": 111,
@@ -103,12 +324,13 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/111",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/111"
+          "https://api.taomarketcap.com/public/v1/subnets/111",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/111/subnet.json"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/oneoneone-io/subnet-111",
-        "verified_at": "2026-06-06T07:44:08.745Z"
+        "verified_at": "2026-06-06T12:18:41.563Z"
       }
     },
     {
@@ -121,7 +343,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -139,7 +361,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 335,
+        "latency_ms": 311,
         "method_tested": "HEAD",
         "name": "oneoneone Tensorplex subnet docs",
         "netuid": 111,
@@ -163,7 +385,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/111",
-        "verified_at": "2026-06-06T07:44:08.773Z"
+        "verified_at": "2026-06-06T12:18:41.583Z"
       }
     }
   ],

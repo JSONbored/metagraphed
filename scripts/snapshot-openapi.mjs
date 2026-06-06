@@ -51,11 +51,17 @@ const index = {
   schemas: results,
 };
 
+const capturedSchemaCount = results.filter(
+  (result) => result.status === "captured",
+).length;
 const drift = {
   schema_version: 1,
   contract_version: contractVersion,
   generated_at: generatedAt,
   source: "openapi-snapshot",
+  status: capturedSchemaCount > 0 ? "captured" : "not-found",
+  openapi_surface_count: surfaces.length,
+  schema_backed_surface_count: capturedSchemaCount,
   summary: index.summary,
   surfaces: results.map((result) => ({
     netuid: result.netuid,
@@ -160,6 +166,7 @@ async function snapshotSurface(surface) {
       drift_status: driftStatus,
       hash,
       previous_hash: previous?.hash || null,
+      path: `/metagraph/schemas/${surface.id}.json`,
       content_type: response.content_type || null,
       snapshot,
     };
@@ -187,6 +194,7 @@ function unavailable(surface, schemaUrl, status, error) {
       : "not-captured",
     hash: null,
     previous_hash: previous?.hash || null,
+    path: null,
     error,
   };
 }
