@@ -73,6 +73,9 @@ const previousSubnetsArtifact = await readOptionalJson(
 const previousCoverageArtifact = await readOptionalJson(
   path.join(outputRoot, "coverage.json"),
 );
+const previousHealthArtifact = await readOptionalJson(
+  path.join(outputRoot, "health/latest.json"),
+);
 
 const subnetIndex = mergedSubnets.map((subnet) => ({
   block: subnet.block,
@@ -113,33 +116,21 @@ const metagraphLatest = {
 };
 
 const healthArtifacts = buildHealthArtifacts(
-  surfaces
-    .filter((surface) => surface.probe?.enabled && surface.public_safe)
-    .map((surface) => ({
-      auth_required: surface.auth_required,
-      classification: "unknown",
-      kind: surface.kind,
-      last_checked: null,
-      last_ok: null,
-      latency_ms: null,
-      method_tested: surface.probe?.method || "not-configured",
-      netuid: surface.netuid,
-      provider: surface.provider,
-      public_safe: surface.public_safe,
-      status: "unknown",
-      subnet_name: surface.subnet_name,
-      subnet_slug: surface.subnet_slug,
-      surface_id: surface.id,
-      url: surface.url,
-      uptime_sample_ratio: null,
-      verified_at: null,
-    })),
+  buildSurfaceHealthRows({
+    surfaces: surfaces.filter(
+      (surface) => surface.probe?.enabled && surface.public_safe,
+    ),
+    previousHealthArtifact,
+  }),
   mergedSubnets,
   {
     generatedAt,
     notes:
-      "Run npm run probes:smoke with METAGRAPH_WRITE_PROBE_RESULTS=1 to replace unknown build-time health with live probe results.",
-    source: "artifact-build",
+      "Health rows preserve matching live probe results when available. Run npm run probes:smoke with METAGRAPH_WRITE_PROBE_RESULTS=1 to refresh observed status.",
+    source:
+      previousHealthArtifact?.source === "live-smoke-probe"
+        ? "live-smoke-probe"
+        : "artifact-build",
   },
 );
 const rpcEndpoints = buildRpcEndpointArtifact({
@@ -827,6 +818,95 @@ function groupByNetuid(items) {
     groups.set(item.netuid, group);
   }
   return groups;
+}
+
+function buildSurfaceHealthRows({ surfaces, previousHealthArtifact }) {
+  const previousBySurfaceId = new Map(
+    (previousHealthArtifact?.surfaces || []).map((surface) => [
+      surface.surface_id,
+      surface,
+    ]),
+  );
+  return surfaces.map((surface) =>
+    buildSurfaceHealthRow(surface, previousBySurfaceId.get(surface.id)),
+  );
+}
+
+function buildSurfaceHealthRow(surface, previous) {
+  const base = {
+    auth_required: surface.auth_required,
+    classification: "unknown",
+    kind: surface.kind,
+    last_checked: null,
+    last_ok: null,
+    latency_ms: null,
+    method_tested: surface.probe?.method || "not-configured",
+    netuid: surface.netuid,
+    provider: surface.provider,
+    public_safe: surface.public_safe,
+    status: "unknown",
+    subnet_name: surface.subnet_name,
+    subnet_slug: surface.subnet_slug,
+    surface_id: surface.id,
+    url: surface.url,
+    uptime_sample_ratio: null,
+    verified_at: null,
+  };
+
+  if (!isReusableHealthRow(surface, previous)) {
+    return base;
+  }
+
+  const row = {
+    ...base,
+    classification: previous.classification || "unknown",
+    last_checked: previous.last_checked || previous.verified_at || null,
+    last_ok: previous.last_ok || null,
+    latency_ms: Number.isFinite(previous.latency_ms)
+      ? previous.latency_ms
+      : null,
+    method_tested: previous.method_tested || base.method_tested,
+    status: previous.status || "unknown",
+    uptime_sample_ratio: previous.uptime_sample_ratio ?? null,
+    verified_at: previous.verified_at || null,
+  };
+  copyOptional(row, previous, "archive_support", "boolean");
+  copyOptional(row, previous, "content_type", "string");
+  copyOptional(row, previous, "error", "string");
+  copyOptional(row, previous, "error_class", "string");
+  copyOptional(row, previous, "latest_block", "number");
+  copyOptional(row, previous, "private_redirect_blocked", "boolean");
+  copyOptional(row, previous, "redirect_target", "string");
+  copyOptional(row, previous, "rpc_method_count", "number");
+  copyOptional(row, previous, "status_code", "number");
+  if (
+    previous.method_results &&
+    typeof previous.method_results === "object" &&
+    !Array.isArray(previous.method_results)
+  ) {
+    row.method_results = previous.method_results;
+  }
+  if (Array.isArray(previous.methods_supported)) {
+    row.methods_supported = previous.methods_supported;
+  }
+  return row;
+}
+
+function isReusableHealthRow(surface, previous) {
+  return Boolean(
+    previous &&
+    previous.surface_id === surface.id &&
+    previous.netuid === surface.netuid &&
+    previous.kind === surface.kind &&
+    previous.url === surface.url &&
+    previous.public_safe === surface.public_safe,
+  );
+}
+
+function copyOptional(target, source, key, type) {
+  if (typeof source[key] === type) {
+    target[key] = source[key];
+  }
 }
 
 function buildHealthArtifacts(surfaceHealth, subnets, options) {
