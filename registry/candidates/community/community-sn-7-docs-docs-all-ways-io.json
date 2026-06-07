@@ -10,7 +10,7 @@
       "provider": "allways",
       "public_safe": true,
       "rate_limit_notes": "",
-      "review_notes": "Community-submitted public interface candidate.",
+      "review_notes": "Community-submitted public interface candidate. Smoke rerun after gate decoration fix.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "community-pr-intake",
