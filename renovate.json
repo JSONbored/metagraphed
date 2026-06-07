@@ -1,0 +1,73 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+    ":semanticCommitScopeAll(deps)",
+    ":configMigration",
+    "helpers:pinGitHubActionDigests",
+    "security:minimumReleaseAgeNpm"
+  ],
+  "timezone": "America/Phoenix",
+  "schedule": ["before 8am on monday"],
+  "prConcurrentLimit": 2,
+  "prHourlyLimit": 1,
+  "branchConcurrentLimit": 3,
+  "labels": ["dependencies", "renovate"],
+  "rangeStrategy": "bump",
+  "rebaseWhen": "behind-base-branch",
+  "platformAutomerge": false,
+  "automerge": false,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 8am on monday"],
+    "commitMessageAction": "refresh",
+    "commitMessageTopic": "lockfile",
+    "groupName": "lockfile maintenance",
+    "groupSlug": "lockfile-maintenance"
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security", "dependencies", "renovate"],
+    "schedule": ["at any time"]
+  },
+  "packageRules": [
+    {
+      "description": "Group all non-major GitHub Actions changes into one reviewable CI PR.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["digest", "pinDigest", "patch", "minor"],
+      "groupName": "GitHub Actions non-major updates",
+      "groupSlug": "github-actions-non-major",
+      "addLabels": ["ci"],
+      "commitMessageTopic": "github actions"
+    },
+    {
+      "description": "Keep major GitHub Actions changes isolated and dashboard-approved.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "addLabels": ["ci", "major"],
+      "commitMessageTopic": "github action"
+    },
+    {
+      "description": "Group non-major backend dev dependency updates.",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "npm dev dependency non-major updates",
+      "groupSlug": "npm-dev-deps-non-major",
+      "addLabels": ["backend"],
+      "commitMessageTopic": "npm dev dependencies"
+    },
+    {
+      "description": "Keep npm major updates isolated and dashboard-approved.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "addLabels": ["backend", "major"],
+      "commitMessageTopic": "npm dependency"
+    }
+  ]
+}
