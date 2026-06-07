@@ -94,13 +94,18 @@ function refreshCommands() {
     step("adapters:snapshot"),
     step("build"),
     step("schemas:snapshot"),
-    step("r2:manifest"),
   ];
 
   if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
-    commands.splice(8, 0, step("probes:smoke"));
-    commands.splice(9, 0, step("build-summary:refresh"));
+    commands.push(
+      step("probes:smoke"),
+      step("build"),
+      step("schemas:snapshot"),
+      step("build-summary:refresh"),
+    );
   }
+
+  commands.push(step("r2:manifest"));
 
   return [
     ...commands,

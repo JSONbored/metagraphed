@@ -74,8 +74,6 @@ const contractVersion = CONTRACT_VERSION;
 const previousR2ManifestArtifact = await readOptionalJson(
   path.join(outputRoot, "r2-manifest.json"),
 );
-await fs.rm(r2OutputRoot, { recursive: true, force: true });
-
 const previousArtifactDigests = await collectArtifactDigests({
   previousManifest: previousR2ManifestArtifact,
   publicRoot: outputRoot,
@@ -87,9 +85,11 @@ const previousSubnetsArtifact = await readOptionalJson(
 const previousCoverageArtifact = await readOptionalJson(
   path.join(outputRoot, "coverage.json"),
 );
-const previousHealthArtifact = await readOptionalJson(
-  path.join(outputRoot, "health/latest.json"),
-);
+const previousHealthArtifact =
+  (await readOptionalJson(path.join(r2OutputRoot, "health/latest.json"))) ||
+  (await readOptionalJson(path.join(outputRoot, "health/latest.json")));
+
+await fs.rm(r2OutputRoot, { recursive: true, force: true });
 
 const subnetIndex = mergedSubnets.map((subnet) => ({
   block: subnet.block,
@@ -141,6 +141,8 @@ const healthArtifacts = buildHealthArtifacts(
     generatedAt,
     notes:
       "Health rows preserve matching live probe results when available. Run npm run probes:smoke with METAGRAPH_WRITE_PROBE_RESULTS=1 to refresh observed status.",
+    probeFinishedAt: previousHealthArtifact?.probe_finished_at || null,
+    probeStartedAt: previousHealthArtifact?.probe_started_at || null,
     source:
       previousHealthArtifact?.source === "live-smoke-probe"
         ? "live-smoke-probe"
@@ -442,6 +444,13 @@ await fs.rm(r2ArtifactDir("health/badges"), {
 });
 await writeJson(artifactFile("health/latest.json"), healthArtifacts.latest);
 await writeJson(artifactFile("health/summary.json"), healthArtifacts.summary);
+const healthHistoryDate = (
+  healthArtifacts.latest.probe_finished_at || generatedAt
+).slice(0, 10);
+await writeJson(
+  artifactFile(`health/history/${healthHistoryDate}.json`),
+  buildHealthHistoryArtifact(healthArtifacts.latest, healthHistoryDate),
+);
 await writeJson(artifactFile("rpc-endpoints.json"), rpcEndpoints);
 await writeJson(artifactFile("endpoints.json"), endpointResources);
 await fs.rm(r2ArtifactDir("endpoints"), {
@@ -990,6 +999,8 @@ function buildHealthArtifacts(surfaceHealth, subnets, options) {
     contract_version: contractVersion,
     generated_at: options.generatedAt,
     source: options.source,
+    probe_started_at: options.probeStartedAt,
+    probe_finished_at: options.probeFinishedAt,
     notes: options.notes,
     summary: {
       surface_count: surfaceHealth.length,
@@ -1014,6 +1025,37 @@ function buildHealthArtifacts(surfaceHealth, subnets, options) {
     },
     subnets: subnetArtifacts,
     badges: badgeArtifacts,
+  };
+}
+
+function buildHealthHistoryArtifact(latest, date) {
+  return {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: latest.generated_at,
+    date,
+    probe_started_at: latest.probe_started_at || null,
+    probe_finished_at: latest.probe_finished_at || null,
+    source: latest.source,
+    summary: latest.summary,
+    surfaces: latest.surfaces.map((surface) => ({
+      classification: surface.classification || "unknown",
+      error_class: surface.error_class || null,
+      kind: surface.kind,
+      last_checked: surface.last_checked || null,
+      last_ok: surface.last_ok || null,
+      latency_ms: Number.isFinite(surface.latency_ms)
+        ? surface.latency_ms
+        : null,
+      netuid: surface.netuid,
+      provider: surface.provider,
+      status: surface.status,
+      status_code: Number.isInteger(surface.status_code)
+        ? surface.status_code
+        : null,
+      surface_id: surface.surface_id,
+      verified_at: surface.verified_at || null,
+    })),
   };
 }
 

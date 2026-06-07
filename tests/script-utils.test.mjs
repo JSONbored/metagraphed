@@ -184,7 +184,7 @@ describe("script utility contracts", () => {
         true,
       );
     } finally {
-      await rm(path.dirname(stagedPath), { recursive: true, force: true });
+      await rm(stagedPath, { force: true });
     }
   });
 

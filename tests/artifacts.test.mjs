@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { test } from "vitest";
-import { artifactFilePath, createLocalArtifactEnv } from "../scripts/lib.mjs";
+import {
+  artifactDirectoryPath,
+  artifactFilePath,
+  createLocalArtifactEnv,
+} from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
 function runNode(script) {
@@ -53,7 +57,10 @@ test("public artifacts are internally consistent", () => {
   const verification = readArtifact("verification/latest.json");
   const health = readArtifact("health/latest.json");
   const healthSummary = readArtifact("health/summary.json");
-  const healthHistory = readArtifact("health/history/2026-06-06.json");
+  const latestHealthHistoryDate = latestArtifactDate("health/history");
+  const healthHistory = readArtifact(
+    `health/history/${latestHealthHistoryDate}.json`,
+  );
   const rpcEndpoints = readArtifact("rpc-endpoints.json");
   const endpoints = readArtifact("endpoints.json");
   const subnetEndpoints = readArtifact("endpoints/7.json");
@@ -147,7 +154,7 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   assert.equal(healthSummary.subnets.length, native.subnets.length);
-  assert.equal(healthHistory.date, "2026-06-06");
+  assert.equal(healthHistory.date, latestHealthHistoryDate);
   assert.equal(healthHistory.surfaces.length, health.surfaces.length);
   assert.equal(
     healthHistory.surfaces.every((surface) => !Object.hasOwn(surface, "url")),
@@ -324,4 +331,12 @@ test("Worker API serves public artifact envelopes", async () => {
 
 function readArtifact(relativePath) {
   return JSON.parse(readFileSync(artifactFilePath(relativePath), "utf8"));
+}
+
+function latestArtifactDate(relativePath) {
+  return readdirSync(artifactDirectoryPath(relativePath))
+    .filter((file) => /^\d{4}-\d{2}-\d{2}\.json$/.test(file))
+    .map((file) => file.replace(/\.json$/, ""))
+    .sort()
+    .at(-1);
 }

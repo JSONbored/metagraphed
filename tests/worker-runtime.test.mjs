@@ -636,6 +636,13 @@ describe("Worker runtime", () => {
   });
 
   test("applies supported query filters across artifact families", async () => {
+    const healthLatestObject = await env.METAGRAPH_ARCHIVE.get(
+      "latest/health/latest.json",
+    );
+    const healthLatest = await healthLatestObject.json();
+    const latestHealthHistoryDate = (
+      healthLatest.probe_finished_at || healthLatest.generated_at
+    ).slice(0, 10);
     const checks = [
       [
         "https://metagraph.sh/api/v1/subnets?netuid=7",
@@ -709,9 +716,9 @@ describe("Worker runtime", () => {
           ),
       ],
       [
-        "https://metagraph.sh/api/v1/health/history/2026-06-06?limit=2",
+        `https://metagraph.sh/api/v1/health/history/${latestHealthHistoryDate}?limit=2`,
         (body) =>
-          body.data.date === "2026-06-06" &&
+          body.data.date === latestHealthHistoryDate &&
           body.data.surfaces.length <= 2 &&
           body.meta.pagination.collection === "surfaces",
       ],

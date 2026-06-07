@@ -4,7 +4,12 @@ import addFormats from "ajv-formats";
 import path from "node:path";
 import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.mjs";
+import {
+  artifactFilePath,
+  createLocalArtifactEnv,
+  readJson,
+  repoRoot,
+} from "./lib.mjs";
 
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
@@ -18,6 +23,10 @@ const ajv = new Ajv2020({
 addFormats(ajv);
 
 const env = createLocalArtifactEnv();
+const healthLatest = await readJson(artifactFilePath("health/latest.json"));
+const latestHealthHistoryDate = (
+  healthLatest.probe_finished_at || healthLatest.generated_at
+).slice(0, 10);
 
 const checks = [
   ["/api/v1", (body) => assert.equal(Array.isArray(body.data.routes), true)],
@@ -129,10 +138,10 @@ const checks = [
     (body) => assert.equal(Array.isArray(body.data.subnets), true),
   ],
   [
-    "/api/v1/health/history/2026-06-06?limit=2",
+    `/api/v1/health/history/${latestHealthHistoryDate}?limit=2`,
     (body) => {
       assert.equal(Array.isArray(body.data.surfaces), true);
-      assert.equal(body.data.date, "2026-06-06");
+      assert.equal(body.data.date, latestHealthHistoryDate);
       assert.equal(body.data.surfaces.length <= 2, true);
     },
   ],
