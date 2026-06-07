@@ -1,6 +1,7 @@
 import path from "node:path";
 import {
   buildTimestamp,
+  isUnsafeResolvedUrl,
   loadNativeSnapshot,
   loadSubnets,
   nativeDisplayName,
@@ -999,7 +1000,7 @@ async function fetchJson(url, headers = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithSafeRedirects(url, {
       headers: {
         accept: "application/json",
         "user-agent": "metagraphed-candidate-discovery/0.0",
@@ -1027,7 +1028,7 @@ async function fetchText(url, options = {}) {
     options.timeoutMs || 10000,
   );
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithSafeRedirects(url, {
       headers: {
         accept: options.accept || "*/*",
         "user-agent": "metagraphed-candidate-discovery/0.0",
@@ -1050,6 +1051,37 @@ async function fetchText(url, options = {}) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function fetchWithSafeRedirects(url, init, redirectCount = 0) {
+  if (await isUnsafeResolvedUrl(url)) {
+    throw new Error("unsafe URL");
+  }
+
+  const response = await fetch(url, {
+    ...init,
+    redirect: "manual",
+  });
+  const location = response.headers.get("location");
+  if (
+    [301, 302, 303, 307, 308].includes(response.status) &&
+    location &&
+    redirectCount < 5
+  ) {
+    const redirectTarget = new URL(location, url).toString();
+    if (await isUnsafeResolvedUrl(redirectTarget)) {
+      await response.body?.cancel();
+      throw new Error("redirect target is unsafe");
+    }
+    await response.body?.cancel();
+    const nextInit =
+      response.status === 303 && init.method && init.method !== "GET"
+        ? { ...init, method: "GET" }
+        : init;
+    return fetchWithSafeRedirects(redirectTarget, nextInit, redirectCount + 1);
+  }
+
+  return response;
 }
 
 function githubHeaders() {

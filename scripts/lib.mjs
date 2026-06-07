@@ -1,9 +1,30 @@
 import { promises as fs } from "node:fs";
 import { createHash } from "node:crypto";
-import { isIP } from "node:net";
+import { lookup } from "node:dns/promises";
+import { BlockList, isIP } from "node:net";
 import path from "node:path";
 
 export const repoRoot = new URL("..", import.meta.url).pathname;
+
+const unsafeIpBlocks = new BlockList();
+unsafeIpBlocks.addSubnet("0.0.0.0", 8);
+unsafeIpBlocks.addSubnet("10.0.0.0", 8);
+unsafeIpBlocks.addSubnet("100.64.0.0", 10);
+unsafeIpBlocks.addSubnet("127.0.0.0", 8);
+unsafeIpBlocks.addSubnet("169.254.0.0", 16);
+unsafeIpBlocks.addSubnet("172.16.0.0", 12);
+unsafeIpBlocks.addSubnet("192.0.0.0", 24);
+unsafeIpBlocks.addSubnet("192.168.0.0", 16);
+unsafeIpBlocks.addSubnet("198.18.0.0", 15);
+unsafeIpBlocks.addSubnet("224.0.0.0", 4);
+unsafeIpBlocks.addSubnet("255.255.255.255", 32);
+unsafeIpBlocks.addSubnet("::", 128, "ipv6");
+unsafeIpBlocks.addSubnet("::1", 128, "ipv6");
+unsafeIpBlocks.addSubnet("64:ff9b:1::", 48, "ipv6");
+unsafeIpBlocks.addSubnet("100::", 64, "ipv6");
+unsafeIpBlocks.addSubnet("fc00::", 7, "ipv6");
+unsafeIpBlocks.addSubnet("fe80::", 10, "ipv6");
+unsafeIpBlocks.addSubnet("ff00::", 8, "ipv6");
 
 export async function readJson(filePath) {
   const raw = await fs.readFile(filePath, "utf8");
@@ -192,38 +213,58 @@ export function isUnsafeUrl(value) {
       return true;
     }
 
-    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-    const literalIp = isIP(host);
-    if (
-      host === "localhost" ||
-      host === "0.0.0.0" ||
-      host === "127.0.0.1" ||
-      host === "::1"
-    ) {
-      return true;
-    }
-    if (literalIp === 4) {
-      return (
-        host.startsWith("10.") ||
-        host.startsWith("127.") ||
-        host.startsWith("169.254.") ||
-        host.startsWith("192.168.") ||
-        /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
-      );
-    }
-    if (literalIp === 6) {
-      return (
-        host === "::" ||
-        host.startsWith("fc") ||
-        host.startsWith("fd") ||
-        host.startsWith("fe80")
-      );
-    }
-
-    return false;
+    const host = normalizeHostname(url.hostname);
+    return isUnsafeHostname(host);
   } catch {
     return true;
   }
+}
+
+export async function isUnsafeResolvedUrl(value) {
+  try {
+    const url = new URL(value);
+    if (isUnsafeUrl(url.toString())) {
+      return true;
+    }
+
+    const host = normalizeHostname(url.hostname);
+    if (isIP(host)) {
+      return false;
+    }
+
+    const records = await lookup(host, { all: true, verbatim: true });
+    return (
+      records.length === 0 ||
+      records.some((record) => isUnsafeIpAddress(record.address))
+    );
+  } catch {
+    return true;
+  }
+}
+
+function isUnsafeHostname(host) {
+  if (!host || host === "localhost" || host.endsWith(".localhost")) {
+    return true;
+  }
+
+  return isUnsafeIpAddress(host);
+}
+
+function isUnsafeIpAddress(address) {
+  const normalized = normalizeHostname(address);
+  const family = isIP(normalized);
+  return (
+    family !== 0 &&
+    unsafeIpBlocks.check(normalized, family === 4 ? "ipv4" : "ipv6")
+  );
+}
+
+function normalizeHostname(hostname) {
+  return String(hostname || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\[(.*)\]$/, "$1")
+    .replace(/\.$/, "");
 }
 
 export function normalizePublicUrl(value) {

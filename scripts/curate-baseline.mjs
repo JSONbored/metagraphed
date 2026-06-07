@@ -4,6 +4,7 @@ import {
   listJsonFiles,
   loadCandidates,
   loadNativeSnapshot,
+  isUnsafeUrl,
   loadVerification,
   nativeDisplayName,
   nativeNameQuality,
@@ -158,6 +159,14 @@ function isPromotable(candidate, verification) {
   if (
     !verification ||
     !["live", "redirected"].includes(verification.classification)
+  ) {
+    return false;
+  }
+  if (
+    isUnsafeUrl(candidate.url) ||
+    (verification.redirect_target &&
+      isUnsafeUrl(verification.redirect_target)) ||
+    verification.private_redirect_blocked
   ) {
     return false;
   }
