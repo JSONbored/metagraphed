@@ -192,7 +192,7 @@ export function isUnsafeUrl(value) {
       return true;
     }
 
-    const host = url.hostname.toLowerCase();
+    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
     const literalIp = isIP(host);
     if (
       host === "localhost" ||

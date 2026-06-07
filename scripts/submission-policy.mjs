@@ -544,12 +544,17 @@ export function normalizeChangedFiles(files) {
       .split(/\r?\n/)
       .map((file) => file.trim())
       .filter(Boolean)
+      .map(normalizeChangedFilePath)
       .sort();
   }
   return [...new Set((files || []).map((file) => String(file).trim()))]
     .filter(Boolean)
-    .map((file) => file.replace(/\\/g, "/").replace(/^\.\/+/, ""))
+    .map(normalizeChangedFilePath)
     .sort();
+}
+
+function normalizeChangedFilePath(file) {
+  return file.replace(/\\/g, "/").replace(/^\.\/+/, "");
 }
 
 export function parseIssueFields(body) {
