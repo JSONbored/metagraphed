@@ -1168,6 +1168,7 @@ function enumSchema(values) {
 
 function listQuery(collection, options = {}) {
   const config = API_QUERY_COLLECTIONS[collection];
+  /* v8 ignore next 3 -- developer config invariant validated by OpenAPI/schema checks */
   if (!config) {
     throw new Error(`Unknown API query collection: ${collection}`);
   }
@@ -1219,11 +1220,13 @@ function schemaRefForArtifactPath(artifactPath) {
   const contract = PUBLIC_ARTIFACTS.find((entry) =>
     pathTemplatesMatch(entry.path, artifactPath),
   );
+  /* v8 ignore next 5 -- developer config invariant validated by OpenAPI/schema checks */
   if (!contract) {
     throw new Error(
       `No public artifact contract maps API artifact ${artifactPath}`,
     );
   }
+  /* v8 ignore next 3 -- developer config invariant validated by OpenAPI/schema checks */
   if (!contract.schema_ref) {
     throw new Error(`Public artifact ${contract.id} has no JSON schema ref`);
   }
