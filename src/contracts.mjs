@@ -11,7 +11,7 @@ export const CACHE_SECONDS = {
   static: 600,
 };
 
-const QUERY_ENUMS = {
+export const QUERY_ENUMS = {
   candidateState: [
     "schema-invalid",
     "schema-valid",

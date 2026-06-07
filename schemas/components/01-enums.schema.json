@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/01-enums.schema.json",
+  "title": "Metagraphed OpenAPI components 01-enums",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "CacheProfile": {
+        "enum": ["short", "standard", "static"]
+      },
+      "Authority": {
+        "enum": [
+          "official",
+          "provider-claimed",
+          "community",
+          "registry-observed"
+        ]
+      },
+      "ProviderKind": {
+        "enum": [
+          "subnet-team",
+          "infrastructure-provider",
+          "data-provider",
+          "docs-provider",
+          "registry"
+        ]
+      },
+      "SurfaceKind": {
+        "enum": [
+          "archive",
+          "subtensor-rpc",
+          "subtensor-wss",
+          "subnet-api",
+          "openapi",
+          "sse",
+          "sdk",
+          "example",
+          "website",
+          "source-repo",
+          "dashboard",
+          "repo-registry",
+          "docs",
+          "data-artifact"
+        ]
+      },
+      "EndpointLayer": {
+        "enum": [
+          "bittensor-base",
+          "subnet-app",
+          "data-provider",
+          "docs-provider"
+        ]
+      },
+      "EndpointPublicationState": {
+        "enum": [
+          "candidate",
+          "verified",
+          "monitored",
+          "pool-eligible",
+          "disabled",
+          "rejected"
+        ]
+      },
+      "CoverageLevel": {
+        "enum": ["native-only", "manifested", "probed"]
+      },
+      "CurationLevel": {
+        "enum": [
+          "native",
+          "candidate-discovered",
+          "machine-verified",
+          "maintainer-reviewed",
+          "adapter-backed"
+        ]
+      },
+      "ReviewState": {
+        "enum": [
+          "unreviewed",
+          "machine-generated",
+          "maintainer-reviewed",
+          "needs-review",
+          "stale"
+        ]
+      },
+      "CandidateState": {
+        "enum": [
+          "schema-invalid",
+          "schema-valid",
+          "maintainer-review",
+          "verified",
+          "stale",
+          "rejected"
+        ]
+      },
+      "SourceTier": {
+        "enum": [
+          "native-chain",
+          "provider-claimed",
+          "third-party-index",
+          "community-docs"
+        ]
+      },
+      "HealthStatus": {
+        "enum": ["ok", "degraded", "failed", "unknown"]
+      },
+      "Classification": {
+        "enum": [
+          "live",
+          "redirected",
+          "auth-required",
+          "dead",
+          "unsafe",
+          "unsupported",
+          "rate-limited",
+          "transient",
+          "timeout",
+          "content-mismatch",
+          "unknown"
+        ]
+      },
+      "SubnetStatus": {
+        "enum": ["active", "inactive", "unknown"]
+      },
+      "SubnetType": {
+        "enum": ["root", "application"]
+      }
+    }
+  }
+}

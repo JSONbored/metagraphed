@@ -35,6 +35,14 @@ for (const requiredReadmeText of [
   "/metagraph/endpoint-pools.json",
   "/metagraph/health/history/{date}.json",
   "/metagraph/types.d.ts",
+  "generated/metagraphed-client.ts",
+  "npm run schemas:bundle",
+  "npm run validate:contract-drift",
+  "npm run validate:schema-enums",
+  "npm run validate:openapi-examples",
+  "npm run validate:generated-client",
+  "npm run contract:summary",
+  "Zod is not the backend source of truth",
 ]) {
   check(
     README_HAS(requiredReadmeText),

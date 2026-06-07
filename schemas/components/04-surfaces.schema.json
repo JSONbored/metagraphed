@@ -1,0 +1,494 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/04-surfaces.schema.json",
+  "title": "Metagraphed OpenAPI components 04-surfaces",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "ProbeConfig": {
+        "type": "object",
+        "required": ["enabled", "method", "expect"],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "method": {
+            "enum": ["GET", "HEAD", "JSON-RPC", "WSS-RPC"]
+          },
+          "expect": {
+            "enum": ["json", "html", "sse", "any"]
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 30000
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerificationResult": {
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "classification",
+          "status",
+          "url",
+          "verified_at"
+        ],
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "candidate_id": {
+            "type": "string"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "confidence_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "content_type": {
+            "type": ["string", "null"]
+          },
+          "default_branch": {
+            "type": ["string", "null"]
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "error": {
+            "type": ["string", "null"]
+          },
+          "github_api_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "github_api_status": {
+            "type": "integer"
+          },
+          "homepage": {
+            "type": ["string", "null"]
+          },
+          "html_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "last_push_at": {
+            "type": ["string", "null"]
+          },
+          "latency_ms": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "method_tested": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "private_redirect_blocked": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "quality_signals": {
+            "type": "object",
+            "properties": {
+              "content_type_matches_kind": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "has_default_branch": {
+                "type": "boolean"
+              },
+              "has_recent_push_metadata": {
+                "type": "boolean"
+              },
+              "public_safe": {
+                "type": "boolean"
+              },
+              "rate_limited": {
+                "type": "boolean"
+              },
+              "redirected": {
+                "type": "boolean"
+              },
+              "source_tier": {
+                "$ref": "#/components/schemas/SourceTier"
+              },
+              "transient_failure": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "redirect_target": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "source_tier": {
+            "$ref": "#/components/schemas/SourceTier"
+          },
+          "source_type": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "status_code": {
+            "type": ["integer", "null"]
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "verified_at": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Surface": {
+        "type": "object",
+        "required": [
+          "id",
+          "netuid",
+          "kind",
+          "url",
+          "provider",
+          "auth_required",
+          "authority",
+          "public_safe"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "subnet_name": {
+            "type": "string"
+          },
+          "subnet_slug": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "auth_required": {
+            "type": "boolean"
+          },
+          "authority": {
+            "$ref": "#/components/schemas/Authority"
+          },
+          "public_safe": {
+            "type": "boolean"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "schema_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "schema_status": {
+            "enum": ["machine-readable", "ui-only", "not-captured"]
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "probe": {
+            "$ref": "#/components/schemas/ProbeConfig"
+          },
+          "rate_limit_notes": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "quality_signals": {
+            "type": "object",
+            "properties": {
+              "content_type_matches_kind": {
+                "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean"
+              },
+              "has_default_branch": {
+                "type": "boolean"
+              },
+              "has_recent_push_metadata": {
+                "type": "boolean"
+              },
+              "public_safe": {
+                "type": "boolean"
+              },
+              "rate_limited": {
+                "type": "boolean"
+              },
+              "redirected": {
+                "type": "boolean"
+              },
+              "source_tier": {
+                "$ref": "#/components/schemas/SourceTier"
+              },
+              "transient_failure": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "verification": {
+            "type": "object",
+            "properties": {
+              "archived": {
+                "type": "boolean"
+              },
+              "classification": {
+                "$ref": "#/components/schemas/Classification"
+              },
+              "confidence_score": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "content_type": {
+                "type": ["string", "null"]
+              },
+              "error": {
+                "type": ["string", "null"]
+              },
+              "default_branch": {
+                "type": ["string", "null"]
+              },
+              "github_api_url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "homepage": {
+                "type": ["string", "null"]
+              },
+              "last_push_at": {
+                "type": ["string", "null"]
+              },
+              "latency_ms": {
+                "type": ["integer", "null"],
+                "minimum": 0
+              },
+              "method_tested": {
+                "type": "string"
+              },
+              "redirect_target": {
+                "type": ["string", "null"],
+                "format": "uri"
+              },
+              "status_code": {
+                "type": ["integer", "null"]
+              },
+              "topics": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "verified_at": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "CandidateSurface": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "id",
+          "netuid",
+          "state",
+          "name",
+          "kind",
+          "url",
+          "source_url",
+          "provider",
+          "auth_required",
+          "public_safe"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": 1
+          },
+          "id": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "state": {
+            "$ref": "#/components/schemas/CandidateState"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "source_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "source_type": {
+            "type": "string"
+          },
+          "source_tier": {
+            "$ref": "#/components/schemas/SourceTier"
+          },
+          "confidence": {
+            "enum": ["low", "medium", "high"]
+          },
+          "provider": {
+            "type": "string"
+          },
+          "auth_required": {
+            "type": "boolean"
+          },
+          "public_safe": {
+            "type": "boolean"
+          },
+          "rate_limit_notes": {
+            "type": "string"
+          },
+          "review_notes": {
+            "type": "string"
+          },
+          "subnet_name": {
+            "type": ["string", "null"]
+          },
+          "verification": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VerificationResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SurfacesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["surfaces"],
+            "properties": {
+              "surfaces": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Surface"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SubnetSurfacesArtifact": {
+        "$ref": "#/components/schemas/SurfacesArtifact"
+      },
+      "CandidatesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["candidates"],
+            "properties": {
+              "candidates": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CandidateSurface"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SubnetCandidatesArtifact": {
+        "$ref": "#/components/schemas/CandidatesArtifact"
+      },
+      "ReviewQueueArtifact": {
+        "$ref": "#/components/schemas/CandidatesArtifact"
+      }
+    }
+  }
+}

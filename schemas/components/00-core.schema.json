@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/00-core.schema.json",
+  "title": "Metagraphed OpenAPI components 00-core",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "JsonObject": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ArtifactBase": {
+        "type": "object",
+        "required": ["schema_version", "generated_at"],
+        "properties": {
+          "schema_version": {
+            "const": 1
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "CountMap": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "ArtifactSizeBudget": {
+        "type": "object",
+        "required": [
+          "path",
+          "size_bytes",
+          "warn_bytes",
+          "fail_bytes",
+          "status"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "warn_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "fail_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "enum": ["ok", "warn", "fail"]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

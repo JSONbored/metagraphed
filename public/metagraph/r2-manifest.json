@@ -1,6 +1,6 @@
 {
   "artifact_count": 974,
-  "artifact_size_bytes": 29669923,
+  "artifact_size_bytes": 29684971,
   "artifacts": [
     {
       "content_type": "application/json",
@@ -4279,8 +4279,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/openapi.json",
       "latest_key": "latest/openapi.json",
       "path": "/metagraph/openapi.json",
-      "sha256": "dcce621096ca12b15a6f14a3281cd11f9a424976cbf4efd55bc19bd37ec1933d",
-      "size_bytes": 230337
+      "sha256": "11698d602db541bdd6e44feda7557c823a49298e7328d16859a561f8824b2fd2",
+      "size_bytes": 241704
     },
     {
       "content_type": "application/json",
@@ -6751,8 +6751,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/types.d.ts",
       "latest_key": "latest/types.d.ts",
       "path": "/metagraph/types.d.ts",
-      "sha256": "ebab7a7117bc04dd6582eec04c9346d2fd4edac736ecaa4d702ac935d598ce01",
-      "size_bytes": 140745
+      "sha256": "1c810ab3dfdedfe1f8da6dc5667a5243c307c07f47d3a227f0be93cc3de4b57e",
+      "size_bytes": 144426
     },
     {
       "content_type": "application/json",

@@ -1,0 +1,420 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/08-evidence-search-sources.schema.json",
+  "title": "Metagraphed OpenAPI components 08-evidence-search-sources",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "SearchDocument": {
+        "type": "object",
+        "required": ["id", "type", "title", "artifact_path", "tokens"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "enum": ["subnet", "surface", "provider"]
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "artifact_path": {
+            "type": "string"
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "EvidenceClaim": {
+        "type": "object",
+        "required": [
+          "claim",
+          "subject",
+          "source_url",
+          "source_type",
+          "source_tier",
+          "confidence",
+          "support_summary",
+          "limits"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "source_type": {
+            "type": "string"
+          },
+          "source_tier": {
+            "$ref": "#/components/schemas/SourceTier"
+          },
+          "confidence": {
+            "enum": ["low", "medium", "high"]
+          },
+          "support_summary": {
+            "type": "string"
+          },
+          "limits": {
+            "type": "string"
+          },
+          "verified_at": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FreshnessSource": {
+        "type": "object",
+        "required": ["id", "path", "stale_after_hours", "status", "timestamp"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "stale_after_hours": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "enum": ["captured", "current", "degraded", "missing", "stale"]
+          },
+          "timestamp": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SourceHealthProvider": {
+        "type": "object",
+        "required": [
+          "authority",
+          "candidate_count",
+          "classifications",
+          "endpoint_count",
+          "id",
+          "kind",
+          "name",
+          "rpc_endpoint_count",
+          "status",
+          "verification_result_count"
+        ],
+        "properties": {
+          "authority": {
+            "$ref": "#/components/schemas/Authority"
+          },
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "classifications": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "endpoint_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ProviderKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rpc_endpoint_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "verification_result_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "SourceSnapshot": {
+        "type": "object",
+        "required": [
+          "captured_at",
+          "hash",
+          "id",
+          "kind",
+          "path",
+          "record_count"
+        ],
+        "properties": {
+          "captured_at": {
+            "type": "string"
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "adapter-snapshot",
+              "candidate-discovery",
+              "native-chain",
+              "probe-results",
+              "registry-manifest",
+              "review-ledger"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "record_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "SearchArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["documents"],
+            "properties": {
+              "document_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "documents": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SearchDocument"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "FreshnessArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["sources", "summary"],
+            "properties": {
+              "sources": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/FreshnessSource"
+                }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "adapter_count",
+                  "health_surface_count",
+                  "native_snapshot_captured_at",
+                  "openapi_surface_count",
+                  "verification_generated_at"
+                ],
+                "properties": {
+                  "adapter_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "health_surface_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "native_snapshot_captured_at": {
+                    "type": "string"
+                  },
+                  "openapi_surface_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "verification_generated_at": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SourceHealthArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["providers", "source", "summary"],
+            "properties": {
+              "providers": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SourceHealthProvider"
+                }
+              },
+              "source": {
+                "const": "generated-provider-and-verification-summary"
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "candidate_count",
+                  "endpoint_count",
+                  "provider_count",
+                  "rpc_endpoint_count",
+                  "status_counts",
+                  "verification_result_count"
+                ],
+                "properties": {
+                  "candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "endpoint_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "provider_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "rpc_endpoint_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "status_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "verification_result_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SourceSnapshotsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["sources", "summary"],
+            "properties": {
+              "sources": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SourceSnapshot"
+                }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "adapter_snapshot_count",
+                  "candidate_count",
+                  "overlay_count",
+                  "provider_count",
+                  "source_count",
+                  "verification_result_count"
+                ],
+                "properties": {
+                  "adapter_snapshot_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "overlay_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "provider_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "source_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "verification_result_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "EvidenceLedgerArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["claims"],
+            "properties": {
+              "claims": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/EvidenceClaim"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    }
+  }
+}

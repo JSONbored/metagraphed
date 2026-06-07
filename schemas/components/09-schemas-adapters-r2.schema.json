@@ -1,0 +1,310 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/09-schemas-adapters-r2.schema.json",
+  "title": "Metagraphed OpenAPI components 09-schemas-adapters-r2",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "SchemaDriftSurface": {
+        "type": "object",
+        "required": [
+          "netuid",
+          "schema_url",
+          "status",
+          "subnet_slug",
+          "surface_id",
+          "url"
+        ],
+        "properties": {
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "schema_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "status": {
+            "enum": [
+              "captured",
+              "error",
+              "not-found",
+              "pending-snapshot",
+              "ui-only-or-undiscovered",
+              "unsafe"
+            ]
+          },
+          "drift_status": {
+            "enum": [
+              "changed",
+              "missing-after-previous-capture",
+              "new",
+              "not-captured",
+              "unchanged"
+            ]
+          },
+          "subnet_slug": {
+            "type": "string"
+          },
+          "surface_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "hash": {
+            "type": ["string", "null"]
+          },
+          "previous_hash": {
+            "type": ["string", "null"]
+          },
+          "error": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SchemaIndexEntry": {
+        "type": "object",
+        "required": ["drift_status", "schema_url", "status", "surface_id"],
+        "properties": {
+          "content_type": {
+            "type": ["string", "null"]
+          },
+          "drift_status": {
+            "enum": [
+              "changed",
+              "missing-after-previous-capture",
+              "new",
+              "not-captured",
+              "unchanged"
+            ]
+          },
+          "error": {
+            "type": ["string", "null"]
+          },
+          "hash": {
+            "type": ["string", "null"]
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "path": {
+            "type": ["string", "null"]
+          },
+          "previous_hash": {
+            "type": ["string", "null"]
+          },
+          "schema_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "snapshot": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "status": {
+            "enum": ["captured", "error", "not-found", "unsafe"]
+          },
+          "subnet_slug": {
+            "type": "string"
+          },
+          "surface_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "additionalProperties": false
+      },
+      "R2ManifestEntry": {
+        "type": "object",
+        "required": [
+          "content_type",
+          "key",
+          "latest_key",
+          "path",
+          "sha256",
+          "size_bytes"
+        ],
+        "properties": {
+          "content_type": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "latest_key": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^/metagraph/"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "SchemaDriftArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "openapi_surface_count",
+              "schema_backed_surface_count",
+              "source",
+              "status",
+              "surfaces"
+            ],
+            "properties": {
+              "openapi_surface_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "schema_backed_surface_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "captured",
+                  "error",
+                  "not-found",
+                  "not-snapshotted",
+                  "unsafe"
+                ]
+              },
+              "surfaces": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SchemaDriftSurface"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SchemaIndexArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["schemas", "source"],
+            "properties": {
+              "schemas": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SchemaIndexEntry"
+                }
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "AdapterArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["netuid", "subnet", "slug", "extensions"],
+            "properties": {
+              "netuid": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "subnet": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "extensions": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "snapshot": {
+                "type": ["object", "null"],
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "R2ManifestArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "artifact_count",
+              "artifact_size_bytes",
+              "artifacts",
+              "bucket_binding",
+              "bucket_name",
+              "latest_prefix",
+              "run_prefix"
+            ],
+            "properties": {
+              "artifact_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "artifact_size_bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "artifacts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/R2ManifestEntry"
+                }
+              },
+              "bucket_binding": {
+                "type": "string"
+              },
+              "bucket_name": {
+                "type": "string"
+              },
+              "latest_prefix": {
+                "type": "string"
+              },
+              "run_prefix": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    }
+  }
+}

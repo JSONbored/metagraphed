@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/03-providers.schema.json",
+  "title": "Metagraphed OpenAPI components 03-providers",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "Provider": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "id",
+          "name",
+          "kind",
+          "website_url",
+          "authority"
+        ],
+        "properties": {
+          "schema_version": {
+            "const": 1
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ProviderKind"
+          },
+          "website_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "docs_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "github_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "team_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "contact_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "authority": {
+            "$ref": "#/components/schemas/Authority"
+          },
+          "public_notes": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProvidersArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["providers"],
+            "properties": {
+              "providers": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Provider"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ProviderArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["provider"],
+            "properties": {
+              "provider": {
+                "$ref": "#/components/schemas/Provider"
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ProviderEndpointsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["provider", "summary", "endpoints"],
+            "properties": {
+              "provider": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "summary": {
+                "$ref": "#/components/schemas/EndpointSummary"
+              },
+              "endpoints": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/EndpointResource"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    }
+  }
+}
