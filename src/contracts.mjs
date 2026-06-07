@@ -958,9 +958,7 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
 
   const paths = {};
   for (const entry of API_ROUTES) {
-    const openApiPath = entry.path
-      .replace(/\{netuid\}/g, "{netuid}")
-      .replace(/\{slug\}/g, "{slug}");
+    const openApiPath = entry.path;
     paths[openApiPath] = {
       ...(paths[openApiPath] || {}),
       [entry.method.toLowerCase()]: {
