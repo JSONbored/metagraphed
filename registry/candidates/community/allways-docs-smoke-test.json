@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "JSONbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  },
+  "candidates": [
+    {
+      "schema_version": 1,
+      "id": "community-sn-7-docs-allways-smoke-test",
+      "netuid": 7,
+      "state": "schema-valid",
+      "name": "Allways community docs smoke test",
+      "kind": "docs",
+      "url": "https://docs.all-ways.io/how-it-works.html?metagraphed_smoke=1",
+      "source_url": "https://docs.all-ways.io/how-it-works.html",
+      "source_urls": [
+        "https://docs.all-ways.io/how-it-works.html"
+      ],
+      "source_type": "community-pr-intake",
+      "source_tier": "community-docs",
+      "confidence": "medium",
+      "provider": "allways",
+      "auth_required": false,
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Temporary direct-PR smoke test for the Metagraphed submission gate."
+    }
+  ]
+}
