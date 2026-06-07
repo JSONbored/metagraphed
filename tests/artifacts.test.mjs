@@ -66,6 +66,47 @@ test("registry validation rejects registry-observed surfaces without verificatio
   );
 });
 
+test("registry validation rejects registry-observed surfaces with only inline verification", () => {
+  const overlayPath = "registry/subnets/generated/sn-1.json";
+  const original = readFileSync(overlayPath, "utf8");
+  const tampered = JSON.parse(original);
+
+  tampered.surfaces.push({
+    id: "sn-1-forged-inline-verification",
+    name: "Forged inline verification surface",
+    kind: "website",
+    url: "https://example.invalid/forged-inline-verification",
+    provider: "taomarketcap",
+    auth_required: false,
+    authority: "registry-observed",
+    public_safe: true,
+    source_urls: ["https://example.invalid/source"],
+    verification: {
+      classification: "live",
+      verified_at: "2999-01-01T00:00:00.000Z",
+    },
+  });
+
+  let failure;
+  try {
+    writeFileSync(overlayPath, `${JSON.stringify(tampered, null, 2)}\n`);
+    runNode("scripts/validate.mjs");
+  } catch (error) {
+    failure = error;
+  } finally {
+    writeFileSync(overlayPath, original);
+  }
+
+  assert(
+    failure,
+    "expected validation to reject forged inline verification without ledger evidence",
+  );
+  assert.match(
+    `${failure.stdout || ""}\n${failure.stderr || ""}`,
+    /registry-observed surface requires verification evidence/,
+  );
+});
+
 test("registry validation rejects tampered per-subnet artifacts", () => {
   const artifactPath = artifactFilePath("subnets/0.json");
   const original = readFileSync(artifactPath, "utf8");

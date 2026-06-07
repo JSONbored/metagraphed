@@ -255,14 +255,12 @@ function validateSubnet(
         Array.isArray(surface.source_urls) && surface.source_urls.length > 0,
         `${surfaceKey}: source_urls required`,
       );
-      const verificationEvidence =
-        surface.verification ||
-        registryVerificationEvidence.get(
-          registrySurfaceKey({
-            ...surface,
-            netuid: subnet.netuid,
-          }),
-        );
+      const verificationEvidence = registryVerificationEvidence.get(
+        registrySurfaceKey({
+          ...surface,
+          netuid: subnet.netuid,
+        }),
+      );
       assert(
         verificationEvidence !== undefined,
         `${surfaceKey}: registry-observed surface requires verification evidence`,
