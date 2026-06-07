@@ -16,6 +16,11 @@ const uploadConcurrency =
   parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_CONCURRENCY) || 8;
 const progressInterval =
   parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_PROGRESS_INTERVAL) || 25;
+const uploadRetries =
+  parseNonNegativeInteger(process.env.METAGRAPH_R2_UPLOAD_RETRIES) ?? 3;
+const uploadRetryBaseDelayMs =
+  parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_RETRY_BASE_DELAY_MS) ||
+  1000;
 const manifest = await readJson(
   path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, "r2-manifest.json"),
 );
@@ -46,6 +51,7 @@ if (!write) {
       run_prefix: manifest.run_prefix,
       upload_history: uploadHistory,
       upload_limit: uploadLimit,
+      upload_retries: uploadRetries,
       planned_object_count: plannedObjectCount,
       remote_manifest_status: "not-checked",
     }),
@@ -134,10 +140,14 @@ for (const controlArtifact of plannedControlArtifacts) {
 await putObjects(artifactUploadJobs, {
   concurrency: uploadConcurrency,
   progressInterval,
+  retryBaseDelayMs: uploadRetryBaseDelayMs,
+  retries: uploadRetries,
 });
 await putObjects(controlUploadJobs, {
   concurrency: uploadConcurrency,
   progressInterval,
+  retryBaseDelayMs: uploadRetryBaseDelayMs,
+  retries: uploadRetries,
 });
 
 const uploadJobs = [...artifactUploadJobs, ...controlUploadJobs];
@@ -170,6 +180,7 @@ console.log(
     upload_history: uploadHistory,
     upload_concurrency: uploadConcurrency,
     upload_limit: uploadLimit,
+    upload_retries: uploadRetries,
     uploaded_control_count: uploadedControlCount,
     uploaded_history_count: uploadedHistoryCount,
     uploaded_latest_count: uploadedLatestCount,
@@ -185,6 +196,17 @@ function parsePositiveInteger(value) {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed) || parsed < 1 || String(parsed) !== value) {
     throw new Error("METAGRAPH_R2_UPLOAD_LIMIT must be a positive integer.");
+  }
+  return parsed;
+}
+
+function parseNonNegativeInteger(value) {
+  if (!value) {
+    return null;
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed < 0 || String(parsed) !== value) {
+    throw new Error("Expected a non-negative integer value.");
   }
   return parsed;
 }
@@ -272,7 +294,10 @@ function getRemoteManifest(bucketName, key) {
   }
 }
 
-async function putObjects(jobs, { concurrency, progressInterval }) {
+async function putObjects(
+  jobs,
+  { concurrency, progressInterval, retries, retryBaseDelayMs },
+) {
   if (jobs.length === 0) {
     return;
   }
@@ -285,7 +310,7 @@ async function putObjects(jobs, { concurrency, progressInterval }) {
       while (nextIndex < jobs.length) {
         const job = jobs[nextIndex];
         nextIndex += 1;
-        await putObject(job);
+        await putObject(job, { retries, retryBaseDelayMs });
         completedCount += 1;
         if (
           completedCount === jobs.length ||
@@ -300,7 +325,25 @@ async function putObjects(jobs, { concurrency, progressInterval }) {
   );
 }
 
-function putObject({ localPath, key, bucketName, contentType }) {
+async function putObject(job, { retries, retryBaseDelayMs }) {
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      await putObjectOnce(job);
+      return;
+    } catch (error) {
+      if (attempt >= retries) {
+        throw error;
+      }
+      const retryNumber = attempt + 1;
+      console.error(
+        `Retrying R2 object upload ${job.key} (${retryNumber}/${retries}) after ${summarizeError(error)}`,
+      );
+      await sleep(retryBaseDelayMs * 2 ** attempt);
+    }
+  }
+}
+
+function putObjectOnce({ localPath, key, bucketName, contentType }) {
   const args = [
     "r2",
     "object",
@@ -346,6 +389,18 @@ function putObject({ localPath, key, bucketName, contentType }) {
       );
     });
   });
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function summarizeError(error) {
+  return String(error?.message || error)
+    .split("\n")
+    .find((line) => line.trim())
+    ?.trim()
+    .slice(0, 240);
 }
 
 function wranglerBin() {
