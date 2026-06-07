@@ -82,6 +82,29 @@ describe("Worker runtime", () => {
     assert.equal(assetMissing.status, 404);
   });
 
+  test("falls back to static assets for generated raw artifacts outside public contracts", async () => {
+    const r2KeysRequested = [];
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/metagraph/latest.json"),
+      {
+        ASSETS: env.ASSETS,
+        METAGRAPH_ARCHIVE: {
+          async get(key) {
+            r2KeysRequested.push(key);
+            return null;
+          },
+        },
+      },
+      {},
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-metagraph-artifact-source"), "assets");
+    assert.equal(response.headers.get("x-metagraph-storage-tier"), "git");
+    assert.deepEqual(r2KeysRequested, []);
+    assert.equal((await response.json()).network, "finney");
+  });
+
   test("rejects raw artifact paths outside public contracts before R2 lookup", async () => {
     const r2KeysRequested = [];
     const response = await handleRequest(
