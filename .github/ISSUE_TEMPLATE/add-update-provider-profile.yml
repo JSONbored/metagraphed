@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Provider profiles identify who operates endpoints or maintains public resources. Profiles must be approved before submitted endpoints can become pool-eligible.
+        Provider profiles identify who operates endpoints or maintains public resources. Profiles are review inputs only and must be approved before submitted endpoints can become pool-eligible.
   - type: input
     id: provider_slug
     attributes:

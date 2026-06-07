@@ -54,6 +54,52 @@ two supported paths:
   or status reports through the matching issue template. These create review or
   re-probe work; they do not directly change observed health.
 
+## What To Submit First
+
+The most useful contributions are public operational facts that close real
+registry gaps:
+
+- official docs;
+- official website;
+- source repository;
+- dashboard or explorer;
+- OpenAPI/Swagger schema URL;
+- public subnet API URL;
+- SSE endpoint;
+- public data artifact;
+- SDK or example repository.
+
+Start with subnets that are still profile-light: directory-only entries,
+subnets missing websites or source repos, and subnets with public APIs that do
+not yet have OpenAPI/schema metadata in Metagraphed.
+
+Good direct candidate PRs are small: exactly one public URL, one public source
+URL proving the claim, one active netuid, and no generated artifacts.
+
+## Auto-Reviewed vs Manual
+
+Safe direct candidate PRs can be AI-reviewed by the private Metagraphed gate and
+may be merged automatically by the GitHub App after public checks pass. These
+are usually app-layer or docs/data surfaces such as `docs`, `website`,
+`source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`,
+`sdk`, `example`, and `repo-registry`.
+
+The gate still routes higher-risk or ambiguous submissions to manual review:
+
+- provider/operator profiles;
+- Bittensor base-layer `subtensor-rpc`, `subtensor-wss`, or `archive`
+  endpoints;
+- authenticated or paid APIs;
+- unknown providers/operators;
+- adapter requests;
+- endpoint status reports;
+- identity disputes or conflicting official sources.
+
+Do not submit health, uptime, latency, incident, or pool-eligibility values.
+Those are generated only from Metagraphed probes and adapters. Status reports
+can trigger review or a future re-probe, but they cannot change observed
+operational state directly.
+
 You can generate a direct candidate PR file locally:
 
 ```bash
@@ -69,6 +115,13 @@ npm run provider:new -- --id example-operator --name "Example Operator" --kind i
 Example payloads live under `docs/examples/submissions`.
 Useful examples include direct candidates, endpoint resources, OpenAPI/schema
 URLs, provider profiles, profile/source corrections, and status reports.
+
+Live PR references:
+
+- Manual-review direct candidate example:
+  https://github.com/JSONbored/metagraphed/pull/84
+- Merged safe candidate and closed duplicate examples will be added after the
+  first public example submissions land through the current AI gate.
 
 Do not include generated `public/metagraph/**` artifacts, native snapshots,
 workflow/script changes, secrets, wallet/PAT material, private URLs, or

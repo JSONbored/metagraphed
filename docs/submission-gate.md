@@ -8,6 +8,10 @@ templates, broad labels, and safe reason categories. Private scoring prompts,
 thresholds, corpus weights, and merge heuristics stay outside the public repo so
 the gate is harder to game.
 
+Normal backend, docs, schema, workflow, and generated-artifact PRs are not UGC
+submissions. The private gate should ignore them completely: no D1 row, no
+marker comment, no Discord notification, and no AI content verdict.
+
 ## Public States
 
 - `submit_pr`: the submission shape is valid and ready for private review.
@@ -105,6 +109,16 @@ Provider profile submissions are review inputs only; they cannot claim official
 authority, directly modify canonical provider manifests, set endpoint health, or
 make any endpoint pool-eligible.
 
+Clean direct candidate PRs for public-safe app-layer surfaces can be
+AI-reviewed by the private Metagraphed gate and merged directly by the GitHub
+App after required public checks pass. Public preflight only decides whether a
+submission is shaped correctly enough for private review; it does not expose AI
+scoring, thresholds, prompts, examples, corpus weights, or model internals.
+
+Direct provider profile PRs always route to manual/private review. They are
+useful, but they identify operators and can affect future endpoint trust, so
+they are not direct-merge content.
+
 ## Supported UGC Types
 
 The public gate accepts or routes:
@@ -147,6 +161,12 @@ The private `metagraphed-submission-gate` should run on Cloudflare:
 
 The public workflow job `metagraphed-submission-gate` only runs deterministic
 preflight. It must not publish, merge, or expose private review details.
+
+The private runtime makes the final UGC decision. For low-risk direct candidate
+PRs, the AI reviewer returns a strict public-safe verdict object. Deterministic
+hard guards still win over AI: unsafe URLs, secrets, private endpoints,
+duplicates, generated artifact edits, unsupported file shapes, base-layer
+RPC/archive claims, and authenticated surfaces cannot be merged automatically.
 
 Production GitHub writes must use a GitHub App installation token. A fallback
 `GITHUB_TOKEN` can exist for emergency/local testing only when the private
@@ -192,6 +212,14 @@ V1 sends one notification for terminal UGC decisions only:
 
 The gate should not notify for `route_away`, `submit_pr`, `fix_required`, or
 normal backend/code PRs.
+
+Reference PRs:
+
+- Manual-review direct candidate example:
+  https://github.com/JSONbored/metagraphed/pull/84
+- Merged safe candidate and closed duplicate examples should be linked here
+  after the first public example submissions are intentionally run through the
+  current gate.
 
 The Worker stores a `last_notification_key` in D1. The key must include the
 target, PR head SHA or issue revision, terminal status, and verdict. Repeated

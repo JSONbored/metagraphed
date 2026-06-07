@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Submit one public endpoint/resource candidate at a time. Accepted submissions create candidates for review and probing; contributors cannot directly set uptime, latency, status, or pool eligibility.
+        Submit one public endpoint/resource candidate at a time. Accepted submissions create candidates for review and probing; contributors cannot directly set uptime, latency, status, or pool eligibility. Base-layer RPC/WSS/archive endpoints and unknown providers always require manual/private review.
   - type: input
     id: netuid
     attributes:

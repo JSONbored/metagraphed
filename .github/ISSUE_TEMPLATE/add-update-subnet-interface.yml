@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve Metagraphed. Schema-valid submissions are not auto-published; public validation is followed by the private Metagraphed submission gate. Clean submissions can be imported automatically after approval; edge cases get routed to manual review. Approved imports require the `metagraphed-import-approved` label and open a pull request.
+        Thanks for helping improve Metagraphed. Use this issue path when you want a low-friction review/import request. Schema-valid issues are not auto-published; approved issue imports require the `metagraphed-import-approved` label and open a pull request. If you want the fastest path for a simple public-safe interface, open a direct PR with exactly one `registry/candidates/community/*.json` file instead.
   - type: input
     id: netuid
     attributes:
@@ -92,5 +92,5 @@ body:
           required: true
         - label: The submitted URL can be checked with read-only probes.
           required: true
-        - label: I understand schema-valid submissions still require maintainer review.
+        - label: I understand issue submissions create review/import work and do not directly publish registry data.
           required: true

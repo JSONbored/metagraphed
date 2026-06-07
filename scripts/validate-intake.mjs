@@ -27,6 +27,23 @@ const pullRequestTemplate = await fs.readFile(
   path.join(repoRoot, ".github/pull_request_template.md"),
   "utf8",
 );
+const prTemplateRoot = path.join(repoRoot, ".github/PULL_REQUEST_TEMPLATE");
+const directCandidateTemplate = await fs.readFile(
+  path.join(prTemplateRoot, "direct-candidate.md"),
+  "utf8",
+);
+const providerProfileTemplate = await fs.readFile(
+  path.join(prTemplateRoot, "provider-profile.md"),
+  "utf8",
+);
+const backendCodeTemplate = await fs.readFile(
+  path.join(prTemplateRoot, "backend-code.md"),
+  "utf8",
+);
+const docsOnlyTemplate = await fs.readFile(
+  path.join(prTemplateRoot, "docs-only.md"),
+  "utf8",
+);
 const submissionGateDocs = await fs.readFile(
   path.join(repoRoot, "docs/submission-gate.md"),
   "utf8",
@@ -68,7 +85,8 @@ checkIncludes(interfaceTemplate.toLowerCase(), "interface template", [
   "id: url",
   "id: source_url",
   "id: auth_required",
-  "schema-valid submissions are not auto-published",
+  "schema-valid issues are not auto-published",
+  "direct pr with exactly one `registry/candidates/community/*.json` file",
   "metagraphed-import-approved",
   "read-only probes",
 ]);
@@ -154,11 +172,60 @@ checkIncludes(profileSourceTemplate, "profile source template", [
   "read-only probes",
 ]);
 
-checkIncludes(pullRequestTemplate, "pull request template", [
+checkIncludes(pullRequestTemplate, "pull request template router", [
+  "?template=direct-candidate.md",
+  "?template=provider-profile.md",
+  "?template=backend-code.md",
+  "?template=docs-only.md",
   "registry/candidates/community/*.json",
   "registry/providers/community/*.json",
-  "npm run submission:pr",
+  "generated `public/metagraph/**`",
 ]);
+
+checkIncludes(directCandidateTemplate, "direct candidate PR template", [
+  "registry/candidates/community/*.json",
+  "npm run candidate:new",
+  "docs/examples/submissions/direct-candidate.json",
+  "AI-reviewed",
+  "merged automatically",
+  "Base-layer RPC/WSS/archive",
+  "npm run submission:pr",
+  "npm run validate:intake",
+  "npm run scan:public-safety",
+]);
+
+checkIncludes(providerProfileTemplate, "provider profile PR template", [
+  "registry/providers/community/*.json",
+  "npm run provider:new",
+  "docs/examples/submissions/direct-provider-profile.json",
+  "manual/private review",
+  "pool-eligible",
+  "npm run submission:pr",
+  "npm run validate:intake",
+  "npm run scan:public-safety",
+]);
+
+checkIncludes(backendCodeTemplate, "backend code PR template", [
+  "npm run check",
+  "npm run validate:api",
+  "npm run validate:openapi",
+  "npm run test:coverage",
+  "R2-only/high-churn detail artifacts are not committed",
+]);
+
+checkIncludes(docsOnlyTemplate, "docs-only PR template", [
+  "docs/templates only",
+  "No generated `public/metagraph/**` artifacts",
+  "npm run validate:docs",
+  "npm run validate:intake",
+  "git diff --check",
+]);
+
+checkIncludes(
+  pullRequestTemplate + directCandidateTemplate,
+  "direct UGC docs",
+  ["npm run submission:pr"],
+);
 
 checkIncludes(submissionGateDocs, "submission gate docs", [
   "submit_pr",

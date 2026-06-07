@@ -9,7 +9,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this for profile/source corrections such as official websites, docs, source repos, dashboards, or public data artifacts. These submissions become review candidates; they do not directly change observed health, uptime, latency, or pool eligibility.
+        Use this for profile/source corrections such as official websites, docs, source repos, dashboards, or public data artifacts. Issue submissions become review/import candidates; they do not directly change observed health, uptime, latency, or pool eligibility.
   - type: input
     id: netuid
     attributes:
