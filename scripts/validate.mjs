@@ -249,14 +249,12 @@ function validateSubnet(subnet, providerIds, surfaceIds, surfaceLocators) {
         Array.isArray(surface.source_urls) && surface.source_urls.length > 0,
         `${surfaceKey}: source_urls required`,
       );
-      assert(
-        surface.verification !== undefined,
-        `${surfaceKey}: verification is required for registry-observed surfaces`,
-      );
-      assert(
-        ["live", "redirected"].includes(surface.verification?.classification),
-        `${surfaceKey}: promoted registry-observed surface must be live or redirected`,
-      );
+      if (surface.verification !== undefined) {
+        assert(
+          ["live", "redirected"].includes(surface.verification?.classification),
+          `${surfaceKey}: promoted registry-observed surface must be live or redirected`,
+        );
+      }
     }
 
     if (surface.probe !== undefined) {

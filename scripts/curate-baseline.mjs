@@ -108,12 +108,6 @@ function buildGeneratedOverlay(nativeSubnet) {
   const sourceUrls = new Set(
     promotedSurfaces.flatMap((surface) => surface.source_urls || []),
   );
-  const verifiedAt =
-    promotedSurfaces
-      .map((surface) => surface.verification?.verified_at)
-      .filter(Boolean)
-      .sort()
-      .at(-1) || null;
 
   const slug = nativeSubnet.netuid === 0 ? "root" : `sn-${nativeSubnet.netuid}`;
   const existingOverlay = existingGeneratedByNetuid.get(nativeSubnet.netuid);
@@ -146,7 +140,7 @@ function buildGeneratedOverlay(nativeSubnet) {
           : "candidate-discovered",
       review_state: "machine-generated",
       reviewed_at: null,
-      verified_at: verifiedAt,
+      verified_at: null,
       source_count: sourceUrls.size,
       gap_notes: gaps.gap_notes,
     },
@@ -286,22 +280,6 @@ function promoteCandidate(candidate, verification) {
     authority: "registry-observed",
     public_safe: true,
     source_urls: candidate.source_urls || [candidate.source_url],
-    verification: {
-      archived: verification.archived,
-      classification: verification.classification,
-      confidence_score: verification.confidence_score,
-      content_type: verification.content_type || null,
-      default_branch: verification.default_branch,
-      github_api_url: verification.github_api_url,
-      homepage: verification.homepage,
-      last_push_at: verification.last_push_at,
-      latency_ms: verification.latency_ms,
-      method_tested: verification.method_tested,
-      redirect_target: verification.redirect_target || null,
-      status_code: verification.status_code,
-      topics: verification.topics,
-      verified_at: verification.verified_at,
-    },
     quality_signals: verification.quality_signals,
     rate_limit_notes: candidate.rate_limit_notes,
     probe: probeForKind(candidate.kind),
