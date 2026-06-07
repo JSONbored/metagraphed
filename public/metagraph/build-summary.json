@@ -7,7 +7,7 @@
   },
   "artifact_budgets": [],
   "artifact_count": 29,
-  "artifact_size_bytes": 4999655,
+  "artifact_size_bytes": 5190826,
   "artifacts": [
     {
       "path": "api-index.json",
@@ -41,20 +41,20 @@
     },
     {
       "path": "endpoint-incidents.json",
-      "sha256": "dfb414fa01911fe9697d45f365c9a82d2d7209b689231dcdfcf6dc179378cdb0",
-      "size_bytes": 659,
+      "sha256": "e562c3a0dd0cb1f6875ea405d9c36aa9f55877858416bd2247c3b16e01fd9d91",
+      "size_bytes": 3751,
       "storage_tier": "dual"
     },
     {
       "path": "endpoint-pools.json",
-      "sha256": "e44c4556043bee9b2b3d28d78ce953ef744ca6953bf91c2af0b253ef146417be",
-      "size_bytes": 7939,
+      "sha256": "f810dba048baa75860a9ceb0bbbb879c3886d7eaa15f78e6656251235a535b7a",
+      "size_bytes": 17277,
       "storage_tier": "dual"
     },
     {
       "path": "endpoints.json",
-      "sha256": "684c5ccbe21514b04d43fb53e6604523169f13f9facf1ef7ad9cd90b45a7711c",
-      "size_bytes": 1374134,
+      "sha256": "cfb5bc666a2b1e32c65e22f70b7f12458ecbc8479b99a2bb45d16a58b260ec0c",
+      "size_bytes": 1538323,
       "storage_tier": "dual"
     },
     {
@@ -65,8 +65,8 @@
     },
     {
       "path": "freshness.json",
-      "sha256": "7c15331678e90ae61a9883a1016223c7b37dba5f457f8abaed1b756e27cc0fc2",
-      "size_bytes": 4366,
+      "sha256": "365fdc8c5e50fa11277018756e8a9a8264f1b4169d11f72f2f5648a4bde833b7",
+      "size_bytes": 4307,
       "storage_tier": "dual"
     },
     {
@@ -77,8 +77,8 @@
     },
     {
       "path": "health/summary.json",
-      "sha256": "dabee7425a1ad0bdf34d838489b01bafc69c39b486a0f2a516dd1d9aee01c1d2",
-      "size_bytes": 40870,
+      "sha256": "9d99fcb4be99bbddc28dc7f3c68f594467c5c8dab2bb19870e502d44f8e18007",
+      "size_bytes": 45884,
       "storage_tier": "dual"
     },
     {
@@ -137,14 +137,14 @@
     },
     {
       "path": "rpc-endpoints.json",
-      "sha256": "2518be03647c0bf966c4e8c4d7491acb4068fe3378d7b81a659f308a384bfb23",
-      "size_bytes": 6976,
+      "sha256": "27afd520f77d32d9ac7d8c2c79a70bdceb2d0d207ac11bb3a780b5d6d8cd8cc2",
+      "size_bytes": 7333,
       "storage_tier": "dual"
     },
     {
       "path": "rpc/pools.json",
-      "sha256": "cfae236ff4a1c35d80697392907924507f8cc9ad90186a9389d4d25a2e055823",
-      "size_bytes": 6549,
+      "sha256": "1237f13191bbbbcec45d14967516b8415ced41b979ed74535fc5d85122133259",
+      "size_bytes": 15789,
       "storage_tier": "dual"
     },
     {
@@ -223,7 +223,7 @@
   },
   "endpoint_count": 853,
   "full_artifact_count": 1097,
-  "full_artifact_size_bytes": 38510137,
+  "full_artifact_size_bytes": 39509617,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profile_count": 129,
   "provider_count": 14,
@@ -238,9 +238,9 @@
     "r2": 1068
   },
   "storage_tier_size_bytes": {
-    "dual": 4815953,
+    "dual": 5007124,
     "git": 183702,
-    "r2": 33510482
+    "r2": 34318791
   },
   "subnet_count": 129,
   "surface_count": 853

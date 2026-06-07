@@ -119,6 +119,8 @@ jobs:
 
       - name: Build artifacts
         if: steps.route.outputs.mode == 'full'
+        env:
+          METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
         run: npm run build
 
       - name: Verify submitted public artifacts are reproducible

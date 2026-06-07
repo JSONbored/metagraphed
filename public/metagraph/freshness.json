@@ -95,16 +95,16 @@
       "timestamp_field": "schema_snapshot_as_of"
     },
     {
-      "as_of": null,
+      "as_of": "2026-06-07T17:40:50.048Z",
       "id": "surface-health",
       "lane": "health-probe",
-      "notes": "Run probes with METAGRAPH_WRITE_PROBE_RESULTS=1 before production publish.",
+      "notes": "Observed health is probe-derived.",
       "path": "public/metagraph/health/latest.json",
       "required_for_publish": true,
       "stale_after_hours": 6,
       "stale_behavior": "block",
-      "status": "missing",
-      "timestamp": null,
+      "status": "captured",
+      "timestamp": "2026-06-07T17:40:50.048Z",
       "timestamp_field": "health_probe_as_of"
     }
   ],
@@ -113,17 +113,16 @@
     "adapter_snapshot_as_of": "2026-06-07T15:30:10.650Z",
     "blocking_source_count": 5,
     "candidate_discovery_as_of": "2026-06-07T15:29:09Z",
-    "health_probe_as_of": null,
+    "health_probe_as_of": "2026-06-07T17:40:50.048Z",
     "health_surface_count": 852,
-    "missing_blocking_source_count": 1,
+    "missing_blocking_source_count": 0,
     "native_data_as_of": "2026-06-07T15:29:09Z",
     "native_snapshot_captured_at": "2026-06-07T15:29:09Z",
     "openapi_surface_count": 28,
-    "publish_ready_without_age_check": false,
+    "publish_ready_without_age_check": true,
     "schema_snapshot_as_of": null,
     "stale_window_warnings": [
-      "schema-drift has no observed timestamp; review before relying on this lane.",
-      "surface-health has no observed timestamp; production publish should block."
+      "schema-drift has no observed timestamp; review before relying on this lane."
     ],
     "verification_as_of": "2026-06-07T15:30:07.541Z",
     "verification_generated_at": "1970-01-01T00:00:00.000Z",
