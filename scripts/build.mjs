@@ -3,6 +3,8 @@ import { stableStringify } from "./lib.mjs";
 
 const productionBuild = isProductionPublishBuild();
 const startedAt = new Date().toISOString();
+const effectiveBuildTimestamp =
+  process.env.METAGRAPH_BUILD_TIMESTAMP || (productionBuild ? startedAt : null);
 const steps = productionBuild ? productionSteps() : localSteps();
 const results = [];
 
@@ -13,6 +15,9 @@ for (const step of steps) {
     encoding: "utf8",
     env: {
       ...process.env,
+      ...(effectiveBuildTimestamp
+        ? { METAGRAPH_BUILD_TIMESTAMP: effectiveBuildTimestamp }
+        : {}),
       ...(step.env || {}),
     },
     stdio: "pipe",
