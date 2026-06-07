@@ -85,9 +85,7 @@ const previousSubnetsArtifact = await readOptionalJson(
 const previousCoverageArtifact = await readOptionalJson(
   path.join(outputRoot, "coverage.json"),
 );
-const previousHealthArtifact =
-  (await readOptionalJson(path.join(r2OutputRoot, "health/latest.json"))) ||
-  (await readOptionalJson(path.join(outputRoot, "health/latest.json")));
+const previousHealthArtifact = await loadPreviousHealthArtifact();
 
 await fs.rm(r2OutputRoot, { recursive: true, force: true });
 
@@ -139,14 +137,12 @@ const healthArtifacts = buildHealthArtifacts(
   mergedSubnets,
   {
     generatedAt,
-    notes:
-      "Health rows preserve matching live probe results when available. Run npm run probes:smoke with METAGRAPH_WRITE_PROBE_RESULTS=1 to refresh observed status.",
+    notes: previousHealthArtifact
+      ? "Health rows preserve matching live probe results from the local probe-result cache. Run npm run probes:smoke with METAGRAPH_WRITE_PROBE_RESULTS=1 to refresh observed status."
+      : "Run npm run probes:smoke with METAGRAPH_WRITE_PROBE_RESULTS=1 to replace unknown build-time health with live probe results.",
     probeFinishedAt: previousHealthArtifact?.probe_finished_at || null,
     probeStartedAt: previousHealthArtifact?.probe_started_at || null,
-    source:
-      previousHealthArtifact?.source === "live-smoke-probe"
-        ? "live-smoke-probe"
-        : "artifact-build",
+    source: previousHealthArtifact ? "live-smoke-probe" : "artifact-build",
   },
 );
 const rpcEndpoints = buildRpcEndpointArtifact({
@@ -826,6 +822,13 @@ function groupByNetuid(items) {
     groups.set(item.netuid, group);
   }
   return groups;
+}
+
+async function loadPreviousHealthArtifact() {
+  const artifact = await readOptionalJson(
+    path.join(repoRoot, ".cache/metagraphed/health/latest.json"),
+  );
+  return artifact?.source === "live-smoke-probe" ? artifact : null;
 }
 
 function buildSurfaceHealthRows({ surfaces, previousHealthArtifact }) {

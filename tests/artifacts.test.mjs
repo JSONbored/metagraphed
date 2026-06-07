@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { test } from "vitest";
 import {
   artifactDirectoryPath,
@@ -43,6 +49,63 @@ test("registry validation rejects tampered per-subnet artifacts", () => {
     /per-subnet detail artifact is not reproducible from registry inputs/,
   );
 });
+
+test("artifact build ignores forged committed health observations by default", () => {
+  const artifactPath = artifactFilePath("health/latest.json");
+  const cachePath = ".cache/metagraphed/health/latest.json";
+  const original = readFileSync(artifactPath, "utf8");
+  const originalCache = existsSync(cachePath)
+    ? readFileSync(cachePath, "utf8")
+    : null;
+  rmSync(cachePath, { force: true });
+  const tampered = JSON.parse(original);
+  const target = tampered.surfaces.find((surface) => surface.public_safe === true);
+  assert(target, "expected a public-safe health row to tamper");
+
+  tampered.source = "live-smoke-probe";
+  tampered.generated_at = "2999-01-01T00:00:00.000Z";
+  target.status = "ok";
+  target.classification = "live";
+  target.last_checked = "2999-01-01T00:00:00.000Z";
+  target.last_ok = "2999-01-01T00:00:00.000Z";
+  target.verified_at = "2999-01-01T00:00:00.000Z";
+  target.latency_ms = 7;
+  target.status_code = 200;
+  target.method_results = { forged_probe: { status: "ok" } };
+
+  try {
+    writeFileSync(artifactPath, `${JSON.stringify(tampered, null, 2)}\n`);
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+
+    const rebuilt = JSON.parse(readFileSync(artifactPath, "utf8"));
+    const rebuiltTarget = rebuilt.surfaces.find(
+      (surface) => surface.surface_id === target.surface_id,
+    );
+    assert.equal(rebuilt.source, "artifact-build");
+    assert.equal(rebuiltTarget.status, "unknown");
+    assert.equal(rebuiltTarget.classification, "unknown");
+    assert.equal(rebuiltTarget.last_checked, null);
+    assert.equal(rebuiltTarget.latency_ms, null);
+    assert.equal(rebuiltTarget.status_code, undefined);
+    assert.equal(rebuilt.summary.status_counts.ok || 0, 0);
+  } finally {
+    writeFileSync(artifactPath, original);
+    if (originalCache === null) {
+      rmSync(cachePath, { force: true });
+    } else {
+      writeFileSync(cachePath, originalCache);
+    }
+    execFileSync("git", ["checkout", "--", "public/metagraph"], {
+      cwd: process.cwd(),
+      stdio: "pipe",
+    });
+  }
+}, 30_000);
 
 test("public artifacts are internally consistent", () => {
   const native = JSON.parse(

@@ -671,6 +671,10 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
     contractVersion,
     source: "live-smoke-probe",
   });
+  await writeJson(
+    path.join(repoRoot, ".cache/metagraphed/health/latest.json"),
+    artifact.latest,
+  );
   await writeJson(artifactOutputPath("health/latest.json"), artifact.latest);
   await writeJson(artifactOutputPath("health/summary.json"), artifact.summary);
   await writeJson(
