@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-7-subnet-api-api-all-ways-io-duplicate-example",
+      "kind": "subnet-api",
+      "name": "Allways swaps API duplicate example",
+      "netuid": 7,
+      "provider": "allways",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Intentional duplicate submission example for gate behavior documentation.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.all-ways.io/swagger",
+      "source_urls": ["https://api.all-ways.io/swagger"],
+      "state": "schema-valid",
+      "url": "https://api.all-ways.io/swaps"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "jsonbored",
+    "submitted_by_url": "https://github.com/jsonbored"
+  }
+}
