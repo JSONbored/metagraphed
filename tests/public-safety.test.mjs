@@ -38,6 +38,9 @@ describe("public URL safety checks", () => {
 
   test("resolves public hosts and blocks failed DNS lookups", async () => {
     assert.equal(await isUnsafeResolvedUrl("https://example.com/"), false);
-    assert.equal(await isUnsafeResolvedUrl("https://metagraphed.invalid/"), true);
+    assert.equal(
+      await isUnsafeResolvedUrl("https://metagraphed.invalid/"),
+      true,
+    );
   });
 });
