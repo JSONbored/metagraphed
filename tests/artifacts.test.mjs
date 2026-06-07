@@ -17,6 +17,12 @@ import {
 } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
+const SUPPORT_ARTIFACT_PATHS = [
+  "public/metagraph/build-summary.json",
+  "public/metagraph/changelog.json",
+  "public/metagraph/r2-manifest.json",
+];
+
 function runNode(script) {
   execFileSync(process.execPath, [script], {
     cwd: process.cwd(),
@@ -137,6 +143,7 @@ test("artifact build ignores forged committed health observations by default", (
   const originalCache = existsSync(cachePath)
     ? readFileSync(cachePath, "utf8")
     : null;
+  const supportArtifacts = snapshotSupportArtifacts();
   rmSync(cachePath, { force: true });
   const tampered = JSON.parse(original);
   const target = tampered.surfaces.find(
@@ -160,7 +167,10 @@ test("artifact build ignores forged committed health observations by default", (
     execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
       cwd: process.cwd(),
       encoding: "utf8",
-      env: process.env,
+      env: {
+        ...process.env,
+        METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
+      },
       stdio: "pipe",
     });
 
@@ -185,7 +195,10 @@ test("artifact build ignores forged committed health observations by default", (
     execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
       cwd: process.cwd(),
       encoding: "utf8",
-      env: process.env,
+      env: {
+        ...process.env,
+        METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
+      },
       stdio: "pipe",
     });
     execFileSync(process.execPath, ["scripts/generate-types.mjs"], {
@@ -206,6 +219,7 @@ test("artifact build ignores forged committed health observations by default", (
       env: process.env,
       stdio: "pipe",
     });
+    restoreSupportArtifacts(supportArtifacts);
   }
 }, 30_000);
 
@@ -216,6 +230,7 @@ test("artifact build does not preserve forged endpoint index health", () => {
   const originalCache = existsSync(cachePath)
     ? readFileSync(cachePath, "utf8")
     : null;
+  const supportArtifacts = snapshotSupportArtifacts();
   rmSync(cachePath, { force: true });
   const tampered = JSON.parse(original);
   const target = tampered.endpoints.find(
@@ -264,7 +279,10 @@ test("artifact build does not preserve forged endpoint index health", () => {
     execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
       cwd: process.cwd(),
       encoding: "utf8",
-      env: process.env,
+      env: {
+        ...process.env,
+        METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
+      },
       stdio: "pipe",
     });
     execFileSync(process.execPath, ["scripts/generate-types.mjs"], {
@@ -285,6 +303,7 @@ test("artifact build does not preserve forged endpoint index health", () => {
       env: process.env,
       stdio: "pipe",
     });
+    restoreSupportArtifacts(supportArtifacts);
   }
 }, 30_000);
 
@@ -674,4 +693,19 @@ function latestArtifactDate(relativePath) {
     .map((file) => file.replace(/\.json$/, ""))
     .sort()
     .at(-1);
+}
+
+function snapshotSupportArtifacts() {
+  return new Map(
+    SUPPORT_ARTIFACT_PATHS.map((filePath) => [
+      filePath,
+      readFileSync(filePath, "utf8"),
+    ]),
+  );
+}
+
+function restoreSupportArtifacts(snapshot) {
+  for (const [filePath, content] of snapshot) {
+    writeFileSync(filePath, content);
+  }
 }

@@ -19,6 +19,7 @@
     "build:artifacts": "node scripts/build-artifacts.mjs",
     "pipeline:check": "node scripts/pipeline.mjs --check",
     "pipeline:refresh": "node scripts/pipeline.mjs --refresh",
+    "artifacts:prepare-local": "node scripts/prepare-local-r2-staging.mjs",
     "sync:subnets": "node scripts/sync-subnets.mjs --write",
     "sync:subnets:dry-run": "node scripts/sync-subnets.mjs --dry-run",
     "discover:candidates": "node scripts/discover-candidates.mjs --write",

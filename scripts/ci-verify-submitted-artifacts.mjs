@@ -46,10 +46,14 @@ if (deterministicArtifacts.length === 0) {
 }
 
 try {
-  execFileSync("git", ["diff", "--exit-code", "--", ...deterministicArtifacts], {
-    encoding: "utf8",
-    stdio: "pipe",
-  });
+  execFileSync(
+    "git",
+    ["diff", "--exit-code", "--", ...deterministicArtifacts],
+    {
+      encoding: "utf8",
+      stdio: "pipe",
+    },
+  );
   console.log("Deterministic submitted public artifacts are reproducible.");
 } catch (error) {
   process.stdout.write(error.stdout || "");

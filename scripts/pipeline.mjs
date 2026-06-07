@@ -53,6 +53,7 @@ console.log(
 
 function checkCommands() {
   return [
+    step("artifacts:prepare-local"),
     step("sync:subnets:dry-run"),
     step("discover:candidates:dry-run"),
     step("verify:candidates:dry-run"),
