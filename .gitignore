@@ -116,6 +116,19 @@ tmp/
 # Local-only internal research notes
 docs/research/
 
+# Generated operational detail staged for R2, not Git
+registry/verification/latest.json
+registry/subnets/generated/
+dist/metagraph-source/
+public/metagraph/endpoint-incidents.json
+public/metagraph/endpoint-pools.json
+public/metagraph/endpoints.json
+public/metagraph/health/summary.json
+public/metagraph/metagraph/latest.json
+public/metagraph/rpc-endpoints.json
+public/metagraph/rpc/pools.json
+public/metagraph/source-health.json
+
 # Local/private automation implementation details
 private/
 ops/private/

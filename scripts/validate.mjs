@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   flattenSurfaces,
   loadCandidates,
+  loadVerification,
   loadNativeSnapshot,
   loadProviders,
   loadSubnets,
@@ -255,18 +256,20 @@ function validateSubnet(
         Array.isArray(surface.source_urls) && surface.source_urls.length > 0,
         `${surfaceKey}: source_urls required`,
       );
-      const verificationEvidence = registryVerificationEvidence.get(
-        registrySurfaceKey({
-          ...surface,
-          netuid: subnet.netuid,
-        }),
-      );
+      const verificationEvidence =
+        registryVerificationEvidence.byCandidateId.get(surface.id) ||
+        registryVerificationEvidence.byLocator.get(
+          registrySurfaceKey({
+            ...surface,
+            netuid: subnet.netuid,
+          }),
+        );
       assert(
         verificationEvidence !== undefined,
         `${surfaceKey}: registry-observed surface requires verification evidence`,
       );
       if (verificationEvidence !== undefined) {
-        validateVerification(
+        validatePromotionEvidence(
           `${surfaceKey}:verification evidence`,
           verificationEvidence,
         );
@@ -408,6 +411,26 @@ function validateVerification(key, verification) {
     assert(
       isValidUrl(verification.homepage),
       `${key}: homepage must be a URL or null`,
+    );
+  }
+}
+
+function validatePromotionEvidence(key, verification) {
+  assert(
+    verification && typeof verification === "object",
+    `${key}: verification evidence must be an object`,
+  );
+  assert(
+    verificationClassifications.has(verification.classification),
+    `${key}: invalid classification`,
+  );
+  if (
+    verification.redirect_target !== undefined &&
+    verification.redirect_target !== null
+  ) {
+    assert(
+      isValidUrl(verification.redirect_target),
+      `${key}: redirect_target must be a URL or null`,
     );
   }
 }
@@ -818,6 +841,7 @@ async function validateGeneratedArtifacts(
     candidates,
     (candidate) => candidate.netuid,
   );
+  const candidateIds = new Set(candidates.map((candidate) => candidate.id));
   const activeNetuids = new Set(nativeNetuids);
   const activeOverlays = overlays.filter((overlay) =>
     activeNetuids.has(overlay.netuid),
@@ -932,9 +956,20 @@ async function validateGeneratedArtifacts(
     "gaps artifact: count mismatch",
   );
   assert(
-    verificationArtifact.results.length === candidates.length,
-    "verification artifact: result count must match candidates",
+    verificationArtifact.candidate_count ===
+      verificationArtifact.results.length,
+    "verification artifact: candidate_count must match full result count",
   );
+  assert(
+    verificationArtifact.results.length <= candidates.length,
+    "verification artifact: full result count cannot exceed candidates",
+  );
+  for (const result of verificationArtifact.results) {
+    assert(
+      candidateIds.has(result.candidate_id),
+      `verification artifact: unknown candidate ${result.candidate_id}`,
+    );
+  }
   assert(
     reviewQueueArtifact.count === reviewQueueArtifact.candidates.length,
     "review queue artifact: count must match candidates length",
@@ -1299,9 +1334,7 @@ const candidates = await loadCandidates();
 const reviewDecisionsDocument = await readJson(
   path.join(repoRoot, "registry/reviews/maintainer-reviewed.json"),
 );
-const verificationDocument = await readJson(
-  path.join(repoRoot, "registry/verification/latest.json"),
-);
+const verificationDocument = await loadVerification({ preferDetailed: false });
 validatePublicSafeJson(verificationDocument, ["registry verification"]);
 const providerIds = new Set();
 const netuids = new Set();
@@ -1309,12 +1342,18 @@ const slugs = new Set();
 const surfaceIds = new Set();
 const surfaceLocators = new Set();
 const nativeNetuids = validateNativeSnapshot(nativeSnapshot);
-const registryVerificationEvidence = new Map(
-  (verificationDocument.results || []).map((result) => [
-    registrySurfaceKey(result),
-    result,
-  ]),
-);
+const registryVerificationEvidence = {
+  byCandidateId: new Map(
+    (verificationDocument.results || [])
+      .filter((result) => result.candidate_id)
+      .map((result) => [result.candidate_id, result]),
+  ),
+  byLocator: new Map(
+    (verificationDocument.results || [])
+      .filter((result) => result.url)
+      .map((result) => [registrySurfaceKey(result), result]),
+  ),
+};
 const candidateIds = new Set();
 const candidateLocators = new Set();
 

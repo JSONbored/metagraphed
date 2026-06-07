@@ -5344,7 +5344,7 @@
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 10,
+        "interface_source_count": 9,
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_urls": [
@@ -5354,7 +5354,6 @@
           "https://github.com/chutesai/chutes/blob/main/README.md",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_64/index.mdx",
           "https://github.com/rayonlabs/chutes-miner/blob/main/README.md",
-          "https://github.com/rayonlabs/chutes/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json",
           "https://kubernetes.io/docs/reference/kubectl",
           "https://taomarketcap.com/subnets/64"
@@ -6316,15 +6315,15 @@
       "missing_critical_count": 5,
       "monitored_endpoint_count": 4,
       "name": "Byzantium",
-      "native_name": "›",
-      "native_name_quality": "placeholder",
+      "native_name": "Byzantium",
+      "native_name_quality": "chain",
       "netuid": 76,
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
         "id": "sn-76-taomarketcap-website",
         "kind": "website",
-        "name": "› website",
+        "name": "Byzantium website",
         "provider": "taomarketcap",
         "url": "https://www.byzantiumai.net/"
       },
@@ -7192,7 +7191,8 @@
     {
       "candidate_count": 3,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "identity-reviewed"
       ],
       "completeness": {
         "confidence": "medium",
@@ -7219,7 +7219,7 @@
         "score": 20
       },
       "completeness_score": 20,
-      "confidence": "medium",
+      "confidence": "high",
       "curation_level": "machine-verified",
       "endpoint_count": 3,
       "interface_count": 2,
@@ -7250,8 +7250,8 @@
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
         "interface_source_count": 4,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-07T00:00:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/87",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx",
@@ -7259,7 +7259,7 @@
           "https://taomarketcap.com/subnets/87"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-87",
       "status": "active",
       "subnet_type": "application",
@@ -10649,8 +10649,8 @@
   "summary": {
     "average_completeness_score": 49,
     "by_confidence": {
-      "high": 3,
-      "medium": 126
+      "high": 4,
+      "medium": 125
     },
     "by_profile_level": {
       "adapter-backed": 2,

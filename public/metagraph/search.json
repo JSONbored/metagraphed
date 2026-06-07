@@ -1486,8 +1486,10 @@
         "87",
         "baseline",
         "curated",
+        "identity",
         "luminar",
         "network",
+        "reviewed",
         "sn"
       ],
       "type": "subnet",
@@ -2422,40 +2424,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-76-taomarketcap-website",
-      "netuid": 76,
-      "slug": "sn-76",
-      "subtitle": "website / taomarketcap",
-      "title": "› website",
-      "tokens": [
-        "76",
-        "byzantium",
-        "sn",
-        "taomarketcap",
-        "website"
-      ],
-      "type": "surface",
-      "url": "https://www.byzantiumai.net/"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-86-taomarketcap-dashboard",
-      "netuid": 86,
-      "slug": "sn-86",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "⚒ TaoMarketCap dashboard",
-      "tokens": [
-        "86",
-        "dashboard",
-        "sn",
-        "subnet",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://taomarketcap.com/subnets/86"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-86-taopedia-article",
       "netuid": 86,
       "slug": "sn-86",
@@ -2472,23 +2440,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_86/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-86-tensorplex-docs",
-      "netuid": 86,
-      "slug": "sn-86",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "⚒ Tensorplex subnet docs",
-      "tokens": [
-        "86",
-        "docs",
-        "sn",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/86"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5570,6 +5521,23 @@
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/76"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-76-taomarketcap-website",
+      "netuid": 76,
+      "slug": "sn-76",
+      "subtitle": "website / taomarketcap",
+      "title": "Byzantium website",
+      "tokens": [
+        "76",
+        "byzantium",
+        "sn",
+        "taomarketcap",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://www.byzantiumai.net/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15186,6 +15154,40 @@
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/42"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-86-taomarketcap-dashboard",
+      "netuid": 86,
+      "slug": "sn-86",
+      "subtitle": "dashboard / taomarketcap",
+      "title": "Subnet 86 TaoMarketCap dashboard",
+      "tokens": [
+        "86",
+        "dashboard",
+        "sn",
+        "subnet",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://taomarketcap.com/subnets/86"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-86-tensorplex-docs",
+      "netuid": 86,
+      "slug": "sn-86",
+      "subtitle": "docs / tensorplex-subnet-docs",
+      "title": "Subnet 86 Tensorplex subnet docs",
+      "tokens": [
+        "86",
+        "docs",
+        "sn",
+        "subnet",
+        "tensorplex"
+      ],
+      "type": "surface",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/86"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

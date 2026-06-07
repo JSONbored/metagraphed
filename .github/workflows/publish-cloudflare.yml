@@ -29,11 +29,11 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Build artifacts
-        run: npm run build
-
-      - name: Generate R2 manifest
-        run: npm run r2:manifest
+      - name: Refresh publish artifacts
+        run: npm run pipeline:refresh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          METAGRAPH_WRITE_PROBE_RESULTS: "1"
 
       - name: Validate registry
         run: npm run validate

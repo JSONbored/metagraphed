@@ -1,6 +1,7 @@
 import path from "node:path";
 import {
-  listJsonFilesRecursive,
+  listJsonFiles,
+  loadSubnets,
   readJson,
   repoRoot,
   stableStringify,
@@ -15,17 +16,32 @@ const decisionsPath = path.join(
   "registry/reviews/maintainer-reviewed.json",
 );
 const decisionsDocument = await readJson(decisionsPath);
-const overlayFiles = await listJsonFilesRecursive(
+const manualOverlayFiles = await listJsonFiles(
   path.join(repoRoot, "registry/subnets"),
 );
-const overlays = await Promise.all(
-  overlayFiles.map(async (filePath) => ({
+const manualOverlays = await Promise.all(
+  manualOverlayFiles.map(async (filePath) => ({
     filePath,
     overlay: await readJson(filePath),
   })),
 );
+const allOverlays = await loadSubnets();
+const manualOverlaysByNetuid = new Map(
+  manualOverlays.map((entry) => [entry.overlay.netuid, entry]),
+);
 const overlaysByNetuid = new Map(
-  overlays.map((entry) => [entry.overlay.netuid, entry]),
+  allOverlays.map((overlay) => [
+    overlay.netuid,
+    manualOverlaysByNetuid.get(overlay.netuid) || {
+      filePath: path.join(
+        repoRoot,
+        "registry/subnets",
+        `${safeSlug(overlay.slug)}.json`,
+      ),
+      materialized: true,
+      overlay,
+    },
+  ]),
 );
 const results = [];
 
@@ -59,6 +75,7 @@ for (const decision of decisionsDocument.decisions || []) {
     netuid: decision.netuid,
     slug: nextOverlay.slug,
     decision: decision.decision,
+    materialized: Boolean(entry.materialized),
     changed,
   });
 
@@ -75,3 +92,11 @@ console.log(
     results,
   }),
 );
+
+function safeSlug(value) {
+  const normalized = String(value || "subnet")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || "subnet";
+}

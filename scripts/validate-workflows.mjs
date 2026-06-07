@@ -118,13 +118,15 @@ for (const workflow of workflows) {
       workflow,
     )
   ) {
+    const usesRefreshPipeline = content.includes("npm run pipeline:refresh");
     check(
-      content.includes("npm run validate:docs"),
+      usesRefreshPipeline || content.includes("npm run validate:docs"),
       workflow,
       "workflow must validate public documentation contracts",
     );
     check(
-      content.includes("npm run validate:private-boundary"),
+      usesRefreshPipeline ||
+        content.includes("npm run validate:private-boundary"),
       workflow,
       "workflow must validate private reviewer and notification boundaries",
     );

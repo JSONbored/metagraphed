@@ -36,9 +36,8 @@ test("registry validates", () => {
 });
 
 test("registry validation rejects registry-observed surfaces without verification evidence", () => {
-  const overlayPath = "registry/subnets/generated/sn-1.json";
-  const original = readFileSync(overlayPath, "utf8");
-  const tampered = JSON.parse(original);
+  const overlayPath = "registry/subnets/test-tampered-sn-1.json";
+  const tampered = tamperedOverlayFixture("sn-1-unverified-registry-observed");
 
   tampered.surfaces.push({
     id: "sn-1-unverified-registry-observed",
@@ -59,7 +58,7 @@ test("registry validation rejects registry-observed surfaces without verificatio
   } catch (error) {
     failure = error;
   } finally {
-    writeFileSync(overlayPath, original);
+    rmSync(overlayPath, { force: true });
   }
 
   assert(
@@ -73,9 +72,8 @@ test("registry validation rejects registry-observed surfaces without verificatio
 });
 
 test("registry validation rejects registry-observed surfaces with only inline verification", () => {
-  const overlayPath = "registry/subnets/generated/sn-1.json";
-  const original = readFileSync(overlayPath, "utf8");
-  const tampered = JSON.parse(original);
+  const overlayPath = "registry/subnets/test-tampered-sn-1.json";
+  const tampered = tamperedOverlayFixture("sn-1-forged-inline-verification");
 
   tampered.surfaces.push({
     id: "sn-1-forged-inline-verification",
@@ -100,7 +98,7 @@ test("registry validation rejects registry-observed surfaces with only inline ve
   } catch (error) {
     failure = error;
   } finally {
-    writeFileSync(overlayPath, original);
+    rmSync(overlayPath, { force: true });
   }
 
   assert(
@@ -112,6 +110,28 @@ test("registry validation rejects registry-observed surfaces with only inline ve
     /registry-observed surface requires verification evidence/,
   );
 });
+
+function tamperedOverlayFixture(slug) {
+  return {
+    categories: ["test"],
+    curation: {
+      gap_notes: [],
+      level: "machine-verified",
+      review_state: "maintainer-reviewed",
+      reviewed_at: "2026-06-07T00:00:00.000Z",
+      source_count: 1,
+      verified_at: null,
+    },
+    links: [],
+    name: `Tampered ${slug}`,
+    netuid: 1,
+    notes: "Temporary validation fixture.",
+    schema_version: 1,
+    slug,
+    status: "active",
+    surfaces: [],
+  };
+}
 
 test("registry validation rejects tampered per-subnet artifacts", () => {
   const artifactPath = artifactFilePath("subnets/0.json");
@@ -469,7 +489,20 @@ test("public artifacts are internally consistent", () => {
   assert.equal(coverage.candidate_subnet_count, native.subnets.length);
   assert.equal(curation.curation.length, native.subnets.length);
   assert.equal(gaps.gaps.length, native.subnets.length);
-  assert.equal(verification.results.length, candidates.candidates.length);
+  assert.equal(verification.candidate_count, verification.results.length);
+  assert.equal(
+    verification.results.length <= candidates.candidates.length,
+    true,
+  );
+  const candidateIds = new Set(
+    candidates.candidates.map((candidate) => candidate.id),
+  );
+  assert.equal(
+    verification.results.every((result) =>
+      candidateIds.has(result.candidate_id),
+    ),
+    true,
+  );
   assert.equal(reviewQueue.count, reviewQueue.candidates.length);
   assert.equal(contracts.primary_domain, "metagraph.sh");
   assert.equal(contracts.status_domain, null);

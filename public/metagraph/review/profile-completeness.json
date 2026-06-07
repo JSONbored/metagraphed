@@ -225,7 +225,7 @@
     {
       "candidate_count": 3,
       "completeness_score": 20,
-      "confidence": "medium",
+      "confidence": "high",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",

@@ -5,8 +5,9 @@ const args = new Set(process.argv.slice(2));
 const refresh = args.has("--refresh");
 const check = args.has("--check") || !refresh;
 
-const commands = check ? checkCommands() : refreshCommands();
 const startedAt = new Date().toISOString();
+const refreshTimestamp = process.env.METAGRAPH_BUILD_TIMESTAMP || startedAt;
+const commands = check ? checkCommands() : refreshCommands(refreshTimestamp);
 const results = [];
 
 for (const command of commands) {
@@ -85,28 +86,32 @@ function checkCommands() {
   ];
 }
 
-function refreshCommands() {
+function refreshCommands(refreshTimestamp) {
+  const refreshEnv = {
+    METAGRAPH_BUILD_TIMESTAMP: refreshTimestamp,
+    METAGRAPH_DISCOVERY_OBSERVED_AT: refreshTimestamp,
+  };
   const commands = [
     step("sync:subnets"),
-    step("discover:candidates"),
-    step("verify:candidates"),
-    step("curate:baseline"),
+    step("discover:candidates", refreshEnv),
+    step("verify:candidates", refreshEnv),
+    step("curate:baseline", refreshEnv),
     step("review:promote"),
-    step("adapters:snapshot"),
-    step("build"),
-    step("schemas:snapshot"),
+    step("adapters:snapshot", refreshEnv),
+    step("build", refreshEnv),
+    step("schemas:snapshot", refreshEnv),
   ];
 
   if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
     commands.push(
-      step("probes:smoke"),
-      step("build"),
-      step("schemas:snapshot"),
-      step("build-summary:refresh"),
+      step("probes:smoke", refreshEnv),
+      step("build", refreshEnv),
+      step("schemas:snapshot", refreshEnv),
+      step("build-summary:refresh", refreshEnv),
     );
   }
 
-  commands.push(step("r2:manifest"));
+  commands.push(step("r2:manifest", refreshEnv));
 
   return [
     ...commands,

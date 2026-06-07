@@ -1604,26 +1604,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "Luminar Network",
-      "netuid": 87,
-      "priority_score": 71,
-      "review_state": "machine-generated",
-      "slug": "sn-87",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 3,
-      "verified_candidate_count": 3
-    },
-    {
-      "candidate_count": 3,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "ogham",
       "netuid": 90,
       "priority_score": 71,
@@ -3440,6 +3420,26 @@
       "verified_candidate_count": 9
     },
     {
+      "candidate_count": 3,
+      "curation_level": "machine-verified",
+      "missing_kinds": [
+        "source-repo",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Luminar Network",
+      "netuid": 87,
+      "priority_score": 26,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-87",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 3,
+      "verified_candidate_count": 3
+    },
+    {
       "candidate_count": 16,
       "curation_level": "adapter-backed",
       "missing_kinds": [
@@ -3532,7 +3532,7 @@
       "website": 39
     },
     "maintainer_decision_count": 3,
-    "needs_maintainer_review_count": 126,
+    "needs_maintainer_review_count": 125,
     "subnet_count": 129
   }
 }

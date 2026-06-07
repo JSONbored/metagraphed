@@ -65,6 +65,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "metagraph-latest",
+      "path": "/metagraph/metagraph/latest.json",
+      "schema_ref": "#/components/schemas/SubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "subnet-detail",
       "path": "/metagraph/subnets/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetDetailArtifact",
@@ -103,7 +110,7 @@
       "id": "endpoints",
       "path": "/metagraph/endpoints.json",
       "schema_ref": "#/components/schemas/EndpointsArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -187,7 +194,7 @@
       "id": "source-health",
       "path": "/metagraph/source-health.json",
       "schema_ref": "#/components/schemas/SourceHealthArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -215,7 +222,7 @@
       "id": "health-summary",
       "path": "/metagraph/health/summary.json",
       "schema_ref": "#/components/schemas/HealthSummaryArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -243,28 +250,28 @@
       "id": "rpc-endpoints",
       "path": "/metagraph/rpc-endpoints.json",
       "schema_ref": "#/components/schemas/RpcEndpointsArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
       "id": "rpc-pools",
       "path": "/metagraph/rpc/pools.json",
       "schema_ref": "#/components/schemas/RpcPoolsArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
       "id": "endpoint-pools",
       "path": "/metagraph/endpoint-pools.json",
       "schema_ref": "#/components/schemas/EndpointPoolsArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
       "id": "endpoint-incidents",
       "path": "/metagraph/endpoint-incidents.json",
       "schema_ref": "#/components/schemas/EndpointIncidentsArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",

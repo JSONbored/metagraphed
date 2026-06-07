@@ -1,6 +1,7 @@
 import path from "node:path";
 import {
   buildTimestamp,
+  generatedSourceRoot,
   isHtmlContentType,
   isJsonContentType,
   isUnsafeResolvedUrl,
@@ -36,8 +37,12 @@ const artifact = {
 
 if (!dryRun) {
   await writeJson(
-    path.join(repoRoot, "registry/verification/latest.json"),
+    path.join(generatedSourceRoot, "verification/latest.json"),
     artifact,
+  );
+  await writeJson(
+    path.join(repoRoot, "registry/verification/promotions.json"),
+    compactVerificationArtifact(artifact),
   );
 }
 
@@ -80,6 +85,83 @@ async function verifyCandidate(candidate) {
   }
 
   return verifyHttpSurface(base, candidate);
+}
+
+function compactVerificationArtifact(artifactValue) {
+  return {
+    schema_version: artifactValue.schema_version,
+    generated_at: buildTimestamp(),
+    verification_started_at: null,
+    verification_finished_at: null,
+    candidate_count: artifactValue.candidate_count,
+    summary: artifactValue.summary,
+    notes:
+      "Compact promotion snapshot for deterministic Git review. Full latency, timestamp, and probe-detail rows are staged for R2 during refresh/publish runs.",
+    results: artifactValue.results.map(compactVerificationResult),
+  };
+}
+
+function compactVerificationResult(result) {
+  return stripNullish({
+    candidate_id: result.candidate_id,
+    classification: result.classification,
+    confidence_score: result.confidence_score,
+    content_type: result.content_type,
+    error: stableErrorCategory(result.error),
+    kind: result.kind,
+    netuid: result.netuid,
+    provider: result.provider,
+    redirect_target: result.redirect_target,
+    private_redirect_blocked: result.private_redirect_blocked,
+    quality_signals: compactQualitySignals(result.quality_signals),
+    status: result.status,
+  });
+}
+
+function compactQualitySignals(signals) {
+  if (!signals || typeof signals !== "object") {
+    return signals;
+  }
+  return stripNullish({
+    archived: signals.archived,
+    content_type_matches_kind: signals.content_type_matches_kind,
+    has_default_branch: signals.has_default_branch,
+    has_recent_push_metadata: signals.has_recent_push_metadata,
+    public_safe: signals.public_safe,
+    rate_limited: signals.rate_limited,
+    redirected: signals.redirected,
+    source_tier: signals.source_tier,
+    transient_failure: signals.transient_failure,
+  });
+}
+
+function stableErrorCategory(error) {
+  if (!error) {
+    return null;
+  }
+  const normalized = String(error).toLowerCase();
+  if (normalized.includes("timed out") || normalized.includes("timeout")) {
+    return "timeout";
+  }
+  if (normalized.includes("rate limit") || normalized.includes("429")) {
+    return "rate-limited";
+  }
+  if (normalized.includes("404") || normalized.includes("not found")) {
+    return "not-found";
+  }
+  if (normalized.includes("403") || normalized.includes("forbidden")) {
+    return "forbidden";
+  }
+  if (normalized.includes("content-type")) {
+    return "content-mismatch";
+  }
+  return "probe-failed";
+}
+
+function stripNullish(value) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, nested]) => nested !== undefined),
+  );
 }
 
 async function verifyGithubRepo(base, repo) {

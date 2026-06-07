@@ -62,6 +62,9 @@ for (const file of trackedFiles) {
   try {
     stat = await fs.lstat(absolutePath);
   } catch (error) {
+    if (error.code === "ENOENT") {
+      continue;
+    }
     console.warn(`Skipping unreadable path ${file}: ${error.message}`);
     continue;
   }
@@ -94,6 +97,10 @@ for (const file of trackedFiles) {
       }
     }
   } catch (error) {
+    if (error.code === "ENOENT") {
+      lines?.close();
+      continue;
+    }
     console.warn(`Skipping unreadable file ${file}: ${error.message}`);
     lines?.close();
     continue;

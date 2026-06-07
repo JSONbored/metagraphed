@@ -3,52 +3,8 @@
     "added": [],
     "modified": [
       {
-        "hash": "65426fea1ea94725ce120d7355f247606a3240fec13353cf0b089d3568e2609f",
-        "path": "coverage.json"
-      },
-      {
-        "hash": "f805a7df2b03f6347b1d66a1e613f7c77f30184007ce95f821f0d6be371ae16b",
-        "path": "curation.json"
-      },
-      {
-        "hash": "06c0903de6f9b2f03c13c8045614a6e520c15eac027d125c579cacba47730981",
-        "path": "evidence-ledger.json"
-      },
-      {
-        "hash": "2d3cd8ac4b99bd02974a933b1aa30d704047adf90306722a6dee0472ad42a122",
+        "hash": "86c6ee41912929334eaac9e9ebbbefd98808c2a8c617ec8a0a1383bb2216ed3e",
         "path": "freshness.json"
-      },
-      {
-        "hash": "9690cf07199617211a8d1f108b2d1a1dd7eb8a13d6903b722db7c00f0b01e4ab",
-        "path": "metagraph/latest.json"
-      },
-      {
-        "hash": "22516b8ef31786d87be34b3f2cc5c7977a33bb4b10eccfbd631f24879b4728b0",
-        "path": "profiles.json"
-      },
-      {
-        "hash": "b0a3d38dbd305f58c681cb96b35b7ce2b1575577361be8af60eb8c6ea47cf4c7",
-        "path": "review/adapter-candidates.json"
-      },
-      {
-        "hash": "9140944982f14487a600990820fbd9d1fe95fb33ab3da1fa610e0bb178dad5d3",
-        "path": "review/curation.json"
-      },
-      {
-        "hash": "df4262991a09f167e7931a2336e6ad43b0240e297cc5452b12b5be89893651e0",
-        "path": "review/gap-priorities.json"
-      },
-      {
-        "hash": "c97b88e1ad57aa9f4777d7195a3b5de49d68d671783293cb166d1201e5fc22a5",
-        "path": "review/profile-completeness.json"
-      },
-      {
-        "hash": "161a1c65c022ba4c1ec7b9f509bf1e036c8af0bc5ce213de4ec1fd0daffa9911",
-        "path": "source-health.json"
-      },
-      {
-        "hash": "3fc06db20e6531fde449d57daf01916727694b363d72564295f8b67474bd4109",
-        "path": "subnets.json"
       }
     ],
     "removed": []
@@ -68,13 +24,13 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 12,
+    "artifact_modified_count": 1,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
         "after": 1771,
-        "before": 1770,
-        "delta": 1
+        "before": 1771,
+        "delta": 0
       },
       "curated_overlay_count": {
         "after": 129,

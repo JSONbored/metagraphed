@@ -409,6 +409,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetsArtifact",
   ),
   artifact(
+    "metagraph-latest",
+    "/metagraph/metagraph/latest.json",
+    "Latest normalized all-subnet metagraph index with chain-native state and registry coverage metadata.",
+    "SubnetsArtifact",
+  ),
+  artifact(
     "subnet-detail",
     "/metagraph/subnets/{netuid}.json",
     "Per-subnet detail payload.",

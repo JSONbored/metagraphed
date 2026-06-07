@@ -750,7 +750,7 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(payload.embeds[0].color, 0xfb8500);
     assert.equal(
       payload.embeds[0].description,
-      "Metagraphed submission gate completed a terminal decision.",
+      "Metagraphed needs attention this openapi submission for SN12.",
     );
     assert.equal(
       Number.isNaN(new Date(payload.embeds[0].timestamp).getTime()),

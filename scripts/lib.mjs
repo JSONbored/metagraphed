@@ -14,6 +14,7 @@ import {
 export const repoRoot = new URL("..", import.meta.url).pathname;
 export const publicMetagraphRoot = path.join(repoRoot, "public/metagraph");
 export const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
+export const generatedSourceRoot = path.join(repoRoot, "dist/metagraph-source");
 
 const credentialedUrlParams = new Set([
   "x-amz-credential",
@@ -191,10 +192,13 @@ export async function loadProviders() {
 }
 
 export async function loadSubnets() {
-  const files = await listJsonFilesRecursive(
-    path.join(repoRoot, "registry/subnets"),
-  );
-  const subnets = await Promise.all(files.map(readJson));
+  const { generateBaselineOverlaySet, loadManualSubnetOverlays } =
+    await import("./generated-overlays.mjs");
+  const manualOverlays = await loadManualSubnetOverlays();
+  const { generatedOverlays } = await generateBaselineOverlaySet({
+    manualOverlays,
+  });
+  const subnets = [...manualOverlays, ...generatedOverlays];
   return subnets.sort(
     (a, b) => a.netuid - b.netuid || a.slug.localeCompare(b.slug),
   );
@@ -220,18 +224,45 @@ export async function loadCandidates() {
   );
 }
 
-export async function loadVerification() {
+export async function loadVerification(options = {}) {
+  const preferDetailed = options.preferDetailed !== false;
+  const candidates = preferDetailed
+    ? [
+        path.join(generatedSourceRoot, "verification/latest.json"),
+        path.join(repoRoot, "registry/verification/latest.json"),
+        path.join(repoRoot, "registry/verification/promotions.json"),
+      ]
+    : [
+        path.join(repoRoot, "registry/verification/promotions.json"),
+        path.join(repoRoot, "registry/verification/latest.json"),
+        path.join(generatedSourceRoot, "verification/latest.json"),
+      ];
+
+  for (const filePath of candidates) {
+    try {
+      return await readJson(filePath);
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+
+  return {
+    schema_version: 1,
+    generated_at: null,
+    results: [],
+  };
+}
+
+export async function loadDetailedVerification() {
   try {
     return await readJson(
-      path.join(repoRoot, "registry/verification/latest.json"),
+      path.join(generatedSourceRoot, "verification/latest.json"),
     );
   } catch (error) {
     if (error.code === "ENOENT") {
-      return {
-        schema_version: 1,
-        generated_at: null,
-        results: [],
-      };
+      return loadVerification();
     }
     throw error;
   }
