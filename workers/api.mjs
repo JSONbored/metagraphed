@@ -44,6 +44,7 @@ const DENIED_RPC_PREFIXES = [
 ];
 const MAX_RPC_BODY_BYTES = 65536;
 const METAGRAPH_LATEST_KEY = "metagraph:latest";
+const STATIC_RAW_ARTIFACT_PATHS = new Set(["/metagraph/metagraph/latest.json"]);
 const TRUSTED_RPC_UPSTREAM_ORIGINS = new Set([
   "https://bittensor-finney.api.onfinality.io",
   "https://bittensor-public.nodies.app",
@@ -143,6 +144,10 @@ async function handleRawArtifactRequest(request, env, url) {
 }
 
 async function readStaticRawArtifact(request, env, url) {
+  if (!STATIC_RAW_ARTIFACT_PATHS.has(url.pathname)) {
+    return null;
+  }
+
   if (!env.ASSETS?.fetch) {
     return null;
   }

@@ -105,14 +105,16 @@ describe("Worker runtime", () => {
     assert.equal((await response.json()).network, "finney");
   });
 
-  test("rejects raw artifact paths outside public contracts before R2 lookup", async () => {
+  test("rejects raw artifact paths outside public contracts before storage lookup", async () => {
+    const assetRequests = [];
     const r2KeysRequested = [];
     const response = await handleRequest(
       new Request("https://metagraph.sh/metagraph/internal/control.json"),
       {
         ASSETS: {
-          async fetch() {
-            return new Response("not found", { status: 404 });
+          async fetch(request) {
+            assetRequests.push(new URL(request.url).pathname);
+            return Response.json({ secret_token: "should-not-be-public" });
           },
         },
         METAGRAPH_ARCHIVE: {
@@ -131,6 +133,7 @@ describe("Worker runtime", () => {
 
     assert.equal(response.status, 404);
     assert.equal(response.headers.get("x-metagraph-error-code"), "not_found");
+    assert.deepEqual(assetRequests, []);
     assert.deepEqual(r2KeysRequested, []);
     assert.equal(
       (await response.json()).meta.artifact_path,
