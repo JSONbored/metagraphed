@@ -7,7 +7,7 @@
   },
   "artifact_budgets": [],
   "artifact_count": 29,
-  "artifact_size_bytes": 5196629,
+  "artifact_size_bytes": 5198290,
   "artifacts": [
     {
       "path": "api-index.json",
@@ -17,8 +17,8 @@
     },
     {
       "path": "changelog.json",
-      "sha256": "63120b34953edb054713c9f99bb4b4d995228fd882f67d00390fbec3d069c78e",
-      "size_bytes": 1209,
+      "sha256": "c46f9855ef03b951d0725c29861894c93e002aa469f76943ec41d6348ec1d13c",
+      "size_bytes": 2886,
       "storage_tier": "dual"
     },
     {
@@ -29,13 +29,13 @@
     },
     {
       "path": "coverage.json",
-      "sha256": "eedb2c748d3dd6931707f860074abdda7ba71f0a944fdfd0f629bcdffb4ba50e",
+      "sha256": "65426fea1ea94725ce120d7355f247606a3240fec13353cf0b089d3568e2609f",
       "size_bytes": 982,
       "storage_tier": "dual"
     },
     {
       "path": "curation.json",
-      "sha256": "71aca56121a773c9772bbe2532449ff3f52197d1936fdd6016928be9c42ef739",
+      "sha256": "f805a7df2b03f6347b1d66a1e613f7c77f30184007ce95f821f0d6be371ae16b",
       "size_bytes": 144900,
       "storage_tier": "dual"
     },
@@ -59,14 +59,14 @@
     },
     {
       "path": "evidence-ledger.json",
-      "sha256": "75855e945078b9a157940bb1574453c607c21592ea033426ebc8ef54eae47041",
-      "size_bytes": 705865,
+      "sha256": "06c0903de6f9b2f03c13c8045614a6e520c15eac027d125c579cacba47730981",
+      "size_bytes": 705794,
       "storage_tier": "dual"
     },
     {
       "path": "freshness.json",
-      "sha256": "365fdc8c5e50fa11277018756e8a9a8264f1b4169d11f72f2f5648a4bde833b7",
-      "size_bytes": 4307,
+      "sha256": "2d3cd8ac4b99bd02974a933b1aa30d704047adf90306722a6dee0472ad42a122",
+      "size_bytes": 4342,
       "storage_tier": "dual"
     },
     {
@@ -83,7 +83,7 @@
     },
     {
       "path": "metagraph/latest.json",
-      "sha256": "b0e47e12508ad69612565f0dcfebddf3a0d307c3d9596c57b964bf5837f59fc5",
+      "sha256": "9690cf07199617211a8d1f108b2d1a1dd7eb8a13d6903b722db7c00f0b01e4ab",
       "size_bytes": 114773,
       "storage_tier": "git"
     },
@@ -95,7 +95,7 @@
     },
     {
       "path": "profiles.json",
-      "sha256": "1c65f49dab026dd876c6f631628d6196f964fcec36ea985db0ed108297d96cc4",
+      "sha256": "22516b8ef31786d87be34b3f2cc5c7977a33bb4b10eccfbd631f24879b4728b0",
       "size_bytes": 345991,
       "storage_tier": "dual"
     },
@@ -107,19 +107,19 @@
     },
     {
       "path": "review/adapter-candidates.json",
-      "sha256": "1b43a2c24676f7b2e0247f63e59da775683a12f4d560deb46e1187be1e6105db",
+      "sha256": "b0a3d38dbd305f58c681cb96b35b7ce2b1575577361be8af60eb8c6ea47cf4c7",
       "size_bytes": 27960,
       "storage_tier": "dual"
     },
     {
       "path": "review/curation.json",
-      "sha256": "9cc68b9d50625f3dd6fbf9a933625263f3ccab5a245d8ae7243ffe568ec3d43a",
+      "sha256": "9140944982f14487a600990820fbd9d1fe95fb33ab3da1fa610e0bb178dad5d3",
       "size_bytes": 96752,
       "storage_tier": "dual"
     },
     {
       "path": "review/gap-priorities.json",
-      "sha256": "4b4356a05e892e19ccea24089e6800aec006ae5bd5108acbf554897174abb2a5",
+      "sha256": "df4262991a09f167e7931a2336e6ad43b0240e297cc5452b12b5be89893651e0",
       "size_bytes": 66919,
       "storage_tier": "dual"
     },
@@ -131,7 +131,7 @@
     },
     {
       "path": "review/profile-completeness.json",
-      "sha256": "b075adcda5984863837fd52876289276be42966cef3541c1a92588dcc396b7ab",
+      "sha256": "c97b88e1ad57aa9f4777d7195a3b5de49d68d671783293cb166d1201e5fc22a5",
       "size_bytes": 68929,
       "storage_tier": "git"
     },
@@ -167,13 +167,13 @@
     },
     {
       "path": "source-health.json",
-      "sha256": "b14865e8fc228dd2dbb2a7c169130e4f49d888059ba48b4121a4b25eaa4302ef",
-      "size_bytes": 5305,
+      "sha256": "161a1c65c022ba4c1ec7b9f509bf1e036c8af0bc5ce213de4ec1fd0daffa9911",
+      "size_bytes": 5325,
       "storage_tier": "dual"
     },
     {
       "path": "subnets.json",
-      "sha256": "b0e17aee7fd9ee52692d88f9f6ec9b06870e6ef5c8570d143e5db80e226b61db",
+      "sha256": "3fc06db20e6531fde449d57daf01916727694b363d72564295f8b67474bd4109",
       "size_bytes": 114642,
       "storage_tier": "dual"
     },
@@ -184,11 +184,11 @@
       "storage_tier": "dual"
     }
   ],
-  "candidate_count": 1770,
+  "candidate_count": 1771,
   "contract_version": "2026-06-06.1",
   "coverage": {
     "application_subnet_count": 128,
-    "candidate_count": 1770,
+    "candidate_count": 1771,
     "candidate_subnet_count": 129,
     "chain_subnet_count": 129,
     "curated_overlay_count": 129,
@@ -223,7 +223,7 @@
   },
   "endpoint_count": 853,
   "full_artifact_count": 1097,
-  "full_artifact_size_bytes": 39520837,
+  "full_artifact_size_bytes": 39738514,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profile_count": 129,
   "provider_count": 14,
@@ -238,9 +238,9 @@
     "r2": 1068
   },
   "storage_tier_size_bytes": {
-    "dual": 5012927,
+    "dual": 5014588,
     "git": 183702,
-    "r2": 34324208
+    "r2": 34540224
   },
   "subnet_count": 129,
   "surface_count": 853

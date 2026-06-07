@@ -1,6 +1,17 @@
 {
   "claims": [
     {
+      "claim": "Allways swaps API is a candidate subnet-api surface for SN7.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.all-ways.io/swagger",
+      "subject": "candidate:community-sn-7-subnet-api-api-all-ways-io",
+      "support_summary": "Community-submitted public interface candidate.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "root TaoMarketCap dashboard is a candidate dashboard surface for SN0.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -1362,17 +1373,6 @@
       "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
       "subject": "candidate:sn-15-github-readme-oro-ai-oro-subnet-api-8",
       "support_summary": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO TaoMarketCap dashboard is a candidate dashboard surface for SN15.",
-      "confidence": "medium",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "third-party-index",
-      "source_type": "taomarketcap-dashboard",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
-      "subject": "candidate:sn-15-taomarketcap-dashboard",
-      "support_summary": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {

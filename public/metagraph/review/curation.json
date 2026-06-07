@@ -1,7 +1,7 @@
 {
   "adapter_candidates": [
     {
-      "candidate_api_count": 5,
+      "candidate_api_count": 6,
       "curation_level": "adapter-backed",
       "name": "Allways",
       "netuid": 7,
@@ -1215,7 +1215,7 @@
       "verified_candidate_count": 10
     },
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "curation_level": "adapter-backed",
       "missing_kinds": [
         "dashboard",
@@ -1223,12 +1223,12 @@
       ],
       "name": "Allways",
       "netuid": 7,
-      "priority_score": 82,
+      "priority_score": 83,
       "review_state": "maintainer-reviewed",
       "slug": "allways",
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 15,
-      "verified_candidate_count": 8
+      "verified_candidate_count": 9
     },
     {
       "candidate_count": 11,

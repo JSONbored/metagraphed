@@ -211,7 +211,7 @@
     },
     {
       "block": 8355642,
-      "candidate_count": 11,
+      "candidate_count": 12,
       "categories": [
         "bitcoin",
         "subnet-api",

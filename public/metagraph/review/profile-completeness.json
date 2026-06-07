@@ -2315,7 +2315,7 @@
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "completeness_score": 92,
       "confidence": "high",
       "gap_reasons": [
@@ -2324,7 +2324,7 @@
       "missing_critical_count": 1,
       "name": "Allways",
       "netuid": 7,
-      "priority_score": 24,
+      "priority_score": 25,
       "profile_level": "adapter-backed",
       "slug": "allways",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"

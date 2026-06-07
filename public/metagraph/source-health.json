@@ -4,15 +4,17 @@
   "providers": [
     {
       "authority": "provider-claimed",
-      "candidate_count": 0,
-      "classifications": {},
+      "candidate_count": 1,
+      "classifications": {
+        "live": 1
+      },
       "endpoint_count": 15,
       "id": "allways",
       "kind": "subnet-team",
       "name": "Allways",
       "rpc_endpoint_count": 0,
-      "status": "unknown",
-      "verification_result_count": 0
+      "status": "ok",
+      "verification_result_count": 1
     },
     {
       "authority": "provider-claimed",
@@ -176,8 +178,8 @@
       "classifications": {
         "auth-required": 1,
         "dead": 12,
-        "live": 189,
-        "redirected": 17,
+        "live": 188,
+        "redirected": 18,
         "unsafe": 10,
         "unsupported": 3
       },
@@ -193,14 +195,14 @@
   "schema_version": 1,
   "source": "generated-provider-and-verification-summary",
   "summary": {
-    "candidate_count": 1770,
+    "candidate_count": 1771,
     "endpoint_count": 853,
     "provider_count": 14,
     "rpc_endpoint_count": 6,
     "status_counts": {
-      "ok": 6,
-      "unknown": 8
+      "ok": 7,
+      "unknown": 7
     },
-    "verification_result_count": 1770
+    "verification_result_count": 1771
   }
 }
