@@ -14,7 +14,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-07T07:06:47.627Z"
+    "verified_at": "2026-06-07T10:43:31.560Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/30",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/30",
@@ -58,11 +58,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 801,
+        "latency_ms": 260,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:47.479Z"
+        "verified_at": "2026-06-07T10:43:31.362Z"
       }
     },
     {
@@ -71,7 +71,7 @@
       "id": "sn-30-tensorplex-docs",
       "kind": "docs",
       "name": "Endure Network Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -97,11 +97,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 567,
+        "latency_ms": 342,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:47.499Z"
+        "verified_at": "2026-06-07T10:43:31.378Z"
       }
     },
     {
@@ -110,7 +110,7 @@
       "id": "sn-30-website-link-endure-network-docs-1",
       "kind": "docs",
       "name": "Endure Network docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -136,11 +136,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html",
-        "latency_ms": 776,
+        "latency_ms": 792,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:47.627Z"
+        "verified_at": "2026-06-07T10:43:31.560Z"
       }
     },
     {
@@ -175,11 +175,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 130,
+        "latency_ms": 138,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:47.451Z"
+        "verified_at": "2026-06-07T10:43:31.352Z"
       }
     }
   ],

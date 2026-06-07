@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 897,
+  "document_count": 894,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -2662,6 +2662,42 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-95-website-common-docs",
+      "netuid": 95,
+      "slug": "sn-95",
+      "subtitle": "docs / taomarketcap",
+      "title": "Actual docs",
+      "tokens": [
+        "95",
+        "actual",
+        "docs",
+        "sn",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://actual.inc/docs"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-95-website-common-swagger",
+      "netuid": 95,
+      "slug": "sn-95",
+      "subtitle": "openapi / taomarketcap",
+      "title": "Actual Swagger UI",
+      "tokens": [
+        "95",
+        "actual",
+        "openapi",
+        "sn",
+        "swagger",
+        "taomarketcap",
+        "ui"
+      ],
+      "type": "surface",
+      "url": "https://actual.inc/swagger"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-95-taomarketcap-dashboard",
       "netuid": 95,
       "slug": "sn-95",
@@ -2676,6 +2712,24 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/95"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-95-tensorplex-docs",
+      "netuid": 95,
+      "slug": "sn-95",
+      "subtitle": "docs / tensorplex-subnet-docs",
+      "title": "Actual Tensorplex subnet docs",
+      "tokens": [
+        "95",
+        "actual",
+        "docs",
+        "sn",
+        "subnet",
+        "tensorplex"
+      ],
+      "type": "surface",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/95"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -2890,23 +2944,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-97-github-readme-unarbos-albedo-dashboard-2",
-      "netuid": 97,
-      "slug": "sn-97",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Albedo dashboard",
-      "tokens": [
-        "97",
-        "albedo",
-        "dashboard",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://us-east-1.hippius.com/albedo/dashboard.json"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-97-github-readme-unarbos-albedo-data-artifact-1",
       "netuid": 97,
       "slug": "sn-97",
@@ -2922,24 +2959,6 @@
       ],
       "type": "surface",
       "url": "https://huggingface.co/datasets/AlienKevin/SWE-ZERO-12M-trajectories"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-97-github-readme-unarbos-albedo-data-artifact-3",
-      "netuid": 97,
-      "slug": "sn-97",
-      "subtitle": "data-artifact / taomarketcap",
-      "title": "Albedo data artifact",
-      "tokens": [
-        "97",
-        "albedo",
-        "artifact",
-        "data",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://huggingface.co/ricdomolm/mini-coder-1.7b"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5795,25 +5814,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-38-taomarketcap-source-repo",
-      "netuid": 38,
-      "slug": "sn-38",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "colosseum source repository",
-      "tokens": [
-        "38",
-        "colosseum",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-38-website-common-swagger",
       "netuid": 38,
       "slug": "sn-38",
@@ -7417,7 +7417,7 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-36-website-link-eirel-ai-dashboard-2",
+      "id": "surface:sn-36-website-link-eirel-ai-dashboard-3",
       "netuid": 36,
       "slug": "sn-36",
       "subtitle": "dashboard / taomarketcap",
@@ -10117,6 +10117,27 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-92-tensorplex-source-repo-1",
+      "netuid": 92,
+      "slug": "sn-92",
+      "subtitle": "source-repo / tensorplex-subnet-docs",
+      "title": "luis source repository",
+      "tokens": [
+        "92",
+        "docs",
+        "luis",
+        "repo",
+        "repository",
+        "sn",
+        "source",
+        "subnet",
+        "tensorplex"
+      ],
+      "type": "surface",
+      "url": "https://github.com/tensorclaw/tensorclaw"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-92-taomarketcap-dashboard",
       "netuid": 92,
       "slug": "sn-92",
@@ -10131,6 +10152,24 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/92"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-92-tensorplex-docs",
+      "netuid": 92,
+      "slug": "sn-92",
+      "subtitle": "docs / tensorplex-subnet-docs",
+      "title": "luis Tensorplex subnet docs",
+      "tokens": [
+        "92",
+        "docs",
+        "luis",
+        "sn",
+        "subnet",
+        "tensorplex"
+      ],
+      "type": "surface",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11138,25 +11177,6 @@
       ],
       "type": "surface",
       "url": "https://niome.genomes.io/"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-95-tensorplex-docs",
-      "netuid": 95,
-      "slug": "sn-95",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "nion Tensorplex subnet docs",
-      "tokens": [
-        "95",
-        "actual",
-        "docs",
-        "nion",
-        "sn",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/95"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14356,81 +14376,6 @@
       ],
       "type": "surface",
       "url": "https://targon.com/"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-92-website-link-www-tensorclaw-ai-dashboard-1",
-      "netuid": 92,
-      "slug": "sn-92",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "TensorClaw dashboard",
-      "tokens": [
-        "92",
-        "dashboard",
-        "luis",
-        "sn",
-        "taomarketcap",
-        "tensorclaw"
-      ],
-      "type": "surface",
-      "url": "https://www.tensorclaw.ai/dashboard"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-92-website-common-docs",
-      "netuid": 92,
-      "slug": "sn-92",
-      "subtitle": "docs / taomarketcap",
-      "title": "TensorClaw docs",
-      "tokens": [
-        "92",
-        "docs",
-        "luis",
-        "sn",
-        "taomarketcap",
-        "tensorclaw"
-      ],
-      "type": "surface",
-      "url": "https://www.tensorclaw.ai/docs"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-92-website-common-swagger",
-      "netuid": 92,
-      "slug": "sn-92",
-      "subtitle": "openapi / taomarketcap",
-      "title": "TensorClaw Swagger UI",
-      "tokens": [
-        "92",
-        "luis",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "tensorclaw",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://www.tensorclaw.ai/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-92-tensorplex-docs",
-      "netuid": 92,
-      "slug": "sn-92",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "TensorClaw Tensorplex subnet docs",
-      "tokens": [
-        "92",
-        "docs",
-        "luis",
-        "sn",
-        "subnet",
-        "tensorclaw",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

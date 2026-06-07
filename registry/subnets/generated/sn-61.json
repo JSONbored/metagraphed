@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-07T07:06:58.705Z"
+    "verified_at": "2026-06-07T10:43:38.648Z"
   },
   "dashboard_url": "https://dashboard.theredteam.io/",
   "docs_url": "https://docs.theredteam.io/",
@@ -42,28 +42,34 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/61"
+        "https://api.taomarketcap.com/public/v1/subnets/61",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json"
       ],
       "url": "https://github.com/RedTeamSubnet/RedTeam",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/RedTeamSubnet/RedTeam",
-        "latency_ms": 752,
-        "method_tested": "HEAD",
+        "homepage": "http://docs.theredteam.io/",
+        "last_push_at": "2026-05-25T08:42:55Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:58.625Z"
+        "topics": [
+          "bittensor",
+          "redteam",
+          "subnet"
+        ],
+        "verified_at": "2026-06-07T10:43:38.604Z"
       }
     },
     {
@@ -98,11 +104,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 297,
+        "latency_ms": 315,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:58.635Z"
+        "verified_at": "2026-06-07T10:43:38.635Z"
       }
     },
     {
@@ -111,7 +117,7 @@
       "id": "sn-61-github-readme-redteamsubnet-redteam-docs-2",
       "kind": "docs",
       "name": "RedTeam docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +143,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 171,
+        "latency_ms": 88,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:58.577Z"
+        "verified_at": "2026-06-07T10:43:38.587Z"
       }
     },
     {
@@ -150,7 +156,7 @@
       "id": "sn-61-tensorplex-docs",
       "kind": "docs",
       "name": "RedTeam Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +182,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 730,
+        "latency_ms": 276,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:58.705Z"
+        "verified_at": "2026-06-07T10:43:38.648Z"
       }
     },
     {
@@ -189,7 +195,7 @@
       "id": "sn-61-github-readme-redteamsubnet-redteam-dashboard-1",
       "kind": "dashboard",
       "name": "RedTeam dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +221,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 554,
+        "latency_ms": 237,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:58.573Z"
+        "verified_at": "2026-06-07T10:43:38.582Z"
       }
     },
     {
@@ -254,11 +260,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 160,
+        "latency_ms": 143,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:58.621Z"
+        "verified_at": "2026-06-07T10:43:38.598Z"
       }
     }
   ],

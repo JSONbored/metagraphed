@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 5,
-    "verified_at": "2026-06-07T07:06:39.784Z"
+    "verified_at": "2026-06-07T10:43:25.613Z"
   },
   "dashboard_url": "https://dashboard.taoshi.io/",
   "docs_url": "https://docs.taoshi.io/tips/p4",
@@ -42,28 +42,37 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/8"
+        "https://api.taomarketcap.com/public/v1/subnets/8",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json"
       ],
       "url": "https://github.com/taoshidev/vanta-network",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/taoshidev/vanta-network",
-        "latency_ms": 784,
-        "method_tested": "HEAD",
+        "homepage": "https://taoshi.io/",
+        "last_push_at": "2026-06-06T00:11:04Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:39.556Z"
+        "topics": [
+          "ai",
+          "bittensor",
+          "blockchain",
+          "cryptocurrency",
+          "deep-learning",
+          "machine-learning"
+        ],
+        "verified_at": "2026-06-07T10:43:25.478Z"
       }
     },
     {
@@ -98,11 +107,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 324,
+        "latency_ms": 165,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:39.582Z"
+        "verified_at": "2026-06-07T10:43:25.479Z"
       }
     },
     {
@@ -111,7 +120,7 @@
       "id": "sn-8-github-readme-taoshidev-vanta-network-docs-2",
       "kind": "docs",
       "name": "Vanta docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +146,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 168,
+        "latency_ms": 156,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:39.493Z"
+        "verified_at": "2026-06-07T10:43:25.459Z"
       }
     },
     {
@@ -150,7 +159,7 @@
       "id": "sn-8-taopedia-article",
       "kind": "docs",
       "name": "Vanta Taopedia article",
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +185,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 562,
+        "latency_ms": 680,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:39.582Z"
+        "verified_at": "2026-06-07T10:43:25.482Z"
       }
     },
     {
@@ -189,7 +198,7 @@
       "id": "sn-8-tensorplex-docs",
       "kind": "docs",
       "name": "Vanta Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +224,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 330,
+        "latency_ms": 380,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:39.582Z"
+        "verified_at": "2026-06-07T10:43:25.517Z"
       }
     },
     {
@@ -228,7 +237,7 @@
       "id": "sn-8-github-readme-taoshidev-vanta-network-dashboard-1",
       "kind": "dashboard",
       "name": "Vanta dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +263,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 271,
+        "latency_ms": 295,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:39.468Z"
+        "verified_at": "2026-06-07T10:43:25.449Z"
       }
     },
     {
@@ -293,11 +302,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 160,
+        "latency_ms": 144,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:39.548Z"
+        "verified_at": "2026-06-07T10:43:25.467Z"
       }
     },
     {
@@ -306,7 +315,7 @@
       "id": "sn-8-website-link-www-vantanetwork-io-dashboard-1",
       "kind": "dashboard",
       "name": "Vanta dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -332,11 +341,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 247,
+        "latency_ms": 1302,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:39.784Z"
+        "verified_at": "2026-06-07T10:43:25.613Z"
       }
     }
   ],

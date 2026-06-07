@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-07T07:07:19.884Z"
+    "verified_at": "2026-06-07T10:43:51.123Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/106",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/106",
@@ -42,12 +42,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -55,15 +54,17 @@
       ],
       "url": "https://github.com/v0idai/SN106",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/v0idai/SN106",
-        "latency_ms": 802,
-        "method_tested": "HEAD",
+        "homepage": "https://www.voidai.com/",
+        "last_push_at": "2026-02-27T13:54:40Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:19.636Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:50.936Z"
       }
     },
     {
@@ -98,11 +99,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 615,
+        "latency_ms": 563,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:19.665Z"
+        "verified_at": "2026-06-07T10:43:50.970Z"
       }
     },
     {
@@ -111,7 +112,7 @@
       "id": "sn-106-tensorplex-docs",
       "kind": "docs",
       "name": "VoidAI Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +138,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 399,
+        "latency_ms": 500,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:19.832Z"
+        "verified_at": "2026-06-07T10:43:50.989Z"
       }
     },
     {
@@ -150,7 +151,7 @@
       "id": "sn-106-website-common-docs",
       "kind": "docs",
       "name": "VoidAI docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +177,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 615,
+        "latency_ms": 570,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:19.884Z"
+        "verified_at": "2026-06-07T10:43:51.123Z"
       }
     },
     {
@@ -215,11 +216,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 462,
+        "latency_ms": 193,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:19.620Z"
+        "verified_at": "2026-06-07T10:43:50.928Z"
       }
     }
   ],

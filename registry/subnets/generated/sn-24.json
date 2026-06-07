@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T07:06:46.512Z"
+    "verified_at": "2026-06-07T10:43:30.520Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/24",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/24",
@@ -41,28 +41,36 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/24"
+        "https://api.taomarketcap.com/public/v1/subnets/24",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json"
       ],
       "url": "https://github.com/SILX-LABS/QUASAR-SUBNET",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/SILX-LABS/QUASAR-SUBNET",
-        "latency_ms": 558,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-03T22:32:44Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:46.231Z"
+        "topics": [
+          "ai",
+          "bittensor",
+          "context-window",
+          "llm",
+          "tao"
+        ],
+        "verified_at": "2026-06-07T10:43:30.357Z"
       }
     },
     {
@@ -97,11 +105,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 208,
+        "latency_ms": 161,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:46.280Z"
+        "verified_at": "2026-06-07T10:43:30.379Z"
       }
     },
     {
@@ -110,7 +118,7 @@
       "id": "sn-24-tensorplex-docs",
       "kind": "docs",
       "name": "Quasar Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -136,11 +144,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 391,
+        "latency_ms": 312,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:46.287Z"
+        "verified_at": "2026-06-07T10:43:30.420Z"
       }
     },
     {
@@ -175,11 +183,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 126,
+        "latency_ms": 159,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:46.222Z"
+        "verified_at": "2026-06-07T10:43:30.342Z"
       }
     },
     {
@@ -188,7 +196,7 @@
       "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-1",
       "kind": "data-artifact",
       "name": "Quasar data artifact",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -214,11 +222,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 243,
+        "latency_ms": 187,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:46.115Z"
+        "verified_at": "2026-06-07T10:43:30.330Z"
       }
     },
     {
@@ -227,7 +235,7 @@
       "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-2",
       "kind": "data-artifact",
       "name": "Quasar data artifact",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +261,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 389,
+        "latency_ms": 365,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:46.161Z"
+        "verified_at": "2026-06-07T10:43:30.331Z"
       }
     },
     {
@@ -266,7 +274,7 @@
       "id": "sn-24-website-link-silxinc-com-data-artifact-3",
       "kind": "data-artifact",
       "name": "Quasar data artifact",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -292,11 +300,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 194,
+        "latency_ms": 148,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:46.512Z"
+        "verified_at": "2026-06-07T10:43:30.520Z"
       }
     }
   ],

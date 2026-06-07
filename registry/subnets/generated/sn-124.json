@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T07:07:25.664Z"
+    "verified_at": "2026-06-07T10:43:56.151Z"
   },
   "dashboard_url": "https://swarm124.com/benchmark",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/124",
@@ -41,28 +41,36 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/124"
+        "https://api.taomarketcap.com/public/v1/subnets/124",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/124/subnet.json"
       ],
       "url": "https://github.com/swarm-subnet/swarm",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/swarm-subnet/swarm",
-        "latency_ms": 546,
-        "method_tested": "HEAD",
+        "homepage": "https://swarm124.com/",
+        "last_push_at": "2026-06-05T18:43:35Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:25.489Z"
+        "topics": [
+          "ai",
+          "ai-agents",
+          "drone",
+          "robotics",
+          "robotics-competition"
+        ],
+        "verified_at": "2026-06-07T10:43:56.054Z"
       }
     },
     {
@@ -97,11 +105,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 730,
+        "latency_ms": 699,
         "method_tested": "HEAD",
         "redirect_target": "https://swarm124.com/",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:25.533Z"
+        "verified_at": "2026-06-07T10:43:56.061Z"
       }
     },
     {
@@ -110,7 +118,7 @@
       "id": "sn-124-tensorplex-docs",
       "kind": "docs",
       "name": "Swarm Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -136,11 +144,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 344,
+        "latency_ms": 456,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:25.536Z"
+        "verified_at": "2026-06-07T10:43:56.090Z"
       }
     },
     {
@@ -149,7 +157,7 @@
       "id": "sn-124-website-common-docs",
       "kind": "docs",
       "name": "Swarm docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -175,11 +183,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1091,
+        "latency_ms": 1143,
         "method_tested": "HEAD",
         "redirect_target": "https://swarm124.com/docs",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:25.555Z"
+        "verified_at": "2026-06-07T10:43:56.109Z"
       }
     },
     {
@@ -188,7 +196,7 @@
       "id": "sn-124-github-readme-swarm-subnet-swarm-dashboard-1",
       "kind": "dashboard",
       "name": "Swarm dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -214,11 +222,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 566,
+        "latency_ms": 549,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:25.463Z"
+        "verified_at": "2026-06-07T10:43:55.990Z"
       }
     },
     {
@@ -253,11 +261,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 157,
+        "latency_ms": 406,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:25.476Z"
+        "verified_at": "2026-06-07T10:43:55.995Z"
       }
     },
     {
@@ -266,7 +274,7 @@
       "id": "sn-124-website-common-swagger",
       "kind": "openapi",
       "name": "Swarm Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -293,11 +301,11 @@
         "classification": "redirected",
         "confidence_score": 63,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1083,
+        "latency_ms": 1109,
         "method_tested": "HEAD",
         "redirect_target": "https://swarm124.com/swagger",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:25.664Z"
+        "verified_at": "2026-06-07T10:43:56.151Z"
       }
     }
   ],

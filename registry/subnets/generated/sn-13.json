@@ -12,8 +12,8 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 2,
-    "verified_at": "2026-06-07T07:06:41.418Z"
+    "source_count": 3,
+    "verified_at": "2026-06-07T10:43:26.883Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/13",
   "docs_url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/a-guide-to-lawful-basis",
@@ -42,28 +42,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/13"
+        "https://api.taomarketcap.com/public/v1/subnets/13",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/13/subnet.json"
       ],
       "url": "https://github.com/macrocosm-os/data-universe",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/macrocosm-os/data-universe",
-        "latency_ms": 594,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-05T21:54:10Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:41.344Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:26.859Z"
       }
     },
     {
@@ -98,11 +100,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 252,
+        "latency_ms": 286,
         "method_tested": "HEAD",
         "redirect_target": "https://datauniverse.macrocosmos.ai/",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:41.418Z"
+        "verified_at": "2026-06-07T10:43:26.883Z"
       }
     },
     {
@@ -111,7 +113,7 @@
       "id": "sn-13-github-readme-macrocosm-os-data-universe-docs-1",
       "kind": "docs",
       "name": "Data Universe docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +139,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 804,
+        "latency_ms": 285,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:41.125Z"
+        "verified_at": "2026-06-07T10:43:26.679Z"
       }
     },
     {
@@ -150,7 +152,7 @@
       "id": "sn-13-github-readme-macrocosm-os-data-universe-docs-2",
       "kind": "docs",
       "name": "Data Universe docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +178,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 936,
+        "latency_ms": 337,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:41.168Z"
+        "verified_at": "2026-06-07T10:43:26.711Z"
       }
     },
     {
@@ -189,7 +191,7 @@
       "id": "sn-13-github-readme-macrocosm-os-data-universe-docs-3",
       "kind": "docs",
       "name": "Data Universe docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +217,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1013,
+        "latency_ms": 271,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:41.174Z"
+        "verified_at": "2026-06-07T10:43:26.712Z"
       }
     },
     {
@@ -228,7 +230,7 @@
       "id": "sn-13-github-readme-macrocosm-os-data-universe-docs-4",
       "kind": "docs",
       "name": "Data Universe docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +256,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 792,
+        "latency_ms": 312,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:41.176Z"
+        "verified_at": "2026-06-07T10:43:26.729Z"
       }
     },
     {
@@ -293,11 +295,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 138,
+        "latency_ms": 188,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:41.344Z"
+        "verified_at": "2026-06-07T10:43:26.850Z"
       }
     }
   ],

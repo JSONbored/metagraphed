@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-07T07:07:03.199Z"
+    "verified_at": "2026-06-07T10:43:41.372Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/71",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/71",
@@ -41,28 +41,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/71"
+        "https://api.taomarketcap.com/public/v1/subnets/71",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/71/subnet.json"
       ],
       "url": "https://github.com/leadpoet/leadpoet",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/leadpoet/leadpoet",
-        "latency_ms": 1038,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-07T02:28:12Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:03.078Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:41.278Z"
       }
     },
     {
@@ -97,11 +99,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 499,
+        "latency_ms": 429,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:03.082Z"
+        "verified_at": "2026-06-07T10:43:41.300Z"
       }
     },
     {
@@ -110,7 +112,7 @@
       "id": "sn-71-tensorplex-docs",
       "kind": "docs",
       "name": "Leadpoet Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -136,11 +138,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 765,
+        "latency_ms": 344,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:03.125Z"
+        "verified_at": "2026-06-07T10:43:41.303Z"
       }
     },
     {
@@ -149,7 +151,7 @@
       "id": "sn-71-website-common-docs",
       "kind": "docs",
       "name": "Leadpoet docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -175,11 +177,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 449,
+        "latency_ms": 417,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:03.174Z"
+        "verified_at": "2026-06-07T10:43:41.316Z"
       }
     },
     {
@@ -214,11 +216,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 167,
+        "latency_ms": 216,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:03.071Z"
+        "verified_at": "2026-06-07T10:43:41.264Z"
       }
     },
     {
@@ -227,7 +229,7 @@
       "id": "sn-71-website-common-swagger",
       "kind": "openapi",
       "name": "Leadpoet Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +256,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 492,
+        "latency_ms": 427,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:03.199Z"
+        "verified_at": "2026-06-07T10:43:41.372Z"
       }
     }
   ],

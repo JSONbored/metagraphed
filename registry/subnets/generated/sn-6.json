@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T07:06:38.964Z"
+    "verified_at": "2026-06-07T10:43:25.067Z"
   },
   "dashboard_url": "https://app.hex.tech/1644b22a-abe5-4113-9d5f-3ad05e4a8de7/app/Numinous-031erYRYSssIrH3W3KcyHg/latest",
   "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
@@ -42,28 +42,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/6"
+        "https://api.taomarketcap.com/public/v1/subnets/6",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json"
       ],
       "url": "https://github.com/numinouslabs/numinous",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/numinouslabs/numinous",
-        "latency_ms": 578,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-05T09:27:27Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:38.892Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:25.063Z"
       }
     },
     {
@@ -98,11 +100,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 119,
+        "latency_ms": 125,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:38.910Z"
+        "verified_at": "2026-06-07T10:43:25.067Z"
       }
     },
     {
@@ -111,7 +113,7 @@
       "id": "sn-6-taopedia-article",
       "kind": "docs",
       "name": "Numinous Taopedia article",
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +139,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 445,
+        "latency_ms": 485,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:38.926Z"
+        "verified_at": "2026-06-07T10:43:25.067Z"
       }
     },
     {
@@ -150,7 +152,7 @@
       "id": "sn-6-tensorplex-docs",
       "kind": "docs",
       "name": "Numinous Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +178,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 470,
+        "latency_ms": 698,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:38.964Z"
+        "verified_at": "2026-06-07T10:43:25.067Z"
       }
     },
     {
@@ -189,7 +191,7 @@
       "id": "sn-6-github-readme-numinouslabs-numinous-dashboard-1",
       "kind": "dashboard",
       "name": "Numinous dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +217,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 947,
+        "latency_ms": 233,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:38.862Z"
+        "verified_at": "2026-06-07T10:43:24.923Z"
       }
     },
     {
@@ -228,7 +230,7 @@
       "id": "sn-6-github-readme-numinouslabs-numinous-dashboard-2",
       "kind": "dashboard",
       "name": "Numinous dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +256,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 333,
+        "latency_ms": 261,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:38.862Z"
+        "verified_at": "2026-06-07T10:43:24.978Z"
       }
     },
     {
@@ -293,11 +295,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 123,
+        "latency_ms": 150,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:38.878Z"
+        "verified_at": "2026-06-07T10:43:25.055Z"
       }
     }
   ],

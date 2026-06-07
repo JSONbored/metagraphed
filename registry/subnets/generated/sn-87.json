@@ -15,7 +15,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-07T07:07:11.966Z"
+    "verified_at": "2026-06-07T10:43:45.606Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/87",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/87",
@@ -33,7 +33,7 @@
       "id": "sn-87-tensorplex-docs",
       "kind": "docs",
       "name": "Luminar Network Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -59,11 +59,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 474,
+        "latency_ms": 331,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:11.966Z"
+        "verified_at": "2026-06-07T10:43:45.606Z"
       }
     },
     {
@@ -98,11 +98,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 359,
+        "latency_ms": 146,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:11.834Z"
+        "verified_at": "2026-06-07T10:43:45.594Z"
       }
     }
   ]

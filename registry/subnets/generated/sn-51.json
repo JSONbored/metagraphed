@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T07:06:54.674Z"
+    "verified_at": "2026-06-07T10:43:36.410Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/51",
   "docs_url": "https://docs.lium.io/bittensor-subnet/overview",
@@ -41,28 +41,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/51"
+        "https://api.taomarketcap.com/public/v1/subnets/51",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/51/subnet.json"
       ],
       "url": "https://github.com/Datura-ai/lium-io",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/Datura-ai/lium-io",
-        "latency_ms": 907,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-05T10:19:03Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:54.392Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:36.309Z"
       }
     },
     {
@@ -97,11 +99,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1484,
+        "latency_ms": 2040,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:54.392Z"
+        "verified_at": "2026-06-07T10:43:36.318Z"
       }
     },
     {
@@ -110,7 +112,7 @@
       "id": "sn-51-github-readme-datura-ai-lium-io-docs-1",
       "kind": "docs",
       "name": "lium.io docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -136,11 +138,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 390,
+        "latency_ms": 247,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.lium.io/intro",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:54.327Z"
+        "verified_at": "2026-06-07T10:43:36.279Z"
       }
     },
     {
@@ -149,7 +151,7 @@
       "id": "sn-51-tensorplex-docs",
       "kind": "docs",
       "name": "lium.io Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -175,11 +177,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 549,
+        "latency_ms": 291,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:54.404Z"
+        "verified_at": "2026-06-07T10:43:36.327Z"
       }
     },
     {
@@ -188,7 +190,7 @@
       "id": "sn-51-website-link-lium-io-docs-8",
       "kind": "docs",
       "name": "lium.io docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -214,11 +216,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 185,
+        "latency_ms": 153,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:54.674Z"
+        "verified_at": "2026-06-07T10:43:36.410Z"
       }
     },
     {
@@ -253,11 +255,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 126,
+        "latency_ms": 143,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:54.368Z"
+        "verified_at": "2026-06-07T10:43:36.305Z"
       }
     },
     {
@@ -266,7 +268,7 @@
       "id": "sn-51-website-common-api",
       "kind": "subnet-api",
       "name": "lium.io API",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -292,11 +294,11 @@
         "classification": "redirected",
         "confidence_score": 73,
         "content_type": "application/json",
-        "latency_ms": 302,
+        "latency_ms": 284,
         "method_tested": "GET",
         "redirect_target": "https://lium.io/api/",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:54.420Z"
+        "verified_at": "2026-06-07T10:43:36.352Z"
       }
     }
   ],

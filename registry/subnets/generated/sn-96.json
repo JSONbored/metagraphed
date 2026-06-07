@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T07:07:15.618Z"
+    "verified_at": "2026-06-07T10:43:48.232Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/96",
   "docs_url": "https://verathos.ai/docs",
@@ -41,12 +41,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -54,15 +53,17 @@
       ],
       "url": "https://github.com/verathos-ai/verathos",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/verathos-ai/verathos",
-        "latency_ms": 527,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-05-29T09:14:51Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:15.140Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:48.025Z"
       }
     },
     {
@@ -71,7 +72,7 @@
       "id": "sn-96-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Verathos source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -81,12 +82,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -94,15 +94,17 @@
       ],
       "url": "https://github.com/FLock-io/FLock-subnet",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 55,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/FLock-io/FLock-subnet",
-        "latency_ms": 528,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-02-24T13:53:15Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:15.469Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:48.105Z"
       }
     },
     {
@@ -137,11 +139,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 593,
+        "latency_ms": 608,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:15.304Z"
+        "verified_at": "2026-06-07T10:43:48.049Z"
       }
     },
     {
@@ -150,7 +152,7 @@
       "id": "sn-96-github-readme-verathos-ai-verathos-docs-1",
       "kind": "docs",
       "name": "Verathos docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +178,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 573,
+        "latency_ms": 598,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:15.093Z"
+        "verified_at": "2026-06-07T10:43:47.978Z"
       }
     },
     {
@@ -189,7 +191,7 @@
       "id": "sn-96-github-readme-verathos-ai-verathos-docs-2",
       "kind": "docs",
       "name": "Verathos docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +217,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 575,
+        "latency_ms": 578,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:15.117Z"
+        "verified_at": "2026-06-07T10:43:48.001Z"
       }
     },
     {
@@ -228,7 +230,7 @@
       "id": "sn-96-tensorplex-docs",
       "kind": "docs",
       "name": "Verathos Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +256,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 355,
+        "latency_ms": 311,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:15.336Z"
+        "verified_at": "2026-06-07T10:43:48.081Z"
       }
     },
     {
@@ -293,11 +295,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 153,
+        "latency_ms": 140,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:15.136Z"
+        "verified_at": "2026-06-07T10:43:48.009Z"
       }
     },
     {
@@ -306,7 +308,7 @@
       "id": "sn-96-website-common-openapi-json",
       "kind": "openapi",
       "name": "Verathos OpenAPI JSON",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -334,11 +336,11 @@
         "classification": "live",
         "confidence_score": 78,
         "content_type": "application/json",
-        "latency_ms": 589,
+        "latency_ms": 590,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:15.609Z"
+        "verified_at": "2026-06-07T10:43:48.153Z"
       }
     },
     {
@@ -347,7 +349,7 @@
       "id": "sn-96-website-common-swagger",
       "kind": "openapi",
       "name": "Verathos Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -374,11 +376,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 598,
+        "latency_ms": 601,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:15.618Z"
+        "verified_at": "2026-06-07T10:43:48.232Z"
       }
     }
   ],

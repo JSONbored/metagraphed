@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-07T07:06:43.075Z"
+    "verified_at": "2026-06-07T10:43:28.116Z"
   },
   "dashboard_url": "https://dashboard.404.xyz/d/main/404-gen",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/17",
@@ -42,12 +42,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -55,15 +54,17 @@
       ],
       "url": "https://github.com/404-Repo/404-gen-subnet",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/404-Repo/404-gen-subnet",
-        "latency_ms": 450,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-05-27T05:59:46Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:43.067Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:28.064Z"
       }
     },
     {
@@ -72,7 +73,7 @@
       "id": "sn-17-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "404—GEN source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -82,12 +83,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -95,15 +95,17 @@
       ],
       "url": "https://github.com/404-Repo/three-gen-subnet",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 55,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/404-Repo/three-gen-subnet",
-        "latency_ms": 607,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2025-11-17T16:01:31Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:43.075Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:28.116Z"
       }
     },
     {
@@ -138,11 +140,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 120,
+        "latency_ms": 105,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:43.067Z"
+        "verified_at": "2026-06-07T10:43:28.065Z"
       }
     },
     {
@@ -151,7 +153,7 @@
       "id": "sn-17-tensorplex-docs",
       "kind": "docs",
       "name": "404—GEN Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -177,11 +179,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 356,
+        "latency_ms": 387,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:43.067Z"
+        "verified_at": "2026-06-07T10:43:28.112Z"
       }
     },
     {
@@ -190,7 +192,7 @@
       "id": "sn-17-github-readme-404-repo-three-gen-subnet-dashboard-1",
       "kind": "dashboard",
       "name": "404—GEN dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -216,11 +218,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 662,
+        "latency_ms": 260,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:43.024Z"
+        "verified_at": "2026-06-07T10:43:28.056Z"
       }
     },
     {
@@ -255,11 +257,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 148,
+        "latency_ms": 140,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:43.041Z"
+        "verified_at": "2026-06-07T10:43:28.064Z"
       }
     }
   ],

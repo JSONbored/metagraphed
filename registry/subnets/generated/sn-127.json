@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-07T07:07:26.757Z"
+    "verified_at": "2026-06-07T10:43:57.267Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/127",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/127",
@@ -41,12 +41,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -54,15 +53,17 @@
       ],
       "url": "https://github.com/astridintelligence/sn-127",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "master",
         "github_api_url": "https://api.github.com/repos/astridintelligence/sn-127",
-        "latency_ms": 489,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-02T12:28:06Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:26.754Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:57.259Z"
       }
     },
     {
@@ -97,11 +98,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 843,
+        "latency_ms": 973,
         "method_tested": "HEAD",
         "redirect_target": "https://astrid.global/",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:26.754Z"
+        "verified_at": "2026-06-07T10:43:57.266Z"
       }
     },
     {
@@ -110,7 +111,7 @@
       "id": "sn-127-tensorplex-docs",
       "kind": "docs",
       "name": "Astrid Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -136,11 +137,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 343,
+        "latency_ms": 357,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:26.757Z"
+        "verified_at": "2026-06-07T10:43:57.267Z"
       }
     },
     {
@@ -175,11 +176,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 288,
+        "latency_ms": 148,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:26.704Z"
+        "verified_at": "2026-06-07T10:43:57.252Z"
       }
     },
     {
@@ -188,7 +189,7 @@
       "id": "sn-127-github-readme-astridintelligence-sn-127-subnet-api-1",
       "kind": "subnet-api",
       "name": "Astrid API surface",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -214,11 +215,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json; charset=utf-8",
-        "latency_ms": 325,
+        "latency_ms": 257,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:26.680Z"
+        "verified_at": "2026-06-07T10:43:57.242Z"
       }
     }
   ],

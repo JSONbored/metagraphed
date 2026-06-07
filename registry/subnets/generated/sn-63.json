@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-07T07:06:59.551Z"
+    "verified_at": "2026-06-07T10:43:39.117Z"
   },
   "dashboard_url": "https://taostats.io/subnets/63",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/63",
@@ -42,12 +42,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -55,15 +54,17 @@
       ],
       "url": "https://github.com/qbittensor-labs/enigma",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/qbittensor-labs/enigma",
-        "latency_ms": 969,
-        "method_tested": "HEAD",
+        "homepage": "https://www.qbittensorlabs.com/enigma",
+        "last_push_at": "2026-06-05T23:53:18Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:59.541Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:39.092Z"
       }
     },
     {
@@ -98,11 +99,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 195,
+        "latency_ms": 90,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:59.550Z"
+        "verified_at": "2026-06-07T10:43:39.117Z"
       }
     },
     {
@@ -111,7 +112,7 @@
       "id": "sn-63-tensorplex-docs",
       "kind": "docs",
       "name": "Enigma Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +138,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 738,
+        "latency_ms": 359,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:59.551Z"
+        "verified_at": "2026-06-07T10:43:39.117Z"
       }
     },
     {
@@ -150,7 +151,7 @@
       "id": "sn-63-github-readme-qbittensor-labs-enigma-dashboard-1",
       "kind": "dashboard",
       "name": "Enigma dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +177,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 223,
+        "latency_ms": 214,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:59.450Z"
+        "verified_at": "2026-06-07T10:43:39.032Z"
       }
     },
     {
@@ -215,11 +216,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 131,
+        "latency_ms": 122,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:59.463Z"
+        "verified_at": "2026-06-07T10:43:39.065Z"
       }
     }
   ],

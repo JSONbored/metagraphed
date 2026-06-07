@@ -15,7 +15,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-07T07:07:05.143Z"
+    "verified_at": "2026-06-07T10:43:42.535Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/76",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/76",
@@ -33,7 +33,7 @@
       "id": "sn-76-tensorplex-docs",
       "kind": "docs",
       "name": "Byzantium Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -59,11 +59,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 790,
+        "latency_ms": 421,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:05.143Z"
+        "verified_at": "2026-06-07T10:43:42.535Z"
       }
     },
     {
@@ -98,11 +98,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 162,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:05.134Z"
+        "verified_at": "2026-06-07T10:43:42.454Z"
       }
     }
   ]

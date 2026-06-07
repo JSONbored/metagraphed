@@ -14,7 +14,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-07T07:06:57.450Z"
+    "verified_at": "2026-06-07T10:43:37.963Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/57",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/57",
@@ -33,7 +33,7 @@
       "id": "sn-57-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "gaia source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -43,12 +43,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -56,15 +55,17 @@
       ],
       "url": "https://github.com/sparket-ai/sparket-ai",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 55,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/sparket-ai/sparket-ai",
-        "latency_ms": 674,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-04-13T18:07:05Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:57.450Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:37.963Z"
       }
     },
     {
@@ -73,7 +74,7 @@
       "id": "sn-57-tensorplex-docs",
       "kind": "docs",
       "name": "gaia Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -99,11 +100,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 707,
+        "latency_ms": 338,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:57.433Z"
+        "verified_at": "2026-06-07T10:43:37.947Z"
       }
     },
     {
@@ -138,11 +139,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 136,
+        "latency_ms": 129,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:57.358Z"
+        "verified_at": "2026-06-07T10:43:37.944Z"
       }
     }
   ]

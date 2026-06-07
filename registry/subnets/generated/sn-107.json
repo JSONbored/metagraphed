@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 5,
-    "verified_at": "2026-06-07T07:07:20.679Z"
+    "verified_at": "2026-06-07T10:43:51.758Z"
   },
   "dashboard_url": "https://taostats.io/subnets/107/chart",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/107",
@@ -41,12 +41,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -54,15 +53,17 @@
       ],
       "url": "https://github.com/minos-protocol/minos_subnet",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/minos-protocol/minos_subnet",
-        "latency_ms": 537,
-        "method_tested": "HEAD",
+        "homepage": "https://theminos.ai/",
+        "last_push_at": "2026-05-24T23:36:38Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:20.233Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:51.283Z"
       }
     },
     {
@@ -71,7 +72,7 @@
       "id": "sn-107-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Minos source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -81,12 +82,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -94,15 +94,17 @@
       ],
       "url": "https://github.com/tigerinvests-com/sn107-alpha",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 55,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/tigerinvests-com/sn107-alpha",
-        "latency_ms": 541,
-        "method_tested": "HEAD",
+        "homepage": "https://taostats.io/subnets/107/",
+        "last_push_at": "2025-08-27T08:31:52Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:20.335Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:51.491Z"
       }
     },
     {
@@ -137,11 +139,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 229,
+        "latency_ms": 203,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:20.259Z"
+        "verified_at": "2026-06-07T10:43:51.433Z"
       }
     },
     {
@@ -150,7 +152,7 @@
       "id": "sn-107-tensorplex-docs",
       "kind": "docs",
       "name": "Minos Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +178,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 436,
+        "latency_ms": 401,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:20.286Z"
+        "verified_at": "2026-06-07T10:43:51.437Z"
       }
     },
     {
@@ -189,7 +191,7 @@
       "id": "sn-107-website-common-docs",
       "kind": "docs",
       "name": "Minos docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +217,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 208,
+        "latency_ms": 247,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:20.422Z"
+        "verified_at": "2026-06-07T10:43:51.509Z"
       }
     },
     {
@@ -228,7 +230,7 @@
       "id": "sn-107-website-link-theminos-ai-docs-3",
       "kind": "docs",
       "name": "Minos docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +256,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 234,
+        "latency_ms": 204,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:20.656Z"
+        "verified_at": "2026-06-07T10:43:51.735Z"
       }
     },
     {
@@ -267,7 +269,7 @@
       "id": "sn-107-website-link-theminos-ai-docs-4",
       "kind": "docs",
       "name": "Minos docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -293,11 +295,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 551,
+        "latency_ms": 379,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.theminos.ai/overview",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:20.679Z"
+        "verified_at": "2026-06-07T10:43:51.758Z"
       }
     },
     {
@@ -306,7 +308,7 @@
       "id": "sn-107-github-readme-tigerinvests-com-sn107-alpha-dashboard-1",
       "kind": "dashboard",
       "name": "Minos dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -332,11 +334,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 241,
+        "latency_ms": 203,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:20.111Z"
+        "verified_at": "2026-06-07T10:43:51.227Z"
       }
     },
     {
@@ -371,11 +373,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 127,
+        "latency_ms": 165,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:20.129Z"
+        "verified_at": "2026-06-07T10:43:51.267Z"
       }
     },
     {
@@ -384,7 +386,7 @@
       "id": "sn-107-github-readme-minos-protocol-minos-subnet-subnet-api-1",
       "kind": "subnet-api",
       "name": "Minos API surface",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -410,11 +412,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 88,
+        "latency_ms": 85,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:20.021Z"
+        "verified_at": "2026-06-07T10:43:51.210Z"
       }
     },
     {
@@ -423,7 +425,7 @@
       "id": "sn-107-github-readme-minos-protocol-minos-subnet-subnet-api-3",
       "kind": "subnet-api",
       "name": "Minos API surface",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -449,11 +451,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 92,
+        "latency_ms": 87,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:20.084Z"
+        "verified_at": "2026-06-07T10:43:51.210Z"
       }
     }
   ],

@@ -12,8 +12,8 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 2,
-    "verified_at": "2026-06-07T07:06:49.221Z"
+    "source_count": 3,
+    "verified_at": "2026-06-07T10:43:32.706Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/33",
   "docs_url": "https://docs.bittensor.com/subtensor-nodes",
@@ -42,28 +42,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/33"
+        "https://api.taomarketcap.com/public/v1/subnets/33",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/33/subnet.json"
       ],
       "url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/afterpartyai/bittensor-conversation-genome-project",
-        "latency_ms": 864,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-05-30T20:11:30Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:49.221Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:32.706Z"
       }
     },
     {
@@ -72,7 +74,7 @@
       "id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-2",
       "kind": "docs",
       "name": "ReadyAI docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -98,11 +100,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 107,
+        "latency_ms": 77,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/subtensor-nodes",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:49.037Z"
+        "verified_at": "2026-06-07T10:43:32.544Z"
       }
     },
     {
@@ -111,7 +113,7 @@
       "id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-4",
       "kind": "docs",
       "name": "ReadyAI docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +139,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 114,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/working-with-keys/",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:49.048Z"
+        "verified_at": "2026-06-07T10:43:32.571Z"
       }
     },
     {
@@ -150,7 +152,7 @@
       "id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-5",
       "kind": "docs",
       "name": "ReadyAI docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +178,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 199,
+        "latency_ms": 75,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/miners",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:49.083Z"
+        "verified_at": "2026-06-07T10:43:32.628Z"
       }
     },
     {
@@ -189,7 +191,7 @@
       "id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-7",
       "kind": "docs",
       "name": "ReadyAI docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +217,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html",
-        "latency_ms": 615,
+        "latency_ms": 448,
         "method_tested": "HEAD",
         "redirect_target": "https://developers.openai.com/api/docs/models",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:49.157Z"
+        "verified_at": "2026-06-07T10:43:32.672Z"
       }
     },
     {
@@ -254,11 +256,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 151,
+        "latency_ms": 135,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:49.211Z"
+        "verified_at": "2026-06-07T10:43:32.702Z"
       }
     },
     {
@@ -267,7 +269,7 @@
       "id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-1",
       "kind": "data-artifact",
       "name": "ReadyAI data artifact",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -293,11 +295,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 249,
+        "latency_ms": 316,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:48.910Z"
+        "verified_at": "2026-06-07T10:43:32.507Z"
       }
     },
     {
@@ -306,7 +308,7 @@
       "id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-6",
       "kind": "data-artifact",
       "name": "ReadyAI data artifact",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -332,11 +334,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 162,
+        "latency_ms": 22,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:48.918Z"
+        "verified_at": "2026-06-07T10:43:32.515Z"
       }
     },
     {
@@ -345,7 +347,7 @@
       "id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-9",
       "kind": "data-artifact",
       "name": "ReadyAI data artifact",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -371,11 +373,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 99,
+        "latency_ms": 89,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:48.943Z"
+        "verified_at": "2026-06-07T10:43:32.539Z"
       }
     }
   ]

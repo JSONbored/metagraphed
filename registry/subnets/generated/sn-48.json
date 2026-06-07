@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-07T07:06:53.017Z"
+    "verified_at": "2026-06-07T10:43:35.386Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/48",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/48",
@@ -42,12 +42,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -55,15 +54,17 @@
       ],
       "url": "https://github.com/qbittensor-labs/quantum-compute",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/qbittensor-labs/quantum-compute",
-        "latency_ms": 758,
-        "method_tested": "HEAD",
+        "homepage": "https://www.qbittensorlabs.com/quantum",
+        "last_push_at": "2026-02-26T15:10:22Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:53.000Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:35.352Z"
       }
     },
     {
@@ -98,11 +99,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 280,
+        "latency_ms": 259,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:53.007Z"
+        "verified_at": "2026-06-07T10:43:35.364Z"
       }
     },
     {
@@ -111,7 +112,7 @@
       "id": "sn-48-tensorplex-docs",
       "kind": "docs",
       "name": "Quantum Compute Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +138,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 746,
+        "latency_ms": 325,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:53.017Z"
+        "verified_at": "2026-06-07T10:43:35.386Z"
       }
     },
     {
@@ -180,7 +181,7 @@
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:52.978Z"
+        "verified_at": "2026-06-07T10:43:35.332Z"
       }
     }
   ],

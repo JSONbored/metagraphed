@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T07:06:52.495Z"
+    "verified_at": "2026-06-07T10:43:35.038Z"
   },
   "dashboard_url": "https://dashboard.resilabs.ai/",
   "docs_url": "https://docs.astral.sh/uv/getting-started/installation",
@@ -41,12 +41,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -54,15 +53,17 @@
       ],
       "url": "https://github.com/resi-labs-ai/RESI-models",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/resi-labs-ai/RESI-models",
-        "latency_ms": 888,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-05T17:48:39Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:52.277Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:34.968Z"
       }
     },
     {
@@ -71,7 +72,7 @@
       "id": "sn-46-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Zipcode source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -81,12 +82,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -94,15 +94,17 @@
       ],
       "url": "https://github.com/resi-labs-ai/resi",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 55,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/resi-labs-ai/resi",
-        "latency_ms": 921,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-02-16T15:46:55Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:52.282Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:34.977Z"
       }
     },
     {
@@ -111,7 +113,7 @@
       "id": "sn-46-tensorplex-source-repo-2",
       "kind": "source-repo",
       "name": "Zipcode source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -121,12 +123,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -134,15 +135,17 @@
       ],
       "url": "https://github.com/resi-labs-ai/resi-labs-api",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 55,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/resi-labs-ai/resi-labs-api",
-        "latency_ms": 797,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2025-10-01T14:40:38Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:52.286Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:34.980Z"
       }
     },
     {
@@ -177,11 +180,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 613,
+        "latency_ms": 509,
         "method_tested": "HEAD",
         "redirect_target": "https://zipcode.ai/portal/login",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:52.279Z"
+        "verified_at": "2026-06-07T10:43:34.972Z"
       }
     },
     {
@@ -190,7 +193,7 @@
       "id": "sn-46-github-readme-resi-labs-ai-resi-models-docs-2",
       "kind": "docs",
       "name": "Zipcode docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -216,11 +219,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 82,
+        "latency_ms": 65,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.astral.sh/uv/getting-started/installation/",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:52.253Z"
+        "verified_at": "2026-06-07T10:43:34.938Z"
       }
     },
     {
@@ -229,7 +232,7 @@
       "id": "sn-46-tensorplex-docs",
       "kind": "docs",
       "name": "Zipcode Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -255,11 +258,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 675,
+        "latency_ms": 385,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:52.279Z"
+        "verified_at": "2026-06-07T10:43:34.976Z"
       }
     },
     {
@@ -268,7 +271,7 @@
       "id": "sn-46-website-common-docs",
       "kind": "docs",
       "name": "Zipcode docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -294,11 +297,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 325,
+        "latency_ms": 257,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:52.323Z"
+        "verified_at": "2026-06-07T10:43:35.007Z"
       }
     },
     {
@@ -307,7 +310,7 @@
       "id": "sn-46-github-readme-resi-labs-ai-resi-models-dashboard-1",
       "kind": "dashboard",
       "name": "Zipcode dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -333,11 +336,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 168,
+        "latency_ms": 138,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:52.244Z"
+        "verified_at": "2026-06-07T10:43:34.933Z"
       }
     },
     {
@@ -372,11 +375,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 255,
+        "latency_ms": 127,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:52.263Z"
+        "verified_at": "2026-06-07T10:43:34.942Z"
       }
     },
     {
@@ -385,7 +388,7 @@
       "id": "sn-46-website-link-zipcode-ai-dashboard-1",
       "kind": "dashboard",
       "name": "Zipcode dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -411,11 +414,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 263,
+        "latency_ms": 312,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:52.495Z"
+        "verified_at": "2026-06-07T10:43:35.038Z"
       }
     },
     {
@@ -424,7 +427,7 @@
       "id": "sn-46-website-common-openapi-json",
       "kind": "openapi",
       "name": "Zipcode OpenAPI JSON",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -452,11 +455,11 @@
         "classification": "live",
         "confidence_score": 78,
         "content_type": "application/json; charset=utf-8",
-        "latency_ms": 175,
+        "latency_ms": 158,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:52.337Z"
+        "verified_at": "2026-06-07T10:43:35.008Z"
       }
     }
   ],

@@ -14,7 +14,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-07T07:06:59.162Z"
+    "verified_at": "2026-06-07T10:43:38.853Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/62",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/62",
@@ -43,28 +43,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/62"
+        "https://api.taomarketcap.com/public/v1/subnets/62",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/62/subnet.json"
       ],
       "url": "https://github.com/ridgesai/ridges",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/ridgesai/ridges",
-        "latency_ms": 565,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-06T08:11:19Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:58.979Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:38.795Z"
       }
     },
     {
@@ -73,7 +75,7 @@
       "id": "sn-62-tensorplex-docs",
       "kind": "docs",
       "name": "Ridges Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -99,11 +101,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 738,
+        "latency_ms": 323,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:59.162Z"
+        "verified_at": "2026-06-07T10:43:38.853Z"
       }
     },
     {
@@ -138,11 +140,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
+        "latency_ms": 127,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:58.978Z"
+        "verified_at": "2026-06-07T10:43:38.778Z"
       }
     }
   ]

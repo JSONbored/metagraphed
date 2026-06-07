@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-07T07:07:26.350Z"
+    "verified_at": "2026-06-07T10:43:56.643Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/126",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/126",
@@ -42,12 +42,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -55,15 +54,17 @@
       ],
       "url": "https://github.com/Poker44/Poker44-subnet",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/Poker44/Poker44-subnet",
-        "latency_ms": 603,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-05-30T13:31:32Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:25.929Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:56.323Z"
       }
     },
     {
@@ -98,11 +99,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 572,
+        "latency_ms": 566,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:26.002Z"
+        "verified_at": "2026-06-07T10:43:56.371Z"
       }
     },
     {
@@ -111,7 +112,7 @@
       "id": "sn-126-tensorplex-docs",
       "kind": "docs",
       "name": "Poker44 Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +138,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 350,
+        "latency_ms": 338,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:26.036Z"
+        "verified_at": "2026-06-07T10:43:56.394Z"
       }
     },
     {
@@ -176,11 +177,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 161,
+        "latency_ms": 194,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:25.877Z"
+        "verified_at": "2026-06-07T10:43:56.315Z"
       }
     },
     {
@@ -189,7 +190,7 @@
       "id": "sn-126-website-link-poker44-net-dashboard-1",
       "kind": "dashboard",
       "name": "Poker44 dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +216,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1450,
+        "latency_ms": 1422,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:26.350Z"
+        "verified_at": "2026-06-07T10:43:56.643Z"
       }
     }
   ],

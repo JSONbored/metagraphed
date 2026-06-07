@@ -11,7 +11,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T07:07:17.361Z"
+    "verified_at": "2026-06-07T10:43:49.737Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/99",
   "docs_url": "https://docs.learnbittensor.org/",
@@ -40,12 +40,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -53,15 +52,17 @@
       ],
       "url": "https://github.com/RendixNetwork/leoma",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/RendixNetwork/leoma",
-        "latency_ms": 459,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-05-26T01:50:03Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:17.153Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:49.597Z"
       }
     },
     {
@@ -70,7 +71,7 @@
       "id": "sn-99-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Leoma source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -80,12 +81,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -93,15 +93,17 @@
       ],
       "url": "https://github.com/subnet99/neza",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 55,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/subnet99/neza",
-        "latency_ms": 584,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-01-14T16:25:57Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:17.168Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:49.603Z"
       }
     },
     {
@@ -136,11 +138,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 172,
+        "latency_ms": 176,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:17.157Z"
+        "verified_at": "2026-06-07T10:43:49.597Z"
       }
     },
     {
@@ -149,7 +151,7 @@
       "id": "sn-99-github-readme-rendixnetwork-leoma-docs-1",
       "kind": "docs",
       "name": "Leoma docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -175,11 +177,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 40,
+        "latency_ms": 30,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:17.113Z"
+        "verified_at": "2026-06-07T10:43:49.565Z"
       }
     },
     {
@@ -188,7 +190,7 @@
       "id": "sn-99-github-readme-rendixnetwork-leoma-docs-4",
       "kind": "docs",
       "name": "Leoma docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -214,11 +216,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 229,
+        "latency_ms": 200,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:17.113Z"
+        "verified_at": "2026-06-07T10:43:49.574Z"
       }
     },
     {
@@ -227,7 +229,7 @@
       "id": "sn-99-github-readme-rendixnetwork-leoma-docs-5",
       "kind": "docs",
       "name": "Leoma docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +255,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 252,
+        "latency_ms": 163,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:17.115Z"
+        "verified_at": "2026-06-07T10:43:49.577Z"
       }
     },
     {
@@ -266,7 +268,7 @@
       "id": "sn-99-tensorplex-docs",
       "kind": "docs",
       "name": "Leoma Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -292,11 +294,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 387,
+        "latency_ms": 335,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:17.160Z"
+        "verified_at": "2026-06-07T10:43:49.603Z"
       }
     },
     {
@@ -331,11 +333,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 146,
+        "latency_ms": 138,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:17.148Z"
+        "verified_at": "2026-06-07T10:43:49.594Z"
       }
     },
     {
@@ -344,7 +346,7 @@
       "id": "sn-99-website-common-swagger",
       "kind": "openapi",
       "name": "Leoma Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -371,11 +373,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 143,
+        "latency_ms": 145,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:17.361Z"
+        "verified_at": "2026-06-07T10:43:49.737Z"
       }
     },
     {
@@ -384,7 +386,7 @@
       "id": "sn-99-github-readme-rendixnetwork-leoma-data-artifact-3",
       "kind": "data-artifact",
       "name": "Leoma data artifact",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -410,11 +412,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 34,
+        "latency_ms": 115,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:17.113Z"
+        "verified_at": "2026-06-07T10:43:49.550Z"
       }
     }
   ],

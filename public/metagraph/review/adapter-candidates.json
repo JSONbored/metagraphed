@@ -15,19 +15,6 @@
       "slug": "allways"
     },
     {
-      "candidate_api_count": 8,
-      "curation_level": "machine-verified",
-      "name": "Albedo",
-      "netuid": 97,
-      "operational_kinds": [
-        "data-artifact",
-        "openapi"
-      ],
-      "operational_surface_count": 3,
-      "priority_score": 72,
-      "slug": "sn-97"
-    },
-    {
       "candidate_api_count": 12,
       "curation_level": "machine-verified",
       "name": "Chutes",
@@ -112,6 +99,19 @@
       "operational_surface_count": 2,
       "priority_score": 51,
       "slug": "sn-107"
+    },
+    {
+      "candidate_api_count": 7,
+      "curation_level": "machine-verified",
+      "name": "Albedo",
+      "netuid": 97,
+      "operational_kinds": [
+        "data-artifact",
+        "openapi"
+      ],
+      "operational_surface_count": 2,
+      "priority_score": 50,
+      "slug": "sn-97"
     },
     {
       "candidate_api_count": 8,
@@ -428,18 +428,6 @@
       "slug": "sn-29"
     },
     {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "colosseum",
-      "netuid": 38,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 26,
-      "slug": "sn-38"
-    },
-    {
       "candidate_api_count": 1,
       "curation_level": "machine-verified",
       "name": "EvolAI",
@@ -550,14 +538,26 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "luis",
-      "netuid": 92,
+      "name": "colosseum",
+      "netuid": 38,
       "operational_kinds": [
         "openapi"
       ],
       "operational_surface_count": 1,
       "priority_score": 25,
-      "slug": "sn-92"
+      "slug": "sn-38"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "Actual",
+      "netuid": 95,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 25,
+      "slug": "sn-95"
     },
     {
       "candidate_api_count": 6,

@@ -53,8 +53,8 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 2,
-        "verified_at": "2026-06-07T07:06:36.946Z"
+        "source_count": 3,
+        "verified_at": "2026-06-07T10:43:23.540Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -95,7 +95,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 5,
-        "verified_at": "2026-06-07T07:06:37.909Z"
+        "verified_at": "2026-06-07T10:43:24.297Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -137,7 +137,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:37.944Z"
+        "verified_at": "2026-06-07T10:43:24.333Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -180,7 +180,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:38.295Z"
+        "verified_at": "2026-06-07T10:43:24.609Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -221,7 +221,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:38.580Z"
+        "verified_at": "2026-06-07T10:43:24.799Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -262,7 +262,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:38.964Z"
+        "verified_at": "2026-06-07T10:43:25.067Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -342,7 +342,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 5,
-        "verified_at": "2026-06-07T07:06:39.784Z"
+        "verified_at": "2026-06-07T10:43:25.613Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -384,7 +384,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 5,
-        "verified_at": "2026-06-07T07:06:40.214Z"
+        "verified_at": "2026-06-07T10:43:25.901Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -426,7 +426,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:40.422Z"
+        "verified_at": "2026-06-07T10:43:26.129Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -468,7 +468,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:40.723Z"
+        "verified_at": "2026-06-07T10:43:26.391Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -511,7 +511,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:41.085Z"
+        "verified_at": "2026-06-07T10:43:26.622Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -553,8 +553,8 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 2,
-        "verified_at": "2026-06-07T07:06:41.418Z"
+        "source_count": 3,
+        "verified_at": "2026-06-07T10:43:26.883Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -596,7 +596,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 5,
-        "verified_at": "2026-06-07T07:06:42.371Z"
+        "verified_at": "2026-06-07T10:43:27.556Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -637,8 +637,8 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": "2026-06-07T07:06:42.816Z"
+        "source_count": 4,
+        "verified_at": "2026-06-07T10:43:27.845Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -679,7 +679,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:43.010Z"
+        "verified_at": "2026-06-07T10:43:28.016Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -720,7 +720,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:43.075Z"
+        "verified_at": "2026-06-07T10:43:28.116Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -762,7 +762,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:43.999Z"
+        "verified_at": "2026-06-07T10:43:28.709Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -804,7 +804,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:44.398Z"
+        "verified_at": "2026-06-07T10:43:29.108Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -847,7 +847,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:44.827Z"
+        "verified_at": "2026-06-07T10:43:29.400Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -877,7 +877,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -890,7 +890,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:45.057Z"
+        "verified_at": "2026-06-07T10:43:29.732Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -931,7 +931,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:45.755Z"
+        "verified_at": "2026-06-07T10:43:29.989Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -971,7 +971,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 5,
-        "verified_at": "2026-06-07T07:06:46.095Z"
+        "verified_at": "2026-06-07T10:43:30.326Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -1011,7 +1011,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:46.512Z"
+        "verified_at": "2026-06-07T10:43:30.520Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -1052,7 +1052,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:46.814Z"
+        "verified_at": "2026-06-07T10:43:30.796Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -1093,7 +1093,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:47.150Z"
+        "verified_at": "2026-06-07T10:43:31.040Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -1136,7 +1136,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:47.280Z"
+        "verified_at": "2026-06-07T10:43:31.180Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -1182,7 +1182,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:47.352Z"
+        "verified_at": "2026-06-07T10:43:31.252Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -1226,7 +1226,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:47.451Z"
+        "verified_at": "2026-06-07T10:43:31.337Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -1269,7 +1269,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:47.627Z"
+        "verified_at": "2026-06-07T10:43:31.560Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -1314,7 +1314,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:47.823Z"
+        "verified_at": "2026-06-07T10:43:31.644Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -1358,7 +1358,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:48.072Z"
+        "verified_at": "2026-06-07T10:43:31.767Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -1399,8 +1399,8 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 2,
-        "verified_at": "2026-06-07T07:06:49.221Z"
+        "source_count": 3,
+        "verified_at": "2026-06-07T10:43:32.706Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -1442,7 +1442,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:49.300Z"
+        "verified_at": "2026-06-07T10:43:32.840Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -1484,7 +1484,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:49.366Z"
+        "verified_at": "2026-06-07T10:43:32.927Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -1513,7 +1513,7 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1526,7 +1526,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:49.928Z"
+        "verified_at": "2026-06-07T10:43:33.292Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -1567,7 +1567,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:50.169Z"
+        "verified_at": "2026-06-07T10:43:33.454Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -1599,6 +1599,7 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
+          "No verified source repository yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
@@ -1607,16 +1608,18 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:50.555Z"
+        "verified_at": "2026-06-07T10:43:33.768Z"
       },
-      "gap_count": 3,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
+          "No verified source repository yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
+          "source-repo",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -1625,14 +1628,13 @@
           "dashboard",
           "docs",
           "openapi",
-          "source-repo",
           "website"
         ]
       },
       "name": "colosseum",
       "netuid": 38,
       "slug": "sn-38",
-      "surface_count": 6
+      "surface_count": 5
     },
     {
       "candidate_count": 4,
@@ -1649,7 +1651,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:50.729Z"
+        "verified_at": "2026-06-07T10:43:33.872Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -1694,7 +1696,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:50.739Z"
+        "verified_at": "2026-06-07T10:43:33.899Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -1737,7 +1739,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:50.950Z"
+        "verified_at": "2026-06-07T10:43:34.048Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -1780,7 +1782,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:51.056Z"
+        "verified_at": "2026-06-07T10:43:34.129Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -1825,7 +1827,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:51.112Z"
+        "verified_at": "2026-06-07T10:43:34.174Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -1868,7 +1870,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:51.187Z"
+        "verified_at": "2026-06-07T10:43:34.238Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -1910,7 +1912,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:52.015Z"
+        "verified_at": "2026-06-07T10:43:34.740Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -1951,7 +1953,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:52.495Z"
+        "verified_at": "2026-06-07T10:43:35.038Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -1992,7 +1994,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:52.944Z"
+        "verified_at": "2026-06-07T10:43:35.310Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -2034,7 +2036,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:53.017Z"
+        "verified_at": "2026-06-07T10:43:35.386Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -2077,7 +2079,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:53.796Z"
+        "verified_at": "2026-06-07T10:43:35.892Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -2119,7 +2121,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:54.301Z"
+        "verified_at": "2026-06-07T10:43:36.253Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -2159,7 +2161,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:54.674Z"
+        "verified_at": "2026-06-07T10:43:36.410Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -2201,7 +2203,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:55.596Z"
+        "verified_at": "2026-06-07T10:43:37.004Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -2246,7 +2248,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:55.679Z"
+        "verified_at": "2026-06-07T10:43:37.032Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -2290,7 +2292,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:56.039Z"
+        "verified_at": "2026-06-07T10:43:37.126Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -2332,7 +2334,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:56.333Z"
+        "verified_at": "2026-06-07T10:43:37.339Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -2372,7 +2374,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:56.784Z"
+        "verified_at": "2026-06-07T10:43:37.675Z"
       },
       "gap_count": 2,
       "gaps": {
@@ -2413,7 +2415,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:57.450Z"
+        "verified_at": "2026-06-07T10:43:37.963Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -2456,7 +2458,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:57.751Z"
+        "verified_at": "2026-06-07T10:43:38.084Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -2497,7 +2499,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:06:58.125Z"
+        "verified_at": "2026-06-07T10:43:38.245Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -2537,7 +2539,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 5,
-        "verified_at": "2026-06-07T07:06:58.566Z"
+        "verified_at": "2026-06-07T10:43:38.564Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -2578,7 +2580,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:58.705Z"
+        "verified_at": "2026-06-07T10:43:38.648Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -2621,7 +2623,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:06:59.162Z"
+        "verified_at": "2026-06-07T10:43:38.853Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -2664,7 +2666,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:06:59.551Z"
+        "verified_at": "2026-06-07T10:43:39.117Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -2704,7 +2706,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 5,
-        "verified_at": "2026-06-07T07:07:00.296Z"
+        "verified_at": "2026-06-07T10:43:39.632Z"
       },
       "gap_count": 2,
       "gaps": {
@@ -2743,7 +2745,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:07:00.907Z"
+        "verified_at": "2026-06-07T10:43:40.021Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -2782,7 +2784,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:07:01.378Z"
+        "verified_at": "2026-06-07T10:43:40.160Z"
       },
       "gap_count": 2,
       "gaps": {
@@ -2822,7 +2824,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:07:01.861Z"
+        "verified_at": "2026-06-07T10:43:40.387Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -2863,7 +2865,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:02.507Z"
+        "verified_at": "2026-06-07T10:43:40.754Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -2906,7 +2908,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:02.563Z"
+        "verified_at": "2026-06-07T10:43:40.847Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -2949,7 +2951,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:02.717Z"
+        "verified_at": "2026-06-07T10:43:41.119Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -2989,7 +2991,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:03.199Z"
+        "verified_at": "2026-06-07T10:43:41.372Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -3029,7 +3031,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:07:03.629Z"
+        "verified_at": "2026-06-07T10:43:41.729Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -3072,7 +3074,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:03.878Z"
+        "verified_at": "2026-06-07T10:43:41.804Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -3159,7 +3161,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:04.667Z"
+        "verified_at": "2026-06-07T10:43:42.166Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -3203,7 +3205,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:05.143Z"
+        "verified_at": "2026-06-07T10:43:42.535Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -3246,7 +3248,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:05.317Z"
+        "verified_at": "2026-06-07T10:43:43.006Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -3286,7 +3288,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:05.625Z"
+        "verified_at": "2026-06-07T10:43:43.169Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -3327,7 +3329,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:05.924Z"
+        "verified_at": "2026-06-07T10:43:43.255Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -3368,7 +3370,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:08.508Z"
+        "verified_at": "2026-06-07T10:43:43.818Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -3410,7 +3412,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:08.724Z"
+        "verified_at": "2026-06-07T10:43:43.855Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -3453,7 +3455,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:08.973Z"
+        "verified_at": "2026-06-07T10:43:44.095Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -3494,7 +3496,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:10.381Z"
+        "verified_at": "2026-06-07T10:43:44.893Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -3536,7 +3538,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:10.751Z"
+        "verified_at": "2026-06-07T10:43:44.949Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -3578,7 +3580,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:07:10.979Z"
+        "verified_at": "2026-06-07T10:43:45.299Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -3621,7 +3623,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:11.807Z"
+        "verified_at": "2026-06-07T10:43:45.569Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -3667,7 +3669,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:11.966Z"
+        "verified_at": "2026-06-07T10:43:45.606Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -3710,7 +3712,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:12.442Z"
+        "verified_at": "2026-06-07T10:43:45.854Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -3752,7 +3754,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:12.837Z"
+        "verified_at": "2026-06-07T10:43:46.091Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -3797,7 +3799,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:12.925Z"
+        "verified_at": "2026-06-07T10:43:46.227Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -3842,7 +3844,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:13.058Z"
+        "verified_at": "2026-06-07T10:43:46.249Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -3872,12 +3874,12 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 9,
+      "candidate_count": 3,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
           "No verified project website yet.",
+          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
@@ -3885,21 +3887,21 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": "2026-06-07T07:07:13.663Z"
+        "source_count": 2,
+        "verified_at": "2026-06-07T10:43:46.565Z"
       },
       "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
           "No verified project website yet.",
+          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
           "website",
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -3907,13 +3909,13 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "openapi"
+          "source-repo"
         ]
       },
       "name": "luis",
       "netuid": 92,
       "slug": "sn-92",
-      "surface_count": 5
+      "surface_count": 3
     },
     {
       "candidate_count": 17,
@@ -3928,7 +3930,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:07:14.168Z"
+        "verified_at": "2026-06-07T10:43:46.934Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -3969,7 +3971,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:14.804Z"
+        "verified_at": "2026-06-07T10:43:47.393Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -3998,12 +4000,11 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 12,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
           "No verified source repository yet.",
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
@@ -4011,21 +4012,19 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 2,
-        "verified_at": "2026-06-07T07:07:15.081Z"
+        "source_count": 3,
+        "verified_at": "2026-06-07T10:43:47.869Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
           "No verified source repository yet.",
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
-          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -4033,13 +4032,14 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "website"
         ]
       },
       "name": "Actual",
       "netuid": 95,
       "slug": "sn-95",
-      "surface_count": 3
+      "surface_count": 5
     },
     {
       "candidate_count": 13,
@@ -4054,7 +4054,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:07:15.618Z"
+        "verified_at": "2026-06-07T10:43:48.232Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -4082,7 +4082,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4093,7 +4093,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 5,
-        "verified_at": "2026-06-07T07:07:16.318Z"
+        "verified_at": "2026-06-07T10:43:48.990Z"
       },
       "gap_count": 2,
       "gaps": {
@@ -4117,7 +4117,7 @@
       "name": "Albedo",
       "netuid": 97,
       "slug": "sn-97",
-      "surface_count": 12
+      "surface_count": 10
     },
     {
       "candidate_count": 18,
@@ -4133,7 +4133,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:17.009Z"
+        "verified_at": "2026-06-07T10:43:49.435Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -4173,7 +4173,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:07:17.361Z"
+        "verified_at": "2026-06-07T10:43:49.737Z"
       },
       "gap_count": 2,
       "gaps": {
@@ -4213,7 +4213,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:17.477Z"
+        "verified_at": "2026-06-07T10:43:49.850Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -4257,7 +4257,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:17.776Z"
+        "verified_at": "2026-06-07T10:43:50.141Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -4301,7 +4301,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:17.979Z"
+        "verified_at": "2026-06-07T10:43:50.317Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -4343,7 +4343,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:07:18.170Z"
+        "verified_at": "2026-06-07T10:43:50.467Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -4387,7 +4387,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:18.915Z"
+        "verified_at": "2026-06-07T10:43:50.827Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -4430,7 +4430,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:19.496Z"
+        "verified_at": "2026-06-07T10:43:50.911Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -4471,7 +4471,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:19.884Z"
+        "verified_at": "2026-06-07T10:43:51.123Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -4512,7 +4512,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 5,
-        "verified_at": "2026-06-07T07:07:20.679Z"
+        "verified_at": "2026-06-07T10:43:51.758Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -4553,7 +4553,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:20.881Z"
+        "verified_at": "2026-06-07T10:43:51.943Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -4596,7 +4596,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:21.384Z"
+        "verified_at": "2026-06-07T10:43:52.506Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -4638,7 +4638,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:21.859Z"
+        "verified_at": "2026-06-07T10:43:52.913Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -4680,7 +4680,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:22.001Z"
+        "verified_at": "2026-06-07T10:43:53.091Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -4723,7 +4723,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:22.091Z"
+        "verified_at": "2026-06-07T10:43:53.182Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -4765,7 +4765,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:07:22.704Z"
+        "verified_at": "2026-06-07T10:43:53.799Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -4806,7 +4806,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:23.387Z"
+        "verified_at": "2026-06-07T10:43:54.378Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -4848,7 +4848,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:23.688Z"
+        "verified_at": "2026-06-07T10:43:54.669Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -4893,7 +4893,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:23.733Z"
+        "verified_at": "2026-06-07T10:43:54.703Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -4938,7 +4938,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:23.829Z"
+        "verified_at": "2026-06-07T10:43:54.798Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -4981,7 +4981,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:07:24.062Z"
+        "verified_at": "2026-06-07T10:43:55.013Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -5025,7 +5025,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:24.351Z"
+        "verified_at": "2026-06-07T10:43:55.196Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -5069,7 +5069,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:24.397Z"
+        "verified_at": "2026-06-07T10:43:55.235Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -5111,7 +5111,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:24.649Z"
+        "verified_at": "2026-06-07T10:43:55.493Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -5154,7 +5154,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:25.345Z"
+        "verified_at": "2026-06-07T10:43:55.902Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -5198,7 +5198,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:25.436Z"
+        "verified_at": "2026-06-07T10:43:55.973Z"
       },
       "gap_count": 5,
       "gaps": {
@@ -5240,7 +5240,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 4,
-        "verified_at": "2026-06-07T07:07:25.664Z"
+        "verified_at": "2026-06-07T10:43:56.151Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -5283,7 +5283,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 2,
-        "verified_at": "2026-06-07T07:07:25.777Z"
+        "verified_at": "2026-06-07T10:43:56.259Z"
       },
       "gap_count": 6,
       "gaps": {
@@ -5327,7 +5327,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:26.350Z"
+        "verified_at": "2026-06-07T10:43:56.643Z"
       },
       "gap_count": 4,
       "gaps": {
@@ -5368,7 +5368,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:26.757Z"
+        "verified_at": "2026-06-07T10:43:57.267Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -5408,7 +5408,7 @@
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_count": 3,
-        "verified_at": "2026-06-07T07:07:27.540Z"
+        "verified_at": "2026-06-07T10:43:57.845Z"
       },
       "gap_count": 3,
       "gaps": {

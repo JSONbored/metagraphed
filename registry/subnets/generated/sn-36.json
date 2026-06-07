@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-07T07:06:49.928Z"
+    "verified_at": "2026-06-07T10:43:33.292Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/36",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/36",
@@ -42,12 +42,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -55,15 +54,17 @@
       ],
       "url": "https://github.com/RendixNetwork/eirel-ai",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/RendixNetwork/eirel-ai",
-        "latency_ms": 749,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-05-28T20:38:49Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:49.639Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:33.117Z"
       }
     },
     {
@@ -98,11 +99,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 160,
+        "latency_ms": 152,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:49.668Z"
+        "verified_at": "2026-06-07T10:43:33.117Z"
       }
     },
     {
@@ -111,7 +112,7 @@
       "id": "sn-36-tensorplex-docs",
       "kind": "docs",
       "name": "Eirel Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +138,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 625,
+        "latency_ms": 293,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:49.679Z"
+        "verified_at": "2026-06-07T10:43:33.139Z"
       }
     },
     {
@@ -150,7 +151,7 @@
       "id": "sn-36-website-common-docs",
       "kind": "docs",
       "name": "Eirel docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +177,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 232,
+        "latency_ms": 210,
         "method_tested": "HEAD",
         "redirect_target": "https://eirel.ai/docs/overview",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:49.849Z"
+        "verified_at": "2026-06-07T10:43:33.150Z"
       }
     },
     {
@@ -215,20 +216,20 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 156,
+        "latency_ms": 130,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:49.480Z"
+        "verified_at": "2026-06-07T10:43:33.078Z"
       }
     },
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-36-website-link-eirel-ai-dashboard-2",
+      "id": "sn-36-website-link-eirel-ai-dashboard-3",
       "kind": "dashboard",
       "name": "Eirel dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +255,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 169,
+        "latency_ms": 156,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:49.928Z"
+        "verified_at": "2026-06-07T10:43:33.292Z"
       }
     }
   ],

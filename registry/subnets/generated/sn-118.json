@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T07:07:24.062Z"
+    "verified_at": "2026-06-07T10:43:55.013Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/118",
   "docs_url": "https://docs.learnbittensor.org/miners",
@@ -59,11 +59,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/orgs/ditto-assistant",
-        "latency_ms": 521,
+        "latency_ms": 411,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:23.867Z"
+        "verified_at": "2026-06-07T10:43:54.870Z"
       }
     },
     {
@@ -72,7 +72,7 @@
       "id": "sn-118-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Ditto source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -82,12 +82,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -95,15 +94,17 @@
       ],
       "url": "https://github.com/mobiusfund/etf",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 55,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/mobiusfund/etf",
-        "latency_ms": 420,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-04-20T18:18:58Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:24.028Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:54.896Z"
       }
     },
     {
@@ -138,11 +139,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 125,
+        "latency_ms": 107,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:23.887Z"
+        "verified_at": "2026-06-07T10:43:54.890Z"
       }
     },
     {
@@ -151,7 +152,7 @@
       "id": "sn-118-github-readme-mobiusfund-etf-docs-1",
       "kind": "docs",
       "name": "Ditto docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -177,11 +178,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 42,
+        "latency_ms": 34,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:23.844Z"
+        "verified_at": "2026-06-07T10:43:54.832Z"
       }
     },
     {
@@ -190,7 +191,7 @@
       "id": "sn-118-github-readme-mobiusfund-etf-docs-3",
       "kind": "docs",
       "name": "Ditto docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -216,11 +217,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 166,
+        "latency_ms": 193,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:23.861Z"
+        "verified_at": "2026-06-07T10:43:54.850Z"
       }
     },
     {
@@ -229,7 +230,7 @@
       "id": "sn-118-tensorplex-docs",
       "kind": "docs",
       "name": "Ditto Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -255,11 +256,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 301,
+        "latency_ms": 353,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:23.957Z"
+        "verified_at": "2026-06-07T10:43:54.895Z"
       }
     },
     {
@@ -268,7 +269,7 @@
       "id": "sn-118-website-common-docs",
       "kind": "docs",
       "name": "Ditto docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -294,11 +295,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 277,
+        "latency_ms": 98,
         "method_tested": "HEAD",
         "redirect_target": "https://heyditto.ai/docs/",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:24.062Z"
+        "verified_at": "2026-06-07T10:43:55.013Z"
       }
     },
     {
@@ -333,11 +334,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 145,
+        "latency_ms": 151,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:23.863Z"
+        "verified_at": "2026-06-07T10:43:54.859Z"
       }
     }
   ],

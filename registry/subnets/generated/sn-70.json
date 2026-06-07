@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-07T07:07:02.717Z"
+    "verified_at": "2026-06-07T10:43:41.119Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/70",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/70",
@@ -41,12 +41,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -54,15 +53,17 @@
       ],
       "url": "https://github.com/RendixNetwork/nexisgen",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/RendixNetwork/nexisgen",
-        "latency_ms": 706,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-03T09:53:47Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:02.575Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:40.856Z"
       }
     },
     {
@@ -97,11 +98,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 400,
+        "latency_ms": 360,
         "method_tested": "HEAD",
         "redirect_target": "https://www.nexisgen.ai/",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:02.583Z"
+        "verified_at": "2026-06-07T10:43:40.858Z"
       }
     },
     {
@@ -110,7 +111,7 @@
       "id": "sn-70-tensorplex-docs",
       "kind": "docs",
       "name": "NexisGen Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -136,11 +137,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 791,
+        "latency_ms": 390,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:02.587Z"
+        "verified_at": "2026-06-07T10:43:40.872Z"
       }
     },
     {
@@ -149,7 +150,7 @@
       "id": "sn-70-website-common-docs",
       "kind": "docs",
       "name": "NexisGen docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -175,11 +176,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 434,
+        "latency_ms": 291,
         "method_tested": "HEAD",
         "redirect_target": "https://www.nexisgen.ai/docs",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:02.587Z"
+        "verified_at": "2026-06-07T10:43:40.890Z"
       }
     },
     {
@@ -214,11 +215,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 197,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:02.564Z"
+        "verified_at": "2026-06-07T10:43:40.851Z"
       }
     },
     {
@@ -227,7 +228,7 @@
       "id": "sn-70-website-link-nexisgen-ai-data-artifact-5",
       "kind": "data-artifact",
       "name": "NexisGen data artifact",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +254,11 @@
         "classification": "redirected",
         "confidence_score": 63,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 335,
+        "latency_ms": 186,
         "method_tested": "HEAD",
         "redirect_target": "https://www.nexisgen.ai/commission",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:02.717Z"
+        "verified_at": "2026-06-07T10:43:41.119Z"
       }
     }
   ],

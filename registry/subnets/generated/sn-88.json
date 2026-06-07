@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-07T07:07:12.442Z"
+    "verified_at": "2026-06-07T10:43:45.854Z"
   },
   "dashboard_url": "https://db.investing88.ai/",
   "docs_url": "https://docs.learnbittensor.org/miners",
@@ -41,28 +41,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/88"
+        "https://api.taomarketcap.com/public/v1/subnets/88",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/88/subnet.json"
       ],
       "url": "https://github.com/mobiusfund/investing",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/mobiusfund/investing",
-        "latency_ms": 836,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-03T22:01:27Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:12.419Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:45.769Z"
       }
     },
     {
@@ -97,11 +99,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 296,
+        "latency_ms": 284,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:12.426Z"
+        "verified_at": "2026-06-07T10:43:45.795Z"
       }
     },
     {
@@ -110,7 +112,7 @@
       "id": "sn-88-github-readme-mobiusfund-investing-docs-2",
       "kind": "docs",
       "name": "Investing docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -136,11 +138,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 62,
+        "latency_ms": 30,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:12.196Z"
+        "verified_at": "2026-06-07T10:43:45.633Z"
       }
     },
     {
@@ -149,7 +151,7 @@
       "id": "sn-88-github-readme-mobiusfund-investing-docs-3",
       "kind": "docs",
       "name": "Investing docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -175,11 +177,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 69,
+        "latency_ms": 32,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:12.226Z"
+        "verified_at": "2026-06-07T10:43:45.666Z"
       }
     },
     {
@@ -188,7 +190,7 @@
       "id": "sn-88-tensorplex-docs",
       "kind": "docs",
       "name": "Investing Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -214,11 +216,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 502,
+        "latency_ms": 322,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:12.442Z"
+        "verified_at": "2026-06-07T10:43:45.854Z"
       }
     },
     {
@@ -227,7 +229,7 @@
       "id": "sn-88-github-readme-mobiusfund-investing-dashboard-1",
       "kind": "dashboard",
       "name": "Investing dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +255,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 413,
+        "latency_ms": 322,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:11.969Z"
+        "verified_at": "2026-06-07T10:43:45.626Z"
       }
     },
     {
@@ -292,11 +294,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 163,
+        "latency_ms": 169,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:12.389Z"
+        "verified_at": "2026-06-07T10:43:45.741Z"
       }
     },
     {
@@ -305,7 +307,7 @@
       "id": "sn-88-github-readme-mobiusfund-investing-subnet-api-5",
       "kind": "subnet-api",
       "name": "Investing API surface",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -335,7 +337,7 @@
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:12.297Z"
+        "verified_at": "2026-06-07T10:43:45.701Z"
       }
     }
   ],

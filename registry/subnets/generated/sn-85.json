@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T07:07:10.979Z"
+    "verified_at": "2026-06-07T10:43:45.299Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/85",
   "docs_url": "https://docs.bittensor.com/",
@@ -41,28 +41,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/85"
+        "https://api.taomarketcap.com/public/v1/subnets/85",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/85/subnet.json"
       ],
       "url": "https://github.com/vidaio-subnet/vidaio-subnet",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/vidaio-subnet/vidaio-subnet",
-        "latency_ms": 714,
-        "method_tested": "HEAD",
+        "homepage": null,
+        "last_push_at": "2026-06-07T08:52:37Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:10.795Z"
+        "topics": [],
+        "verified_at": "2026-06-07T10:43:45.102Z"
       }
     },
     {
@@ -97,11 +99,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1545,
+        "latency_ms": 421,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:10.831Z"
+        "verified_at": "2026-06-07T10:43:45.145Z"
       }
     },
     {
@@ -110,7 +112,7 @@
       "id": "sn-85-github-readme-vidaio-subnet-vidaio-subnet-docs-1",
       "kind": "docs",
       "name": "Vidaio docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -136,11 +138,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 95,
+        "latency_ms": 72,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:10.759Z"
+        "verified_at": "2026-06-07T10:43:45.066Z"
       }
     },
     {
@@ -149,7 +151,7 @@
       "id": "sn-85-tensorplex-docs",
       "kind": "docs",
       "name": "Vidaio Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -175,11 +177,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 508,
+        "latency_ms": 351,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:10.831Z"
+        "verified_at": "2026-06-07T10:43:45.166Z"
       }
     },
     {
@@ -188,7 +190,7 @@
       "id": "sn-85-website-common-docs",
       "kind": "docs",
       "name": "Vidaio docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -214,11 +216,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 453,
+        "latency_ms": 349,
         "method_tested": "GET",
         "redirect_target": "https://vidaio.io/sign-in?authRedir=%2Fdocs",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:10.846Z"
+        "verified_at": "2026-06-07T10:43:45.236Z"
       }
     },
     {
@@ -253,11 +255,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 142,
+        "latency_ms": 164,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:10.773Z"
+        "verified_at": "2026-06-07T10:43:45.077Z"
       }
     },
     {
@@ -266,7 +268,7 @@
       "id": "sn-85-website-link-vidaio-io-dashboard-3",
       "kind": "dashboard",
       "name": "Vidaio dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -292,11 +294,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 621,
+        "latency_ms": 334,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:10.958Z"
+        "verified_at": "2026-06-07T10:43:45.288Z"
       }
     },
     {
@@ -305,7 +307,7 @@
       "id": "sn-85-website-link-vidaio-io-dashboard-4",
       "kind": "dashboard",
       "name": "Vidaio dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -331,11 +333,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1408,
+        "latency_ms": 302,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:10.979Z"
+        "verified_at": "2026-06-07T10:43:45.299Z"
       }
     },
     {
@@ -344,7 +346,7 @@
       "id": "sn-85-website-common-swagger",
       "kind": "openapi",
       "name": "Vidaio Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -371,11 +373,11 @@
         "classification": "redirected",
         "confidence_score": 63,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 380,
+        "latency_ms": 315,
         "method_tested": "GET",
         "redirect_target": "https://vidaio.io/sign-in?authRedir=%2Fswagger",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:10.909Z"
+        "verified_at": "2026-06-07T10:43:45.282Z"
       }
     }
   ],

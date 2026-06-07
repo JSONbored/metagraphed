@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 5,
-    "verified_at": "2026-06-07T07:06:42.371Z"
+    "verified_at": "2026-06-07T10:43:27.556Z"
   },
   "dashboard_url": "https://taohash.com/leaderboard",
   "docs_url": "https://cacheon.ai/docs",
@@ -42,12 +42,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -55,15 +54,26 @@
       ],
       "url": "https://github.com/latent-to/cacheon",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/latent-to/cacheon",
-        "latency_ms": 802,
-        "method_tested": "HEAD",
+        "homepage": "https://cacheon.ai/",
+        "last_push_at": "2026-06-06T21:56:30Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:42.184Z"
+        "topics": [
+          "ai",
+          "bittensor",
+          "bittensor-subnet",
+          "inference",
+          "inference-engine",
+          "inference-optimization",
+          "llm",
+          "tao"
+        ],
+        "verified_at": "2026-06-07T10:43:27.418Z"
       }
     },
     {
@@ -72,7 +82,7 @@
       "id": "sn-14-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Cacheon source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -82,12 +92,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -95,15 +104,23 @@
       ],
       "url": "https://github.com/latent-to/taohash",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 55,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/latent-to/taohash",
-        "latency_ms": 426,
-        "method_tested": "HEAD",
+        "homepage": "https://taohash.com/",
+        "last_push_at": "2025-12-16T19:25:48Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:06:42.230Z"
+        "topics": [
+          "bitcoin",
+          "bittensor",
+          "hashrate",
+          "mining",
+          "proofofwork"
+        ],
+        "verified_at": "2026-06-07T10:43:27.474Z"
       }
     },
     {
@@ -138,11 +155,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 35,
+        "latency_ms": 38,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:42.191Z"
+        "verified_at": "2026-06-07T10:43:27.438Z"
       }
     },
     {
@@ -151,7 +168,7 @@
       "id": "sn-14-github-readme-latent-to-cacheon-docs-1",
       "kind": "docs",
       "name": "Cacheon docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -177,11 +194,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html",
-        "latency_ms": 223,
+        "latency_ms": 98,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:41.793Z"
+        "verified_at": "2026-06-07T10:43:27.192Z"
       }
     },
     {
@@ -190,7 +207,7 @@
       "id": "sn-14-github-readme-latent-to-cacheon-docs-10",
       "kind": "docs",
       "name": "Cacheon docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -216,11 +233,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html",
-        "latency_ms": 211,
+        "latency_ms": 277,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:41.810Z"
+        "verified_at": "2026-06-07T10:43:27.247Z"
       }
     },
     {
@@ -229,7 +246,7 @@
       "id": "sn-14-github-readme-latent-to-cacheon-docs-2",
       "kind": "docs",
       "name": "Cacheon docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -255,11 +272,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html",
-        "latency_ms": 383,
+        "latency_ms": 282,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:41.814Z"
+        "verified_at": "2026-06-07T10:43:27.254Z"
       }
     },
     {
@@ -268,7 +285,7 @@
       "id": "sn-14-github-readme-latent-to-cacheon-docs-3",
       "kind": "docs",
       "name": "Cacheon docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -294,11 +311,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html",
-        "latency_ms": 180,
+        "latency_ms": 279,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:41.896Z"
+        "verified_at": "2026-06-07T10:43:27.276Z"
       }
     },
     {
@@ -307,7 +324,7 @@
       "id": "sn-14-github-readme-latent-to-taohash-dashboard-5",
       "kind": "dashboard",
       "name": "Cacheon dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -333,11 +350,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html",
-        "latency_ms": 278,
+        "latency_ms": 248,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:42.054Z"
+        "verified_at": "2026-06-07T10:43:27.345Z"
       }
     },
     {
@@ -372,11 +389,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 311,
+        "latency_ms": 143,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:42.184Z"
+        "verified_at": "2026-06-07T10:43:27.403Z"
       }
     },
     {
@@ -385,7 +402,7 @@
       "id": "sn-14-website-link-cacheon-ai-dashboard-1",
       "kind": "dashboard",
       "name": "Cacheon dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -411,11 +428,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html",
-        "latency_ms": 51,
+        "latency_ms": 33,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:06:42.371Z"
+        "verified_at": "2026-06-07T10:43:27.556Z"
       }
     }
   ],

@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T07:07:22.704Z"
+    "verified_at": "2026-06-07T10:43:53.799Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/113",
   "docs_url": "https://docs.tensorusd.com/components/subnet",
@@ -42,12 +42,11 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -55,15 +54,25 @@
       ],
       "url": "https://github.com/TensorUSD/subnet",
       "verification": {
+        "archived": false,
         "classification": "live",
-        "confidence_score": 59,
+        "confidence_score": 80,
         "content_type": null,
+        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/TensorUSD/subnet",
-        "latency_ms": 600,
-        "method_tested": "HEAD",
+        "homepage": "https://tensorusd.com/",
+        "last_push_at": "2026-06-05T08:06:23Z",
         "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T07:07:22.292Z"
+        "topics": [
+          "bittensor",
+          "bittensor-subnet",
+          "native-stablecoin",
+          "sn-113",
+          "stablecoin",
+          "tensorusd-subnet",
+          "tusdt-subnet"
+        ],
+        "verified_at": "2026-06-07T10:43:53.410Z"
       }
     },
     {
@@ -98,11 +107,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 529,
+        "latency_ms": 554,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:22.321Z"
+        "verified_at": "2026-06-07T10:43:53.419Z"
       }
     },
     {
@@ -111,7 +120,7 @@
       "id": "sn-113-github-readme-tensorusd-subnet-docs-1",
       "kind": "docs",
       "name": "TensorUSD docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +146,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 220,
+        "latency_ms": 156,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:22.218Z"
+        "verified_at": "2026-06-07T10:43:53.334Z"
       }
     },
     {
@@ -150,7 +159,7 @@
       "id": "sn-113-github-readme-tensorusd-subnet-docs-2",
       "kind": "docs",
       "name": "TensorUSD docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +185,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 73,
+        "latency_ms": 65,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.astral.sh/uv/",
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:22.244Z"
+        "verified_at": "2026-06-07T10:43:53.337Z"
       }
     },
     {
@@ -189,7 +198,7 @@
       "id": "sn-113-tensorplex-docs",
       "kind": "docs",
       "name": "TensorUSD Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +224,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 367,
+        "latency_ms": 352,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:22.336Z"
+        "verified_at": "2026-06-07T10:43:53.443Z"
       }
     },
     {
@@ -228,7 +237,7 @@
       "id": "sn-113-website-link-tensorusd-com-docs-1",
       "kind": "docs",
       "name": "TensorUSD docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +263,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 154,
+        "latency_ms": 139,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:22.704Z"
+        "verified_at": "2026-06-07T10:43:53.799Z"
       }
     },
     {
@@ -293,11 +302,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 348,
+        "latency_ms": 141,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-07T07:07:22.247Z"
+        "verified_at": "2026-06-07T10:43:53.379Z"
       }
     }
   ],
