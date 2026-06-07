@@ -1644,10 +1644,7 @@ function buildFreshnessArtifact({
     };
   });
   const candidateDiscoveryAsOf =
-    nonPlaceholderTimestamp(candidateDiscovery?.generated_at) ||
-    candidateDiscovery?.native_snapshot_captured_at ||
-    native.captured_at ||
-    null;
+    nonPlaceholderTimestamp(candidateDiscovery?.generated_at) || null;
   const verificationAsOf =
     verificationArtifact.verification_finished_at ||
     nonPlaceholderTimestamp(verificationArtifact.generated_at) ||

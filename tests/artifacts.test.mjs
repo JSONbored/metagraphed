@@ -331,6 +331,9 @@ test("public artifacts are internally consistent", () => {
   const profileCompleteness = readArtifact("review/profile-completeness.json");
   const adapterCandidates = readArtifact("review/adapter-candidates.json");
   const reviewDecisions = readArtifact("review/maintainer-decisions.json");
+  const generatedCandidateDiscovery = JSON.parse(
+    readFileSync("registry/candidates/generated/public-sources.json", "utf8"),
+  );
 
   assert.equal(subnets.subnets.length, native.subnets.length);
   assert.equal(surfaces.surfaces.length, coverage.surface_count);
@@ -352,6 +355,23 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(endpoints.endpoints.length, surfaces.surfaces.length);
   assert.equal(profiles.profiles.length, native.subnets.length);
+  const candidateDiscoverySource = freshness.sources.find(
+    (source) => source.id === "candidate-discovery",
+  );
+  const expectedCandidateDiscoveryAsOf =
+    generatedCandidateDiscovery.generated_at &&
+    generatedCandidateDiscovery.generated_at !== "1970-01-01T00:00:00.000Z"
+      ? generatedCandidateDiscovery.generated_at
+      : null;
+  assert.equal(
+    freshness.summary.candidate_discovery_as_of,
+    expectedCandidateDiscoveryAsOf,
+  );
+  assert.equal(candidateDiscoverySource.as_of, expectedCandidateDiscoveryAsOf);
+  assert.equal(
+    candidateDiscoverySource.status,
+    expectedCandidateDiscoveryAsOf ? "captured" : "missing",
+  );
   assert.equal(
     profiles.profiles.every(
       (profile) =>
