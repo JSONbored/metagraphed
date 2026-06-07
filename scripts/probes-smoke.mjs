@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
   buildEndpointResourceArtifact,
+  buildEndpointIncidentArtifact,
   buildEndpointPoolArtifact,
   buildRpcEndpointArtifact,
   buildTimestamp,
@@ -682,6 +683,14 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
   await writeJson(
     path.join(outputRoot, "endpoints.json"),
     endpointResourceArtifact,
+  );
+  await writeJson(
+    path.join(outputRoot, "endpoint-incidents.json"),
+    buildEndpointIncidentArtifact({
+      endpointArtifact: endpointResourceArtifact,
+      generatedAt: buildTimestamp(),
+      contractVersion,
+    }),
   );
   await writeJson(
     path.join(outputRoot, "rpc/pools.json"),
