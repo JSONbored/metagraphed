@@ -1,9 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { promises as fs } from "node:fs";
+import { createReadStream, promises as fs } from "node:fs";
 import path from "node:path";
+import { createInterface } from "node:readline";
 import { repoRoot } from "./lib.mjs";
-
-const maxScannedFileBytes = 1024 * 1024;
 
 const trackedFiles = execFileSync("git", ["ls-files"], {
   cwd: repoRoot,
@@ -67,35 +66,37 @@ for (const file of trackedFiles) {
     continue;
   }
 
-  if (
-    stat.isSymbolicLink() ||
-    !stat.isFile() ||
-    stat.size > maxScannedFileBytes
-  ) {
+  if (stat.isSymbolicLink() || !stat.isFile()) {
     continue;
   }
 
-  let content;
+  let lines;
   try {
-    content = await fs.readFile(absolutePath, "utf8");
+    lines = createInterface({
+      input: createReadStream(absolutePath, { encoding: "utf8" }),
+      crlfDelay: Infinity,
+    });
+
+    let lineNumber = 0;
+    for await (const line of lines) {
+      lineNumber += 1;
+      for (const pattern of contentPatterns) {
+        if (!pattern.regex.test(line)) {
+          continue;
+        }
+        if (
+          pattern.name !== "real Discord webhook URL" &&
+          allowedContentMentions.has(file)
+        ) {
+          continue;
+        }
+        findings.push(`${file}:${lineNumber}: ${pattern.name}`);
+      }
+    }
   } catch (error) {
     console.warn(`Skipping unreadable file ${file}: ${error.message}`);
+    lines?.close();
     continue;
-  }
-
-  for (const [index, line] of content.split(/\r?\n/).entries()) {
-    for (const pattern of contentPatterns) {
-      if (!pattern.regex.test(line)) {
-        continue;
-      }
-      if (
-        pattern.name !== "real Discord webhook URL" &&
-        allowedContentMentions.has(file)
-      ) {
-        continue;
-      }
-      findings.push(`${file}:${index + 1}: ${pattern.name}`);
-    }
   }
 }
 
