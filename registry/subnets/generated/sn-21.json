@@ -4,7 +4,6 @@
   ],
   "curation": {
     "gap_notes": [
-      "No verified source repository yet.",
       "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
       "No verified SSE/event stream yet.",
@@ -14,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-06T12:18:15.267Z"
+    "verified_at": "2026-06-07T07:06:45.057Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/21",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/21",
@@ -24,8 +23,49 @@
   "notes": "Machine-generated baseline overlay from verified public-source candidates.",
   "schema_version": 1,
   "slug": "sn-21",
+  "source_repo": "https://github.com/ippcteam/SN21-adtao",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-21-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "AdTAO source repository",
+      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/21"
+      ],
+      "url": "https://github.com/ippcteam/SN21-adtao",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 59,
+        "content_type": null,
+        "github_api_url": "https://api.github.com/repos/ippcteam/SN21-adtao",
+        "latency_ms": 597,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:45.044Z"
+      }
+    },
     {
       "auth_required": false,
       "authority": "registry-observed",
@@ -45,7 +85,7 @@
         "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
-        "redirected": true,
+        "redirected": false,
         "source_tier": "third-party-index",
         "transient_failure": false
       },
@@ -53,16 +93,16 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/21"
       ],
-      "url": "https://ppcrebel.com/",
+      "url": "https://adtao.io/",
       "verification": {
-        "classification": "redirected",
-        "confidence_score": 72,
+        "classification": "live",
+        "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 291,
+        "latency_ms": 147,
         "method_tested": "HEAD",
-        "redirect_target": "https://www.ppcrebel.com/",
+        "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.261Z"
+        "verified_at": "2026-06-07T07:06:45.048Z"
       }
     },
     {
@@ -71,7 +111,7 @@
       "id": "sn-21-tensorplex-docs",
       "kind": "docs",
       "name": "AdTAO Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -97,11 +137,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 302,
+        "latency_ms": 455,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.267Z"
+        "verified_at": "2026-06-07T07:06:45.057Z"
       }
     },
     {
@@ -136,13 +176,13 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 157,
+        "latency_ms": 130,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.226Z"
+        "verified_at": "2026-06-07T07:06:45.023Z"
       }
     }
   ],
-  "website_url": "https://ppcrebel.com/"
+  "website_url": "https://adtao.io/"
 }

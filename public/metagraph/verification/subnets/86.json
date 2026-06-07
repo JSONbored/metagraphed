@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 212,
+      "latency_ms": 197,
       "method_tested": "HEAD",
       "name": "⚒ TaoMarketCap dashboard",
       "netuid": 86,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/86",
-      "verified_at": "2026-06-06T12:18:33.030Z"
+      "verified_at": "2026-06-07T07:07:11.766Z"
     },
     {
       "candidate_id": "sn-86-tensorplex-docs",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 285,
+      "latency_ms": 732,
       "method_tested": "HEAD",
       "name": "⚒ Tensorplex subnet docs",
       "netuid": 86,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/86",
-      "verified_at": "2026-06-06T12:18:33.066Z"
+      "verified_at": "2026-06-07T07:07:11.807Z"
     }
   ],
   "schema_version": 1,

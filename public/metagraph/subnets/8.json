@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -31,7 +31,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -79,8 +79,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/8",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/8",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/8"
       ],
       "state": "schema-valid",
       "url": "https://github.com/taoshidev/vanta-network"
@@ -116,7 +115,7 @@
       "provider": "taopedia-articles",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "taopedia-article",
@@ -137,7 +136,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -158,7 +157,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -179,7 +178,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -200,7 +199,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -221,7 +220,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -242,7 +241,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -263,7 +262,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -284,7 +283,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -305,7 +304,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -326,7 +325,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -349,7 +348,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -370,7 +369,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -418,8 +417,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/8",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/8",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/8"
       ],
       "state": "schema-valid",
       "url": "https://github.com/taoshidev/vanta-network"
@@ -455,7 +453,7 @@
       "provider": "taopedia-articles",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "taopedia-article",
@@ -476,7 +474,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -497,7 +495,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -518,7 +516,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -539,7 +537,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -560,7 +558,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -581,7 +579,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -602,7 +600,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -623,7 +621,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -644,7 +642,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -665,7 +663,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -683,12 +681,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-8-github-readme-taoshidev-vanta-network-docs-2",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:04.671Z",
-      "latency_ms": 228,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -710,11 +708,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 68,
+      "score": 0,
       "source_urls": [
         "https://github.com/taoshidev/vanta-network/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Vanta",
       "subnet_slug": "sn-8",
       "surface_id": "sn-8-github-readme-taoshidev-vanta-network-docs-2",
@@ -725,12 +723,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-8-taopedia-article",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:04.969Z",
-      "latency_ms": 498,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -752,11 +750,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 65,
+      "score": 0,
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Vanta",
       "subnet_slug": "sn-8",
       "surface_id": "sn-8-taopedia-article",
@@ -767,12 +765,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-8-tensorplex-docs",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:04.909Z",
-      "latency_ms": 435,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -794,11 +792,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 66,
+      "score": 0,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Vanta",
       "subnet_slug": "sn-8",
       "surface_id": "sn-8-tensorplex-docs",
@@ -809,12 +807,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-8-taomarketcap-source-repo",
       "kind": "source-repo",
-      "last_checked": "2026-06-07T05:10:05.007Z",
-      "latency_ms": 545,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -836,12 +834,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 65,
+      "score": 0,
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/8",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/8"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Vanta",
       "subnet_slug": "sn-8",
       "surface_id": "sn-8-taomarketcap-source-repo",
@@ -852,12 +849,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-8-taomarketcap-website",
       "kind": "website",
-      "last_checked": "2026-06-07T05:10:04.809Z",
-      "latency_ms": 343,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -879,11 +876,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 67,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/8"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Vanta",
       "subnet_slug": "sn-8",
       "surface_id": "sn-8-taomarketcap-website",
@@ -894,12 +891,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-8-github-readme-taoshidev-vanta-network-dashboard-1",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:04.817Z",
-      "latency_ms": 382,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -921,11 +918,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 66,
+      "score": 0,
       "source_urls": [
         "https://github.com/taoshidev/vanta-network/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Vanta",
       "subnet_slug": "sn-8",
       "surface_id": "sn-8-github-readme-taoshidev-vanta-network-dashboard-1",
@@ -936,12 +933,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-8-taomarketcap-dashboard",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:04.586Z",
-      "latency_ms": 136,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -963,11 +960,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 69,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/8"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Vanta",
       "subnet_slug": "sn-8",
       "surface_id": "sn-8-taomarketcap-dashboard",
@@ -978,12 +975,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-8-website-link-www-vantanetwork-io-dashboard-1",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:04.994Z",
-      "latency_ms": 511,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -1005,11 +1002,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 65,
+      "score": 0,
       "source_urls": [
         "https://www.vantanetwork.io/"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Vanta",
       "subnet_slug": "sn-8",
       "surface_id": "sn-8-website-link-www-vantanetwork-io-dashboard-1",
@@ -1039,7 +1036,7 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8347420,
+    "block": 8353128,
     "candidate_count": 16,
     "categories": [
       "baseline-curated"
@@ -1056,7 +1053,7 @@
       "review_state": "machine-generated",
       "reviewed_at": null,
       "source_count": 5,
-      "verified_at": "2026-06-06T12:18:11.022Z"
+      "verified_at": "2026-06-07T07:06:39.784Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://dashboard.taoshi.io/",
@@ -1094,7 +1091,7 @@
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T12:04:01Z",
+        "captured_at": "2026-06-07T07:06:35Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
@@ -1123,7 +1120,7 @@
       "kind": "dashboard",
       "name": "Vanta dashboard",
       "netuid": 8,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1151,11 +1148,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 392,
+        "latency_ms": 271,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.874Z"
+        "verified_at": "2026-06-07T07:06:39.468Z"
       }
     },
     {
@@ -1165,7 +1162,7 @@
       "kind": "docs",
       "name": "Vanta docs",
       "netuid": 8,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1193,11 +1190,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 175,
+        "latency_ms": 168,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.879Z"
+        "verified_at": "2026-06-07T07:06:39.493Z"
       }
     },
     {
@@ -1239,7 +1236,7 @@
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.891Z"
+        "verified_at": "2026-06-07T07:06:39.548Z"
       }
     },
     {
@@ -1259,39 +1256,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/8",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/8"
       ],
       "subnet_name": "Vanta",
       "subnet_slug": "sn-8",
       "url": "https://github.com/taoshidev/vanta-network",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/taoshidev/vanta-network",
-        "homepage": "https://taoshi.io/",
-        "last_push_at": "2026-06-06T00:11:04Z",
+        "latency_ms": 784,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [
-          "ai",
-          "bittensor",
-          "blockchain",
-          "cryptocurrency",
-          "deep-learning",
-          "machine-learning"
-        ],
-        "verified_at": "2026-06-06T12:18:10.915Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:39.556Z"
       }
     },
     {
@@ -1329,11 +1317,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 159,
+        "latency_ms": 324,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.916Z"
+        "verified_at": "2026-06-07T07:06:39.582Z"
       }
     },
     {
@@ -1343,7 +1331,7 @@
       "kind": "docs",
       "name": "Vanta Taopedia article",
       "netuid": 8,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1371,11 +1359,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 336,
+        "latency_ms": 562,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.916Z"
+        "verified_at": "2026-06-07T07:06:39.582Z"
       }
     },
     {
@@ -1385,7 +1373,7 @@
       "kind": "docs",
       "name": "Vanta Tensorplex subnet docs",
       "netuid": 8,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1413,11 +1401,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 336,
+        "latency_ms": 330,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.917Z"
+        "verified_at": "2026-06-07T07:06:39.582Z"
       }
     },
     {
@@ -1427,7 +1415,7 @@
       "kind": "dashboard",
       "name": "Vanta dashboard",
       "netuid": 8,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1455,11 +1443,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 266,
+        "latency_ms": 247,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:11.022Z"
+        "verified_at": "2026-06-07T07:06:39.784Z"
       }
     }
   ],
@@ -1471,7 +1459,7 @@
       "kind": "dashboard",
       "name": "Vanta dashboard",
       "netuid": 8,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1499,11 +1487,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 392,
+        "latency_ms": 271,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.874Z"
+        "verified_at": "2026-06-07T07:06:39.468Z"
       }
     },
     {
@@ -1513,7 +1501,7 @@
       "kind": "docs",
       "name": "Vanta docs",
       "netuid": 8,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1541,11 +1529,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 175,
+        "latency_ms": 168,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.879Z"
+        "verified_at": "2026-06-07T07:06:39.493Z"
       }
     },
     {
@@ -1587,7 +1575,7 @@
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.891Z"
+        "verified_at": "2026-06-07T07:06:39.548Z"
       }
     },
     {
@@ -1607,39 +1595,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/8",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/8"
       ],
       "subnet_name": "Vanta",
       "subnet_slug": "sn-8",
       "url": "https://github.com/taoshidev/vanta-network",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/taoshidev/vanta-network",
-        "homepage": "https://taoshi.io/",
-        "last_push_at": "2026-06-06T00:11:04Z",
+        "latency_ms": 784,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [
-          "ai",
-          "bittensor",
-          "blockchain",
-          "cryptocurrency",
-          "deep-learning",
-          "machine-learning"
-        ],
-        "verified_at": "2026-06-06T12:18:10.915Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:39.556Z"
       }
     },
     {
@@ -1677,11 +1656,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 159,
+        "latency_ms": 324,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.916Z"
+        "verified_at": "2026-06-07T07:06:39.582Z"
       }
     },
     {
@@ -1691,7 +1670,7 @@
       "kind": "docs",
       "name": "Vanta Taopedia article",
       "netuid": 8,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1719,11 +1698,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 336,
+        "latency_ms": 562,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.916Z"
+        "verified_at": "2026-06-07T07:06:39.582Z"
       }
     },
     {
@@ -1733,7 +1712,7 @@
       "kind": "docs",
       "name": "Vanta Tensorplex subnet docs",
       "netuid": 8,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1761,11 +1740,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 336,
+        "latency_ms": 330,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.917Z"
+        "verified_at": "2026-06-07T07:06:39.582Z"
       }
     },
     {
@@ -1775,7 +1754,7 @@
       "kind": "dashboard",
       "name": "Vanta dashboard",
       "netuid": 8,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1803,11 +1782,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 266,
+        "latency_ms": 247,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:11.022Z"
+        "verified_at": "2026-06-07T07:06:39.784Z"
       }
     }
   ]

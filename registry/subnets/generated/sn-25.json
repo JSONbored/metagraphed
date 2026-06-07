@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-06T12:18:16.493Z"
+    "verified_at": "2026-06-07T07:06:46.814Z"
   },
   "dashboard_url": "https://www.macrocosmos.ai/sn25/dashboard",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/25",
@@ -42,36 +42,28 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/25",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/25/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/25"
       ],
       "url": "https://github.com/macrocosm-os/mainframe",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/macrocosm-os/mainframe",
-        "homepage": "https://www.macrocosmos.ai/sn25",
-        "last_push_at": "2025-09-29T14:26:59Z",
+        "latency_ms": 605,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [
-          "bittensor",
-          "crypto",
-          "decentralized",
-          "dft",
-          "molecular-dynamics"
-        ],
-        "verified_at": "2026-06-06T12:18:16.414Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:46.596Z"
       }
     },
     {
@@ -106,11 +98,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 193,
+        "latency_ms": 215,
         "method_tested": "HEAD",
         "redirect_target": "https://www.macrocosmos.ai/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.426Z"
+        "verified_at": "2026-06-07T07:06:46.624Z"
       }
     },
     {
@@ -119,7 +111,7 @@
       "id": "sn-25-tensorplex-docs",
       "kind": "docs",
       "name": "Mainframe Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -145,11 +137,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 312,
+        "latency_ms": 346,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.429Z"
+        "verified_at": "2026-06-07T07:06:46.632Z"
       }
     },
     {
@@ -158,7 +150,7 @@
       "id": "sn-25-website-link-macrocosmos-ai-docs-3",
       "kind": "docs",
       "name": "Mainframe docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -184,11 +176,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 105,
+        "latency_ms": 106,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.476Z"
+        "verified_at": "2026-06-07T07:06:46.758Z"
       }
     },
     {
@@ -197,7 +189,7 @@
       "id": "sn-25-website-link-macrocosmos-ai-docs-6",
       "kind": "docs",
       "name": "Mainframe docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -223,11 +215,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 134,
+        "latency_ms": 127,
         "method_tested": "HEAD",
         "redirect_target": "https://www.macrocosmos.ai/delegation-guide",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.493Z"
+        "verified_at": "2026-06-07T07:06:46.814Z"
       }
     },
     {
@@ -236,7 +228,7 @@
       "id": "sn-25-github-readme-macrocosm-os-mainframe-dashboard-1",
       "kind": "dashboard",
       "name": "Mainframe dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -262,11 +254,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 145,
+        "latency_ms": 186,
         "method_tested": "HEAD",
         "redirect_target": "https://www.macrocosmos.ai/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.348Z"
+        "verified_at": "2026-06-07T07:06:46.566Z"
       }
     },
     {
@@ -301,11 +293,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 221,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.393Z"
+        "verified_at": "2026-06-07T07:06:46.590Z"
       }
     }
   ],

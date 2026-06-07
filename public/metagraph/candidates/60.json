@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 222,
+        "latency_ms": 211,
         "method_tested": "HEAD",
         "name": "Bitsec.ai dashboard",
         "netuid": 60,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taostats.io/",
-        "verified_at": "2026-06-06T12:18:25.010Z"
+        "verified_at": "2026-06-07T07:06:58.174Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://bittensor.com/whitepaper",
-        "verified_at": "2026-06-06T12:18:25.011Z"
+        "verified_at": "2026-06-07T07:06:58.179Z"
       }
     },
     {
@@ -120,7 +120,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -162,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.bitsec.ai/",
-        "verified_at": "2026-06-06T12:18:25.011Z"
+        "verified_at": "2026-06-07T07:06:58.179Z"
       }
     },
     {
@@ -175,7 +175,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -193,7 +193,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 88,
+        "latency_ms": 98,
         "method_tested": "GET",
         "name": "Bitsec.ai docs",
         "netuid": 60,
@@ -217,7 +217,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://docs.bittensor.com/learn/bittensor-building-blocks",
-        "verified_at": "2026-06-06T12:18:25.022Z"
+        "verified_at": "2026-06-07T07:06:58.187Z"
       }
     },
     {
@@ -230,7 +230,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -248,7 +248,7 @@
         "content_type": "text/html;charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 466,
+        "latency_ms": 1186,
         "method_tested": "HEAD",
         "name": "Bitsec.ai docs",
         "netuid": 60,
@@ -272,7 +272,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://learnbittensor.org/guides",
-        "verified_at": "2026-06-06T12:18:25.066Z"
+        "verified_at": "2026-06-07T07:06:58.214Z"
       }
     },
     {
@@ -303,7 +303,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 231,
+        "latency_ms": 128,
         "method_tested": "HEAD",
         "name": "Bitsec.ai TaoMarketCap dashboard",
         "netuid": 60,
@@ -327,7 +327,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/60",
-        "verified_at": "2026-06-06T12:18:25.073Z"
+        "verified_at": "2026-06-07T07:06:58.239Z"
       }
     },
     {
@@ -359,7 +359,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/Bitsec-AI/sandbox",
         "kind": "source-repo",
-        "latency_ms": 543,
+        "latency_ms": 896,
         "method_tested": "HEAD",
         "name": "Bitsec.ai source repository",
         "netuid": 60,
@@ -383,7 +383,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/Bitsec-AI/sandbox",
-        "verified_at": "2026-06-06T12:18:25.078Z"
+        "verified_at": "2026-06-07T07:06:58.267Z"
       }
     },
     {
@@ -414,7 +414,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 130,
+        "latency_ms": 154,
         "method_tested": "HEAD",
         "name": "Bitsec.ai website",
         "netuid": 60,
@@ -438,7 +438,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://bitsec.ai/",
-        "verified_at": "2026-06-06T12:18:25.079Z"
+        "verified_at": "2026-06-07T07:06:58.357Z"
       }
     },
     {
@@ -451,7 +451,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -469,7 +469,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 352,
+        "latency_ms": 613,
         "method_tested": "HEAD",
         "name": "Bitsec.ai Tensorplex subnet docs",
         "netuid": 60,
@@ -493,7 +493,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/60",
-        "verified_at": "2026-06-06T12:18:25.086Z"
+        "verified_at": "2026-06-07T07:06:58.358Z"
       }
     },
     {
@@ -506,7 +506,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -525,7 +525,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/Bitsec-AI/subnet",
         "kind": "source-repo",
-        "latency_ms": 394,
+        "latency_ms": 888,
         "method_tested": "HEAD",
         "name": "Bitsec.ai source repository",
         "netuid": 60,
@@ -549,7 +549,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/Bitsec-AI/subnet",
-        "verified_at": "2026-06-06T12:18:25.110Z"
+        "verified_at": "2026-06-07T07:06:58.368Z"
       }
     },
     {
@@ -562,7 +562,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -580,7 +580,7 @@
         "content_type": "application/json",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 132,
+        "latency_ms": 122,
         "method_tested": "GET",
         "name": "Bitsec.ai API",
         "netuid": 60,
@@ -604,7 +604,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://bitsec.ai/api",
-        "verified_at": "2026-06-06T12:18:25.169Z"
+        "verified_at": "2026-06-07T07:06:58.389Z"
       }
     },
     {
@@ -617,7 +617,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -635,7 +635,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 184,
+        "latency_ms": 153,
         "method_tested": "HEAD",
         "name": "Bitsec.ai docs",
         "netuid": 60,
@@ -659,7 +659,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://bitsec.ai/docs",
-        "verified_at": "2026-06-06T12:18:25.181Z"
+        "verified_at": "2026-06-07T07:06:58.395Z"
       }
     },
     {
@@ -672,7 +672,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -690,7 +690,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 145,
+        "latency_ms": 149,
         "method_tested": "HEAD",
         "name": "Bitsec.ai health endpoint",
         "netuid": 60,
@@ -714,7 +714,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://bitsec.ai/health",
-        "verified_at": "2026-06-06T12:18:25.184Z"
+        "verified_at": "2026-06-07T07:06:58.419Z"
       }
     },
     {
@@ -727,7 +727,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -745,7 +745,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 130,
+        "latency_ms": 162,
         "method_tested": "HEAD",
         "name": "Bitsec.ai OpenAPI JSON",
         "netuid": 60,
@@ -769,7 +769,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://bitsec.ai/openapi.json",
-        "verified_at": "2026-06-06T12:18:25.198Z"
+        "verified_at": "2026-06-07T07:06:58.456Z"
       }
     },
     {
@@ -782,7 +782,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -800,7 +800,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 38,
+        "latency_ms": 135,
         "method_tested": "HEAD",
         "name": "Bitsec.ai Swagger UI",
         "netuid": 60,
@@ -824,7 +824,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://bitsec.ai/swagger",
-        "verified_at": "2026-06-06T12:18:25.209Z"
+        "verified_at": "2026-06-07T07:06:58.566Z"
       }
     },
     {
@@ -837,7 +837,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -855,7 +855,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 144,
+        "latency_ms": 48,
         "method_tested": "HEAD",
         "name": "Bitsec.ai Swagger JSON",
         "netuid": 60,
@@ -879,7 +879,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://bitsec.ai/swagger.json",
-        "verified_at": "2026-06-06T12:18:25.233Z"
+        "verified_at": "2026-06-07T07:06:58.573Z"
       }
     }
   ],

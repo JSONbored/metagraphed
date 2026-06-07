@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 50,
+      "latency_ms": 73,
       "method_tested": "HEAD",
       "name": "ansuz docs",
       "netuid": 84,
@@ -36,29 +36,16 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.learnbittensor.org/btcli",
-      "verified_at": "2026-06-06T12:18:32.428Z"
+      "verified_at": "2026-06-07T07:07:10.637Z"
     },
     {
       "candidate_id": "sn-84-github-readme-tatsuproject-chipforge-sn84-subnet-api-2",
-      "classification": "unsupported",
-      "confidence_score": 13,
-      "content_type": null,
-      "error": "fetch failed",
+      "classification": "unsafe",
+      "error": "candidate is not public-safe",
       "kind": "subnet-api",
-      "latency_ms": 3,
-      "method_tested": "GET",
       "name": "ansuz API surface",
       "netuid": 84,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/TatsuProject/ChipForge_SN84/blob/master/README.md",
@@ -66,31 +53,17 @@
         "https://github.com/TatsuProject/ChipForge_SN84/blob/master/README.md"
       ],
       "status": "failed",
-      "status_code": null,
       "url": "http://your-api-url:8000/",
-      "verified_at": "2026-06-06T12:18:32.454Z"
+      "verified_at": "2026-06-07T07:07:10.703Z"
     },
     {
       "candidate_id": "sn-84-github-readme-tatsuproject-chipforge-sn84-subnet-api-3",
-      "classification": "unsupported",
-      "confidence_score": 13,
-      "content_type": null,
-      "error": "fetch failed",
+      "classification": "unsafe",
+      "error": "candidate is not public-safe",
       "kind": "subnet-api",
-      "latency_ms": 3,
-      "method_tested": "GET",
       "name": "ansuz API surface",
       "netuid": 84,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/TatsuProject/ChipForge_SN84/blob/master/README.md",
@@ -98,9 +71,8 @@
         "https://github.com/TatsuProject/ChipForge_SN84/blob/master/README.md"
       ],
       "status": "failed",
-      "status_code": null,
       "url": "http://challenge-server:8000/health",
-      "verified_at": "2026-06-06T12:18:32.468Z"
+      "verified_at": "2026-06-07T07:07:10.713Z"
     },
     {
       "candidate_id": "sn-84-taomarketcap-dashboard",
@@ -109,7 +81,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 160,
+      "latency_ms": 174,
       "method_tested": "HEAD",
       "name": "ansuz TaoMarketCap dashboard",
       "netuid": 84,
@@ -133,7 +105,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/84",
-      "verified_at": "2026-06-06T12:18:32.478Z"
+      "verified_at": "2026-06-07T07:07:10.732Z"
     },
     {
       "candidate_id": "sn-84-tensorplex-docs",
@@ -142,7 +114,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 327,
+      "latency_ms": 478,
       "method_tested": "HEAD",
       "name": "ansuz Tensorplex subnet docs",
       "netuid": 84,
@@ -166,17 +138,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/84",
-      "verified_at": "2026-06-06T12:18:32.480Z"
+      "verified_at": "2026-06-07T07:07:10.732Z"
     },
     {
       "candidate_id": "sn-84-tensorplex-source-repo-1",
       "classification": "live",
       "confidence_score": 55,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/TatsuProject/ChipForge_SN84",
       "kind": "source-repo",
-      "latency_ms": 525,
+      "latency_ms": 895,
       "method_tested": "HEAD",
       "name": "ansuz source repository",
       "netuid": 84,
@@ -200,17 +172,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/TatsuProject/ChipForge_SN84",
-      "verified_at": "2026-06-06T12:18:32.508Z"
+      "verified_at": "2026-06-07T07:07:10.743Z"
     },
     {
       "candidate_id": "sn-84-tensorplex-source-repo-2",
       "classification": "live",
       "confidence_score": 55,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/TatsuProject/chipforge_eda_server",
       "kind": "source-repo",
-      "latency_ms": 566,
+      "latency_ms": 994,
       "method_tested": "HEAD",
       "name": "ansuz source repository",
       "netuid": 84,
@@ -234,7 +206,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/TatsuProject/chipforge_eda_server",
-      "verified_at": "2026-06-06T12:18:32.509Z"
+      "verified_at": "2026-06-07T07:07:10.751Z"
     }
   ],
   "schema_version": 1,
@@ -242,7 +214,7 @@
   "summary": {
     "by_classification": {
       "live": 5,
-      "unsupported": 2
+      "unsafe": 2
     },
     "by_kind": {
       "dashboard": 1,

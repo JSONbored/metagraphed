@@ -10,7 +10,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 48,
+        "latency_ms": 46,
         "method_tested": "GET",
         "name": "Ditto dashboard",
         "netuid": 118,
@@ -52,7 +52,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://subnet-118-dashboard.vercel.app/",
-        "verified_at": "2026-06-06T12:18:43.308Z"
+        "verified_at": "2026-06-07T07:07:23.833Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.learnbittensor.org/miners",
-        "verified_at": "2026-06-06T12:18:43.341Z"
+        "verified_at": "2026-06-07T07:07:23.844Z"
       }
     },
     {
@@ -120,7 +120,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -138,7 +138,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 179,
+        "latency_ms": 166,
         "method_tested": "HEAD",
         "name": "Ditto docs",
         "netuid": 118,
@@ -162,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://trustedstake.gitbook.io/trustedstake/basics/editor",
-        "verified_at": "2026-06-06T12:18:43.343Z"
+        "verified_at": "2026-06-07T07:07:23.861Z"
       }
     },
     {
@@ -193,7 +193,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 139,
+        "latency_ms": 145,
         "method_tested": "HEAD",
         "name": "Ditto TaoMarketCap dashboard",
         "netuid": 118,
@@ -217,7 +217,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/118",
-        "verified_at": "2026-06-06T12:18:43.357Z"
+        "verified_at": "2026-06-07T07:07:23.863Z"
       }
     },
     {
@@ -249,7 +249,7 @@
         "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/orgs/ditto-assistant",
         "kind": "source-repo",
-        "latency_ms": 402,
+        "latency_ms": 521,
         "method_tested": "HEAD",
         "name": "Ditto source repository",
         "netuid": 118,
@@ -273,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/orgs/ditto-assistant/repositories",
-        "verified_at": "2026-06-06T12:18:43.361Z"
+        "verified_at": "2026-06-07T07:07:23.867Z"
       }
     },
     {
@@ -304,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 140,
+        "latency_ms": 125,
         "method_tested": "HEAD",
         "name": "Ditto website",
         "netuid": 118,
@@ -328,7 +328,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://heyditto.ai/",
-        "verified_at": "2026-06-06T12:18:43.382Z"
+        "verified_at": "2026-06-07T07:07:23.887Z"
       }
     },
     {
@@ -341,7 +341,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -359,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 336,
+        "latency_ms": 301,
         "method_tested": "HEAD",
         "name": "Ditto Tensorplex subnet docs",
         "netuid": 118,
@@ -383,7 +383,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/118",
-        "verified_at": "2026-06-06T12:18:43.382Z"
+        "verified_at": "2026-06-07T07:07:23.957Z"
       }
     },
     {
@@ -396,7 +396,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -415,7 +415,7 @@
         "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/mobiusfund/etf",
         "kind": "source-repo",
-        "latency_ms": 515,
+        "latency_ms": 420,
         "method_tested": "HEAD",
         "name": "Ditto source repository",
         "netuid": 118,
@@ -439,7 +439,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/mobiusfund/etf",
-        "verified_at": "2026-06-06T12:18:43.496Z"
+        "verified_at": "2026-06-07T07:07:24.028Z"
       }
     },
     {
@@ -452,7 +452,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -470,7 +470,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 36,
+        "latency_ms": 27,
         "method_tested": "GET",
         "name": "Ditto API",
         "netuid": 118,
@@ -494,7 +494,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://heyditto.ai/api",
-        "verified_at": "2026-06-06T12:18:43.514Z"
+        "verified_at": "2026-06-07T07:07:24.038Z"
       }
     },
     {
@@ -507,7 +507,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -525,7 +525,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 129,
+        "latency_ms": 277,
         "method_tested": "HEAD",
         "name": "Ditto docs",
         "netuid": 118,
@@ -549,7 +549,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://heyditto.ai/docs",
-        "verified_at": "2026-06-06T12:18:43.517Z"
+        "verified_at": "2026-06-07T07:07:24.062Z"
       }
     },
     {
@@ -562,7 +562,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -580,7 +580,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 24,
+        "latency_ms": 32,
         "method_tested": "GET",
         "name": "Ditto health endpoint",
         "netuid": 118,
@@ -604,7 +604,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://heyditto.ai/health",
-        "verified_at": "2026-06-06T12:18:43.522Z"
+        "verified_at": "2026-06-07T07:07:24.067Z"
       }
     },
     {
@@ -617,7 +617,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -635,7 +635,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 31,
+        "latency_ms": 35,
         "method_tested": "GET",
         "name": "Ditto OpenAPI JSON",
         "netuid": 118,
@@ -659,7 +659,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://heyditto.ai/openapi.json",
-        "verified_at": "2026-06-06T12:18:43.522Z"
+        "verified_at": "2026-06-07T07:07:24.072Z"
       }
     },
     {
@@ -672,7 +672,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -690,7 +690,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 32,
+        "latency_ms": 36,
         "method_tested": "GET",
         "name": "Ditto Swagger UI",
         "netuid": 118,
@@ -714,7 +714,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://heyditto.ai/swagger",
-        "verified_at": "2026-06-06T12:18:43.526Z"
+        "verified_at": "2026-06-07T07:07:24.077Z"
       }
     },
     {
@@ -727,7 +727,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -745,7 +745,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 36,
+        "latency_ms": 67,
         "method_tested": "GET",
         "name": "Ditto Swagger JSON",
         "netuid": 118,
@@ -769,7 +769,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://heyditto.ai/swagger.json",
-        "verified_at": "2026-06-06T12:18:43.538Z"
+        "verified_at": "2026-06-07T07:07:24.105Z"
       }
     },
     {
@@ -782,7 +782,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -800,7 +800,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 111,
+        "latency_ms": 226,
         "method_tested": "HEAD",
         "name": "Ditto docs",
         "netuid": 118,
@@ -824,7 +824,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://heyditto.ai/docs/openclaw",
-        "verified_at": "2026-06-06T12:18:43.570Z"
+        "verified_at": "2026-06-07T07:07:24.120Z"
       }
     },
     {
@@ -837,7 +837,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -855,7 +855,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 136,
+        "latency_ms": 186,
         "method_tested": "HEAD",
         "name": "Ditto docs",
         "netuid": 118,
@@ -879,7 +879,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://heyditto.ai/docs/hermes-agent",
-        "verified_at": "2026-06-06T12:18:43.578Z"
+        "verified_at": "2026-06-07T07:07:24.157Z"
       }
     },
     {
@@ -892,7 +892,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -910,7 +910,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 43,
+        "latency_ms": 64,
         "method_tested": "HEAD",
         "name": "Ditto docs",
         "netuid": 118,
@@ -934,7 +934,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://heyditto.ai/docs/mcp-server",
-        "verified_at": "2026-06-06T12:18:43.642Z"
+        "verified_at": "2026-06-07T07:07:24.209Z"
       }
     },
     {
@@ -947,7 +947,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -965,7 +965,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 67,
+        "latency_ms": 61,
         "method_tested": "HEAD",
         "name": "Ditto docs",
         "netuid": 118,
@@ -989,7 +989,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://heyditto.ai/docs/agent-integrations",
-        "verified_at": "2026-06-06T12:18:43.646Z"
+        "verified_at": "2026-06-07T07:07:24.218Z"
       }
     },
     {
@@ -1002,7 +1002,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1020,7 +1020,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 67,
+        "latency_ms": 120,
         "method_tested": "HEAD",
         "name": "Ditto website page",
         "netuid": 118,
@@ -1044,7 +1044,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://heyditto.ai/pricing",
-        "verified_at": "2026-06-06T12:18:43.647Z"
+        "verified_at": "2026-06-07T07:07:24.261Z"
       }
     },
     {
@@ -1057,7 +1057,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1075,7 +1075,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 55,
+        "latency_ms": 66,
         "method_tested": "HEAD",
         "name": "Ditto website page",
         "netuid": 118,
@@ -1099,7 +1099,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://heyditto.ai/support",
-        "verified_at": "2026-06-06T12:18:43.647Z"
+        "verified_at": "2026-06-07T07:07:24.269Z"
       }
     },
     {
@@ -1112,7 +1112,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1130,7 +1130,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 64,
+        "latency_ms": 66,
         "method_tested": "HEAD",
         "name": "Ditto website page",
         "netuid": 118,
@@ -1154,7 +1154,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://heyditto.ai/blog",
-        "verified_at": "2026-06-06T12:18:43.650Z"
+        "verified_at": "2026-06-07T07:07:24.274Z"
       }
     },
     {
@@ -1167,7 +1167,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1185,7 +1185,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 475,
+        "latency_ms": 217,
         "method_tested": "HEAD",
         "name": "Ditto website page",
         "netuid": 118,
@@ -1209,7 +1209,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://assistant.heyditto.ai/",
-        "verified_at": "2026-06-06T12:18:43.681Z"
+        "verified_at": "2026-06-07T07:07:24.275Z"
       }
     },
     {
@@ -1222,7 +1222,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1240,7 +1240,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 60,
+        "latency_ms": 71,
         "method_tested": "HEAD",
         "name": "Ditto website page",
         "netuid": 118,
@@ -1264,7 +1264,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://heyditto.ai/testimonials/jonathan-d",
-        "verified_at": "2026-06-06T12:18:43.684Z"
+        "verified_at": "2026-06-07T07:07:24.314Z"
       }
     }
   ],

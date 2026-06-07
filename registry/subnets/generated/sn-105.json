@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:39.324Z"
+    "verified_at": "2026-06-07T07:07:19.496Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/105",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/105",
@@ -58,11 +58,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/orgs/Beam-Network",
-        "latency_ms": 356,
+        "latency_ms": 340,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.214Z"
+        "verified_at": "2026-06-07T07:07:18.957Z"
       }
     },
     {
@@ -97,11 +97,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 184,
+        "latency_ms": 473,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.266Z"
+        "verified_at": "2026-06-07T07:07:18.989Z"
       }
     },
     {
@@ -110,7 +110,7 @@
       "id": "sn-105-tensorplex-docs",
       "kind": "docs",
       "name": "Beam Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -136,11 +136,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 273,
+        "latency_ms": 383,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.294Z"
+        "verified_at": "2026-06-07T07:07:19.048Z"
       }
     },
     {
@@ -149,7 +149,7 @@
       "id": "sn-105-website-common-docs",
       "kind": "docs",
       "name": "Beam docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -175,11 +175,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 332,
+        "latency_ms": 573,
         "method_tested": "HEAD",
         "redirect_target": "https://b1m.ai/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.306Z"
+        "verified_at": "2026-06-07T07:07:19.253Z"
       }
     },
     {
@@ -214,11 +214,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 159,
+        "latency_ms": 133,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.214Z"
+        "verified_at": "2026-06-07T07:07:18.932Z"
       }
     },
     {
@@ -227,7 +227,7 @@
       "id": "sn-105-website-common-swagger",
       "kind": "openapi",
       "name": "Beam Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +254,11 @@
         "classification": "redirected",
         "confidence_score": 63,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 326,
+        "latency_ms": 384,
         "method_tested": "HEAD",
         "redirect_target": "https://b1m.ai/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.324Z"
+        "verified_at": "2026-06-07T07:07:19.496Z"
       }
     }
   ],

@@ -52,7 +52,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -117,7 +117,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -135,12 +135,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-109-tensorplex-docs",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:19.412Z",
-      "latency_ms": 439,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -162,11 +162,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 66,
+      "score": 0,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/109/subnet.json"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Academia",
       "subnet_slug": "sn-109",
       "surface_id": "sn-109-tensorplex-docs",
@@ -177,12 +177,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-109-taomarketcap-source-repo",
       "kind": "source-repo",
-      "last_checked": "2026-06-07T05:10:19.558Z",
-      "latency_ms": 587,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -204,11 +204,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 64,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/109"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Academia",
       "subnet_slug": "sn-109",
       "surface_id": "sn-109-taomarketcap-source-repo",
@@ -219,12 +219,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-109-taomarketcap-dashboard",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:19.073Z",
-      "latency_ms": 121,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -246,11 +246,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 69,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/109"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Academia",
       "subnet_slug": "sn-109",
       "surface_id": "sn-109-taomarketcap-dashboard",
@@ -281,7 +281,7 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8347420,
+    "block": 8353128,
     "candidate_count": 3,
     "categories": [
       "baseline-curated"
@@ -299,7 +299,7 @@
       "review_state": "machine-generated",
       "reviewed_at": null,
       "source_count": 2,
-      "verified_at": "2026-06-06T12:18:40.902Z"
+      "verified_at": "2026-06-07T07:07:21.384Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/109",
@@ -338,7 +338,7 @@
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T12:04:01Z",
+        "captured_at": "2026-06-07T07:06:35Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
@@ -395,11 +395,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 130,
+        "latency_ms": 139,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.771Z"
+        "verified_at": "2026-06-07T07:07:21.243Z"
       }
     },
     {
@@ -438,11 +438,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/fx-integral/academia",
-        "latency_ms": 502,
+        "latency_ms": 481,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.851Z"
+        "verified_at": "2026-06-07T07:07:21.296Z"
       }
     },
     {
@@ -452,7 +452,7 @@
       "kind": "docs",
       "name": "Academia Tensorplex subnet docs",
       "netuid": 109,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -480,11 +480,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 334,
+        "latency_ms": 300,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.902Z"
+        "verified_at": "2026-06-07T07:07:21.384Z"
       }
     }
   ],
@@ -524,11 +524,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 130,
+        "latency_ms": 139,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.771Z"
+        "verified_at": "2026-06-07T07:07:21.243Z"
       }
     },
     {
@@ -567,11 +567,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/fx-integral/academia",
-        "latency_ms": 502,
+        "latency_ms": 481,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.851Z"
+        "verified_at": "2026-06-07T07:07:21.296Z"
       }
     },
     {
@@ -581,7 +581,7 @@
       "kind": "docs",
       "name": "Academia Tensorplex subnet docs",
       "netuid": 109,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -609,11 +609,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 334,
+        "latency_ms": 300,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.902Z"
+        "verified_at": "2026-06-07T07:07:21.384Z"
       }
     }
   ]

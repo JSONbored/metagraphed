@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 148,
+        "latency_ms": 138,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.918Z"
+        "verified_at": "2026-06-07T07:07:14.224Z"
       }
     },
     {
@@ -84,11 +84,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/AlveusLabs/SN94-BitSota",
-        "latency_ms": 470,
+        "latency_ms": 472,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.922Z"
+        "verified_at": "2026-06-07T07:07:14.300Z"
       }
     },
     {
@@ -126,11 +126,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 675,
+        "latency_ms": 685,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.967Z"
+        "verified_at": "2026-06-07T07:07:14.301Z"
       }
     },
     {
@@ -140,7 +140,7 @@
       "kind": "docs",
       "name": "Bitsota Tensorplex subnet docs",
       "netuid": 94,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -168,11 +168,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 401,
+        "latency_ms": 435,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.982Z"
+        "verified_at": "2026-06-07T07:07:14.324Z"
       }
     },
     {
@@ -182,7 +182,7 @@
       "kind": "docs",
       "name": "Bitsota docs",
       "netuid": 94,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -210,11 +210,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 663,
+        "latency_ms": 717,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:35.074Z"
+        "verified_at": "2026-06-07T07:07:14.395Z"
       }
     },
     {
@@ -224,7 +224,7 @@
       "kind": "dashboard",
       "name": "Bitsota dashboard",
       "netuid": 94,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -252,11 +252,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 676,
+        "latency_ms": 694,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:35.410Z"
+        "verified_at": "2026-06-07T07:07:14.804Z"
       }
     }
   ]

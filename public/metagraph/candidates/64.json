@@ -10,14 +10,13 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/chutesai/chutes/blob/main/README.md",
       "source_urls": [
-        "https://github.com/chutesai/chutes/blob/main/README.md",
-        "https://github.com/rayonlabs/chutes/blob/main/README.md"
+        "https://github.com/chutesai/chutes/blob/main/README.md"
       ],
       "state": "schema-valid",
       "subnet_name": "Chutes",
@@ -29,7 +28,7 @@
         "content_type": "application/json",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 72,
+        "latency_ms": 77,
         "method_tested": "GET",
         "name": "Chutes API surface",
         "netuid": 64,
@@ -48,13 +47,12 @@
         "source_type": "github-readme-link",
         "source_url": "https://github.com/chutesai/chutes/blob/main/README.md",
         "source_urls": [
-          "https://github.com/chutesai/chutes/blob/main/README.md",
-          "https://github.com/rayonlabs/chutes/blob/main/README.md"
+          "https://github.com/chutesai/chutes/blob/main/README.md"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://api.chutes.ai/pricing",
-        "verified_at": "2026-06-06T12:18:26.095Z"
+        "verified_at": "2026-06-07T07:06:59.936Z"
       }
     },
     {
@@ -67,14 +65,13 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/chutesai/chutes/blob/main/README.md",
       "source_urls": [
-        "https://github.com/chutesai/chutes/blob/main/README.md",
-        "https://github.com/rayonlabs/chutes/blob/main/README.md"
+        "https://github.com/chutesai/chutes/blob/main/README.md"
       ],
       "state": "schema-valid",
       "subnet_name": "Chutes",
@@ -86,7 +83,7 @@
         "content_type": null,
         "error": "fetch failed",
         "kind": "subnet-api",
-        "latency_ms": 120,
+        "latency_ms": 135,
         "method_tested": "GET",
         "name": "Chutes API surface",
         "netuid": 64,
@@ -104,13 +101,12 @@
         "source_type": "github-readme-link",
         "source_url": "https://github.com/chutesai/chutes/blob/main/README.md",
         "source_urls": [
-          "https://github.com/chutesai/chutes/blob/main/README.md",
-          "https://github.com/rayonlabs/chutes/blob/main/README.md"
+          "https://github.com/chutesai/chutes/blob/main/README.md"
         ],
         "status": "failed",
         "status_code": null,
         "url": "https://api.chutes.dev/",
-        "verified_at": "2026-06-06T12:18:26.116Z"
+        "verified_at": "2026-06-07T07:06:59.939Z"
       }
     },
     {
@@ -123,14 +119,13 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/chutesai/chutes/blob/main/README.md",
       "source_urls": [
-        "https://github.com/chutesai/chutes/blob/main/README.md",
-        "https://github.com/rayonlabs/chutes/blob/main/README.md"
+        "https://github.com/chutesai/chutes/blob/main/README.md"
       ],
       "state": "schema-valid",
       "subnet_name": "Chutes",
@@ -142,7 +137,7 @@
         "content_type": "application/json",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 71,
+        "latency_ms": 80,
         "method_tested": "GET",
         "name": "Chutes API surface",
         "netuid": 64,
@@ -161,13 +156,12 @@
         "source_type": "github-readme-link",
         "source_url": "https://github.com/chutesai/chutes/blob/main/README.md",
         "source_urls": [
-          "https://github.com/chutesai/chutes/blob/main/README.md",
-          "https://github.com/rayonlabs/chutes/blob/main/README.md"
+          "https://github.com/chutesai/chutes/blob/main/README.md"
         ],
         "status": "failed",
         "status_code": 404,
         "url": "https://api.chutes.ai/return_developer_deposit",
-        "verified_at": "2026-06-06T12:18:26.189Z"
+        "verified_at": "2026-06-07T07:06:59.946Z"
       }
     },
     {
@@ -180,7 +174,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -198,7 +192,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 307,
+        "latency_ms": 487,
         "method_tested": "HEAD",
         "name": "Chutes docs",
         "netuid": 64,
@@ -222,7 +216,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://kubernetes.io/docs/reference/kubectl",
-        "verified_at": "2026-06-06T12:18:26.197Z"
+        "verified_at": "2026-06-07T07:06:59.958Z"
       }
     },
     {
@@ -235,7 +229,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -253,7 +247,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 68,
+        "latency_ms": 71,
         "method_tested": "GET",
         "name": "Chutes API surface",
         "netuid": 64,
@@ -277,7 +271,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://api.chutes.ai/",
-        "verified_at": "2026-06-06T12:18:26.201Z"
+        "verified_at": "2026-06-07T07:06:59.965Z"
       }
     },
     {
@@ -308,7 +302,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 234,
+        "latency_ms": 146,
         "method_tested": "HEAD",
         "name": "Chutes TaoMarketCap dashboard",
         "netuid": 64,
@@ -332,7 +326,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/64",
-        "verified_at": "2026-06-06T12:18:26.226Z"
+        "verified_at": "2026-06-07T07:06:59.967Z"
       }
     },
     {
@@ -364,7 +358,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/chutesai/chutes",
         "kind": "source-repo",
-        "latency_ms": 494,
+        "latency_ms": 1043,
         "method_tested": "HEAD",
         "name": "Chutes source repository",
         "netuid": 64,
@@ -388,7 +382,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/chutesai/chutes",
-        "verified_at": "2026-06-06T12:18:26.238Z"
+        "verified_at": "2026-06-07T07:07:00.085Z"
       }
     },
     {
@@ -419,7 +413,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 259,
+        "latency_ms": 329,
         "method_tested": "HEAD",
         "name": "Chutes website",
         "netuid": 64,
@@ -443,7 +437,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://chutes.ai/",
-        "verified_at": "2026-06-06T12:18:26.258Z"
+        "verified_at": "2026-06-07T07:07:00.130Z"
       }
     },
     {
@@ -456,7 +450,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -474,7 +468,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 444,
+        "latency_ms": 641,
         "method_tested": "HEAD",
         "name": "Chutes Tensorplex subnet docs",
         "netuid": 64,
@@ -498,7 +492,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/64",
-        "verified_at": "2026-06-06T12:18:26.261Z"
+        "verified_at": "2026-06-07T07:07:00.134Z"
       }
     },
     {
@@ -511,7 +505,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -530,7 +524,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/rayonlabs/chutes-miner",
         "kind": "source-repo",
-        "latency_ms": 675,
+        "latency_ms": 1517,
         "method_tested": "HEAD",
         "name": "Chutes source repository",
         "netuid": 64,
@@ -554,7 +548,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/rayonlabs/chutes-miner",
-        "verified_at": "2026-06-06T12:18:26.277Z"
+        "verified_at": "2026-06-07T07:07:00.174Z"
       }
     },
     {
@@ -567,7 +561,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -586,7 +580,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/rayonlabs/chutes",
         "kind": "source-repo",
-        "latency_ms": 454,
+        "latency_ms": 929,
         "method_tested": "HEAD",
         "name": "Chutes source repository",
         "netuid": 64,
@@ -610,7 +604,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/rayonlabs/chutes",
-        "verified_at": "2026-06-06T12:18:26.283Z"
+        "verified_at": "2026-06-07T07:07:00.176Z"
       }
     },
     {
@@ -623,7 +617,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -641,7 +635,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 153,
+        "latency_ms": 147,
         "method_tested": "GET",
         "name": "Chutes API",
         "netuid": 64,
@@ -665,7 +659,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://chutes.ai/api",
-        "verified_at": "2026-06-06T12:18:26.289Z"
+        "verified_at": "2026-06-07T07:07:00.200Z"
       }
     },
     {
@@ -678,7 +672,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -696,7 +690,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 120,
+        "latency_ms": 177,
         "method_tested": "HEAD",
         "name": "Chutes docs",
         "netuid": 64,
@@ -720,7 +714,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://chutes.ai/docs",
-        "verified_at": "2026-06-06T12:18:26.301Z"
+        "verified_at": "2026-06-07T07:07:00.250Z"
       }
     },
     {
@@ -733,7 +727,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -751,7 +745,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 141,
+        "latency_ms": 150,
         "method_tested": "GET",
         "name": "Chutes health endpoint",
         "netuid": 64,
@@ -775,7 +769,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://chutes.ai/health",
-        "verified_at": "2026-06-06T12:18:26.370Z"
+        "verified_at": "2026-06-07T07:07:00.250Z"
       }
     },
     {
@@ -788,7 +782,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -806,7 +800,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 126,
+        "latency_ms": 168,
         "method_tested": "GET",
         "name": "Chutes OpenAPI JSON",
         "netuid": 64,
@@ -830,7 +824,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://chutes.ai/openapi.json",
-        "verified_at": "2026-06-06T12:18:26.388Z"
+        "verified_at": "2026-06-07T07:07:00.254Z"
       }
     },
     {
@@ -843,7 +837,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -861,7 +855,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 141,
+        "latency_ms": 145,
         "method_tested": "GET",
         "name": "Chutes Swagger UI",
         "netuid": 64,
@@ -885,7 +879,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://chutes.ai/swagger",
-        "verified_at": "2026-06-06T12:18:26.413Z"
+        "verified_at": "2026-06-07T07:07:00.264Z"
       }
     },
     {
@@ -898,7 +892,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -916,7 +910,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 130,
+        "latency_ms": 679,
         "method_tested": "GET",
         "name": "Chutes Swagger JSON",
         "netuid": 64,
@@ -940,7 +934,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://chutes.ai/swagger.json",
-        "verified_at": "2026-06-06T12:18:26.420Z"
+        "verified_at": "2026-06-07T07:07:00.277Z"
       }
     },
     {
@@ -953,7 +947,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -971,7 +965,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "data-artifact",
-        "latency_ms": 217,
+        "latency_ms": 253,
         "method_tested": "HEAD",
         "name": "Chutes data artifact",
         "netuid": 64,
@@ -995,7 +989,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://chutes.ai/app?type=llm",
-        "verified_at": "2026-06-06T12:18:26.424Z"
+        "verified_at": "2026-06-07T07:07:00.292Z"
       }
     },
     {
@@ -1008,7 +1002,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1026,7 +1020,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "data-artifact",
-        "latency_ms": 233,
+        "latency_ms": 248,
         "method_tested": "HEAD",
         "name": "Chutes data artifact",
         "netuid": 64,
@@ -1050,7 +1044,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://chutes.ai/app?type=diffusion",
-        "verified_at": "2026-06-06T12:18:26.461Z"
+        "verified_at": "2026-06-07T07:07:00.296Z"
       }
     },
     {
@@ -1063,7 +1057,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1081,7 +1075,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 129,
+        "latency_ms": 113,
         "method_tested": "HEAD",
         "name": "Chutes API surface",
         "netuid": 64,
@@ -1105,7 +1099,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://chutes.ai/docs/api-reference",
-        "verified_at": "2026-06-06T12:18:26.500Z"
+        "verified_at": "2026-06-07T07:07:00.431Z"
       }
     },
     {
@@ -1118,7 +1112,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1136,7 +1130,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 167,
+        "latency_ms": 216,
         "method_tested": "HEAD",
         "name": "Chutes website page",
         "netuid": 64,
@@ -1160,7 +1154,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://search.chutes.ai/",
-        "verified_at": "2026-06-06T12:18:26.504Z"
+        "verified_at": "2026-06-07T07:07:00.493Z"
       }
     },
     {
@@ -1173,7 +1167,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1191,7 +1185,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 180,
+        "latency_ms": 165,
         "method_tested": "HEAD",
         "name": "Chutes website page",
         "netuid": 64,
@@ -1215,7 +1209,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://chutes.ai/app/research",
-        "verified_at": "2026-06-06T12:18:26.517Z"
+        "verified_at": "2026-06-07T07:07:00.519Z"
       }
     },
     {
@@ -1228,7 +1222,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1246,7 +1240,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 329,
+        "latency_ms": 283,
         "method_tested": "HEAD",
         "name": "Chutes website page",
         "netuid": 64,
@@ -1270,7 +1264,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://chutes.ai/pricing",
-        "verified_at": "2026-06-06T12:18:26.577Z"
+        "verified_at": "2026-06-07T07:07:00.548Z"
       }
     },
     {
@@ -1283,7 +1277,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1301,7 +1295,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 162,
+        "latency_ms": 169,
         "method_tested": "HEAD",
         "name": "Chutes website page",
         "netuid": 64,
@@ -1325,7 +1319,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://chutes.ai/app",
-        "verified_at": "2026-06-06T12:18:26.629Z"
+        "verified_at": "2026-06-07T07:07:00.548Z"
       }
     },
     {
@@ -1338,7 +1332,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1356,7 +1350,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 164,
+        "latency_ms": 259,
         "method_tested": "HEAD",
         "name": "Chutes website page",
         "netuid": 64,
@@ -1380,7 +1374,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://chutes.ai/auth/start",
-        "verified_at": "2026-06-06T12:18:26.642Z"
+        "verified_at": "2026-06-07T07:07:00.548Z"
       }
     },
     {
@@ -1393,7 +1387,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1411,7 +1405,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 384,
+        "latency_ms": 371,
         "method_tested": "HEAD",
         "name": "Chutes website page",
         "netuid": 64,
@@ -1435,7 +1429,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://chutes.ai/app/settings",
-        "verified_at": "2026-06-06T12:18:26.670Z"
+        "verified_at": "2026-06-07T07:07:00.603Z"
       }
     },
     {
@@ -1448,7 +1442,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1466,7 +1460,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 144,
+        "latency_ms": 148,
         "method_tested": "HEAD",
         "name": "Chutes website page",
         "netuid": 64,
@@ -1490,7 +1484,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://chutes.ai/sales-contact",
-        "verified_at": "2026-06-06T12:18:26.671Z"
+        "verified_at": "2026-06-07T07:07:00.669Z"
       }
     }
   ],

@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 234,
+        "latency_ms": 664,
         "method_tested": "HEAD",
         "name": "ninja API surface",
         "netuid": 66,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://openrouter.ai/api/v1",
-        "verified_at": "2026-06-06T12:18:26.936Z"
+        "verified_at": "2026-06-07T07:07:00.948Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -83,7 +83,7 @@
         "content_type": "application/json",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 235,
+        "latency_ms": 264,
         "method_tested": "GET",
         "name": "ninja API surface",
         "netuid": 66,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://ninja66.ai/api/submissions",
-        "verified_at": "2026-06-06T12:18:26.937Z"
+        "verified_at": "2026-06-07T07:07:00.986Z"
       }
     },
     {
@@ -138,7 +138,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 180,
+        "latency_ms": 254,
         "method_tested": "HEAD",
         "name": "ninja TaoMarketCap dashboard",
         "netuid": 66,
@@ -162,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/66",
-        "verified_at": "2026-06-06T12:18:26.940Z"
+        "verified_at": "2026-06-07T07:07:01.006Z"
       }
     },
     {
@@ -181,8 +181,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/66",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/66",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/66"
       ],
       "state": "schema-valid",
       "subnet_name": "ninja",
@@ -195,7 +194,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/unarbos/tau",
         "kind": "source-repo",
-        "latency_ms": 469,
+        "latency_ms": 889,
         "method_tested": "HEAD",
         "name": "ninja source repository",
         "netuid": 66,
@@ -214,13 +213,12 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/66",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/66",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/66"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/unarbos/tau",
-        "verified_at": "2026-06-06T12:18:26.972Z"
+        "verified_at": "2026-06-07T07:07:01.014Z"
       }
     },
     {
@@ -251,7 +249,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 209,
+        "latency_ms": 589,
         "method_tested": "HEAD",
         "name": "ninja website",
         "netuid": 66,
@@ -275,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://ninja.arbos.life/",
-        "verified_at": "2026-06-06T12:18:26.976Z"
+        "verified_at": "2026-06-07T07:07:01.014Z"
       }
     },
     {
@@ -288,7 +286,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -306,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 304,
+        "latency_ms": 941,
         "method_tested": "HEAD",
         "name": "ninja Tensorplex subnet docs",
         "netuid": 66,
@@ -330,7 +328,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/66",
-        "verified_at": "2026-06-06T12:18:27.004Z"
+        "verified_at": "2026-06-07T07:07:01.015Z"
       }
     },
     {
@@ -343,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -361,7 +359,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 148,
+        "latency_ms": 590,
         "method_tested": "HEAD",
         "name": "ninja API",
         "netuid": 66,
@@ -385,7 +383,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://ninja.arbos.life/api",
-        "verified_at": "2026-06-06T12:18:27.004Z"
+        "verified_at": "2026-06-07T07:07:01.015Z"
       }
     },
     {
@@ -398,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -416,7 +414,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "docs",
-        "latency_ms": 145,
+        "latency_ms": 589,
         "method_tested": "HEAD",
         "name": "ninja docs",
         "netuid": 66,
@@ -440,7 +438,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://ninja.arbos.life/docs",
-        "verified_at": "2026-06-06T12:18:27.007Z"
+        "verified_at": "2026-06-07T07:07:01.015Z"
       }
     },
     {
@@ -453,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -471,7 +469,7 @@
         "content_type": "text/plain",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 120,
+        "latency_ms": 566,
         "method_tested": "HEAD",
         "name": "ninja health endpoint",
         "netuid": 66,
@@ -495,7 +493,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://ninja.arbos.life/health",
-        "verified_at": "2026-06-06T12:18:27.031Z"
+        "verified_at": "2026-06-07T07:07:01.205Z"
       }
     },
     {
@@ -508,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -526,7 +524,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 155,
+        "latency_ms": 527,
         "method_tested": "HEAD",
         "name": "ninja OpenAPI JSON",
         "netuid": 66,
@@ -550,7 +548,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://ninja.arbos.life/openapi.json",
-        "verified_at": "2026-06-06T12:18:27.039Z"
+        "verified_at": "2026-06-07T07:07:01.210Z"
       }
     },
     {
@@ -563,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -581,7 +579,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 147,
+        "latency_ms": 565,
         "method_tested": "HEAD",
         "name": "ninja Swagger UI",
         "netuid": 66,
@@ -605,7 +603,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://ninja.arbos.life/swagger",
-        "verified_at": "2026-06-06T12:18:27.044Z"
+        "verified_at": "2026-06-07T07:07:01.210Z"
       }
     },
     {
@@ -618,7 +616,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -636,7 +634,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 150,
+        "latency_ms": 379,
         "method_tested": "HEAD",
         "name": "ninja Swagger JSON",
         "netuid": 66,
@@ -660,7 +658,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://ninja.arbos.life/swagger.json",
-        "verified_at": "2026-06-06T12:18:27.044Z"
+        "verified_at": "2026-06-07T07:07:01.309Z"
       }
     },
     {
@@ -673,7 +671,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -691,7 +689,7 @@
         "content_type": "application/json",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 180,
+        "latency_ms": 310,
         "method_tested": "HEAD",
         "name": "ninja dashboard",
         "netuid": 66,
@@ -715,7 +713,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://ninja.arbos.life/dashboard-summary.json",
-        "verified_at": "2026-06-06T12:18:27.054Z"
+        "verified_at": "2026-06-07T07:07:01.378Z"
       }
     },
     {
@@ -728,7 +726,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -746,7 +744,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 144,
+        "latency_ms": 84,
         "method_tested": "HEAD",
         "name": "ninja website page",
         "netuid": 66,
@@ -770,7 +768,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://ninja.arbos.life/duels.html",
-        "verified_at": "2026-06-06T12:18:27.119Z"
+        "verified_at": "2026-06-07T07:07:01.646Z"
       }
     },
     {
@@ -783,7 +781,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -801,7 +799,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 75,
+        "latency_ms": 85,
         "method_tested": "HEAD",
         "name": "ninja website page",
         "netuid": 66,
@@ -825,7 +823,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://ninja.arbos.life/duels.html?duel=",
-        "verified_at": "2026-06-06T12:18:27.152Z"
+        "verified_at": "2026-06-07T07:07:01.646Z"
       }
     }
   ],

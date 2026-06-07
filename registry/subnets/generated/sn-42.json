@@ -15,7 +15,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-06T12:18:20.025Z"
+    "verified_at": "2026-06-07T07:06:51.056Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/42",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/42",
@@ -33,7 +33,7 @@
       "id": "sn-42-tensorplex-docs",
       "kind": "docs",
       "name": "Subnet 42 Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -59,11 +59,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 425,
+        "latency_ms": 498,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.025Z"
+        "verified_at": "2026-06-07T07:06:51.056Z"
       }
     },
     {
@@ -98,11 +98,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 164,
+        "latency_ms": 129,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.005Z"
+        "verified_at": "2026-06-07T07:06:51.048Z"
       }
     }
   ]

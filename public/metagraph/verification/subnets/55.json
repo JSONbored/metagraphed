@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 141,
+      "latency_ms": 152,
       "method_tested": "HEAD",
       "name": "NIOME TaoMarketCap dashboard",
       "netuid": 55,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/55",
-      "verified_at": "2026-06-06T12:18:23.742Z"
+      "verified_at": "2026-06-07T07:06:56.314Z"
     },
     {
       "candidate_id": "sn-55-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/genomesio/subnet-niome",
       "kind": "source-repo",
-      "latency_ms": 447,
+      "latency_ms": 794,
       "method_tested": "HEAD",
       "name": "NIOME source repository",
       "netuid": 55,
@@ -65,13 +65,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/55",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/55",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/55/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/55"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/genomesio/subnet-niome",
-      "verified_at": "2026-06-06T12:18:23.743Z"
+      "verified_at": "2026-06-07T07:06:56.315Z"
     },
     {
       "candidate_id": "sn-55-taomarketcap-website",
@@ -80,7 +79,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 743,
+      "latency_ms": 239,
       "method_tested": "HEAD",
       "name": "NIOME website",
       "netuid": 55,
@@ -104,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://niome.genomes.io/",
-      "verified_at": "2026-06-06T12:18:23.745Z"
+      "verified_at": "2026-06-07T07:06:56.332Z"
     },
     {
       "candidate_id": "sn-55-tensorplex-docs",
@@ -113,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 328,
+      "latency_ms": 716,
       "method_tested": "HEAD",
       "name": "NIOME Tensorplex subnet docs",
       "netuid": 55,
@@ -137,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/55",
-      "verified_at": "2026-06-06T12:18:23.754Z"
+      "verified_at": "2026-06-07T07:06:56.333Z"
     },
     {
       "candidate_id": "sn-55-website-common-api",
@@ -146,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 216,
+      "latency_ms": 60,
       "method_tested": "GET",
       "name": "NIOME API",
       "netuid": 55,
@@ -170,7 +169,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://niome.genomes.io/api",
-      "verified_at": "2026-06-06T12:18:23.774Z"
+      "verified_at": "2026-06-07T07:06:56.346Z"
     },
     {
       "candidate_id": "sn-55-website-common-docs",
@@ -179,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 47,
+      "latency_ms": 60,
       "method_tested": "GET",
       "name": "NIOME docs",
       "netuid": 55,
@@ -203,7 +202,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://niome.genomes.io/docs",
-      "verified_at": "2026-06-06T12:18:23.813Z"
+      "verified_at": "2026-06-07T07:06:56.357Z"
     },
     {
       "candidate_id": "sn-55-website-common-health",
@@ -212,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 48,
+      "latency_ms": 58,
       "method_tested": "GET",
       "name": "NIOME health endpoint",
       "netuid": 55,
@@ -236,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://niome.genomes.io/health",
-      "verified_at": "2026-06-06T12:18:23.823Z"
+      "verified_at": "2026-06-07T07:06:56.396Z"
     },
     {
       "candidate_id": "sn-55-website-common-openapi-json",
@@ -245,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 42,
+      "latency_ms": 62,
       "method_tested": "GET",
       "name": "NIOME OpenAPI JSON",
       "netuid": 55,
@@ -269,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://niome.genomes.io/openapi.json",
-      "verified_at": "2026-06-06T12:18:23.837Z"
+      "verified_at": "2026-06-07T07:06:56.407Z"
     },
     {
       "candidate_id": "sn-55-website-common-swagger",
@@ -278,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 52,
+      "latency_ms": 51,
       "method_tested": "GET",
       "name": "NIOME Swagger UI",
       "netuid": 55,
@@ -302,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://niome.genomes.io/swagger",
-      "verified_at": "2026-06-06T12:18:23.838Z"
+      "verified_at": "2026-06-07T07:06:56.469Z"
     },
     {
       "candidate_id": "sn-55-website-common-swagger-json",
@@ -311,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 43,
+      "latency_ms": 48,
       "method_tested": "GET",
       "name": "NIOME Swagger JSON",
       "netuid": 55,
@@ -335,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://niome.genomes.io/swagger.json",
-      "verified_at": "2026-06-06T12:18:23.845Z"
+      "verified_at": "2026-06-07T07:06:56.469Z"
     },
     {
       "candidate_id": "sn-55-website-link-niome-genomes-io-website-1",
@@ -344,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 131,
+      "latency_ms": 154,
       "method_tested": "HEAD",
       "name": "NIOME website page",
       "netuid": 55,
@@ -368,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://genomes.io/",
-      "verified_at": "2026-06-06T12:18:23.868Z"
+      "verified_at": "2026-06-07T07:06:56.479Z"
     },
     {
       "candidate_id": "sn-55-website-link-niome-genomes-io-website-2",
@@ -377,7 +376,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 148,
+      "latency_ms": 189,
       "method_tested": "HEAD",
       "name": "NIOME website page",
       "netuid": 55,
@@ -401,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://niome.genomes.io/how-to-buy",
-      "verified_at": "2026-06-06T12:18:23.883Z"
+      "verified_at": "2026-06-07T07:06:56.517Z"
     },
     {
       "candidate_id": "sn-55-website-link-niome-genomes-io-website-3",
@@ -410,7 +409,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 32,
+      "latency_ms": 46,
       "method_tested": "GET",
       "name": "NIOME website page",
       "netuid": 55,
@@ -434,7 +433,7 @@
       "status": "failed",
       "status_code": 403,
       "url": "https://blog.genomes.io/",
-      "verified_at": "2026-06-06T12:18:23.957Z"
+      "verified_at": "2026-06-07T07:06:56.536Z"
     },
     {
       "candidate_id": "sn-55-website-link-niome-genomes-io-website-4",
@@ -443,7 +442,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 35,
+      "latency_ms": 43,
       "method_tested": "GET",
       "name": "NIOME website page",
       "netuid": 55,
@@ -467,7 +466,7 @@
       "status": "failed",
       "status_code": 403,
       "url": "https://blog.genomes.io/the-niome-manifesto-f9f861cb0bd4",
-      "verified_at": "2026-06-06T12:18:23.999Z"
+      "verified_at": "2026-06-07T07:06:56.553Z"
     }
   ],
   "schema_version": 1,

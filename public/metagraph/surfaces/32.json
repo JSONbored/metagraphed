@@ -13,7 +13,7 @@
       "kind": "docs",
       "name": "ItsAI docs",
       "netuid": 32,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 149,
+        "latency_ms": 120,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:17.436Z"
+        "verified_at": "2026-06-07T07:06:47.870Z"
       }
     },
     {
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 159,
+        "latency_ms": 146,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:17.450Z"
+        "verified_at": "2026-06-07T07:06:47.960Z"
       }
     },
     {
@@ -107,32 +107,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/32",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/32/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/32"
       ],
       "subnet_name": "ItsAI",
       "subnet_slug": "sn-32",
       "url": "https://github.com/It-s-AI/llm-detection",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/It-s-AI/llm-detection",
-        "homepage": "https://app.its-ai.org/",
-        "last_push_at": "2026-05-16T23:09:06Z",
+        "latency_ms": 794,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:17.457Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:48.024Z"
       }
     },
     {
@@ -170,11 +168,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 600,
+        "latency_ms": 629,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:17.513Z"
+        "verified_at": "2026-06-07T07:06:48.025Z"
       }
     },
     {
@@ -184,7 +182,7 @@
       "kind": "docs",
       "name": "ItsAI Tensorplex subnet docs",
       "netuid": 32,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -212,11 +210,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 285,
+        "latency_ms": 596,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:17.560Z"
+        "verified_at": "2026-06-07T07:06:48.072Z"
       }
     }
   ]

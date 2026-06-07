@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 124,
+        "latency_ms": 164,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:37.258Z"
+        "verified_at": "2026-06-07T07:07:16.562Z"
       }
     },
     {
@@ -84,11 +84,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/SN98-ForeverMoney/forever-money",
-        "latency_ms": 475,
+        "latency_ms": 666,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:37.259Z"
+        "verified_at": "2026-06-07T07:07:16.646Z"
       }
     },
     {
@@ -126,11 +126,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 201,
+        "latency_ms": 207,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:37.336Z"
+        "verified_at": "2026-06-07T07:07:16.685Z"
       }
     },
     {
@@ -140,7 +140,7 @@
       "kind": "docs",
       "name": "ForeverMoney Tensorplex subnet docs",
       "netuid": 98,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -168,11 +168,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 317,
+        "latency_ms": 328,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:37.350Z"
+        "verified_at": "2026-06-07T07:07:16.706Z"
       }
     },
     {
@@ -182,7 +182,7 @@
       "kind": "source-repo",
       "name": "ForeverMoney source repository",
       "netuid": 98,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -211,11 +211,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/orgs/SN98-ForeverMoney",
-        "latency_ms": 335,
+        "latency_ms": 346,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:37.382Z"
+        "verified_at": "2026-06-07T07:07:16.729Z"
       }
     },
     {
@@ -225,7 +225,7 @@
       "kind": "dashboard",
       "name": "ForeverMoney dashboard",
       "netuid": 98,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +253,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html",
-        "latency_ms": 316,
+        "latency_ms": 360,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:37.598Z"
+        "verified_at": "2026-06-07T07:07:16.928Z"
       }
     },
     {
@@ -267,7 +267,7 @@
       "kind": "docs",
       "name": "ForeverMoney docs",
       "netuid": 98,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -295,11 +295,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 221,
+        "latency_ms": 263,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:37.639Z"
+        "verified_at": "2026-06-07T07:07:17.009Z"
       }
     }
   ]

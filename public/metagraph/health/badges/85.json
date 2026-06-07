@@ -1,14 +1,14 @@
 {
-  "color": "yellow",
+  "color": "lightgrey",
   "contract_version": "2026-06-06.1",
-  "degraded_count": 1,
   "failed_count": 0,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "label": "SN85",
-  "message": "degraded",
+  "message": "unknown",
   "netuid": 85,
-  "ok_count": 8,
+  "ok_count": 0,
   "schema_version": 1,
-  "status": "degraded",
-  "surface_count": 9
+  "status": "unknown",
+  "surface_count": 9,
+  "unknown_count": 9
 }

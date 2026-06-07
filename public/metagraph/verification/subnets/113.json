@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 253,
+      "latency_ms": 220,
       "method_tested": "HEAD",
       "name": "TensorUSD docs",
       "netuid": 113,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.tensorusd.com/components/subnet",
-      "verified_at": "2026-06-06T12:18:41.777Z"
+      "verified_at": "2026-06-07T07:07:22.218Z"
     },
     {
       "candidate_id": "sn-113-github-readme-tensorusd-subnet-docs-2",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 126,
+      "latency_ms": 73,
       "method_tested": "HEAD",
       "name": "TensorUSD docs",
       "netuid": 113,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.astral.sh/uv",
-      "verified_at": "2026-06-06T12:18:41.803Z"
+      "verified_at": "2026-06-07T07:07:22.244Z"
     },
     {
       "candidate_id": "sn-113-taomarketcap-dashboard",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 150,
+      "latency_ms": 348,
       "method_tested": "HEAD",
       "name": "TensorUSD TaoMarketCap dashboard",
       "netuid": 113,
@@ -102,17 +102,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/113",
-      "verified_at": "2026-06-06T12:18:41.806Z"
+      "verified_at": "2026-06-07T07:07:22.247Z"
     },
     {
       "candidate_id": "sn-113-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/TensorUSD/subnet",
       "kind": "source-repo",
-      "latency_ms": 522,
+      "latency_ms": 600,
       "method_tested": "HEAD",
       "name": "TensorUSD source repository",
       "netuid": 113,
@@ -136,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/TensorUSD/subnet",
-      "verified_at": "2026-06-06T12:18:41.878Z"
+      "verified_at": "2026-06-07T07:07:22.292Z"
     },
     {
       "candidate_id": "sn-113-taomarketcap-website",
@@ -145,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 575,
+      "latency_ms": 529,
       "method_tested": "HEAD",
       "name": "TensorUSD website",
       "netuid": 113,
@@ -169,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://tensorusd.com/",
-      "verified_at": "2026-06-06T12:18:41.894Z"
+      "verified_at": "2026-06-07T07:07:22.321Z"
     },
     {
       "candidate_id": "sn-113-tensorplex-docs",
@@ -178,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 289,
+      "latency_ms": 367,
       "method_tested": "HEAD",
       "name": "TensorUSD Tensorplex subnet docs",
       "netuid": 113,
@@ -202,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/113",
-      "verified_at": "2026-06-06T12:18:41.928Z"
+      "verified_at": "2026-06-07T07:07:22.336Z"
     },
     {
       "candidate_id": "sn-113-website-common-api",
@@ -211,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 194,
+      "latency_ms": 176,
       "method_tested": "GET",
       "name": "TensorUSD API",
       "netuid": 113,
@@ -235,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://tensorusd.com/api",
-      "verified_at": "2026-06-06T12:18:41.945Z"
+      "verified_at": "2026-06-07T07:07:22.401Z"
     },
     {
       "candidate_id": "sn-113-website-common-docs",
@@ -244,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 189,
+      "latency_ms": 176,
       "method_tested": "GET",
       "name": "TensorUSD docs",
       "netuid": 113,
@@ -268,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://tensorusd.com/docs",
-      "verified_at": "2026-06-06T12:18:41.957Z"
+      "verified_at": "2026-06-07T07:07:22.464Z"
     },
     {
       "candidate_id": "sn-113-website-common-health",
@@ -277,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 198,
+      "latency_ms": 186,
       "method_tested": "GET",
       "name": "TensorUSD health endpoint",
       "netuid": 113,
@@ -301,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://tensorusd.com/health",
-      "verified_at": "2026-06-06T12:18:41.986Z"
+      "verified_at": "2026-06-07T07:07:22.500Z"
     },
     {
       "candidate_id": "sn-113-website-common-openapi-json",
@@ -310,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 188,
+      "latency_ms": 191,
       "method_tested": "GET",
       "name": "TensorUSD OpenAPI JSON",
       "netuid": 113,
@@ -334,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://tensorusd.com/openapi.json",
-      "verified_at": "2026-06-06T12:18:42.030Z"
+      "verified_at": "2026-06-07T07:07:22.513Z"
     },
     {
       "candidate_id": "sn-113-website-common-swagger",
@@ -343,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 188,
+      "latency_ms": 184,
       "method_tested": "GET",
       "name": "TensorUSD Swagger UI",
       "netuid": 113,
@@ -367,7 +367,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://tensorusd.com/swagger",
-      "verified_at": "2026-06-06T12:18:42.146Z"
+      "verified_at": "2026-06-07T07:07:22.598Z"
     },
     {
       "candidate_id": "sn-113-website-common-swagger-json",
@@ -376,7 +376,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 260,
+      "latency_ms": 178,
       "method_tested": "GET",
       "name": "TensorUSD Swagger JSON",
       "netuid": 113,
@@ -400,7 +400,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://tensorusd.com/swagger.json",
-      "verified_at": "2026-06-06T12:18:42.162Z"
+      "verified_at": "2026-06-07T07:07:22.678Z"
     },
     {
       "candidate_id": "sn-113-website-link-tensorusd-com-docs-1",
@@ -409,7 +409,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 95,
+      "latency_ms": 154,
       "method_tested": "HEAD",
       "name": "TensorUSD docs",
       "netuid": 113,
@@ -433,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.tensorusd.com/",
-      "verified_at": "2026-06-06T12:18:42.218Z"
+      "verified_at": "2026-06-07T07:07:22.704Z"
     },
     {
       "candidate_id": "sn-113-website-link-tensorusd-com-docs-5",
@@ -442,7 +442,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 112,
+      "latency_ms": 143,
       "method_tested": "GET",
       "name": "TensorUSD docs",
       "netuid": 113,
@@ -466,7 +466,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://docs.tensorusd.com/whitepaper/tensorusd-whitepaper-v1.0",
-      "verified_at": "2026-06-06T12:18:42.313Z"
+      "verified_at": "2026-06-07T07:07:22.862Z"
     },
     {
       "candidate_id": "sn-113-website-link-tensorusd-com-website-2",
@@ -475,7 +475,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 806,
+      "latency_ms": 699,
       "method_tested": "HEAD",
       "name": "TensorUSD website page",
       "netuid": 113,
@@ -499,7 +499,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://tensorusd.com/app/mint",
-      "verified_at": "2026-06-06T12:18:42.339Z"
+      "verified_at": "2026-06-07T07:07:22.885Z"
     },
     {
       "candidate_id": "sn-113-website-link-tensorusd-com-website-3",
@@ -508,7 +508,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 797,
+      "latency_ms": 348,
       "method_tested": "HEAD",
       "name": "TensorUSD website page",
       "netuid": 113,
@@ -532,7 +532,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://tensorusd.com/app",
-      "verified_at": "2026-06-06T12:18:42.339Z"
+      "verified_at": "2026-06-07T07:07:22.885Z"
     },
     {
       "candidate_id": "sn-113-website-link-tensorusd-com-website-4",
@@ -541,7 +541,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 578,
+      "latency_ms": 537,
       "method_tested": "HEAD",
       "name": "TensorUSD website page",
       "netuid": 113,
@@ -565,7 +565,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://tensorusd.com/faq",
-      "verified_at": "2026-06-06T12:18:42.347Z"
+      "verified_at": "2026-06-07T07:07:22.924Z"
     }
   ],
   "schema_version": 1,

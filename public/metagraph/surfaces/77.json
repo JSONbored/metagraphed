@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 152,
+        "latency_ms": 160,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:29.870Z"
+        "verified_at": "2026-06-07T07:07:05.221Z"
       }
     },
     {
@@ -74,8 +74,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/77",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/77/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/77"
       ],
       "subnet_name": "Liquidity",
       "subnet_slug": "sn-77",
@@ -85,11 +84,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/creativebuilds/sn77",
-        "latency_ms": 577,
+        "latency_ms": 1065,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:29.896Z"
+        "verified_at": "2026-06-07T07:07:05.235Z"
       }
     },
     {
@@ -127,11 +126,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 104,
+        "latency_ms": 137,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:29.938Z"
+        "verified_at": "2026-06-07T07:07:05.253Z"
       }
     },
     {
@@ -141,7 +140,7 @@
       "kind": "docs",
       "name": "Liquidity Tensorplex subnet docs",
       "netuid": 77,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -169,11 +168,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 340,
+        "latency_ms": 660,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:29.944Z"
+        "verified_at": "2026-06-07T07:07:05.262Z"
       }
     },
     {
@@ -183,7 +182,7 @@
       "kind": "docs",
       "name": "Liquidity docs",
       "netuid": 77,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -211,11 +210,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html",
-        "latency_ms": 291,
+        "latency_ms": 210,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.012Z"
+        "verified_at": "2026-06-07T07:07:05.283Z"
       }
     },
     {
@@ -225,7 +224,7 @@
       "kind": "openapi",
       "name": "Liquidity Swagger UI",
       "netuid": 77,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +253,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html",
-        "latency_ms": 184,
+        "latency_ms": 182,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.042Z"
+        "verified_at": "2026-06-07T07:07:05.317Z"
       }
     }
   ]

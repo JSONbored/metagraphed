@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 144,
+      "latency_ms": 172,
       "method_tested": "HEAD",
       "name": "TalkHead TaoMarketCap dashboard",
       "netuid": 108,
@@ -36,17 +36,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/108",
-      "verified_at": "2026-06-06T12:18:40.282Z"
+      "verified_at": "2026-06-07T07:07:20.849Z"
     },
     {
       "candidate_id": "sn-108-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/talkheadai/talkhead-subnet",
       "kind": "source-repo",
-      "latency_ms": 443,
+      "latency_ms": 659,
       "method_tested": "HEAD",
       "name": "TalkHead source repository",
       "netuid": 108,
@@ -65,13 +65,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/108",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/108",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/108/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/108"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/talkheadai/talkhead-subnet",
-      "verified_at": "2026-06-06T12:18:40.334Z"
+      "verified_at": "2026-06-07T07:07:20.850Z"
     },
     {
       "candidate_id": "sn-108-taomarketcap-website",
@@ -80,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 603,
+      "latency_ms": 574,
       "method_tested": "HEAD",
       "name": "TalkHead website",
       "netuid": 108,
@@ -104,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.talkhead.ai/",
-      "verified_at": "2026-06-06T12:18:40.336Z"
+      "verified_at": "2026-06-07T07:07:20.860Z"
     },
     {
       "candidate_id": "sn-108-tensorplex-docs",
@@ -113,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 414,
+      "latency_ms": 297,
       "method_tested": "HEAD",
       "name": "TalkHead Tensorplex subnet docs",
       "netuid": 108,
@@ -137,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/108",
-      "verified_at": "2026-06-06T12:18:40.350Z"
+      "verified_at": "2026-06-07T07:07:20.881Z"
     },
     {
       "candidate_id": "sn-108-website-common-api",
@@ -146,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 193,
+      "latency_ms": 196,
       "method_tested": "GET",
       "name": "TalkHead API",
       "netuid": 108,
@@ -170,7 +169,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.talkhead.ai/api",
-      "verified_at": "2026-06-06T12:18:40.376Z"
+      "verified_at": "2026-06-07T07:07:20.892Z"
     },
     {
       "candidate_id": "sn-108-website-common-docs",
@@ -203,7 +202,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.talkhead.ai/docs",
-      "verified_at": "2026-06-06T12:18:40.427Z"
+      "verified_at": "2026-06-07T07:07:20.901Z"
     },
     {
       "candidate_id": "sn-108-website-common-health",
@@ -212,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 193,
+      "latency_ms": 181,
       "method_tested": "GET",
       "name": "TalkHead health endpoint",
       "netuid": 108,
@@ -236,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.talkhead.ai/health",
-      "verified_at": "2026-06-06T12:18:40.463Z"
+      "verified_at": "2026-06-07T07:07:20.901Z"
     },
     {
       "candidate_id": "sn-108-website-common-openapi-json",
@@ -245,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 200,
+      "latency_ms": 206,
       "method_tested": "GET",
       "name": "TalkHead OpenAPI JSON",
       "netuid": 108,
@@ -269,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.talkhead.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:40.475Z"
+      "verified_at": "2026-06-07T07:07:20.927Z"
     },
     {
       "candidate_id": "sn-108-website-common-swagger",
@@ -278,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 199,
+      "latency_ms": 197,
       "method_tested": "GET",
       "name": "TalkHead Swagger UI",
       "netuid": 108,
@@ -302,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.talkhead.ai/swagger",
-      "verified_at": "2026-06-06T12:18:40.492Z"
+      "verified_at": "2026-06-07T07:07:20.958Z"
     },
     {
       "candidate_id": "sn-108-website-common-swagger-json",
@@ -311,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 205,
+      "latency_ms": 195,
       "method_tested": "GET",
       "name": "TalkHead Swagger JSON",
       "netuid": 108,
@@ -335,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.talkhead.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:40.588Z"
+      "verified_at": "2026-06-07T07:07:21.024Z"
     },
     {
       "candidate_id": "sn-108-website-link-www-talkhead-ai-dashboard-3",
@@ -344,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 197,
+      "latency_ms": 195,
       "method_tested": "GET",
       "name": "TalkHead dashboard",
       "netuid": 108,
@@ -368,7 +367,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.talkhead.ai/leaderboard",
-      "verified_at": "2026-06-06T12:18:40.663Z"
+      "verified_at": "2026-06-07T07:07:21.178Z"
     },
     {
       "candidate_id": "sn-108-website-link-www-talkhead-ai-website-1",
@@ -377,7 +376,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 584,
+      "latency_ms": 568,
       "method_tested": "HEAD",
       "name": "TalkHead website page",
       "netuid": 108,
@@ -401,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.talkhead.ai/contact-us",
-      "verified_at": "2026-06-06T12:18:40.719Z"
+      "verified_at": "2026-06-07T07:07:21.178Z"
     },
     {
       "candidate_id": "sn-108-website-link-www-talkhead-ai-website-2",
@@ -410,7 +409,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 612,
+      "latency_ms": 578,
       "method_tested": "HEAD",
       "name": "TalkHead website page",
       "netuid": 108,
@@ -434,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.talkhead.ai/coming-soon",
-      "verified_at": "2026-06-06T12:18:40.720Z"
+      "verified_at": "2026-06-07T07:07:21.179Z"
     },
     {
       "candidate_id": "sn-108-website-link-www-talkhead-ai-website-4",
@@ -443,7 +442,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 199,
+      "latency_ms": 195,
       "method_tested": "GET",
       "name": "TalkHead website page",
       "netuid": 108,
@@ -467,7 +466,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.talkhead.ai/about-us",
-      "verified_at": "2026-06-06T12:18:40.731Z"
+      "verified_at": "2026-06-07T07:07:21.180Z"
     },
     {
       "candidate_id": "sn-108-website-link-www-talkhead-ai-website-5",
@@ -476,7 +475,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 200,
+      "latency_ms": 194,
       "method_tested": "GET",
       "name": "TalkHead website page",
       "netuid": 108,
@@ -500,7 +499,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.talkhead.ai/tos",
-      "verified_at": "2026-06-06T12:18:40.764Z"
+      "verified_at": "2026-06-07T07:07:21.181Z"
     },
     {
       "candidate_id": "sn-108-website-link-www-talkhead-ai-website-6",
@@ -509,7 +508,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 189,
+      "latency_ms": 190,
       "method_tested": "GET",
       "name": "TalkHead website page",
       "netuid": 108,
@@ -533,7 +532,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.talkhead.ai/privacy-policy",
-      "verified_at": "2026-06-06T12:18:40.768Z"
+      "verified_at": "2026-06-07T07:07:21.181Z"
     }
   ],
   "schema_version": 1,

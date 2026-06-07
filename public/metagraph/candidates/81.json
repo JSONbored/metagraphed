@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 138,
+        "latency_ms": 150,
         "method_tested": "HEAD",
         "name": "deprecated TaoMarketCap dashboard",
         "netuid": 81,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/81",
-        "verified_at": "2026-06-06T12:18:31.015Z"
+        "verified_at": "2026-06-07T07:07:08.519Z"
       }
     },
     {
@@ -81,10 +81,10 @@
         "classification": "dead",
         "confidence_score": 0,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/deprecated/deprecated",
         "kind": "source-repo",
-        "latency_ms": 73,
+        "latency_ms": 79,
         "method_tested": "HEAD",
         "name": "deprecated source repository",
         "netuid": 81,
@@ -108,7 +108,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://github.com/deprecated/deprecated",
-        "verified_at": "2026-06-06T12:18:31.027Z"
+        "verified_at": "2026-06-07T07:07:08.590Z"
       }
     },
     {
@@ -121,7 +121,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -139,7 +139,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 305,
+        "latency_ms": 454,
         "method_tested": "HEAD",
         "name": "deprecated Tensorplex subnet docs",
         "netuid": 81,
@@ -163,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/81",
-        "verified_at": "2026-06-06T12:18:31.035Z"
+        "verified_at": "2026-06-07T07:07:08.678Z"
       }
     },
     {
@@ -176,7 +176,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -192,10 +192,10 @@
         "classification": "redirected",
         "confidence_score": 50,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/tplr-ai/grail",
         "kind": "source-repo",
-        "latency_ms": 676,
+        "latency_ms": 1742,
         "method_tested": "HEAD",
         "name": "deprecated source repository",
         "netuid": 81,
@@ -219,7 +219,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tplr-ai/grail",
-        "verified_at": "2026-06-06T12:18:31.154Z"
+        "verified_at": "2026-06-07T07:07:08.724Z"
       }
     }
   ],

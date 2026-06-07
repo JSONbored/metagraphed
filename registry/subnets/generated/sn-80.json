@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:30.984Z"
+    "verified_at": "2026-06-07T07:07:08.508Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/80",
   "docs_url": "https://docs.learnbittensor.org/learn/introduction",
@@ -58,11 +58,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/dogelayer-ai/dogelayer",
-        "latency_ms": 458,
+        "latency_ms": 698,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.895Z"
+        "verified_at": "2026-06-07T07:07:08.379Z"
       }
     },
     {
@@ -97,11 +97,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 691,
+        "latency_ms": 698,
         "method_tested": "HEAD",
         "redirect_target": "https://dogelayer.ai/en",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.915Z"
+        "verified_at": "2026-06-07T07:07:08.403Z"
       }
     },
     {
@@ -110,7 +110,7 @@
       "id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-1",
       "kind": "docs",
       "name": "dogelayer docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -136,11 +136,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 39,
+        "latency_ms": 42,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.787Z"
+        "verified_at": "2026-06-07T07:07:08.275Z"
       }
     },
     {
@@ -149,7 +149,7 @@
       "id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-2",
       "kind": "docs",
       "name": "dogelayer docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -175,11 +175,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 44,
+        "latency_ms": 38,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.826Z"
+        "verified_at": "2026-06-07T07:07:08.276Z"
       }
     },
     {
@@ -188,7 +188,7 @@
       "id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-4",
       "kind": "docs",
       "name": "dogelayer docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -214,11 +214,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 71,
+        "latency_ms": 150,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/getting-started/wallets/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.858Z"
+        "verified_at": "2026-06-07T07:07:08.289Z"
       }
     },
     {
@@ -227,7 +227,7 @@
       "id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-7",
       "kind": "docs",
       "name": "dogelayer docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +253,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 149,
+        "latency_ms": 41,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.878Z"
+        "verified_at": "2026-06-07T07:07:08.321Z"
       }
     },
     {
@@ -292,11 +292,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 148,
+        "latency_ms": 139,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.887Z"
+        "verified_at": "2026-06-07T07:07:08.365Z"
       }
     },
     {
@@ -305,7 +305,7 @@
       "id": "sn-80-website-link-dogelayer-ai-dashboard-1",
       "kind": "dashboard",
       "name": "dogelayer dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -331,11 +331,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 493,
+        "latency_ms": 486,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.984Z"
+        "verified_at": "2026-06-07T07:07:08.508Z"
       }
     },
     {
@@ -344,7 +344,7 @@
       "id": "sn-80-website-common-swagger",
       "kind": "openapi",
       "name": "dogelayer Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -371,11 +371,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 470,
+        "latency_ms": 472,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.963Z"
+        "verified_at": "2026-06-07T07:07:08.475Z"
       }
     }
   ],

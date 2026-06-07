@@ -13,7 +13,7 @@
       "kind": "dashboard",
       "name": "Affine dashboard",
       "netuid": 120,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 110,
+        "latency_ms": 107,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:43.714Z"
+        "verified_at": "2026-06-07T07:07:24.354Z"
       }
     },
     {
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 130,
+        "latency_ms": 150,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:43.714Z"
+        "verified_at": "2026-06-07T07:07:24.354Z"
       }
     },
     {
@@ -116,8 +116,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/120",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/120/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/120"
       ],
       "subnet_name": "Affine",
       "subnet_slug": "sn-120",
@@ -127,11 +126,11 @@
         "confidence_score": 54,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/AffineFoundation/affine",
-        "latency_ms": 746,
+        "latency_ms": 550,
         "method_tested": "HEAD",
         "redirect_target": "https://github.com/AffineFoundation/affine-cortex",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:43.714Z"
+        "verified_at": "2026-06-07T07:07:24.354Z"
       }
     },
     {
@@ -169,11 +168,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 103,
+        "latency_ms": 105,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:43.718Z"
+        "verified_at": "2026-06-07T07:07:24.393Z"
       }
     },
     {
@@ -183,7 +182,7 @@
       "kind": "docs",
       "name": "Affine Tensorplex subnet docs",
       "netuid": 120,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -211,11 +210,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 314,
+        "latency_ms": 284,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:43.744Z"
+        "verified_at": "2026-06-07T07:07:24.397Z"
       }
     }
   ]

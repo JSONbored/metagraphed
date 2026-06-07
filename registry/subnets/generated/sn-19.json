@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-06T12:18:14.747Z"
+    "verified_at": "2026-06-07T07:06:44.398Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/19",
   "docs_url": "https://blockmachine.io/whitepaper",
@@ -42,30 +42,28 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/19",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/19/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/19"
       ],
       "url": "https://github.com/taostat/blockmachine",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/taostat/blockmachine",
-        "homepage": null,
-        "last_push_at": "2026-04-27T11:27:02Z",
+        "latency_ms": 845,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:14.581Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:44.122Z"
       }
     },
     {
@@ -100,11 +98,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 275,
+        "latency_ms": 498,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:14.588Z"
+        "verified_at": "2026-06-07T07:06:44.189Z"
       }
     },
     {
@@ -113,7 +111,7 @@
       "id": "sn-19-github-readme-taostat-blockmachine-docs-1",
       "kind": "docs",
       "name": "blockmachine docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -132,7 +130,6 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://blockmachine.io/",
         "https://github.com/taostat/blockmachine/blob/main/README.md"
       ],
       "url": "https://blockmachine.io/whitepaper",
@@ -140,11 +137,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 235,
+        "latency_ms": 534,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:14.577Z"
+        "verified_at": "2026-06-07T07:06:44.095Z"
       }
     },
     {
@@ -153,7 +150,7 @@
       "id": "sn-19-tensorplex-docs",
       "kind": "docs",
       "name": "blockmachine Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -179,11 +176,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 271,
+        "latency_ms": 297,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:14.635Z"
+        "verified_at": "2026-06-07T07:06:44.190Z"
       }
     },
     {
@@ -192,7 +189,7 @@
       "id": "sn-19-website-common-docs",
       "kind": "docs",
       "name": "blockmachine docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -218,11 +215,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 260,
+        "latency_ms": 515,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:14.705Z"
+        "verified_at": "2026-06-07T07:06:44.311Z"
       }
     },
     {
@@ -231,7 +228,7 @@
       "id": "sn-19-website-link-blockmachine-io-docs-4",
       "kind": "docs",
       "name": "blockmachine docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -257,11 +254,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 324,
+        "latency_ms": 530,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:14.747Z"
+        "verified_at": "2026-06-07T07:06:44.398Z"
       }
     },
     {
@@ -296,11 +293,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 152,
+        "latency_ms": 394,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:14.581Z"
+        "verified_at": "2026-06-07T07:06:44.110Z"
       }
     }
   ],

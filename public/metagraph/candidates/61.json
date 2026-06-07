@@ -10,14 +10,13 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://www.theredteam.io/"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
       "state": "schema-valid",
       "subnet_name": "RedTeam",
@@ -29,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 561,
+        "latency_ms": 554,
         "method_tested": "HEAD",
         "name": "RedTeam dashboard",
         "netuid": 61,
@@ -48,13 +47,12 @@
         "source_type": "github-readme-link",
         "source_url": "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
         "source_urls": [
-          "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-          "https://www.theredteam.io/"
+          "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://dashboard.theredteam.io/",
-        "verified_at": "2026-06-06T12:18:25.246Z"
+        "verified_at": "2026-06-07T07:06:58.573Z"
       }
     },
     {
@@ -67,14 +65,13 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://www.theredteam.io/"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
       "state": "schema-valid",
       "subnet_name": "RedTeam",
@@ -105,13 +102,12 @@
         "source_type": "github-readme-link",
         "source_url": "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
         "source_urls": [
-          "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-          "https://www.theredteam.io/"
+          "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.theredteam.io/",
-        "verified_at": "2026-06-06T12:18:25.247Z"
+        "verified_at": "2026-06-07T07:06:58.577Z"
       }
     },
     {
@@ -166,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/61",
-        "verified_at": "2026-06-06T12:18:25.257Z"
+        "verified_at": "2026-06-07T07:06:58.621Z"
       }
     },
     {
@@ -185,8 +181,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/61",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/61",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/61"
       ],
       "state": "schema-valid",
       "subnet_name": "RedTeam",
@@ -199,7 +194,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/RedTeamSubnet/RedTeam",
         "kind": "source-repo",
-        "latency_ms": 451,
+        "latency_ms": 752,
         "method_tested": "HEAD",
         "name": "RedTeam source repository",
         "netuid": 61,
@@ -218,13 +213,12 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/61",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/61",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/61"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/RedTeamSubnet/RedTeam",
-        "verified_at": "2026-06-06T12:18:25.305Z"
+        "verified_at": "2026-06-07T07:06:58.625Z"
       }
     },
     {
@@ -255,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 329,
+        "latency_ms": 297,
         "method_tested": "HEAD",
         "name": "RedTeam website",
         "netuid": 61,
@@ -279,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.theredteam.io/",
-        "verified_at": "2026-06-06T12:18:25.329Z"
+        "verified_at": "2026-06-07T07:06:58.635Z"
       }
     },
     {
@@ -292,7 +286,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -310,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 336,
+        "latency_ms": 730,
         "method_tested": "HEAD",
         "name": "RedTeam Tensorplex subnet docs",
         "netuid": 61,
@@ -334,7 +328,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/61",
-        "verified_at": "2026-06-06T12:18:25.329Z"
+        "verified_at": "2026-06-07T07:06:58.705Z"
       }
     },
     {
@@ -347,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -365,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 290,
+        "latency_ms": 293,
         "method_tested": "GET",
         "name": "RedTeam API",
         "netuid": 61,
@@ -389,7 +383,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.theredteam.io/api",
-        "verified_at": "2026-06-06T12:18:25.357Z"
+        "verified_at": "2026-06-07T07:06:58.785Z"
       }
     },
     {
@@ -402,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -444,7 +438,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.theredteam.io/docs",
-        "verified_at": "2026-06-06T12:18:25.365Z"
+        "verified_at": "2026-06-07T07:06:58.789Z"
       }
     },
     {
@@ -457,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -475,7 +469,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 266,
+        "latency_ms": 301,
         "method_tested": "GET",
         "name": "RedTeam health endpoint",
         "netuid": 61,
@@ -499,7 +493,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.theredteam.io/health",
-        "verified_at": "2026-06-06T12:18:25.377Z"
+        "verified_at": "2026-06-07T07:06:58.835Z"
       }
     },
     {
@@ -512,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -530,7 +524,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 280,
+        "latency_ms": 292,
         "method_tested": "GET",
         "name": "RedTeam OpenAPI JSON",
         "netuid": 61,
@@ -554,7 +548,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.theredteam.io/openapi.json",
-        "verified_at": "2026-06-06T12:18:25.417Z"
+        "verified_at": "2026-06-07T07:06:58.843Z"
       }
     },
     {
@@ -567,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -585,7 +579,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 292,
+        "latency_ms": 308,
         "method_tested": "GET",
         "name": "RedTeam Swagger UI",
         "netuid": 61,
@@ -609,7 +603,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.theredteam.io/swagger",
-        "verified_at": "2026-06-06T12:18:25.417Z"
+        "verified_at": "2026-06-07T07:06:58.866Z"
       }
     },
     {
@@ -622,7 +616,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -640,7 +634,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 272,
+        "latency_ms": 307,
         "method_tested": "GET",
         "name": "RedTeam Swagger JSON",
         "netuid": 61,
@@ -664,7 +658,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.theredteam.io/swagger.json",
-        "verified_at": "2026-06-06T12:18:25.438Z"
+        "verified_at": "2026-06-07T07:06:58.878Z"
       }
     }
   ],

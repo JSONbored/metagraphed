@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 166,
+        "latency_ms": 144,
         "method_tested": "HEAD",
         "name": "Ridges TaoMarketCap dashboard",
         "netuid": 62,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/62",
-        "verified_at": "2026-06-06T12:18:25.518Z"
+        "verified_at": "2026-06-07T07:06:58.978Z"
       }
     },
     {
@@ -71,8 +71,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/62",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/62",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/62/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/62"
       ],
       "state": "schema-valid",
       "subnet_name": "Ridges",
@@ -85,7 +84,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/ridgesai/ridges",
         "kind": "source-repo",
-        "latency_ms": 383,
+        "latency_ms": 565,
         "method_tested": "HEAD",
         "name": "Ridges source repository",
         "netuid": 62,
@@ -104,13 +103,12 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/62",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/62",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/62/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/62"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/ridgesai/ridges",
-        "verified_at": "2026-06-06T12:18:25.532Z"
+        "verified_at": "2026-06-07T07:06:58.979Z"
       }
     },
     {
@@ -141,7 +139,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 56,
+        "latency_ms": 46,
         "method_tested": "GET",
         "name": "Ridges website",
         "netuid": 62,
@@ -165,7 +163,7 @@
         "status": "failed",
         "status_code": 429,
         "url": "https://www.ridges.ai/",
-        "verified_at": "2026-06-06T12:18:25.573Z"
+        "verified_at": "2026-06-07T07:06:59.125Z"
       }
     },
     {
@@ -178,7 +176,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -196,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 338,
+        "latency_ms": 738,
         "method_tested": "HEAD",
         "name": "Ridges Tensorplex subnet docs",
         "netuid": 62,
@@ -220,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/62",
-        "verified_at": "2026-06-06T12:18:25.658Z"
+        "verified_at": "2026-06-07T07:06:59.162Z"
       }
     },
     {
@@ -233,7 +231,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -251,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 48,
+        "latency_ms": 51,
         "method_tested": "GET",
         "name": "Ridges API",
         "netuid": 62,
@@ -275,7 +273,7 @@
         "status": "failed",
         "status_code": 429,
         "url": "https://www.ridges.ai/api",
-        "verified_at": "2026-06-06T12:18:25.665Z"
+        "verified_at": "2026-06-07T07:06:59.238Z"
       }
     },
     {
@@ -288,7 +286,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -306,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 50,
+        "latency_ms": 45,
         "method_tested": "GET",
         "name": "Ridges docs",
         "netuid": 62,
@@ -330,7 +328,7 @@
         "status": "failed",
         "status_code": 429,
         "url": "https://www.ridges.ai/docs",
-        "verified_at": "2026-06-06T12:18:25.683Z"
+        "verified_at": "2026-06-07T07:06:59.334Z"
       }
     },
     {
@@ -343,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -361,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 47,
+        "latency_ms": 52,
         "method_tested": "GET",
         "name": "Ridges health endpoint",
         "netuid": 62,
@@ -385,7 +383,7 @@
         "status": "failed",
         "status_code": 429,
         "url": "https://www.ridges.ai/health",
-        "verified_at": "2026-06-06T12:18:25.705Z"
+        "verified_at": "2026-06-07T07:06:59.349Z"
       }
     },
     {
@@ -398,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -416,7 +414,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 48,
+        "latency_ms": 51,
         "method_tested": "GET",
         "name": "Ridges OpenAPI JSON",
         "netuid": 62,
@@ -440,7 +438,7 @@
         "status": "failed",
         "status_code": 429,
         "url": "https://www.ridges.ai/openapi.json",
-        "verified_at": "2026-06-06T12:18:25.740Z"
+        "verified_at": "2026-06-07T07:06:59.434Z"
       }
     },
     {
@@ -453,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -471,7 +469,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 54,
+        "latency_ms": 53,
         "method_tested": "GET",
         "name": "Ridges Swagger UI",
         "netuid": 62,
@@ -495,7 +493,7 @@
         "status": "failed",
         "status_code": 429,
         "url": "https://www.ridges.ai/swagger",
-        "verified_at": "2026-06-06T12:18:25.793Z"
+        "verified_at": "2026-06-07T07:06:59.434Z"
       }
     },
     {
@@ -508,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -526,7 +524,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 66,
+        "latency_ms": 55,
         "method_tested": "GET",
         "name": "Ridges Swagger JSON",
         "netuid": 62,
@@ -550,7 +548,7 @@
         "status": "failed",
         "status_code": 429,
         "url": "https://www.ridges.ai/swagger.json",
-        "verified_at": "2026-06-06T12:18:25.808Z"
+        "verified_at": "2026-06-07T07:06:59.438Z"
       }
     }
   ],

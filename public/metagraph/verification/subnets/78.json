@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 135,
+      "latency_ms": 131,
       "method_tested": "HEAD",
       "name": "Vocence TaoMarketCap dashboard",
       "netuid": 78,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/78",
-      "verified_at": "2026-06-06T12:18:30.064Z"
+      "verified_at": "2026-06-07T07:07:05.382Z"
     },
     {
       "candidate_id": "sn-78-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/vocence-78/vocence",
       "kind": "source-repo",
-      "latency_ms": 530,
+      "latency_ms": 1235,
       "method_tested": "HEAD",
       "name": "Vocence source repository",
       "netuid": 78,
@@ -70,7 +70,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/vocence-78/vocence",
-      "verified_at": "2026-06-06T12:18:30.102Z"
+      "verified_at": "2026-06-07T07:07:05.394Z"
     },
     {
       "candidate_id": "sn-78-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 134,
+      "latency_ms": 308,
       "method_tested": "HEAD",
       "name": "Vocence website",
       "netuid": 78,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.vocence.ai/",
-      "verified_at": "2026-06-06T12:18:30.144Z"
+      "verified_at": "2026-06-07T07:07:05.433Z"
     },
     {
       "candidate_id": "sn-78-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 384,
+      "latency_ms": 760,
       "method_tested": "HEAD",
       "name": "Vocence Tensorplex subnet docs",
       "netuid": 78,
@@ -136,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/78",
-      "verified_at": "2026-06-06T12:18:30.147Z"
+      "verified_at": "2026-06-07T07:07:05.501Z"
     },
     {
       "candidate_id": "sn-78-tensorplex-source-repo-1",
@@ -145,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "source-repo",
-      "latency_ms": 478,
+      "latency_ms": 977,
       "method_tested": "HEAD",
       "name": "Vocence source repository",
       "netuid": 78,
@@ -169,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Loosh-ai",
-      "verified_at": "2026-06-06T12:18:30.154Z"
+      "verified_at": "2026-06-07T07:07:05.501Z"
     },
     {
       "candidate_id": "sn-78-tensorplex-source-repo-2",
@@ -179,7 +179,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/Loosh-ai/loosh-public-documentation",
       "kind": "source-repo",
-      "latency_ms": 523,
+      "latency_ms": 944,
       "method_tested": "HEAD",
       "name": "Vocence source repository",
       "netuid": 78,
@@ -203,7 +203,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Loosh-ai/loosh-public-documentation",
-      "verified_at": "2026-06-06T12:18:30.166Z"
+      "verified_at": "2026-06-07T07:07:05.505Z"
     },
     {
       "candidate_id": "sn-78-website-common-api",
@@ -212,7 +212,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 134,
+      "latency_ms": 324,
       "method_tested": "HEAD",
       "name": "Vocence API",
       "netuid": 78,
@@ -236,7 +236,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.vocence.ai/api",
-      "verified_at": "2026-06-06T12:18:30.194Z"
+      "verified_at": "2026-06-07T07:07:05.507Z"
     },
     {
       "candidate_id": "sn-78-website-common-docs",
@@ -245,7 +245,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 129,
+      "latency_ms": 306,
       "method_tested": "HEAD",
       "name": "Vocence docs",
       "netuid": 78,
@@ -269,7 +269,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.vocence.ai/docs",
-      "verified_at": "2026-06-06T12:18:30.199Z"
+      "verified_at": "2026-06-07T07:07:05.521Z"
     },
     {
       "candidate_id": "sn-78-website-common-health",
@@ -278,7 +278,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 128,
+      "latency_ms": 361,
       "method_tested": "HEAD",
       "name": "Vocence health endpoint",
       "netuid": 78,
@@ -302,7 +302,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.vocence.ai/health",
-      "verified_at": "2026-06-06T12:18:30.202Z"
+      "verified_at": "2026-06-07T07:07:05.561Z"
     },
     {
       "candidate_id": "sn-78-website-common-openapi-json",
@@ -311,7 +311,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 136,
+      "latency_ms": 374,
       "method_tested": "HEAD",
       "name": "Vocence OpenAPI JSON",
       "netuid": 78,
@@ -335,7 +335,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.vocence.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:30.226Z"
+      "verified_at": "2026-06-07T07:07:05.597Z"
     },
     {
       "candidate_id": "sn-78-website-common-swagger",
@@ -344,7 +344,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 184,
+      "latency_ms": 507,
       "method_tested": "HEAD",
       "name": "Vocence Swagger UI",
       "netuid": 78,
@@ -368,7 +368,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.vocence.ai/swagger",
-      "verified_at": "2026-06-06T12:18:30.246Z"
+      "verified_at": "2026-06-07T07:07:05.625Z"
     },
     {
       "candidate_id": "sn-78-website-common-swagger-json",
@@ -377,7 +377,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 50,
+      "latency_ms": 280,
       "method_tested": "HEAD",
       "name": "Vocence Swagger JSON",
       "netuid": 78,
@@ -401,7 +401,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.vocence.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:30.278Z"
+      "verified_at": "2026-06-07T07:07:05.641Z"
     }
   ],
   "schema_version": 1,

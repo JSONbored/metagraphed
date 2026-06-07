@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "application/json; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 443,
+        "latency_ms": 325,
         "method_tested": "HEAD",
         "name": "Astrid API surface",
         "netuid": 127,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://api.astrid.global/v1",
-        "verified_at": "2026-06-06T12:18:45.626Z"
+        "verified_at": "2026-06-07T07:07:26.680Z"
       }
     },
     {
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 144,
+        "latency_ms": 288,
         "method_tested": "HEAD",
         "name": "Astrid TaoMarketCap dashboard",
         "netuid": 127,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/127",
-        "verified_at": "2026-06-06T12:18:45.628Z"
+        "verified_at": "2026-06-07T07:07:26.704Z"
       }
     },
     {
@@ -139,7 +139,7 @@
         "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/astridintelligence/sn-127",
         "kind": "source-repo",
-        "latency_ms": 481,
+        "latency_ms": 489,
         "method_tested": "HEAD",
         "name": "Astrid source repository",
         "netuid": 127,
@@ -163,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/astridintelligence/sn-127",
-        "verified_at": "2026-06-06T12:18:45.636Z"
+        "verified_at": "2026-06-07T07:07:26.754Z"
       }
     },
     {
@@ -194,7 +194,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 832,
+        "latency_ms": 843,
         "method_tested": "HEAD",
         "name": "Astrid website",
         "netuid": 127,
@@ -218,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.astrid.global/",
-        "verified_at": "2026-06-06T12:18:45.668Z"
+        "verified_at": "2026-06-07T07:07:26.754Z"
       }
     },
     {
@@ -231,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -249,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 270,
+        "latency_ms": 343,
         "method_tested": "HEAD",
         "name": "Astrid Tensorplex subnet docs",
         "netuid": 127,
@@ -273,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/127",
-        "verified_at": "2026-06-06T12:18:45.718Z"
+        "verified_at": "2026-06-07T07:07:26.757Z"
       }
     },
     {
@@ -286,7 +286,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -304,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 247,
+        "latency_ms": 257,
         "method_tested": "GET",
         "name": "Astrid API",
         "netuid": 127,
@@ -328,7 +328,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.astrid.global/api",
-        "verified_at": "2026-06-06T12:18:45.718Z"
+        "verified_at": "2026-06-07T07:07:26.757Z"
       }
     },
     {
@@ -341,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -359,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 248,
+        "latency_ms": 263,
         "method_tested": "GET",
         "name": "Astrid docs",
         "netuid": 127,
@@ -383,7 +383,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.astrid.global/docs",
-        "verified_at": "2026-06-06T12:18:45.727Z"
+        "verified_at": "2026-06-07T07:07:26.843Z"
       }
     },
     {
@@ -396,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -414,7 +414,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 247,
+        "latency_ms": 259,
         "method_tested": "GET",
         "name": "Astrid health endpoint",
         "netuid": 127,
@@ -438,7 +438,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.astrid.global/health",
-        "verified_at": "2026-06-06T12:18:45.762Z"
+        "verified_at": "2026-06-07T07:07:26.867Z"
       }
     },
     {
@@ -451,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -469,7 +469,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 246,
+        "latency_ms": 270,
         "method_tested": "GET",
         "name": "Astrid OpenAPI JSON",
         "netuid": 127,
@@ -493,7 +493,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.astrid.global/openapi.json",
-        "verified_at": "2026-06-06T12:18:45.772Z"
+        "verified_at": "2026-06-07T07:07:26.900Z"
       }
     },
     {
@@ -506,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -524,7 +524,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 253,
+        "latency_ms": 263,
         "method_tested": "GET",
         "name": "Astrid Swagger UI",
         "netuid": 127,
@@ -548,7 +548,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.astrid.global/swagger",
-        "verified_at": "2026-06-06T12:18:45.777Z"
+        "verified_at": "2026-06-07T07:07:26.994Z"
       }
     },
     {
@@ -561,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -579,7 +579,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 246,
+        "latency_ms": 263,
         "method_tested": "GET",
         "name": "Astrid Swagger JSON",
         "netuid": 127,
@@ -603,7 +603,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.astrid.global/swagger.json",
-        "verified_at": "2026-06-06T12:18:45.818Z"
+        "verified_at": "2026-06-07T07:07:27.016Z"
       }
     },
     {
@@ -616,7 +616,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -634,7 +634,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 318,
+        "latency_ms": 279,
         "method_tested": "HEAD",
         "name": "Astrid website page",
         "netuid": 127,
@@ -658,7 +658,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://arena.astrid.global/",
-        "verified_at": "2026-06-06T12:18:45.819Z"
+        "verified_at": "2026-06-07T07:07:27.024Z"
       }
     },
     {
@@ -671,7 +671,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -689,7 +689,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 599,
+        "latency_ms": 285,
         "method_tested": "HEAD",
         "name": "Astrid website page",
         "netuid": 127,
@@ -713,7 +713,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vault.astrid.global/",
-        "verified_at": "2026-06-06T12:18:45.825Z"
+        "verified_at": "2026-06-07T07:07:27.024Z"
       }
     },
     {
@@ -726,7 +726,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -744,7 +744,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 122,
+        "latency_ms": 159,
         "method_tested": "HEAD",
         "name": "Astrid website page",
         "netuid": 127,
@@ -768,7 +768,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://investors.astrid.global/",
-        "verified_at": "2026-06-06T12:18:45.838Z"
+        "verified_at": "2026-06-07T07:07:27.032Z"
       }
     }
   ],

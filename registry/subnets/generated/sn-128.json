@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:46.291Z"
+    "verified_at": "2026-06-07T07:07:27.540Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/128",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/128",
@@ -50,8 +50,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/128",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/128/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/128"
       ],
       "url": "https://github.com/byteleapai/byteleap-Miner",
       "verification": {
@@ -59,11 +58,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/byteleapai/byteleap-Miner",
-        "latency_ms": 365,
+        "latency_ms": 467,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:45.961Z"
+        "verified_at": "2026-06-07T07:07:27.142Z"
       }
     },
     {
@@ -72,7 +71,7 @@
       "id": "sn-128-tensorplex-source-repo-2",
       "kind": "source-repo",
       "name": "ByteLeap source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -99,11 +98,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/byteleapai/byteleap-Validator",
-        "latency_ms": 509,
+        "latency_ms": 453,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:46.024Z"
+        "verified_at": "2026-06-07T07:07:27.219Z"
       }
     },
     {
@@ -138,11 +137,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 268,
+        "latency_ms": 666,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:45.989Z"
+        "verified_at": "2026-06-07T07:07:27.188Z"
       }
     },
     {
@@ -151,7 +150,7 @@
       "id": "sn-128-tensorplex-docs",
       "kind": "docs",
       "name": "ByteLeap Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -177,11 +176,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 286,
+        "latency_ms": 323,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:46.004Z"
+        "verified_at": "2026-06-07T07:07:27.214Z"
       }
     },
     {
@@ -190,7 +189,7 @@
       "id": "sn-128-website-common-docs",
       "kind": "docs",
       "name": "ByteLeap docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -216,11 +215,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html",
-        "latency_ms": 280,
+        "latency_ms": 617,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:46.136Z"
+        "verified_at": "2026-06-07T07:07:27.331Z"
       }
     },
     {
@@ -255,11 +254,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 154,
+        "latency_ms": 145,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:45.870Z"
+        "verified_at": "2026-06-07T07:07:27.067Z"
       }
     },
     {
@@ -268,7 +267,7 @@
       "id": "sn-128-website-common-swagger",
       "kind": "openapi",
       "name": "ByteLeap Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -295,11 +294,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html",
-        "latency_ms": 490,
+        "latency_ms": 627,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:46.291Z"
+        "verified_at": "2026-06-07T07:07:27.540Z"
       }
     }
   ],

@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 150,
+      "latency_ms": 151,
       "method_tested": "HEAD",
       "name": "EfficientFrontier TaoMarketCap dashboard",
       "netuid": 53,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/53",
-      "verified_at": "2026-06-06T12:18:23.330Z"
+      "verified_at": "2026-06-07T07:06:55.651Z"
     },
     {
       "candidate_id": "sn-53-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/EfficientFrontier-SignalPlus/EfficientFrontier",
       "kind": "source-repo",
-      "latency_ms": 280,
+      "latency_ms": 429,
       "method_tested": "HEAD",
       "name": "EfficientFrontier source repository",
       "netuid": 53,
@@ -65,13 +65,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/53",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/53",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/53"
       ],
       "status": "failed",
       "status_code": 404,
       "url": "https://github.com/EfficientFrontier-SignalPlus/EfficientFrontier",
-      "verified_at": "2026-06-06T12:18:23.332Z"
+      "verified_at": "2026-06-07T07:06:55.669Z"
     },
     {
       "candidate_id": "sn-53-tensorplex-docs",
@@ -80,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 413,
+      "latency_ms": 788,
       "method_tested": "HEAD",
       "name": "EfficientFrontier Tensorplex subnet docs",
       "netuid": 53,
@@ -104,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/53",
-      "verified_at": "2026-06-06T12:18:23.361Z"
+      "verified_at": "2026-06-07T07:06:55.679Z"
     }
   ],
   "schema_version": 1,

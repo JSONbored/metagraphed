@@ -6,12 +6,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-21-tensorplex-docs",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:07.189Z",
-      "latency_ms": 424,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -33,11 +33,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 66,
+      "score": 0,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/21/subnet.json"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "AdTAO",
       "subnet_slug": "sn-21",
       "surface_id": "sn-21-tensorplex-docs",
@@ -48,12 +48,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "redirected",
+      "classification": "unknown",
       "error": null,
-      "id": "endpoint-sn-21-taomarketcap-website",
-      "kind": "website",
-      "last_checked": "2026-06-07T05:10:07.211Z",
-      "latency_ms": 500,
+      "id": "endpoint-sn-21-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -75,27 +75,69 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 65,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/21"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "AdTAO",
       "subnet_slug": "sn-21",
-      "surface_id": "sn-21-taomarketcap-website",
-      "url": "https://ppcrebel.com/"
+      "surface_id": "sn-21-taomarketcap-source-repo",
+      "url": "https://github.com/ippcteam/SN21-adtao"
     },
     {
       "archive_support": null,
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
+      "error": null,
+      "id": "endpoint-sn-21-taomarketcap-website",
+      "kind": "website",
+      "last_checked": null,
+      "latency_ms": null,
+      "latest_block": null,
+      "layer": "docs-provider",
+      "method_support": null,
+      "method_tested": "HEAD",
+      "monitoring_policy": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "source": "surface-probe-config",
+        "timeout_ms": 10000
+      },
+      "monitoring_status": "monitored",
+      "netuid": 21,
+      "network": "finney",
+      "operator": "taomarketcap",
+      "pool_eligible": false,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "publication_state": "monitored",
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "rpc_method_count": null,
+      "score": 0,
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/21"
+      ],
+      "status": "unknown",
+      "subnet_name": "AdTAO",
+      "subnet_slug": "sn-21",
+      "surface_id": "sn-21-taomarketcap-website",
+      "url": "https://adtao.io/"
+    },
+    {
+      "archive_support": null,
+      "auth_required": false,
+      "authority": "registry-observed",
+      "chain": "bittensor",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-21-taomarketcap-dashboard",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:06.922Z",
-      "latency_ms": 212,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -117,11 +159,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 68,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/21"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "AdTAO",
       "subnet_slug": "sn-21",
       "surface_id": "sn-21-taomarketcap-dashboard",
@@ -137,20 +179,21 @@
     "by_kind": {
       "dashboard": 1,
       "docs": 1,
+      "source-repo": 1,
       "website": 1
     },
     "by_layer": {
-      "docs-provider": 2,
+      "docs-provider": 3,
       "subnet-app": 1
     },
     "by_publication_state": {
-      "monitored": 3
+      "monitored": 4
     },
     "by_status": {
-      "ok": 3
+      "unknown": 4
     },
-    "endpoint_count": 3,
-    "monitored_count": 3,
+    "endpoint_count": 4,
+    "monitored_count": 4,
     "pool_eligible_count": 0
   }
 }

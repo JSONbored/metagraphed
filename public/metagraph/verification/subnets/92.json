@@ -1,8 +1,8 @@
 {
-  "candidate_count": 11,
+  "candidate_count": 9,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
-  "name": "TensorClaw",
+  "name": "luis",
   "netuid": 92,
   "results": [
     {
@@ -12,9 +12,9 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 124,
+      "latency_ms": 146,
       "method_tested": "HEAD",
-      "name": "TensorClaw TaoMarketCap dashboard",
+      "name": "luis TaoMarketCap dashboard",
       "netuid": 92,
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
@@ -36,75 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/92",
-      "verified_at": "2026-06-06T12:18:34.033Z"
-    },
-    {
-      "candidate_id": "sn-92-taomarketcap-source-repo",
-      "classification": "live",
-      "confidence_score": 59,
-      "error": null,
-      "github_api_status": 403,
-      "github_api_url": "https://api.github.com/repos/tensorclaw/tensorclaw",
-      "kind": "source-repo",
-      "latency_ms": 526,
-      "method_tested": "HEAD",
-      "name": "TensorClaw source repository",
-      "netuid": 92,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "third-party-index",
-      "source_type": "taomarketcap-subnet-identity-v3",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/92",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://github.com/tensorclaw/tensorclaw",
-      "verified_at": "2026-06-06T12:18:34.038Z"
-    },
-    {
-      "candidate_id": "sn-92-taomarketcap-website",
-      "classification": "live",
-      "confidence_score": 77,
-      "content_type": "text/html; charset=UTF-8",
-      "error": null,
-      "kind": "website",
-      "latency_ms": 560,
-      "method_tested": "HEAD",
-      "name": "TensorClaw website",
-      "netuid": 92,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "third-party-index",
-      "source_type": "taomarketcap-subnet-identity-v3",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/92",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://www.tensorclaw.ai/",
-      "verified_at": "2026-06-06T12:18:34.094Z"
+      "verified_at": "2026-06-07T07:07:13.306Z"
     },
     {
       "candidate_id": "sn-92-tensorplex-docs",
@@ -113,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 302,
+      "latency_ms": 416,
       "method_tested": "HEAD",
       "name": "TensorClaw Tensorplex subnet docs",
       "netuid": 92,
@@ -137,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92",
-      "verified_at": "2026-06-06T12:18:34.130Z"
+      "verified_at": "2026-06-07T07:07:13.318Z"
     },
     {
       "candidate_id": "sn-92-website-common-api",
@@ -146,7 +78,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 544,
+      "latency_ms": 555,
       "method_tested": "HEAD",
       "name": "TensorClaw API",
       "netuid": 92,
@@ -170,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.tensorclaw.ai/api",
-      "verified_at": "2026-06-06T12:18:34.150Z"
+      "verified_at": "2026-06-07T07:07:13.337Z"
     },
     {
       "candidate_id": "sn-92-website-common-docs",
@@ -179,7 +111,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 536,
+      "latency_ms": 580,
       "method_tested": "HEAD",
       "name": "TensorClaw docs",
       "netuid": 92,
@@ -203,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.tensorclaw.ai/docs",
-      "verified_at": "2026-06-06T12:18:34.157Z"
+      "verified_at": "2026-06-07T07:07:13.454Z"
     },
     {
       "candidate_id": "sn-92-website-common-health",
@@ -212,7 +144,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 541,
+      "latency_ms": 558,
       "method_tested": "HEAD",
       "name": "TensorClaw health endpoint",
       "netuid": 92,
@@ -236,7 +168,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.tensorclaw.ai/health",
-      "verified_at": "2026-06-06T12:18:34.178Z"
+      "verified_at": "2026-06-07T07:07:13.490Z"
     },
     {
       "candidate_id": "sn-92-website-common-openapi-json",
@@ -245,7 +177,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 554,
+      "latency_ms": 558,
       "method_tested": "HEAD",
       "name": "TensorClaw OpenAPI JSON",
       "netuid": 92,
@@ -269,7 +201,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.tensorclaw.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:34.240Z"
+      "verified_at": "2026-06-07T07:07:13.594Z"
     },
     {
       "candidate_id": "sn-92-website-common-swagger",
@@ -278,7 +210,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 553,
+      "latency_ms": 549,
       "method_tested": "HEAD",
       "name": "TensorClaw Swagger UI",
       "netuid": 92,
@@ -302,7 +234,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.tensorclaw.ai/swagger",
-      "verified_at": "2026-06-06T12:18:34.305Z"
+      "verified_at": "2026-06-07T07:07:13.594Z"
     },
     {
       "candidate_id": "sn-92-website-common-swagger-json",
@@ -311,7 +243,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 542,
+      "latency_ms": 555,
       "method_tested": "HEAD",
       "name": "TensorClaw Swagger JSON",
       "netuid": 92,
@@ -335,7 +267,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.tensorclaw.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:34.316Z"
+      "verified_at": "2026-06-07T07:07:13.629Z"
     },
     {
       "candidate_id": "sn-92-website-link-www-tensorclaw-ai-dashboard-1",
@@ -344,7 +276,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 556,
+      "latency_ms": 559,
       "method_tested": "HEAD",
       "name": "TensorClaw dashboard",
       "netuid": 92,
@@ -368,7 +300,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.tensorclaw.ai/dashboard",
-      "verified_at": "2026-06-06T12:18:34.365Z"
+      "verified_at": "2026-06-07T07:07:13.663Z"
     }
   ],
   "schema_version": 1,
@@ -376,18 +308,16 @@
   "summary": {
     "by_classification": {
       "content-mismatch": 2,
-      "live": 9
+      "live": 7
     },
     "by_kind": {
       "dashboard": 2,
       "docs": 2,
       "openapi": 3,
-      "source-repo": 1,
-      "subnet-api": 2,
-      "website": 1
+      "subnet-api": 2
     },
     "by_provider": {
-      "taomarketcap": 10,
+      "taomarketcap": 8,
       "tensorplex-subnet-docs": 1
     }
   }

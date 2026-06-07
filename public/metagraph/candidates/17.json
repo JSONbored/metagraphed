@@ -10,7 +10,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 730,
+        "latency_ms": 662,
         "method_tested": "HEAD",
         "name": "404—GEN dashboard",
         "netuid": 17,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://dashboard.404.xyz/d/main/404-gen",
-        "verified_at": "2026-06-06T12:18:13.558Z"
+        "verified_at": "2026-06-07T07:06:43.024Z"
       }
     },
     {
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 179,
+        "latency_ms": 148,
         "method_tested": "HEAD",
         "name": "404—GEN TaoMarketCap dashboard",
         "netuid": 17,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/17",
-        "verified_at": "2026-06-06T12:18:13.564Z"
+        "verified_at": "2026-06-07T07:06:43.041Z"
       }
     },
     {
@@ -132,27 +132,28 @@
       "subnet_name": "404—GEN",
       "url": "https://github.com/404-Repo/404-gen-subnet",
       "verification": {
-        "archived": false,
         "candidate_id": "sn-17-taomarketcap-source-repo",
         "classification": "live",
-        "confidence_score": 80,
-        "default_branch": "main",
-        "description": "A 3D asset creation extension for the Bittensor network.",
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/404-Repo/404-gen-subnet",
-        "homepage": null,
-        "html_url": "https://github.com/404-Repo/404-gen-subnet",
         "kind": "source-repo",
-        "last_push_at": "2026-05-27T05:59:46Z",
+        "latency_ms": 450,
+        "method_tested": "HEAD",
         "name": "404—GEN source repository",
         "netuid": 17,
+        "private_redirect_blocked": false,
         "provider": "taomarketcap",
         "quality_signals": {
-          "archived": false,
-          "has_default_branch": true,
-          "has_recent_push_metadata": true,
+          "content_type_matches_kind": true,
           "public_safe": true,
-          "source_tier": "third-party-index"
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
         },
+        "redirect_target": null,
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/17",
@@ -160,9 +161,9 @@
           "https://api.taomarketcap.com/public/v1/subnets/17"
         ],
         "status": "ok",
-        "topics": [],
+        "status_code": 200,
         "url": "https://github.com/404-Repo/404-gen-subnet",
-        "verified_at": "2026-06-06T12:18:13.566Z"
+        "verified_at": "2026-06-07T07:06:43.067Z"
       }
     },
     {
@@ -193,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 91,
+        "latency_ms": 120,
         "method_tested": "HEAD",
         "name": "404—GEN website",
         "netuid": 17,
@@ -217,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.404.xyz/",
-        "verified_at": "2026-06-06T12:18:13.574Z"
+        "verified_at": "2026-06-07T07:06:43.067Z"
       }
     },
     {
@@ -230,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -248,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 280,
+        "latency_ms": 356,
         "method_tested": "HEAD",
         "name": "404—GEN Tensorplex subnet docs",
         "netuid": 17,
@@ -272,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/17",
-        "verified_at": "2026-06-06T12:18:13.609Z"
+        "verified_at": "2026-06-07T07:06:43.067Z"
       }
     },
     {
@@ -285,7 +286,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -297,27 +298,28 @@
       "subnet_name": "404—GEN",
       "url": "https://github.com/404-Repo/three-gen-subnet",
       "verification": {
-        "archived": false,
         "candidate_id": "sn-17-tensorplex-source-repo-1",
         "classification": "live",
-        "confidence_score": 80,
-        "default_branch": "main",
-        "description": "A 3D asset creation extension for the Bittensor network.",
+        "confidence_score": 55,
+        "error": null,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/404-Repo/three-gen-subnet",
-        "homepage": null,
-        "html_url": "https://github.com/404-Repo/three-gen-subnet",
         "kind": "source-repo",
-        "last_push_at": "2025-11-17T16:01:31Z",
+        "latency_ms": 607,
+        "method_tested": "HEAD",
         "name": "404—GEN source repository",
         "netuid": 17,
+        "private_redirect_blocked": false,
         "provider": "tensorplex-subnet-docs",
         "quality_signals": {
-          "archived": false,
-          "has_default_branch": true,
-          "has_recent_push_metadata": true,
+          "content_type_matches_kind": true,
           "public_safe": true,
-          "source_tier": "community-docs"
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
         },
+        "redirect_target": null,
         "source_tier": "community-docs",
         "source_type": "tensorplex-subnet-docs-github",
         "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json",
@@ -325,9 +327,9 @@
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json"
         ],
         "status": "ok",
-        "topics": [],
+        "status_code": 200,
         "url": "https://github.com/404-Repo/three-gen-subnet",
-        "verified_at": "2026-06-06T12:18:13.610Z"
+        "verified_at": "2026-06-07T07:06:43.075Z"
       }
     },
     {
@@ -340,7 +342,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -382,7 +384,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.404.xyz/api",
-        "verified_at": "2026-06-06T12:18:13.665Z"
+        "verified_at": "2026-06-07T07:06:43.191Z"
       }
     },
     {
@@ -395,7 +397,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -413,7 +415,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 29,
+        "latency_ms": 44,
         "method_tested": "GET",
         "name": "404—GEN docs",
         "netuid": 17,
@@ -437,7 +439,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.404.xyz/docs",
-        "verified_at": "2026-06-06T12:18:13.732Z"
+        "verified_at": "2026-06-07T07:06:43.222Z"
       }
     },
     {
@@ -450,7 +452,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -468,7 +470,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 28,
+        "latency_ms": 47,
         "method_tested": "GET",
         "name": "404—GEN health endpoint",
         "netuid": 17,
@@ -492,7 +494,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.404.xyz/health",
-        "verified_at": "2026-06-06T12:18:13.744Z"
+        "verified_at": "2026-06-07T07:06:43.265Z"
       }
     },
     {
@@ -505,7 +507,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -523,7 +525,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 31,
+        "latency_ms": 36,
         "method_tested": "GET",
         "name": "404—GEN OpenAPI JSON",
         "netuid": 17,
@@ -547,7 +549,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.404.xyz/openapi.json",
-        "verified_at": "2026-06-06T12:18:13.748Z"
+        "verified_at": "2026-06-07T07:06:43.320Z"
       }
     },
     {
@@ -560,7 +562,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -578,7 +580,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 32,
+        "latency_ms": 40,
         "method_tested": "GET",
         "name": "404—GEN Swagger UI",
         "netuid": 17,
@@ -602,7 +604,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.404.xyz/swagger",
-        "verified_at": "2026-06-06T12:18:13.785Z"
+        "verified_at": "2026-06-07T07:06:43.348Z"
       }
     },
     {
@@ -615,7 +617,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -633,7 +635,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 31,
+        "latency_ms": 51,
         "method_tested": "GET",
         "name": "404—GEN Swagger JSON",
         "netuid": 17,
@@ -657,7 +659,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.404.xyz/swagger.json",
-        "verified_at": "2026-06-06T12:18:13.800Z"
+        "verified_at": "2026-06-07T07:06:43.352Z"
       }
     },
     {
@@ -670,7 +672,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -688,7 +690,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 63,
+        "latency_ms": 78,
         "method_tested": "HEAD",
         "name": "404—GEN website page",
         "netuid": 17,
@@ -712,7 +714,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.404.xyz/catalog",
-        "verified_at": "2026-06-06T12:18:13.837Z"
+        "verified_at": "2026-06-07T07:06:43.395Z"
       }
     },
     {
@@ -725,7 +727,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -743,7 +745,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 115,
+        "latency_ms": 152,
         "method_tested": "HEAD",
         "name": "404—GEN website page",
         "netuid": 17,
@@ -767,7 +769,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.404.xyz/app",
-        "verified_at": "2026-06-06T12:18:13.865Z"
+        "verified_at": "2026-06-07T07:06:43.428Z"
       }
     },
     {
@@ -780,7 +782,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -798,7 +800,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 67,
+        "latency_ms": 70,
         "method_tested": "HEAD",
         "name": "404—GEN website page",
         "netuid": 17,
@@ -822,7 +824,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.404.xyz/plugin",
-        "verified_at": "2026-06-06T12:18:13.872Z"
+        "verified_at": "2026-06-07T07:06:43.440Z"
       }
     },
     {
@@ -835,7 +837,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -853,7 +855,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 67,
+        "latency_ms": 64,
         "method_tested": "HEAD",
         "name": "404—GEN website page",
         "netuid": 17,
@@ -877,7 +879,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.404.xyz/about",
-        "verified_at": "2026-06-06T12:18:13.889Z"
+        "verified_at": "2026-06-07T07:06:43.444Z"
       }
     }
   ],

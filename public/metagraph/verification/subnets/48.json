@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 132,
+      "latency_ms": 127,
       "method_tested": "HEAD",
       "name": "Quantum Compute TaoMarketCap dashboard",
       "netuid": 48,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/48",
-      "verified_at": "2026-06-06T12:18:21.533Z"
+      "verified_at": "2026-06-07T07:06:52.978Z"
     },
     {
       "candidate_id": "sn-48-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/qbittensor-labs/quantum-compute",
       "kind": "source-repo",
-      "latency_ms": 431,
+      "latency_ms": 758,
       "method_tested": "HEAD",
       "name": "Quantum Compute source repository",
       "netuid": 48,
@@ -70,7 +70,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/qbittensor-labs/quantum-compute",
-      "verified_at": "2026-06-06T12:18:21.538Z"
+      "verified_at": "2026-06-07T07:06:53.000Z"
     },
     {
       "candidate_id": "sn-48-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 276,
+      "latency_ms": 280,
       "method_tested": "HEAD",
       "name": "Quantum Compute website",
       "netuid": 48,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.qbittensorlabs.com/",
-      "verified_at": "2026-06-06T12:18:21.560Z"
+      "verified_at": "2026-06-07T07:06:53.007Z"
     },
     {
       "candidate_id": "sn-48-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 281,
+      "latency_ms": 746,
       "method_tested": "HEAD",
       "name": "Quantum Compute Tensorplex subnet docs",
       "netuid": 48,
@@ -136,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/48",
-      "verified_at": "2026-06-06T12:18:21.572Z"
+      "verified_at": "2026-06-07T07:06:53.017Z"
     },
     {
       "candidate_id": "sn-48-tensorplex-source-repo-1",
@@ -146,7 +146,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/qbittensor-labs/quantum",
       "kind": "source-repo",
-      "latency_ms": 217,
+      "latency_ms": 565,
       "method_tested": "HEAD",
       "name": "Quantum Compute source repository",
       "netuid": 48,
@@ -170,7 +170,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://github.com/qbittensor-labs/quantum",
-      "verified_at": "2026-06-06T12:18:21.637Z"
+      "verified_at": "2026-06-07T07:06:53.024Z"
     },
     {
       "candidate_id": "sn-48-website-common-api",
@@ -179,7 +179,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 209,
+      "latency_ms": 290,
       "method_tested": "GET",
       "name": "Quantum Compute API",
       "netuid": 48,
@@ -203,7 +203,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.qbittensorlabs.com/api",
-      "verified_at": "2026-06-06T12:18:21.665Z"
+      "verified_at": "2026-06-07T07:06:53.070Z"
     },
     {
       "candidate_id": "sn-48-website-common-docs",
@@ -212,7 +212,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 94,
+      "latency_ms": 107,
       "method_tested": "GET",
       "name": "Quantum Compute docs",
       "netuid": 48,
@@ -236,7 +236,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.qbittensorlabs.com/docs",
-      "verified_at": "2026-06-06T12:18:21.665Z"
+      "verified_at": "2026-06-07T07:06:53.108Z"
     },
     {
       "candidate_id": "sn-48-website-common-health",
@@ -245,7 +245,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 97,
+      "latency_ms": 105,
       "method_tested": "GET",
       "name": "Quantum Compute health endpoint",
       "netuid": 48,
@@ -269,7 +269,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.qbittensorlabs.com/health",
-      "verified_at": "2026-06-06T12:18:21.682Z"
+      "verified_at": "2026-06-07T07:06:53.200Z"
     },
     {
       "candidate_id": "sn-48-website-common-openapi-json",
@@ -278,7 +278,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 268,
+      "latency_ms": 97,
       "method_tested": "GET",
       "name": "Quantum Compute OpenAPI JSON",
       "netuid": 48,
@@ -302,7 +302,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.qbittensorlabs.com/openapi.json",
-      "verified_at": "2026-06-06T12:18:21.776Z"
+      "verified_at": "2026-06-07T07:06:53.204Z"
     },
     {
       "candidate_id": "sn-48-website-common-swagger",
@@ -311,7 +311,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 93,
+      "latency_ms": 89,
       "method_tested": "GET",
       "name": "Quantum Compute Swagger UI",
       "netuid": 48,
@@ -335,7 +335,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.qbittensorlabs.com/swagger",
-      "verified_at": "2026-06-06T12:18:21.777Z"
+      "verified_at": "2026-06-07T07:06:53.259Z"
     },
     {
       "candidate_id": "sn-48-website-common-swagger-json",
@@ -344,7 +344,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 159,
+      "latency_ms": 96,
       "method_tested": "GET",
       "name": "Quantum Compute Swagger JSON",
       "netuid": 48,
@@ -368,7 +368,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.qbittensorlabs.com/swagger.json",
-      "verified_at": "2026-06-06T12:18:21.818Z"
+      "verified_at": "2026-06-07T07:06:53.324Z"
     },
     {
       "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-1",
@@ -377,7 +377,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 210,
+      "latency_ms": 213,
       "method_tested": "HEAD",
       "name": "Quantum Compute website page",
       "netuid": 48,
@@ -401,7 +401,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.qbittensorlabs.com/enigma",
-      "verified_at": "2026-06-06T12:18:21.837Z"
+      "verified_at": "2026-06-07T07:06:53.343Z"
     },
     {
       "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-2",
@@ -410,7 +410,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 151,
+      "latency_ms": 198,
       "method_tested": "HEAD",
       "name": "Quantum Compute website page",
       "netuid": 48,
@@ -434,7 +434,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.qbittensorlabs.com/quantum",
-      "verified_at": "2026-06-06T12:18:21.853Z"
+      "verified_at": "2026-06-07T07:06:53.525Z"
     },
     {
       "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-3",
@@ -443,7 +443,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 264,
+      "latency_ms": 198,
       "method_tested": "HEAD",
       "name": "Quantum Compute website page",
       "netuid": 48,
@@ -467,7 +467,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.qbittensorlabs.com/about",
-      "verified_at": "2026-06-06T12:18:21.877Z"
+      "verified_at": "2026-06-07T07:06:53.526Z"
     },
     {
       "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-4",
@@ -476,7 +476,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 166,
+      "latency_ms": 317,
       "method_tested": "HEAD",
       "name": "Quantum Compute website page",
       "netuid": 48,
@@ -500,7 +500,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.qbittensorlabs.com/news",
-      "verified_at": "2026-06-06T12:18:21.934Z"
+      "verified_at": "2026-06-07T07:06:53.572Z"
     },
     {
       "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-5",
@@ -509,7 +509,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 163,
+      "latency_ms": 214,
       "method_tested": "HEAD",
       "name": "Quantum Compute website page",
       "netuid": 48,
@@ -533,7 +533,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.qbittensorlabs.com/enigma/contracts",
-      "verified_at": "2026-06-06T12:18:21.994Z"
+      "verified_at": "2026-06-07T07:06:53.580Z"
     },
     {
       "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-6",
@@ -542,7 +542,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 195,
+      "latency_ms": 211,
       "method_tested": "HEAD",
       "name": "Quantum Compute website page",
       "netuid": 48,
@@ -566,7 +566,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.qbittensorlabs.com/terms",
-      "verified_at": "2026-06-06T12:18:22.005Z"
+      "verified_at": "2026-06-07T07:06:53.617Z"
     },
     {
       "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-7",
@@ -575,7 +575,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 277,
+      "latency_ms": 110,
       "method_tested": "HEAD",
       "name": "Quantum Compute website page",
       "netuid": 48,
@@ -599,7 +599,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.qbittensorlabs.com/privacy",
-      "verified_at": "2026-06-06T12:18:22.028Z"
+      "verified_at": "2026-06-07T07:06:53.618Z"
     },
     {
       "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-8",
@@ -608,7 +608,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 87,
+      "latency_ms": 225,
       "method_tested": "HEAD",
       "name": "Quantum Compute website page",
       "netuid": 48,
@@ -632,7 +632,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.qbittensorlabs.com/payment-processing",
-      "verified_at": "2026-06-06T12:18:22.035Z"
+      "verified_at": "2026-06-07T07:06:53.660Z"
     },
     {
       "candidate_id": "sn-48-website-link-www-qbittensorlabs-com-website-9",
@@ -641,7 +641,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 204,
+      "latency_ms": 216,
       "method_tested": "HEAD",
       "name": "Quantum Compute website page",
       "netuid": 48,
@@ -665,7 +665,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.qbittensorlabs.com/enigma/rules",
-      "verified_at": "2026-06-06T12:18:22.044Z"
+      "verified_at": "2026-06-07T07:06:53.662Z"
     }
   ],
   "schema_version": 1,

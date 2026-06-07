@@ -13,7 +13,7 @@
       "kind": "subnet-api",
       "name": "ninja API surface",
       "netuid": 66,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 235,
+        "latency_ms": 264,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.937Z"
+        "verified_at": "2026-06-07T07:07:00.986Z"
       }
     },
     {
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 180,
+        "latency_ms": 254,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.940Z"
+        "verified_at": "2026-06-07T07:07:01.006Z"
       }
     },
     {
@@ -116,8 +116,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/66",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/66"
       ],
       "subnet_name": "ninja",
       "subnet_slug": "sn-66",
@@ -127,11 +126,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/unarbos/tau",
-        "latency_ms": 469,
+        "latency_ms": 889,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.972Z"
+        "verified_at": "2026-06-07T07:07:01.014Z"
       }
     },
     {
@@ -169,11 +168,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 209,
+        "latency_ms": 589,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.976Z"
+        "verified_at": "2026-06-07T07:07:01.014Z"
       }
     },
     {
@@ -183,7 +182,7 @@
       "kind": "docs",
       "name": "ninja Tensorplex subnet docs",
       "netuid": 66,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -211,11 +210,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 304,
+        "latency_ms": 941,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.004Z"
+        "verified_at": "2026-06-07T07:07:01.015Z"
       }
     },
     {
@@ -225,7 +224,7 @@
       "kind": "docs",
       "name": "ninja docs",
       "netuid": 66,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +252,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html",
-        "latency_ms": 145,
+        "latency_ms": 589,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.007Z"
+        "verified_at": "2026-06-07T07:07:01.015Z"
       }
     },
     {
@@ -267,7 +266,7 @@
       "kind": "subnet-api",
       "name": "ninja health endpoint",
       "netuid": 66,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -295,11 +294,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/plain",
-        "latency_ms": 120,
+        "latency_ms": 566,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.031Z"
+        "verified_at": "2026-06-07T07:07:01.205Z"
       }
     },
     {
@@ -309,7 +308,7 @@
       "kind": "openapi",
       "name": "ninja Swagger UI",
       "netuid": 66,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -338,11 +337,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html",
-        "latency_ms": 147,
+        "latency_ms": 565,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.044Z"
+        "verified_at": "2026-06-07T07:07:01.210Z"
       }
     },
     {
@@ -352,7 +351,7 @@
       "kind": "dashboard",
       "name": "ninja dashboard",
       "netuid": 66,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -380,11 +379,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 180,
+        "latency_ms": 310,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.054Z"
+        "verified_at": "2026-06-07T07:07:01.378Z"
       }
     }
   ]

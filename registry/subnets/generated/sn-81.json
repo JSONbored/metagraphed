@@ -14,7 +14,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-06T12:18:31.154Z"
+    "verified_at": "2026-06-07T07:07:08.724Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/81",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/81",
@@ -33,7 +33,7 @@
       "id": "sn-81-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "deprecated source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -60,11 +60,11 @@
         "confidence_score": 50,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/tplr-ai/grail",
-        "latency_ms": 676,
+        "latency_ms": 1742,
         "method_tested": "HEAD",
         "redirect_target": "https://github.com/one-covenant/grail",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:31.154Z"
+        "verified_at": "2026-06-07T07:07:08.724Z"
       }
     },
     {
@@ -73,7 +73,7 @@
       "id": "sn-81-tensorplex-docs",
       "kind": "docs",
       "name": "deprecated Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -99,11 +99,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 305,
+        "latency_ms": 454,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:31.035Z"
+        "verified_at": "2026-06-07T07:07:08.678Z"
       }
     },
     {
@@ -138,11 +138,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 138,
+        "latency_ms": 150,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:31.015Z"
+        "verified_at": "2026-06-07T07:07:08.519Z"
       }
     }
   ]

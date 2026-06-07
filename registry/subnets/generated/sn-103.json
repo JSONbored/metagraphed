@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-06T12:18:38.811Z"
+    "verified_at": "2026-06-07T07:07:18.170Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/103",
   "docs_url": "https://docs.astral.sh/uv",
@@ -59,11 +59,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Djinn-Inc/djinn",
-        "latency_ms": 577,
+        "latency_ms": 764,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.690Z"
+        "verified_at": "2026-06-07T07:07:18.101Z"
       }
     },
     {
@@ -98,11 +98,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 459,
+        "latency_ms": 1477,
         "method_tested": "HEAD",
         "redirect_target": "https://www.djinn.gg/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.706Z"
+        "verified_at": "2026-06-07T07:07:18.106Z"
       }
     },
     {
@@ -111,7 +111,7 @@
       "id": "sn-103-github-readme-djinn-inc-djinn-docs-1",
       "kind": "docs",
       "name": "Djinn docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +137,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 83,
+        "latency_ms": 93,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.astral.sh/uv/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.661Z"
+        "verified_at": "2026-06-07T07:07:18.068Z"
       }
     },
     {
@@ -150,7 +150,7 @@
       "id": "sn-103-tensorplex-docs",
       "kind": "docs",
       "name": "Djinn Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +176,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 285,
+        "latency_ms": 519,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.706Z"
+        "verified_at": "2026-06-07T07:07:18.113Z"
       }
     },
     {
@@ -189,7 +189,7 @@
       "id": "sn-103-website-common-docs",
       "kind": "docs",
       "name": "Djinn docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +215,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 457,
+        "latency_ms": 1433,
         "method_tested": "HEAD",
         "redirect_target": "https://www.djinn.gg/docs",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.722Z"
+        "verified_at": "2026-06-07T07:07:18.126Z"
       }
     },
     {
@@ -254,11 +254,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 136,
+        "latency_ms": 154,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.687Z"
+        "verified_at": "2026-06-07T07:07:18.084Z"
       }
     },
     {
@@ -267,7 +267,7 @@
       "id": "sn-103-website-link-djinn-gg-dashboard-4",
       "kind": "dashboard",
       "name": "Djinn dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -293,11 +293,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 352,
+        "latency_ms": 1693,
         "method_tested": "HEAD",
         "redirect_target": "https://www.djinn.gg/leaderboard",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.811Z"
+        "verified_at": "2026-06-07T07:07:18.170Z"
       }
     }
   ],

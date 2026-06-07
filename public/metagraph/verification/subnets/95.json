@@ -1,8 +1,8 @@
 {
-  "candidate_count": 2,
+  "candidate_count": 4,
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
-  "name": "nion",
+  "name": "Actual",
   "netuid": 95,
   "results": [
     {
@@ -12,9 +12,9 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 127,
+      "latency_ms": 137,
       "method_tested": "HEAD",
-      "name": "nion TaoMarketCap dashboard",
+      "name": "Actual TaoMarketCap dashboard",
       "netuid": 95,
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
@@ -36,7 +36,74 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/95",
-      "verified_at": "2026-06-06T12:18:35.642Z"
+      "verified_at": "2026-06-07T07:07:14.989Z"
+    },
+    {
+      "candidate_id": "sn-95-taomarketcap-source-repo",
+      "classification": "dead",
+      "confidence_score": 0,
+      "error": null,
+      "github_api_status": 429,
+      "github_api_url": "https://api.github.com/repos/actual-computer/actual-subnet-95",
+      "kind": "source-repo",
+      "latency_ms": 231,
+      "method_tested": "HEAD",
+      "name": "Actual source repository",
+      "netuid": 95,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/95",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/95"
+      ],
+      "status": "failed",
+      "status_code": 404,
+      "url": "https://github.com/actual-computer/actual-subnet-95",
+      "verified_at": "2026-06-07T07:07:15.020Z"
+    },
+    {
+      "candidate_id": "sn-95-taomarketcap-website",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 373,
+      "method_tested": "HEAD",
+      "name": "Actual website",
+      "netuid": 95,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/95",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/95"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://actual.inc/",
+      "verified_at": "2026-06-07T07:07:15.041Z"
     },
     {
       "candidate_id": "sn-95-tensorplex-docs",
@@ -45,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 345,
+      "latency_ms": 370,
       "method_tested": "HEAD",
       "name": "nion Tensorplex subnet docs",
       "netuid": 95,
@@ -69,21 +136,24 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/95",
-      "verified_at": "2026-06-06T12:18:35.698Z"
+      "verified_at": "2026-06-07T07:07:15.081Z"
     }
   ],
   "schema_version": 1,
   "slug": "sn-95",
   "summary": {
     "by_classification": {
-      "live": 2
+      "dead": 1,
+      "live": 3
     },
     "by_kind": {
       "dashboard": 1,
-      "docs": 1
+      "docs": 1,
+      "source-repo": 1,
+      "website": 1
     },
     "by_provider": {
-      "taomarketcap": 1,
+      "taomarketcap": 3,
       "tensorplex-subnet-docs": 1
     }
   }

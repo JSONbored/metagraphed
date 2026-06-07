@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 5,
-    "verified_at": "2026-06-06T12:18:16.051Z"
+    "verified_at": "2026-06-07T07:06:46.095Z"
   },
   "dashboard_url": "https://trishool.ai/dashboard",
   "docs_url": "https://pm2.io/docs/runtime/guide/installation",
@@ -41,11 +41,12 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -53,17 +54,15 @@
       ],
       "url": "https://github.com/TrishoolAI/trishool-phase2",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/TrishoolAI/trishool-phase2",
-        "homepage": null,
-        "last_push_at": "2026-06-02T17:51:56Z",
+        "latency_ms": 502,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:15.848Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:45.983Z"
       }
     },
     {
@@ -72,7 +71,7 @@
       "id": "sn-23-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Trishool source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -82,11 +81,12 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -94,17 +94,15 @@
       ],
       "url": "https://github.com/TrishoolAI/trishool-subnet",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 55,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/TrishoolAI/trishool-subnet",
-        "homepage": null,
-        "last_push_at": "2026-01-30T09:21:10Z",
+        "latency_ms": 552,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:15.946Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:45.987Z"
       }
     },
     {
@@ -139,11 +137,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 64,
+        "latency_ms": 173,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.882Z"
+        "verified_at": "2026-06-07T07:06:45.983Z"
       }
     },
     {
@@ -152,7 +150,7 @@
       "id": "sn-23-github-readme-trishoolai-trishool-subnet-docs-1",
       "kind": "docs",
       "name": "Trishool docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -178,11 +176,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 439,
+        "latency_ms": 266,
         "method_tested": "HEAD",
         "redirect_target": "https://pm2.io/docs/runtime/guide/installation/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.801Z"
+        "verified_at": "2026-06-07T07:06:45.920Z"
       }
     },
     {
@@ -191,7 +189,7 @@
       "id": "sn-23-tensorplex-docs",
       "kind": "docs",
       "name": "Trishool Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -217,11 +215,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 458,
+        "latency_ms": 335,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.916Z"
+        "verified_at": "2026-06-07T07:06:45.983Z"
       }
     },
     {
@@ -230,7 +228,7 @@
       "id": "sn-23-website-link-trishool-ai-docs-1",
       "kind": "docs",
       "name": "Trishool docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -256,11 +254,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 132,
+        "latency_ms": 512,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.045Z"
+        "verified_at": "2026-06-07T07:06:46.035Z"
       }
     },
     {
@@ -269,7 +267,7 @@
       "id": "sn-23-website-link-trishool-ai-docs-2",
       "kind": "docs",
       "name": "Trishool docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -295,11 +293,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/pdf",
-        "latency_ms": 94,
+        "latency_ms": 150,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.051Z"
+        "verified_at": "2026-06-07T07:06:46.095Z"
       }
     },
     {
@@ -308,7 +306,7 @@
       "id": "sn-23-github-readme-trishoolai-trishool-phase2-dashboard-1",
       "kind": "dashboard",
       "name": "Trishool dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -327,19 +325,18 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md",
-        "https://trishool.ai/"
+        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md"
       ],
       "url": "https://trishool.ai/dashboard",
       "verification": {
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 127,
+        "latency_ms": 138,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.754Z"
+        "verified_at": "2026-06-07T07:06:45.854Z"
       }
     },
     {
@@ -348,7 +345,7 @@
       "id": "sn-23-github-readme-trishoolai-trishool-phase2-dashboard-2",
       "kind": "dashboard",
       "name": "Trishool dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -374,11 +371,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 232,
+        "latency_ms": 226,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.756Z"
+        "verified_at": "2026-06-07T07:06:45.885Z"
       }
     },
     {
@@ -413,11 +410,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 149,
+        "latency_ms": 151,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.844Z"
+        "verified_at": "2026-06-07T07:06:45.920Z"
       }
     },
     {
@@ -426,7 +423,7 @@
       "id": "sn-23-github-readme-trishoolai-trishool-phase2-subnet-api-3",
       "kind": "subnet-api",
       "name": "Trishool API surface",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -445,19 +442,18 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md",
-        "https://github.com/TrishoolAI/trishool-subnet/blob/main/README.md"
+        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md"
       ],
       "url": "https://api.trishool.ai/",
       "verification": {
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/plain",
-        "latency_ms": 352,
+        "latency_ms": 344,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.771Z"
+        "verified_at": "2026-06-07T07:06:45.905Z"
       }
     }
   ],

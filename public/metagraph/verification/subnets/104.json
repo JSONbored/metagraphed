@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 145,
+      "latency_ms": 679,
       "method_tested": "HEAD",
       "name": "for sale (burn to uid1) TaoMarketCap dashboard",
       "netuid": 104,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/104",
-      "verified_at": "2026-06-06T12:18:39.180Z"
+      "verified_at": "2026-06-07T07:07:18.882Z"
     },
     {
       "candidate_id": "sn-104-tensorplex-docs",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 347,
+      "latency_ms": 335,
       "method_tested": "HEAD",
       "name": "for sale (burn to uid1) Tensorplex subnet docs",
       "netuid": 104,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/104",
-      "verified_at": "2026-06-06T12:18:39.180Z"
+      "verified_at": "2026-06-07T07:07:18.915Z"
     }
   ],
   "schema_version": 1,

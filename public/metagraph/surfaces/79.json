@@ -13,7 +13,7 @@
       "kind": "docs",
       "name": "MVTRX docs",
       "netuid": 79,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,11 +41,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 575,
+        "latency_ms": 734,
         "method_tested": "HEAD",
         "redirect_target": "https://drive.proton.me/urls/ZAQRQ25584#XhWrGYo6VEc4",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.284Z"
+        "verified_at": "2026-06-07T07:07:05.785Z"
       }
     },
     {
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 128,
+        "latency_ms": 141,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.306Z"
+        "verified_at": "2026-06-07T07:07:05.833Z"
       }
     },
     {
@@ -125,11 +125,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 224,
+        "latency_ms": 186,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.328Z"
+        "verified_at": "2026-06-07T07:07:05.924Z"
       }
     },
     {
@@ -139,7 +139,7 @@
       "kind": "docs",
       "name": "MVTRX Tensorplex subnet docs",
       "netuid": 79,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -167,11 +167,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 339,
+        "latency_ms": 598,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.328Z"
+        "verified_at": "2026-06-07T07:07:05.924Z"
       }
     },
     {
@@ -181,7 +181,7 @@
       "kind": "source-repo",
       "name": "MVTRX source repository",
       "netuid": 79,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -210,11 +210,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/taos-im/sn-79",
-        "latency_ms": 485,
+        "latency_ms": 780,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.328Z"
+        "verified_at": "2026-06-07T07:07:05.924Z"
       }
     }
   ]

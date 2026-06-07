@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 152,
+      "latency_ms": 132,
       "method_tested": "HEAD",
       "name": "Talisman AI TaoMarketCap dashboard",
       "netuid": 45,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/45",
-      "verified_at": "2026-06-06T12:18:20.453Z"
+      "verified_at": "2026-06-07T07:06:51.685Z"
     },
     {
       "candidate_id": "sn-45-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/Team-Rizzo/talisman-ai",
       "kind": "source-repo",
-      "latency_ms": 666,
+      "latency_ms": 803,
       "method_tested": "HEAD",
       "name": "Talisman AI source repository",
       "netuid": 45,
@@ -70,7 +70,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Team-Rizzo/talisman-ai",
-      "verified_at": "2026-06-06T12:18:20.530Z"
+      "verified_at": "2026-06-07T07:06:51.713Z"
     },
     {
       "candidate_id": "sn-45-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 135,
+      "latency_ms": 138,
       "method_tested": "HEAD",
       "name": "Talisman AI website",
       "netuid": 45,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ai.talisman.xyz/",
-      "verified_at": "2026-06-06T12:18:20.586Z"
+      "verified_at": "2026-06-07T07:06:51.741Z"
     },
     {
       "candidate_id": "sn-45-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 413,
+      "latency_ms": 499,
       "method_tested": "HEAD",
       "name": "Talisman AI Tensorplex subnet docs",
       "netuid": 45,
@@ -136,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/45",
-      "verified_at": "2026-06-06T12:18:20.604Z"
+      "verified_at": "2026-06-07T07:06:51.742Z"
     },
     {
       "candidate_id": "sn-45-website-common-api",
@@ -145,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 176,
+      "latency_ms": 54,
       "method_tested": "GET",
       "name": "Talisman AI API",
       "netuid": 45,
@@ -169,7 +169,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://ai.talisman.xyz/api",
-      "verified_at": "2026-06-06T12:18:20.622Z"
+      "verified_at": "2026-06-07T07:06:51.768Z"
     },
     {
       "candidate_id": "sn-45-website-common-docs",
@@ -178,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 38,
+      "latency_ms": 42,
       "method_tested": "GET",
       "name": "Talisman AI docs",
       "netuid": 45,
@@ -202,7 +202,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://ai.talisman.xyz/docs",
-      "verified_at": "2026-06-06T12:18:20.662Z"
+      "verified_at": "2026-06-07T07:06:51.820Z"
     },
     {
       "candidate_id": "sn-45-website-common-health",
@@ -211,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 37,
+      "latency_ms": 43,
       "method_tested": "GET",
       "name": "Talisman AI health endpoint",
       "netuid": 45,
@@ -235,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://ai.talisman.xyz/health",
-      "verified_at": "2026-06-06T12:18:20.668Z"
+      "verified_at": "2026-06-07T07:06:51.825Z"
     },
     {
       "candidate_id": "sn-45-website-common-openapi-json",
@@ -244,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 42,
+      "latency_ms": 52,
       "method_tested": "GET",
       "name": "Talisman AI OpenAPI JSON",
       "netuid": 45,
@@ -268,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://ai.talisman.xyz/openapi.json",
-      "verified_at": "2026-06-06T12:18:20.709Z"
+      "verified_at": "2026-06-07T07:06:51.917Z"
     },
     {
       "candidate_id": "sn-45-website-common-swagger",
@@ -277,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 33,
+      "latency_ms": 41,
       "method_tested": "GET",
       "name": "Talisman AI Swagger UI",
       "netuid": 45,
@@ -301,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://ai.talisman.xyz/swagger",
-      "verified_at": "2026-06-06T12:18:20.721Z"
+      "verified_at": "2026-06-07T07:06:51.967Z"
     },
     {
       "candidate_id": "sn-45-website-common-swagger-json",
@@ -310,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 164,
+      "latency_ms": 36,
       "method_tested": "GET",
       "name": "Talisman AI Swagger JSON",
       "netuid": 45,
@@ -334,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://ai.talisman.xyz/swagger.json",
-      "verified_at": "2026-06-06T12:18:20.782Z"
+      "verified_at": "2026-06-07T07:06:51.980Z"
     },
     {
       "candidate_id": "sn-45-website-link-ai-talisman-xyz-docs-10",
@@ -343,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 214,
+      "latency_ms": 218,
       "method_tested": "HEAD",
       "name": "Talisman AI docs",
       "netuid": 45,
@@ -367,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.talisman.xyz/talisman/about/privacy-policy",
-      "verified_at": "2026-06-06T12:18:20.798Z"
+      "verified_at": "2026-06-07T07:06:51.988Z"
     },
     {
       "candidate_id": "sn-45-website-link-ai-talisman-xyz-docs-8",
@@ -376,7 +376,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 219,
+      "latency_ms": 211,
       "method_tested": "HEAD",
       "name": "Talisman AI docs",
       "netuid": 45,
@@ -400,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.talisman.xyz/talisman/about/security",
-      "verified_at": "2026-06-06T12:18:20.802Z"
+      "verified_at": "2026-06-07T07:06:51.997Z"
     },
     {
       "candidate_id": "sn-45-website-link-ai-talisman-xyz-docs-9",
@@ -409,7 +409,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 193,
+      "latency_ms": 233,
       "method_tested": "HEAD",
       "name": "Talisman AI docs",
       "netuid": 45,
@@ -433,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.talisman.xyz/talisman/about/terms-of-use",
-      "verified_at": "2026-06-06T12:18:20.829Z"
+      "verified_at": "2026-06-07T07:06:52.015Z"
     },
     {
       "candidate_id": "sn-45-website-link-ai-talisman-xyz-website-1",
@@ -442,7 +442,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 52,
+      "latency_ms": 233,
       "method_tested": "HEAD",
       "name": "Talisman AI website page",
       "netuid": 45,
@@ -466,7 +466,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ai.talisman.xyz/analytics?netuid=45",
-      "verified_at": "2026-06-06T12:18:20.885Z"
+      "verified_at": "2026-06-07T07:06:52.048Z"
     },
     {
       "candidate_id": "sn-45-website-link-ai-talisman-xyz-website-2",
@@ -475,7 +475,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 44,
+      "latency_ms": 53,
       "method_tested": "HEAD",
       "name": "Talisman AI website page",
       "netuid": 45,
@@ -499,7 +499,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ai.talisman.xyz/sentiment",
-      "verified_at": "2026-06-06T12:18:20.890Z"
+      "verified_at": "2026-06-07T07:06:52.063Z"
     },
     {
       "candidate_id": "sn-45-website-link-ai-talisman-xyz-website-3",
@@ -508,7 +508,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 242,
+      "latency_ms": 251,
       "method_tested": "HEAD",
       "name": "Talisman AI website page",
       "netuid": 45,
@@ -532,7 +532,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ai.talisman.xyz/community",
-      "verified_at": "2026-06-06T12:18:20.890Z"
+      "verified_at": "2026-06-07T07:06:52.063Z"
     },
     {
       "candidate_id": "sn-45-website-link-ai-talisman-xyz-website-4",
@@ -541,7 +541,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 116,
+      "latency_ms": 220,
       "method_tested": "HEAD",
       "name": "Talisman AI website page",
       "netuid": 45,
@@ -565,7 +565,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ai.talisman.xyz/roadmap",
-      "verified_at": "2026-06-06T12:18:20.890Z"
+      "verified_at": "2026-06-07T07:06:52.063Z"
     },
     {
       "candidate_id": "sn-45-website-link-ai-talisman-xyz-website-5",
@@ -574,7 +574,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 178,
+      "latency_ms": 209,
       "method_tested": "HEAD",
       "name": "Talisman AI website page",
       "netuid": 45,
@@ -598,7 +598,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://talisman.xyz/download",
-      "verified_at": "2026-06-06T12:18:20.914Z"
+      "verified_at": "2026-06-07T07:06:52.074Z"
     },
     {
       "candidate_id": "sn-45-website-link-ai-talisman-xyz-website-6",
@@ -607,7 +607,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 126,
+      "latency_ms": 192,
       "method_tested": "HEAD",
       "name": "Talisman AI website page",
       "netuid": 45,
@@ -631,7 +631,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://talisman.xyz/",
-      "verified_at": "2026-06-06T12:18:20.927Z"
+      "verified_at": "2026-06-07T07:06:52.100Z"
     },
     {
       "candidate_id": "sn-45-website-link-ai-talisman-xyz-website-7",
@@ -640,7 +640,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 126,
+      "latency_ms": 178,
       "method_tested": "HEAD",
       "name": "Talisman AI website page",
       "netuid": 45,
@@ -664,7 +664,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://app.talisman.xyz/",
-      "verified_at": "2026-06-06T12:18:20.927Z"
+      "verified_at": "2026-06-07T07:06:52.120Z"
     }
   ],
   "schema_version": 1,

@@ -10,7 +10,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -31,7 +31,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -52,7 +52,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -73,7 +73,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -115,7 +115,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -136,7 +136,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -159,7 +159,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -180,7 +180,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -201,7 +201,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -222,7 +222,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -264,7 +264,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -285,7 +285,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -303,12 +303,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-58-github-readme-handshake58-hs58-docs-1",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:11.587Z",
-      "latency_ms": 309,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -330,11 +330,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 67,
+      "score": 0,
       "source_urls": [
         "https://github.com/Handshake58/HS58/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Pending",
       "subnet_slug": "sn-58",
       "surface_id": "sn-58-github-readme-handshake58-hs58-docs-1",
@@ -345,12 +345,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-58-tensorplex-docs",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:11.762Z",
-      "latency_ms": 356,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -372,11 +372,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 66,
+      "score": 0,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/58/subnet.json"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Pending",
       "subnet_slug": "sn-58",
       "surface_id": "sn-58-tensorplex-docs",
@@ -387,12 +387,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-58-tensorplex-source-repo-1",
       "kind": "source-repo",
-      "last_checked": "2026-06-07T05:10:12.186Z",
-      "latency_ms": 780,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -414,11 +414,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 62,
+      "score": 0,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/58/subnet.json"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Pending",
       "subnet_slug": "sn-58",
       "surface_id": "sn-58-tensorplex-source-repo-1",
@@ -429,12 +429,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-58-taomarketcap-dashboard",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:11.566Z",
-      "latency_ms": 168,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -456,11 +456,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 68,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/58"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Pending",
       "subnet_slug": "sn-58",
       "surface_id": "sn-58-taomarketcap-dashboard",
@@ -471,12 +471,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-58-github-readme-handshake58-hs58-subnet-api-2",
       "kind": "subnet-api",
-      "last_checked": "2026-06-07T05:10:11.586Z",
-      "latency_ms": 308,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -498,11 +498,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 67,
+      "score": 0,
       "source_urls": [
         "https://github.com/Handshake58/HS58/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Pending",
       "subnet_slug": "sn-58",
       "surface_id": "sn-58-github-readme-handshake58-hs58-subnet-api-2",
@@ -513,12 +513,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-58-github-readme-handshake58-hs58-subnet-api-3",
       "kind": "subnet-api",
-      "last_checked": "2026-06-07T05:10:11.598Z",
-      "latency_ms": 289,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -540,11 +540,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 67,
+      "score": 0,
       "source_urls": [
         "https://github.com/Handshake58/HS58/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Pending",
       "subnet_slug": "sn-58",
       "surface_id": "sn-58-github-readme-handshake58-hs58-subnet-api-3",
@@ -555,12 +555,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-58-github-readme-handshake58-hs58-subnet-api-4",
       "kind": "subnet-api",
-      "last_checked": "2026-06-07T05:10:11.609Z",
-      "latency_ms": 223,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -582,11 +582,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 68,
+      "score": 0,
       "source_urls": [
         "https://github.com/Handshake58/HS58/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Pending",
       "subnet_slug": "sn-58",
       "surface_id": "sn-58-github-readme-handshake58-hs58-subnet-api-4",
@@ -616,7 +616,7 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8347420,
+    "block": 8353128,
     "candidate_count": 7,
     "categories": [
       "baseline-curated"
@@ -633,7 +633,7 @@
       "review_state": "machine-generated",
       "reviewed_at": null,
       "source_count": 3,
-      "verified_at": "2026-06-06T12:18:24.644Z"
+      "verified_at": "2026-06-07T07:06:57.751Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/58",
@@ -671,7 +671,7 @@
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T12:04:01Z",
+        "captured_at": "2026-06-07T07:06:35Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
@@ -700,7 +700,7 @@
       "kind": "docs",
       "name": "Pending docs",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -728,11 +728,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/markdown; charset=UTF-8",
-        "latency_ms": 297,
+        "latency_ms": 186,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.504Z"
+        "verified_at": "2026-06-07T07:06:57.478Z"
       }
     },
     {
@@ -742,7 +742,7 @@
       "kind": "subnet-api",
       "name": "Pending API surface",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -770,11 +770,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 264,
+        "latency_ms": 168,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.545Z"
+        "verified_at": "2026-06-07T07:06:57.497Z"
       }
     },
     {
@@ -784,7 +784,7 @@
       "kind": "subnet-api",
       "name": "Pending API surface",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -812,11 +812,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 302,
+        "latency_ms": 207,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.553Z"
+        "verified_at": "2026-06-07T07:06:57.605Z"
       }
     },
     {
@@ -826,7 +826,7 @@
       "kind": "subnet-api",
       "name": "Pending API surface",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -854,11 +854,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 256,
+        "latency_ms": 186,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.557Z"
+        "verified_at": "2026-06-07T07:06:57.687Z"
       }
     },
     {
@@ -896,11 +896,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 159,
+        "latency_ms": 137,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.573Z"
+        "verified_at": "2026-06-07T07:06:57.733Z"
       }
     },
     {
@@ -910,7 +910,7 @@
       "kind": "docs",
       "name": "Pending Tensorplex subnet docs",
       "netuid": 58,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -938,11 +938,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 326,
+        "latency_ms": 812,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.615Z"
+        "verified_at": "2026-06-07T07:06:57.751Z"
       }
     },
     {
@@ -952,7 +952,7 @@
       "kind": "source-repo",
       "name": "Pending source repository",
       "netuid": 58,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -981,11 +981,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Handshake58/HS58",
-        "latency_ms": 530,
+        "latency_ms": 1005,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.644Z"
+        "verified_at": "2026-06-07T07:06:57.751Z"
       }
     }
   ],
@@ -997,7 +997,7 @@
       "kind": "docs",
       "name": "Pending docs",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1025,11 +1025,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/markdown; charset=UTF-8",
-        "latency_ms": 297,
+        "latency_ms": 186,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.504Z"
+        "verified_at": "2026-06-07T07:06:57.478Z"
       }
     },
     {
@@ -1039,7 +1039,7 @@
       "kind": "subnet-api",
       "name": "Pending API surface",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1067,11 +1067,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 264,
+        "latency_ms": 168,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.545Z"
+        "verified_at": "2026-06-07T07:06:57.497Z"
       }
     },
     {
@@ -1081,7 +1081,7 @@
       "kind": "subnet-api",
       "name": "Pending API surface",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1109,11 +1109,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 302,
+        "latency_ms": 207,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.553Z"
+        "verified_at": "2026-06-07T07:06:57.605Z"
       }
     },
     {
@@ -1123,7 +1123,7 @@
       "kind": "subnet-api",
       "name": "Pending API surface",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1151,11 +1151,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 256,
+        "latency_ms": 186,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.557Z"
+        "verified_at": "2026-06-07T07:06:57.687Z"
       }
     },
     {
@@ -1193,11 +1193,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 159,
+        "latency_ms": 137,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.573Z"
+        "verified_at": "2026-06-07T07:06:57.733Z"
       }
     },
     {
@@ -1207,7 +1207,7 @@
       "kind": "docs",
       "name": "Pending Tensorplex subnet docs",
       "netuid": 58,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1235,11 +1235,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 326,
+        "latency_ms": 812,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.615Z"
+        "verified_at": "2026-06-07T07:06:57.751Z"
       }
     },
     {
@@ -1249,7 +1249,7 @@
       "kind": "source-repo",
       "name": "Pending source repository",
       "netuid": 58,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1278,11 +1278,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Handshake58/HS58",
-        "latency_ms": 530,
+        "latency_ms": 1005,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.644Z"
+        "verified_at": "2026-06-07T07:06:57.751Z"
       }
     }
   ]

@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 196,
+        "latency_ms": 201,
         "method_tested": "HEAD",
         "name": "Compute Horde dashboard",
         "netuid": 12,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taostats.io/subnets/12",
-        "verified_at": "2026-06-06T12:18:11.787Z"
+        "verified_at": "2026-06-07T07:06:40.969Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 595,
+        "latency_ms": 430,
         "method_tested": "HEAD",
         "name": "Compute Horde API surface",
         "netuid": 12,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://grafana.bactensor.io/d/subnet/metagraph-subnet?var-subnet=12",
-        "verified_at": "2026-06-06T12:18:11.810Z"
+        "verified_at": "2026-06-07T07:06:41.042Z"
       }
     },
     {
@@ -138,7 +138,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 160,
+        "latency_ms": 120,
         "method_tested": "HEAD",
         "name": "Compute Horde TaoMarketCap dashboard",
         "netuid": 12,
@@ -162,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/12",
-        "verified_at": "2026-06-06T12:18:11.917Z"
+        "verified_at": "2026-06-07T07:06:41.061Z"
       }
     },
     {
@@ -181,45 +181,44 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/12",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/12",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/12/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/12"
       ],
       "state": "schema-valid",
       "subnet_name": "Compute Horde",
       "url": "https://github.com/backend-developers-ltd/ComputeHorde",
       "verification": {
-        "archived": false,
         "candidate_id": "sn-12-taomarketcap-source-repo",
         "classification": "live",
-        "confidence_score": 80,
-        "default_branch": "master",
-        "description": null,
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/backend-developers-ltd/ComputeHorde",
-        "homepage": null,
-        "html_url": "https://github.com/backend-developers-ltd/ComputeHorde",
         "kind": "source-repo",
-        "last_push_at": "2026-05-04T06:10:39Z",
+        "latency_ms": 741,
+        "method_tested": "HEAD",
         "name": "Compute Horde source repository",
         "netuid": 12,
+        "private_redirect_blocked": false,
         "provider": "taomarketcap",
         "quality_signals": {
-          "archived": false,
-          "has_default_branch": true,
-          "has_recent_push_metadata": true,
+          "content_type_matches_kind": true,
           "public_safe": true,
-          "source_tier": "third-party-index"
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
         },
+        "redirect_target": null,
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/12",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/12",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/12/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/12"
         ],
         "status": "ok",
-        "topics": [],
+        "status_code": 200,
         "url": "https://github.com/backend-developers-ltd/ComputeHorde",
-        "verified_at": "2026-06-06T12:18:11.921Z"
+        "verified_at": "2026-06-07T07:06:41.074Z"
       }
     },
     {
@@ -232,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -250,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 386,
+        "latency_ms": 331,
         "method_tested": "HEAD",
         "name": "Compute Horde Tensorplex subnet docs",
         "netuid": 12,
@@ -274,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/12",
-        "verified_at": "2026-06-06T12:18:11.984Z"
+        "verified_at": "2026-06-07T07:06:41.085Z"
       }
     }
   ],

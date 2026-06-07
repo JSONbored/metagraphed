@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "data-artifact",
-        "latency_ms": 230,
+        "latency_ms": 249,
         "method_tested": "HEAD",
         "name": "ReadyAI data artifact",
         "netuid": 33,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://huggingface.co/datasets/ReadyAi/5000-podcast-conversations-with-metadata-and-embedding-dataset",
-        "verified_at": "2026-06-06T12:18:18.277Z"
+        "verified_at": "2026-06-07T07:06:48.910Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "data-artifact",
-        "latency_ms": 63,
+        "latency_ms": 162,
         "method_tested": "HEAD",
         "name": "ReadyAI data artifact",
         "netuid": 33,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://huggingface.co/",
-        "verified_at": "2026-06-06T12:18:18.277Z"
+        "verified_at": "2026-06-07T07:06:48.918Z"
       }
     },
     {
@@ -120,7 +120,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -138,7 +138,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "data-artifact",
-        "latency_ms": 93,
+        "latency_ms": 99,
         "method_tested": "GET",
         "name": "ReadyAI data artifact",
         "netuid": 33,
@@ -162,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.kaggle.com/datasets/atharvjairath/personachat/data",
-        "verified_at": "2026-06-06T12:18:18.313Z"
+        "verified_at": "2026-06-07T07:06:48.943Z"
       }
     },
     {
@@ -175,7 +175,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -193,7 +193,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 85,
+        "latency_ms": 107,
         "method_tested": "HEAD",
         "name": "ReadyAI docs",
         "netuid": 33,
@@ -217,7 +217,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.bittensor.com/subtensor-nodes",
-        "verified_at": "2026-06-06T12:18:18.336Z"
+        "verified_at": "2026-06-07T07:06:49.037Z"
       }
     },
     {
@@ -230,7 +230,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -248,7 +248,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 144,
+        "latency_ms": 147,
         "method_tested": "HEAD",
         "name": "ReadyAI docs",
         "netuid": 33,
@@ -272,7 +272,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.bittensor.com/working-with-keys",
-        "verified_at": "2026-06-06T12:18:18.340Z"
+        "verified_at": "2026-06-07T07:06:49.048Z"
       }
     },
     {
@@ -285,7 +285,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -303,7 +303,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 195,
+        "latency_ms": 199,
         "method_tested": "HEAD",
         "name": "ReadyAI docs",
         "netuid": 33,
@@ -327,7 +327,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.bittensor.com/miners",
-        "verified_at": "2026-06-06T12:18:18.348Z"
+        "verified_at": "2026-06-07T07:06:49.083Z"
       }
     },
     {
@@ -340,7 +340,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -358,7 +358,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "docs",
-        "latency_ms": 606,
+        "latency_ms": 615,
         "method_tested": "HEAD",
         "name": "ReadyAI docs",
         "netuid": 33,
@@ -382,7 +382,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://platform.openai.com/docs/models",
-        "verified_at": "2026-06-06T12:18:18.421Z"
+        "verified_at": "2026-06-07T07:06:49.157Z"
       }
     },
     {
@@ -395,7 +395,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -413,7 +413,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 32,
+        "latency_ms": 31,
         "method_tested": "GET",
         "name": "ReadyAI API surface",
         "netuid": 33,
@@ -437,7 +437,7 @@
         "status": "failed",
         "status_code": 403,
         "url": "https://platform.openai.com/api-keys",
-        "verified_at": "2026-06-06T12:18:18.453Z"
+        "verified_at": "2026-06-07T07:06:49.161Z"
       }
     },
     {
@@ -450,7 +450,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -468,7 +468,7 @@
         "content_type": "application/json",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 39,
+        "latency_ms": 48,
         "method_tested": "GET",
         "name": "ReadyAI API surface",
         "netuid": 33,
@@ -492,7 +492,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://api.conversations.xyz/",
-        "verified_at": "2026-06-06T12:18:18.477Z"
+        "verified_at": "2026-06-07T07:06:49.171Z"
       }
     },
     {
@@ -523,7 +523,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 131,
+        "latency_ms": 151,
         "method_tested": "HEAD",
         "name": "ReadyAI TaoMarketCap dashboard",
         "netuid": 33,
@@ -547,7 +547,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/33",
-        "verified_at": "2026-06-06T12:18:18.485Z"
+        "verified_at": "2026-06-07T07:06:49.211Z"
       }
     },
     {
@@ -566,45 +566,44 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/33",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/33",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/33/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/33"
       ],
       "state": "schema-valid",
       "subnet_name": "ReadyAI",
       "url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
       "verification": {
-        "archived": false,
         "candidate_id": "sn-33-taomarketcap-source-repo",
         "classification": "live",
-        "confidence_score": 80,
-        "default_branch": "main",
-        "description": "ReadyAI (readyai.ai) enables structured data processing at scale, democratizing access to the valuable digital commodity of structured data – the key ingredient for high quality fine tuned models and RAG solutions.",
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/afterpartyai/bittensor-conversation-genome-project",
-        "homepage": null,
-        "html_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
         "kind": "source-repo",
-        "last_push_at": "2026-05-30T20:11:30Z",
+        "latency_ms": 864,
+        "method_tested": "HEAD",
         "name": "ReadyAI source repository",
         "netuid": 33,
+        "private_redirect_blocked": false,
         "provider": "taomarketcap",
         "quality_signals": {
-          "archived": false,
-          "has_default_branch": true,
-          "has_recent_push_metadata": true,
+          "content_type_matches_kind": true,
           "public_safe": true,
-          "source_tier": "third-party-index"
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
         },
+        "redirect_target": null,
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/33",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/33",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/33/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/33"
         ],
         "status": "ok",
-        "topics": [],
+        "status_code": 200,
         "url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
-        "verified_at": "2026-06-06T12:18:18.493Z"
+        "verified_at": "2026-06-07T07:06:49.221Z"
       }
     },
     {
@@ -617,7 +616,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -635,7 +634,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 287,
+        "latency_ms": 443,
         "method_tested": "HEAD",
         "name": "ReadyAI Tensorplex subnet docs",
         "netuid": 33,
@@ -659,7 +658,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/33",
-        "verified_at": "2026-06-06T12:18:18.507Z"
+        "verified_at": "2026-06-07T07:06:49.223Z"
       }
     }
   ],

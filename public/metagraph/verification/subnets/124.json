@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 541,
+      "latency_ms": 566,
       "method_tested": "HEAD",
       "name": "Swarm dashboard",
       "netuid": 124,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://swarm124.com/benchmark",
-      "verified_at": "2026-06-06T12:18:44.542Z"
+      "verified_at": "2026-06-07T07:07:25.463Z"
     },
     {
       "candidate_id": "sn-124-taomarketcap-dashboard",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 124,
+      "latency_ms": 157,
       "method_tested": "HEAD",
       "name": "Swarm TaoMarketCap dashboard",
       "netuid": 124,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/124",
-      "verified_at": "2026-06-06T12:18:44.553Z"
+      "verified_at": "2026-06-07T07:07:25.476Z"
     },
     {
       "candidate_id": "sn-124-taomarketcap-source-repo",
@@ -79,7 +79,7 @@
       "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/swarm-subnet/swarm",
       "kind": "source-repo",
-      "latency_ms": 446,
+      "latency_ms": 546,
       "method_tested": "HEAD",
       "name": "Swarm source repository",
       "netuid": 124,
@@ -98,13 +98,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/124",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/124",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/124/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/124"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/swarm-subnet/swarm",
-      "verified_at": "2026-06-06T12:18:44.556Z"
+      "verified_at": "2026-06-07T07:07:25.489Z"
     },
     {
       "candidate_id": "sn-124-taomarketcap-website",
@@ -113,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 1069,
+      "latency_ms": 730,
       "method_tested": "HEAD",
       "name": "Swarm website",
       "netuid": 124,
@@ -137,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.swarm124.com/",
-      "verified_at": "2026-06-06T12:18:44.557Z"
+      "verified_at": "2026-06-07T07:07:25.533Z"
     },
     {
       "candidate_id": "sn-124-tensorplex-docs",
@@ -146,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 277,
+      "latency_ms": 344,
       "method_tested": "HEAD",
       "name": "Swarm Tensorplex subnet docs",
       "netuid": 124,
@@ -170,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/124",
-      "verified_at": "2026-06-06T12:18:44.557Z"
+      "verified_at": "2026-06-07T07:07:25.536Z"
     },
     {
       "candidate_id": "sn-124-website-common-api",
@@ -179,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 1068,
+      "latency_ms": 1117,
       "method_tested": "HEAD",
       "name": "Swarm API",
       "netuid": 124,
@@ -203,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.swarm124.com/api",
-      "verified_at": "2026-06-06T12:18:44.568Z"
+      "verified_at": "2026-06-07T07:07:25.547Z"
     },
     {
       "candidate_id": "sn-124-website-common-docs",
@@ -212,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 701,
+      "latency_ms": 1091,
       "method_tested": "HEAD",
       "name": "Swarm docs",
       "netuid": 124,
@@ -236,7 +235,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.swarm124.com/docs",
-      "verified_at": "2026-06-06T12:18:44.572Z"
+      "verified_at": "2026-06-07T07:07:25.555Z"
     },
     {
       "candidate_id": "sn-124-website-common-health",
@@ -245,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 1047,
+      "latency_ms": 1111,
       "method_tested": "HEAD",
       "name": "Swarm health endpoint",
       "netuid": 124,
@@ -269,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.swarm124.com/health",
-      "verified_at": "2026-06-06T12:18:44.621Z"
+      "verified_at": "2026-06-07T07:07:25.635Z"
     },
     {
       "candidate_id": "sn-124-website-common-openapi-json",
@@ -278,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 1000,
+      "latency_ms": 1109,
       "method_tested": "HEAD",
       "name": "Swarm OpenAPI JSON",
       "netuid": 124,
@@ -302,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.swarm124.com/openapi.json",
-      "verified_at": "2026-06-06T12:18:44.629Z"
+      "verified_at": "2026-06-07T07:07:25.641Z"
     },
     {
       "candidate_id": "sn-124-website-common-swagger",
@@ -311,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 1042,
+      "latency_ms": 1083,
       "method_tested": "HEAD",
       "name": "Swarm Swagger UI",
       "netuid": 124,
@@ -335,7 +334,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.swarm124.com/swagger",
-      "verified_at": "2026-06-06T12:18:44.677Z"
+      "verified_at": "2026-06-07T07:07:25.664Z"
     },
     {
       "candidate_id": "sn-124-website-common-swagger-json",
@@ -344,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 1065,
+      "latency_ms": 1075,
       "method_tested": "HEAD",
       "name": "Swarm Swagger JSON",
       "netuid": 124,
@@ -368,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.swarm124.com/swagger.json",
-      "verified_at": "2026-06-06T12:18:44.697Z"
+      "verified_at": "2026-06-07T07:07:25.677Z"
     }
   ],
   "schema_version": 1,

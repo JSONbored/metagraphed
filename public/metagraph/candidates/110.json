@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 216,
+        "latency_ms": 125,
         "method_tested": "HEAD",
         "name": "Green Compute TaoMarketCap dashboard",
         "netuid": 110,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/110",
-        "verified_at": "2026-06-06T12:18:40.939Z"
+        "verified_at": "2026-06-07T07:07:21.468Z"
       }
     },
     {
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 195,
+        "latency_ms": 177,
         "method_tested": "HEAD",
         "name": "Green Compute website",
         "netuid": 110,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.green-compute.com/",
-        "verified_at": "2026-06-06T12:18:41.147Z"
+        "verified_at": "2026-06-07T07:07:21.595Z"
       }
     },
     {
@@ -120,7 +120,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -138,7 +138,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 328,
+        "latency_ms": 398,
         "method_tested": "HEAD",
         "name": "Green Compute Tensorplex subnet docs",
         "netuid": 110,
@@ -162,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/110",
-        "verified_at": "2026-06-06T12:18:41.155Z"
+        "verified_at": "2026-06-07T07:07:21.601Z"
       }
     },
     {
@@ -175,7 +175,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -191,10 +191,10 @@
         "classification": "live",
         "confidence_score": 55,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/Rich-Kids-of-TAO/rkt-subnet",
         "kind": "source-repo",
-        "latency_ms": 432,
+        "latency_ms": 386,
         "method_tested": "HEAD",
         "name": "Green Compute source repository",
         "netuid": 110,
@@ -218,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/Rich-Kids-of-TAO/rkt-subnet",
-        "verified_at": "2026-06-06T12:18:41.233Z"
+        "verified_at": "2026-06-07T07:07:21.645Z"
       }
     },
     {
@@ -231,7 +231,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -249,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 66,
+        "latency_ms": 53,
         "method_tested": "GET",
         "name": "Green Compute API",
         "netuid": 110,
@@ -273,7 +273,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.green-compute.com/api",
-        "verified_at": "2026-06-06T12:18:41.236Z"
+        "verified_at": "2026-06-07T07:07:21.686Z"
       }
     },
     {
@@ -286,7 +286,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -304,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 53,
+        "latency_ms": 51,
         "method_tested": "GET",
         "name": "Green Compute docs",
         "netuid": 110,
@@ -328,7 +328,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.green-compute.com/docs",
-        "verified_at": "2026-06-06T12:18:41.239Z"
+        "verified_at": "2026-06-07T07:07:21.686Z"
       }
     },
     {
@@ -341,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -359,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 64,
+        "latency_ms": 60,
         "method_tested": "GET",
         "name": "Green Compute health endpoint",
         "netuid": 110,
@@ -383,7 +383,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.green-compute.com/health",
-        "verified_at": "2026-06-06T12:18:41.259Z"
+        "verified_at": "2026-06-07T07:07:21.688Z"
       }
     },
     {
@@ -396,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -414,7 +414,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 66,
+        "latency_ms": 49,
         "method_tested": "GET",
         "name": "Green Compute OpenAPI JSON",
         "netuid": 110,
@@ -438,7 +438,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.green-compute.com/openapi.json",
-        "verified_at": "2026-06-06T12:18:41.263Z"
+        "verified_at": "2026-06-07T07:07:21.697Z"
       }
     },
     {
@@ -451,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -469,7 +469,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 66,
+        "latency_ms": 55,
         "method_tested": "GET",
         "name": "Green Compute Swagger UI",
         "netuid": 110,
@@ -493,7 +493,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.green-compute.com/swagger",
-        "verified_at": "2026-06-06T12:18:41.303Z"
+        "verified_at": "2026-06-07T07:07:21.746Z"
       }
     },
     {
@@ -506,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -524,7 +524,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 71,
+        "latency_ms": 57,
         "method_tested": "GET",
         "name": "Green Compute Swagger JSON",
         "netuid": 110,
@@ -548,7 +548,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.green-compute.com/swagger.json",
-        "verified_at": "2026-06-06T12:18:41.332Z"
+        "verified_at": "2026-06-07T07:07:21.760Z"
       }
     },
     {
@@ -561,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -579,7 +579,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "data-artifact",
-        "latency_ms": 188,
+        "latency_ms": 223,
         "method_tested": "HEAD",
         "name": "Green Compute data artifact",
         "netuid": 110,
@@ -603,7 +603,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.green-compute.com/models?prefill=Qwen%2FQwen2.5-7B-Instruct",
-        "verified_at": "2026-06-06T12:18:41.343Z"
+        "verified_at": "2026-06-07T07:07:21.773Z"
       }
     },
     {
@@ -616,7 +616,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -634,7 +634,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "data-artifact",
-        "latency_ms": 239,
+        "latency_ms": 143,
         "method_tested": "HEAD",
         "name": "Green Compute data artifact",
         "netuid": 110,
@@ -658,7 +658,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.green-compute.com/models",
-        "verified_at": "2026-06-06T12:18:41.392Z"
+        "verified_at": "2026-06-07T07:07:21.817Z"
       }
     },
     {
@@ -671,7 +671,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -689,7 +689,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "data-artifact",
-        "latency_ms": 240,
+        "latency_ms": 234,
         "method_tested": "HEAD",
         "name": "Green Compute data artifact",
         "netuid": 110,
@@ -713,7 +713,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.green-compute.com/models?prefill=meta-llama%2FMeta-Llama-3.1-8B-Instruct",
-        "verified_at": "2026-06-06T12:18:41.434Z"
+        "verified_at": "2026-06-07T07:07:21.859Z"
       }
     },
     {
@@ -726,7 +726,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -744,7 +744,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 136,
+        "latency_ms": 155,
         "method_tested": "HEAD",
         "name": "Green Compute website page",
         "netuid": 110,
@@ -768,7 +768,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.green-compute.com/about",
-        "verified_at": "2026-06-06T12:18:41.454Z"
+        "verified_at": "2026-06-07T07:07:21.901Z"
       }
     },
     {
@@ -781,7 +781,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -799,7 +799,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 76,
+        "latency_ms": 65,
         "method_tested": "HEAD",
         "name": "Green Compute website page",
         "netuid": 110,
@@ -823,7 +823,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.green-compute.com/enterprise",
-        "verified_at": "2026-06-06T12:18:41.471Z"
+        "verified_at": "2026-06-07T07:07:21.929Z"
       }
     },
     {
@@ -836,7 +836,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -854,7 +854,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 226,
+        "latency_ms": 63,
         "method_tested": "HEAD",
         "name": "Green Compute website page",
         "netuid": 110,
@@ -878,7 +878,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.green-compute.com/providers",
-        "verified_at": "2026-06-06T12:18:41.483Z"
+        "verified_at": "2026-06-07T07:07:21.929Z"
       }
     },
     {
@@ -891,7 +891,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -909,7 +909,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 161,
+        "latency_ms": 61,
         "method_tested": "HEAD",
         "name": "Green Compute website page",
         "netuid": 110,
@@ -933,7 +933,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.green-compute.com/login",
-        "verified_at": "2026-06-06T12:18:41.487Z"
+        "verified_at": "2026-06-07T07:07:21.933Z"
       }
     },
     {
@@ -946,7 +946,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -964,7 +964,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 129,
+        "latency_ms": 148,
         "method_tested": "HEAD",
         "name": "Green Compute website page",
         "netuid": 110,
@@ -988,7 +988,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.green-compute.com/rental",
-        "verified_at": "2026-06-06T12:18:41.492Z"
+        "verified_at": "2026-06-07T07:07:21.938Z"
       }
     },
     {
@@ -1001,7 +1001,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1019,7 +1019,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 174,
+        "latency_ms": 261,
         "method_tested": "HEAD",
         "name": "Green Compute website page",
         "netuid": 110,
@@ -1043,7 +1043,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.green-compute.com/rental?gpu=rtx-4090",
-        "verified_at": "2026-06-06T12:18:41.492Z"
+        "verified_at": "2026-06-07T07:07:21.952Z"
       }
     },
     {
@@ -1056,7 +1056,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1074,7 +1074,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 157,
+        "latency_ms": 237,
         "method_tested": "HEAD",
         "name": "Green Compute website page",
         "netuid": 110,
@@ -1098,7 +1098,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.green-compute.com/rental?gpu=rtx-5090",
-        "verified_at": "2026-06-06T12:18:41.511Z"
+        "verified_at": "2026-06-07T07:07:21.960Z"
       }
     }
   ],

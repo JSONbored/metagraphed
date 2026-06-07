@@ -12,7 +12,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 94,
+      "latency_ms": 88,
       "method_tested": "GET",
       "name": "Minos API surface",
       "netuid": 107,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://api.theminos.ai/",
-      "verified_at": "2026-06-06T12:18:39.635Z"
+      "verified_at": "2026-06-07T07:07:20.021Z"
     },
     {
       "candidate_id": "sn-107-github-readme-minos-protocol-minos-subnet-subnet-api-2",
@@ -45,7 +45,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 339,
+      "latency_ms": 384,
       "method_tested": "GET",
       "name": "Minos API surface",
       "netuid": 107,
@@ -69,7 +69,7 @@
       "status": "failed",
       "status_code": 400,
       "url": "https://api.theminos.ai/reference",
-      "verified_at": "2026-06-06T12:18:39.637Z"
+      "verified_at": "2026-06-07T07:07:20.070Z"
     },
     {
       "candidate_id": "sn-107-github-readme-minos-protocol-minos-subnet-subnet-api-3",
@@ -78,7 +78,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 85,
+      "latency_ms": 92,
       "method_tested": "GET",
       "name": "Minos API surface",
       "netuid": 107,
@@ -102,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://api.theminos.ai/health",
-      "verified_at": "2026-06-06T12:18:39.650Z"
+      "verified_at": "2026-06-07T07:07:20.084Z"
     },
     {
       "candidate_id": "sn-107-github-readme-tigerinvests-com-sn107-alpha-dashboard-1",
@@ -111,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 226,
+      "latency_ms": 241,
       "method_tested": "HEAD",
       "name": "Minos dashboard",
       "netuid": 107,
@@ -135,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taostats.io/subnets/107/chart",
-      "verified_at": "2026-06-06T12:18:39.655Z"
+      "verified_at": "2026-06-07T07:07:20.111Z"
     },
     {
       "candidate_id": "sn-107-github-readme-tigerinvests-com-sn107-alpha-subnet-api-2",
@@ -144,7 +144,7 @@
       "content_type": null,
       "error": "fetch failed",
       "kind": "subnet-api",
-      "latency_ms": 544,
+      "latency_ms": 541,
       "method_tested": "GET",
       "name": "Minos API surface",
       "netuid": 107,
@@ -167,7 +167,7 @@
       "status": "failed",
       "status_code": null,
       "url": "https://your-api.com/",
-      "verified_at": "2026-06-06T12:18:39.659Z"
+      "verified_at": "2026-06-07T07:07:20.111Z"
     },
     {
       "candidate_id": "sn-107-taomarketcap-dashboard",
@@ -176,7 +176,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 142,
+      "latency_ms": 127,
       "method_tested": "HEAD",
       "name": "Minos TaoMarketCap dashboard",
       "netuid": 107,
@@ -200,17 +200,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/107",
-      "verified_at": "2026-06-06T12:18:39.660Z"
+      "verified_at": "2026-06-07T07:07:20.129Z"
     },
     {
       "candidate_id": "sn-107-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/minos-protocol/minos_subnet",
       "kind": "source-repo",
-      "latency_ms": 419,
+      "latency_ms": 537,
       "method_tested": "HEAD",
       "name": "Minos source repository",
       "netuid": 107,
@@ -234,7 +234,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/minos-protocol/minos_subnet",
-      "verified_at": "2026-06-06T12:18:39.719Z"
+      "verified_at": "2026-06-07T07:07:20.233Z"
     },
     {
       "candidate_id": "sn-107-taomarketcap-website",
@@ -243,7 +243,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 200,
+      "latency_ms": 229,
       "method_tested": "HEAD",
       "name": "Minos website",
       "netuid": 107,
@@ -267,7 +267,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://theminos.ai/",
-      "verified_at": "2026-06-06T12:18:39.767Z"
+      "verified_at": "2026-06-07T07:07:20.259Z"
     },
     {
       "candidate_id": "sn-107-tensorplex-docs",
@@ -276,7 +276,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 359,
+      "latency_ms": 436,
       "method_tested": "HEAD",
       "name": "Minos Tensorplex subnet docs",
       "netuid": 107,
@@ -300,17 +300,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/107",
-      "verified_at": "2026-06-06T12:18:39.802Z"
+      "verified_at": "2026-06-07T07:07:20.286Z"
     },
     {
       "candidate_id": "sn-107-tensorplex-source-repo-1",
       "classification": "live",
       "confidence_score": 55,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/tigerinvests-com/sn107-alpha",
       "kind": "source-repo",
-      "latency_ms": 500,
+      "latency_ms": 541,
       "method_tested": "HEAD",
       "name": "Minos source repository",
       "netuid": 107,
@@ -334,7 +334,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tigerinvests-com/sn107-alpha",
-      "verified_at": "2026-06-06T12:18:39.882Z"
+      "verified_at": "2026-06-07T07:07:20.335Z"
     },
     {
       "candidate_id": "sn-107-website-common-api",
@@ -343,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 128,
+      "latency_ms": 117,
       "method_tested": "GET",
       "name": "Minos API",
       "netuid": 107,
@@ -367,7 +367,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://theminos.ai/api",
-      "verified_at": "2026-06-06T12:18:39.944Z"
+      "verified_at": "2026-06-07T07:07:20.355Z"
     },
     {
       "candidate_id": "sn-107-website-common-docs",
@@ -376,7 +376,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 216,
+      "latency_ms": 208,
       "method_tested": "HEAD",
       "name": "Minos docs",
       "netuid": 107,
@@ -400,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://theminos.ai/docs",
-      "verified_at": "2026-06-06T12:18:39.946Z"
+      "verified_at": "2026-06-07T07:07:20.422Z"
     },
     {
       "candidate_id": "sn-107-website-common-health",
@@ -409,7 +409,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 129,
+      "latency_ms": 130,
       "method_tested": "GET",
       "name": "Minos health endpoint",
       "netuid": 107,
@@ -433,7 +433,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://theminos.ai/health",
-      "verified_at": "2026-06-06T12:18:39.967Z"
+      "verified_at": "2026-06-07T07:07:20.506Z"
     },
     {
       "candidate_id": "sn-107-website-common-openapi-json",
@@ -442,7 +442,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 145,
+      "latency_ms": 167,
       "method_tested": "GET",
       "name": "Minos OpenAPI JSON",
       "netuid": 107,
@@ -466,7 +466,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://theminos.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:39.986Z"
+      "verified_at": "2026-06-07T07:07:20.506Z"
     },
     {
       "candidate_id": "sn-107-website-common-swagger",
@@ -475,7 +475,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 138,
+      "latency_ms": 132,
       "method_tested": "GET",
       "name": "Minos Swagger UI",
       "netuid": 107,
@@ -499,7 +499,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://theminos.ai/swagger",
-      "verified_at": "2026-06-06T12:18:40.040Z"
+      "verified_at": "2026-06-07T07:07:20.520Z"
     },
     {
       "candidate_id": "sn-107-website-common-swagger-json",
@@ -508,7 +508,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 130,
+      "latency_ms": 125,
       "method_tested": "GET",
       "name": "Minos Swagger JSON",
       "netuid": 107,
@@ -532,7 +532,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://theminos.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:40.161Z"
+      "verified_at": "2026-06-07T07:07:20.632Z"
     },
     {
       "candidate_id": "sn-107-website-link-theminos-ai-docs-3",
@@ -541,7 +541,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 120,
+      "latency_ms": 234,
       "method_tested": "HEAD",
       "name": "Minos docs",
       "netuid": 107,
@@ -565,7 +565,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://theminos.ai/whitepaper",
-      "verified_at": "2026-06-06T12:18:40.162Z"
+      "verified_at": "2026-06-07T07:07:20.656Z"
     },
     {
       "candidate_id": "sn-107-website-link-theminos-ai-docs-4",
@@ -574,7 +574,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 522,
+      "latency_ms": 551,
       "method_tested": "HEAD",
       "name": "Minos docs",
       "netuid": 107,
@@ -598,7 +598,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.theminos.ai/",
-      "verified_at": "2026-06-06T12:18:40.208Z"
+      "verified_at": "2026-06-07T07:07:20.679Z"
     },
     {
       "candidate_id": "sn-107-website-link-theminos-ai-website-1",
@@ -607,7 +607,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 114,
+      "latency_ms": 119,
       "method_tested": "HEAD",
       "name": "Minos website page",
       "netuid": 107,
@@ -631,7 +631,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://theminos.ai/about",
-      "verified_at": "2026-06-06T12:18:40.220Z"
+      "verified_at": "2026-06-07T07:07:20.725Z"
     },
     {
       "candidate_id": "sn-107-website-link-theminos-ai-website-2",
@@ -640,7 +640,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 196,
+      "latency_ms": 124,
       "method_tested": "HEAD",
       "name": "Minos website page",
       "netuid": 107,
@@ -664,7 +664,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://theminos.ai/roadmap",
-      "verified_at": "2026-06-06T12:18:40.278Z"
+      "verified_at": "2026-06-07T07:07:20.773Z"
     }
   ],
   "schema_version": 1,

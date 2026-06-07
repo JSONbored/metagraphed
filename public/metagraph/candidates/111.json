@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 126,
+        "latency_ms": 121,
         "method_tested": "HEAD",
         "name": "oneoneone API surface",
         "netuid": 111,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://apify.com/",
-        "verified_at": "2026-06-06T12:18:41.523Z"
+        "verified_at": "2026-06-07T07:07:21.965Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -83,7 +83,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 347,
+        "latency_ms": 282,
         "method_tested": "HEAD",
         "name": "oneoneone API surface",
         "netuid": 111,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://chutes.ai/app/api",
-        "verified_at": "2026-06-06T12:18:41.531Z"
+        "verified_at": "2026-06-07T07:07:21.977Z"
       }
     },
     {
@@ -120,7 +120,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -138,7 +138,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 158,
+        "latency_ms": 164,
         "method_tested": "HEAD",
         "name": "oneoneone API surface",
         "netuid": 111,
@@ -162,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://console.desearch.ai/api-keys",
-        "verified_at": "2026-06-06T12:18:41.531Z"
+        "verified_at": "2026-06-07T07:07:21.978Z"
       }
     },
     {
@@ -175,7 +175,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -193,7 +193,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 734,
+        "latency_ms": 522,
         "method_tested": "GET",
         "name": "oneoneone API surface",
         "netuid": 111,
@@ -217,7 +217,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://app.macrocosmos.ai/account?tab=api-keys",
-        "verified_at": "2026-06-06T12:18:41.535Z"
+        "verified_at": "2026-06-07T07:07:21.989Z"
       }
     },
     {
@@ -248,7 +248,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 138,
+        "latency_ms": 146,
         "method_tested": "HEAD",
         "name": "oneoneone TaoMarketCap dashboard",
         "netuid": 111,
@@ -272,7 +272,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/111",
-        "verified_at": "2026-06-06T12:18:41.547Z"
+        "verified_at": "2026-06-07T07:07:21.998Z"
       }
     },
     {
@@ -291,8 +291,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/111",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/111",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/111/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/111"
       ],
       "state": "schema-valid",
       "subnet_name": "oneoneone",
@@ -302,10 +301,10 @@
         "classification": "live",
         "confidence_score": 59,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/oneoneone-io/subnet-111",
         "kind": "source-repo",
-        "latency_ms": 525,
+        "latency_ms": 424,
         "method_tested": "HEAD",
         "name": "oneoneone source repository",
         "netuid": 111,
@@ -324,13 +323,12 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/111",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/111",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/111/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/111"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/oneoneone-io/subnet-111",
-        "verified_at": "2026-06-06T12:18:41.563Z"
+        "verified_at": "2026-06-07T07:07:22.001Z"
       }
     },
     {
@@ -343,7 +341,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -361,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 311,
+        "latency_ms": 379,
         "method_tested": "HEAD",
         "name": "oneoneone Tensorplex subnet docs",
         "netuid": 111,
@@ -385,7 +383,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/111",
-        "verified_at": "2026-06-06T12:18:41.583Z"
+        "verified_at": "2026-06-07T07:07:22.001Z"
       }
     }
   ],

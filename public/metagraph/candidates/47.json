@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "data-artifact",
-        "latency_ms": 151,
+        "latency_ms": 193,
         "method_tested": "HEAD",
         "name": "EvolAI data artifact",
         "netuid": 47,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://huggingface.co/datasets/evolai/universal_qa",
-        "verified_at": "2026-06-06T12:18:21.378Z"
+        "verified_at": "2026-06-07T07:06:52.656Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 222,
+        "latency_ms": 242,
         "method_tested": "HEAD",
         "name": "EvolAI dashboard",
         "netuid": 47,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taostats.io/subnets/47/chart",
-        "verified_at": "2026-06-06T12:18:21.414Z"
+        "verified_at": "2026-06-07T07:06:52.761Z"
       }
     },
     {
@@ -138,7 +138,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 215,
+        "latency_ms": 140,
         "method_tested": "HEAD",
         "name": "EvolAI TaoMarketCap dashboard",
         "netuid": 47,
@@ -162,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/47",
-        "verified_at": "2026-06-06T12:18:21.450Z"
+        "verified_at": "2026-06-07T07:06:52.836Z"
       }
     },
     {
@@ -194,7 +194,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/openevolai/evolai",
         "kind": "source-repo",
-        "latency_ms": 676,
+        "latency_ms": 939,
         "method_tested": "HEAD",
         "name": "EvolAI source repository",
         "netuid": 47,
@@ -218,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/openevolai/evolai.git",
-        "verified_at": "2026-06-06T12:18:21.462Z"
+        "verified_at": "2026-06-07T07:06:52.857Z"
       }
     },
     {
@@ -231,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -249,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 316,
+        "latency_ms": 682,
         "method_tested": "HEAD",
         "name": "EvolAI Tensorplex subnet docs",
         "netuid": 47,
@@ -273,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/47",
-        "verified_at": "2026-06-06T12:18:21.502Z"
+        "verified_at": "2026-06-07T07:06:52.888Z"
       }
     },
     {
@@ -286,7 +286,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -305,7 +305,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/reboot-org/reboot-subnet",
         "kind": "source-repo",
-        "latency_ms": 549,
+        "latency_ms": 769,
         "method_tested": "HEAD",
         "name": "EvolAI source repository",
         "netuid": 47,
@@ -329,7 +329,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/reboot-org/reboot-subnet",
-        "verified_at": "2026-06-06T12:18:21.529Z"
+        "verified_at": "2026-06-07T07:06:52.944Z"
       }
     }
   ],

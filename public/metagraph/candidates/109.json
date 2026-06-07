@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 130,
+        "latency_ms": 139,
         "method_tested": "HEAD",
         "name": "Academia TaoMarketCap dashboard",
         "netuid": 109,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/109",
-        "verified_at": "2026-06-06T12:18:40.771Z"
+        "verified_at": "2026-06-07T07:07:21.243Z"
       }
     },
     {
@@ -81,10 +81,10 @@
         "classification": "live",
         "confidence_score": 59,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/fx-integral/academia",
         "kind": "source-repo",
-        "latency_ms": 502,
+        "latency_ms": 481,
         "method_tested": "HEAD",
         "name": "Academia source repository",
         "netuid": 109,
@@ -108,7 +108,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/fx-integral/academia",
-        "verified_at": "2026-06-06T12:18:40.851Z"
+        "verified_at": "2026-06-07T07:07:21.296Z"
       }
     },
     {
@@ -121,7 +121,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -139,7 +139,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 334,
+        "latency_ms": 300,
         "method_tested": "HEAD",
         "name": "Academia Tensorplex subnet docs",
         "netuid": 109,
@@ -163,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/109",
-        "verified_at": "2026-06-06T12:18:40.902Z"
+        "verified_at": "2026-06-07T07:07:21.384Z"
       }
     }
   ],

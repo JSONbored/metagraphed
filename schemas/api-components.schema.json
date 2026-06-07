@@ -25,13 +25,21 @@
               },
               "snapshot": {
                 "additionalProperties": true,
-                "type": ["object", "null"]
+                "type": [
+                  "object",
+                  "null"
+                ]
               },
               "subnet": {
                 "type": "string"
               }
             },
-            "required": ["netuid", "subnet", "slug", "extensions"],
+            "required": [
+              "netuid",
+              "subnet",
+              "slug",
+              "extensions"
+            ],
             "type": "object"
           }
         ]
@@ -96,7 +104,10 @@
             "type": "object"
           }
         },
-        "required": ["name", "schema"],
+        "required": [
+          "name",
+          "schema"
+        ],
         "type": "object"
       },
       "ApiRoute": {
@@ -116,7 +127,9 @@
             "type": "string"
           },
           "method": {
-            "enum": ["GET"]
+            "enum": [
+              "GET"
+            ]
           },
           "path": {
             "pattern": "^/api/v1",
@@ -126,7 +139,10 @@
             "const": true
           },
           "query_collection": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "query_filter_names": {
             "items": {
@@ -179,7 +195,10 @@
             "const": 1
           }
         },
-        "required": ["schema_version", "generated_at"],
+        "required": [
+          "schema_version",
+          "generated_at"
+        ],
         "type": "object"
       },
       "ArtifactContractEntry": {
@@ -203,10 +222,18 @@
           },
           "schema_ref": {
             "pattern": "^#/components/schemas/[A-Za-z0-9]+$",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": ["contract_version", "id", "path", "schema_ref"],
+        "required": [
+          "contract_version",
+          "id",
+          "path",
+          "schema_ref"
+        ],
         "type": "object"
       },
       "ArtifactDiffEntry": {
@@ -224,10 +251,15 @@
                 "type": "string"
               },
               "previous_hash": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
-            "required": ["path"],
+            "required": [
+              "path"
+            ],
             "type": "object"
           }
         ]
@@ -247,7 +279,11 @@
             "type": "integer"
           },
           "status": {
-            "enum": ["ok", "warn", "fail"]
+            "enum": [
+              "ok",
+              "warn",
+              "fail"
+            ]
           },
           "warn_bytes": {
             "minimum": 0,
@@ -321,7 +357,11 @@
         ]
       },
       "CacheProfile": {
-        "enum": ["short", "standard", "static"]
+        "enum": [
+          "short",
+          "standard",
+          "static"
+        ]
       },
       "CandidatesArtifact": {
         "allOf": [
@@ -338,7 +378,9 @@
                 "type": "array"
               }
             },
-            "required": ["candidates"],
+            "required": [
+              "candidates"
+            ],
             "type": "object"
           }
         ]
@@ -360,7 +402,11 @@
             "type": "boolean"
           },
           "confidence": {
-            "enum": ["low", "medium", "high"]
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
           },
           "id": {
             "type": "string"
@@ -411,7 +457,10 @@
             "$ref": "#/components/schemas/CandidateState"
           },
           "subnet_name": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "url": {
             "format": "uri",
@@ -473,7 +522,11 @@
                     "type": "array"
                   }
                 },
-                "required": ["added", "modified", "removed"],
+                "required": [
+                  "added",
+                  "modified",
+                  "removed"
+                ],
                 "type": "object"
               },
               "source": {
@@ -502,7 +555,11 @@
                     "type": "array"
                   }
                 },
-                "required": ["added", "removed", "renamed"],
+                "required": [
+                  "added",
+                  "removed",
+                  "renamed"
+                ],
                 "type": "object"
               },
               "summary": {
@@ -558,7 +615,12 @@
                 "type": "object"
               }
             },
-            "required": ["artifacts", "source", "subnets", "summary"],
+            "required": [
+              "artifacts",
+              "source",
+              "subnets",
+              "summary"
+            ],
             "type": "object"
           }
         ]
@@ -717,7 +779,11 @@
                     "type": "string"
                   }
                 },
-                "required": ["candidates", "native", "overlays"],
+                "required": [
+                  "candidates",
+                  "native",
+                  "overlays"
+                ],
                 "type": "object"
               },
               "surface_count": {
@@ -763,11 +829,19 @@
             "type": "integer"
           }
         },
-        "required": ["after", "before", "delta"],
+        "required": [
+          "after",
+          "before",
+          "delta"
+        ],
         "type": "object"
       },
       "CoverageLevel": {
-        "enum": ["native-only", "manifested", "probed"]
+        "enum": [
+          "native-only",
+          "manifested",
+          "probed"
+        ]
       },
       "CurationArtifact": {
         "allOf": [
@@ -784,7 +858,9 @@
                 "type": "array"
               }
             },
-            "required": ["curation"],
+            "required": [
+              "curation"
+            ],
             "type": "object"
           }
         ]
@@ -861,17 +937,26 @@
             "$ref": "#/components/schemas/ReviewState"
           },
           "reviewed_at": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "source_count": {
             "minimum": 0,
             "type": "integer"
           },
           "verified_at": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": ["level", "review_state"],
+        "required": [
+          "level",
+          "review_state"
+        ],
         "type": "object"
       },
       "EndpointLayer": {
@@ -889,20 +974,34 @@
             "type": "boolean"
           },
           "expect": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "method": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "source": {
             "type": "string"
           },
           "timeout_ms": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
-        "required": ["enabled", "method", "expect", "source"],
+        "required": [
+          "enabled",
+          "method",
+          "expect",
+          "source"
+        ],
         "type": "object"
       },
       "EndpointPoolsArtifact": {
@@ -922,7 +1021,10 @@
         "additionalProperties": false,
         "properties": {
           "archive_support": {
-            "type": ["boolean", "null"]
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "auth_required": {
             "type": "boolean"
@@ -937,7 +1039,10 @@
             "$ref": "#/components/schemas/Classification"
           },
           "error": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "id": {
             "type": "string"
@@ -946,15 +1051,24 @@
             "$ref": "#/components/schemas/SurfaceKind"
           },
           "last_checked": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "latency_ms": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "latest_block": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "layer": {
             "$ref": "#/components/schemas/EndpointLayer"
@@ -979,13 +1093,19 @@
             ]
           },
           "method_tested": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "monitoring_policy": {
             "$ref": "#/components/schemas/EndpointMonitoringPolicy"
           },
           "monitoring_status": {
-            "enum": ["monitored", "not_monitored"]
+            "enum": [
+              "monitored",
+              "not_monitored"
+            ]
           },
           "netuid": {
             "minimum": 0,
@@ -1010,11 +1130,17 @@
             "$ref": "#/components/schemas/EndpointPublicationState"
           },
           "rate_limit_notes": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "rpc_method_count": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "score": {
             "minimum": 0,
@@ -1082,7 +1208,10 @@
                 "$ref": "#/components/schemas/EndpointSummary"
               }
             },
-            "required": ["summary", "endpoints"],
+            "required": [
+              "summary",
+              "endpoints"
+            ],
             "type": "object"
           }
         ]
@@ -1141,7 +1270,10 @@
                 "type": "string"
               }
             },
-            "required": ["code", "message"],
+            "required": [
+              "code",
+              "message"
+            ],
             "type": "object"
           },
           "meta": {
@@ -1154,7 +1286,13 @@
             "const": 1
           }
         },
-        "required": ["ok", "schema_version", "data", "error", "meta"],
+        "required": [
+          "ok",
+          "schema_version",
+          "data",
+          "error",
+          "meta"
+        ],
         "type": "object"
       },
       "EvidenceClaim": {
@@ -1164,7 +1302,11 @@
             "type": "string"
           },
           "confidence": {
-            "enum": ["low", "medium", "high"]
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
           },
           "limits": {
             "type": "string"
@@ -1215,7 +1357,9 @@
                 "type": "array"
               }
             },
-            "required": ["claims"],
+            "required": [
+              "claims"
+            ],
             "type": "object"
           }
         ]
@@ -1266,7 +1410,10 @@
                 "type": "object"
               }
             },
-            "required": ["sources", "summary"],
+            "required": [
+              "sources",
+              "summary"
+            ],
             "type": "object"
           }
         ]
@@ -1285,13 +1432,28 @@
             "type": "integer"
           },
           "status": {
-            "enum": ["captured", "current", "degraded", "missing", "stale"]
+            "enum": [
+              "captured",
+              "current",
+              "degraded",
+              "missing",
+              "stale"
+            ]
           },
           "timestamp": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": ["id", "path", "stale_after_hours", "status", "timestamp"],
+        "required": [
+          "id",
+          "path",
+          "stale_after_hours",
+          "status",
+          "timestamp"
+        ],
         "type": "object"
       },
       "Gaps": {
@@ -1316,7 +1478,11 @@
             "type": "array"
           }
         },
-        "required": ["missing_kinds", "supported_kinds", "gap_notes"],
+        "required": [
+          "missing_kinds",
+          "supported_kinds",
+          "gap_notes"
+        ],
         "type": "object"
       },
       "GapsArtifact": {
@@ -1334,7 +1500,9 @@
                 "type": "array"
               }
             },
-            "required": ["gaps"],
+            "required": [
+              "gaps"
+            ],
             "type": "object"
           }
         ]
@@ -1433,10 +1601,16 @@
                 "type": "string"
               },
               "probe_finished_at": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "probe_started_at": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "source": {
                 "type": "string"
@@ -1452,7 +1626,11 @@
                 "type": "array"
               }
             },
-            "required": ["date", "summary", "surfaces"],
+            "required": [
+              "date",
+              "summary",
+              "surfaces"
+            ],
             "type": "object"
           }
         ]
@@ -1464,20 +1642,32 @@
             "$ref": "#/components/schemas/Classification"
           },
           "error_class": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "kind": {
             "$ref": "#/components/schemas/SurfaceKind"
           },
           "last_checked": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "last_ok": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "latency_ms": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "netuid": {
             "minimum": 0,
@@ -1490,13 +1680,19 @@
             "$ref": "#/components/schemas/HealthStatus"
           },
           "status_code": {
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "surface_id": {
             "type": "string"
           },
           "verified_at": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1528,13 +1724,21 @@
                 "type": "array"
               }
             },
-            "required": ["summary", "surfaces"],
+            "required": [
+              "summary",
+              "surfaces"
+            ],
             "type": "object"
           }
         ]
       },
       "HealthStatus": {
-        "enum": ["ok", "degraded", "failed", "unknown"]
+        "enum": [
+          "ok",
+          "degraded",
+          "failed",
+          "unknown"
+        ]
       },
       "HealthSubnetArtifact": {
         "allOf": [
@@ -1564,7 +1768,13 @@
                 "type": "array"
               }
             },
-            "required": ["netuid", "slug", "name", "summary", "surfaces"],
+            "required": [
+              "netuid",
+              "slug",
+              "name",
+              "summary",
+              "surfaces"
+            ],
             "type": "object"
           }
         ]
@@ -1574,7 +1784,10 @@
         "properties": {
           "avg_latency_ms": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "degraded_count": {
             "minimum": 0,
@@ -1585,10 +1798,16 @@
             "type": "integer"
           },
           "last_checked": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "last_ok": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "name": {
             "type": "string"
@@ -1648,7 +1867,10 @@
                 "type": "array"
               }
             },
-            "required": ["global", "subnets"],
+            "required": [
+              "global",
+              "subnets"
+            ],
             "type": "object"
           }
         ]
@@ -1657,7 +1879,10 @@
         "additionalProperties": false,
         "properties": {
           "archive_support": {
-            "type": ["boolean", "null"]
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "auth_required": {
             "type": "boolean"
@@ -1666,30 +1891,51 @@
             "$ref": "#/components/schemas/Classification"
           },
           "content_type": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "error": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "error_class": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "kind": {
             "$ref": "#/components/schemas/SurfaceKind"
           },
           "last_checked": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "last_ok": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "latency_ms": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "latest_block": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "method_results": {
             "additionalProperties": {
@@ -1735,17 +1981,26 @@
           },
           "redirect_target": {
             "format": "uri",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "rpc_method_count": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"
           },
           "status_code": {
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "subnet_name": {
             "type": "string"
@@ -1759,17 +2014,29 @@
           "uptime_sample_ratio": {
             "maximum": 1,
             "minimum": 0,
-            "type": ["number", "null"]
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "url": {
             "format": "uri",
             "type": "string"
           },
           "verified_at": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": ["surface_id", "netuid", "status", "classification", "url"],
+        "required": [
+          "surface_id",
+          "netuid",
+          "status",
+          "classification",
+          "url"
+        ],
         "type": "object"
       },
       "JsonObject": {
@@ -1806,7 +2073,12 @@
             "type": "object"
           }
         },
-        "required": ["openapi", "info", "paths", "components"],
+        "required": [
+          "openapi",
+          "info",
+          "paths",
+          "components"
+        ],
         "type": "object"
       },
       "PaginationMeta": {
@@ -1825,17 +2097,26 @@
           },
           "next_cursor": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "order": {
-            "enum": ["asc", "desc"]
+            "enum": [
+              "asc",
+              "desc"
+            ]
           },
           "returned": {
             "minimum": 0,
             "type": "integer"
           },
           "sort": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "total": {
             "minimum": 0,
@@ -1859,10 +2140,20 @@
             "type": "boolean"
           },
           "expect": {
-            "enum": ["json", "html", "sse", "any"]
+            "enum": [
+              "json",
+              "html",
+              "sse",
+              "any"
+            ]
           },
           "method": {
-            "enum": ["GET", "HEAD", "JSON-RPC", "WSS-RPC"]
+            "enum": [
+              "GET",
+              "HEAD",
+              "JSON-RPC",
+              "WSS-RPC"
+            ]
           },
           "timeout_ms": {
             "maximum": 30000,
@@ -1870,7 +2161,11 @@
             "type": "integer"
           }
         },
-        "required": ["enabled", "method", "expect"],
+        "required": [
+          "enabled",
+          "method",
+          "expect"
+        ],
         "type": "object"
       },
       "Provider": {
@@ -1942,7 +2237,9 @@
                 "$ref": "#/components/schemas/Provider"
               }
             },
-            "required": ["provider"],
+            "required": [
+              "provider"
+            ],
             "type": "object"
           }
         ]
@@ -1969,7 +2266,11 @@
                 "$ref": "#/components/schemas/EndpointSummary"
               }
             },
-            "required": ["provider", "summary", "endpoints"],
+            "required": [
+              "provider",
+              "summary",
+              "endpoints"
+            ],
             "type": "object"
           }
         ]
@@ -1998,7 +2299,9 @@
                 "type": "array"
               }
             },
-            "required": ["providers"],
+            "required": [
+              "providers"
+            ],
             "type": "object"
           }
         ]
@@ -2094,7 +2397,12 @@
           },
           "fields": {
             "items": {
-              "enum": ["ok", "data", "meta", "error"]
+              "enum": [
+                "ok",
+                "data",
+                "meta",
+                "error"
+              ]
             },
             "type": "array"
           },
@@ -2130,7 +2438,10 @@
             "type": "string"
           },
           "generated_at": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "pagination": {
             "$ref": "#/components/schemas/PaginationMeta"
@@ -2139,7 +2450,9 @@
             "type": "string"
           }
         },
-        "required": ["contract_version"],
+        "required": [
+          "contract_version"
+        ],
         "type": "object"
       },
       "ReviewAdapterCandidate": {
@@ -2204,7 +2517,9 @@
                 "type": "array"
               }
             },
-            "required": ["candidates"],
+            "required": [
+              "candidates"
+            ],
             "type": "object"
           }
         ]
@@ -2282,10 +2597,19 @@
         "additionalProperties": false,
         "properties": {
           "confidence": {
-            "enum": ["low", "medium", "high"]
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
           },
           "decision": {
-            "enum": ["maintainer-reviewed", "needs-review", "rejected", "stale"]
+            "enum": [
+              "maintainer-reviewed",
+              "needs-review",
+              "rejected",
+              "stale"
+            ]
           },
           "netuid": {
             "minimum": 0,
@@ -2334,7 +2658,9 @@
                 "type": "array"
               }
             },
-            "required": ["decisions"],
+            "required": [
+              "decisions"
+            ],
             "type": "object"
           }
         ]
@@ -2354,7 +2680,9 @@
                 "type": "array"
               }
             },
-            "required": ["priorities"],
+            "required": [
+              "priorities"
+            ],
             "type": "object"
           }
         ]
@@ -2435,7 +2763,10 @@
         "additionalProperties": false,
         "properties": {
           "archive_support": {
-            "type": ["boolean", "null"]
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "auth_required": {
             "type": "boolean"
@@ -2450,24 +2781,39 @@
             "$ref": "#/components/schemas/Classification"
           },
           "error": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "id": {
             "type": "string"
           },
           "kind": {
-            "enum": ["subtensor-rpc", "subtensor-wss"]
+            "enum": [
+              "subtensor-rpc",
+              "subtensor-wss"
+            ]
           },
           "last_checked": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "latency_ms": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "latest_block": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "method_tested": {
             "type": "string"
@@ -2505,11 +2851,17 @@
             "type": "boolean"
           },
           "rate_limit_notes": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "rpc_method_count": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "source_urls": {
             "items": {
@@ -2563,7 +2915,10 @@
                 "type": "object"
               }
             },
-            "required": ["summary", "endpoints"],
+            "required": [
+              "summary",
+              "endpoints"
+            ],
             "type": "object"
           }
         ]
@@ -2572,7 +2927,10 @@
         "additionalProperties": false,
         "properties": {
           "best_endpoint_id": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "eligible_count": {
             "minimum": 0,
@@ -2608,7 +2966,10 @@
         "additionalProperties": false,
         "properties": {
           "archive_support": {
-            "type": ["boolean", "null"]
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "id": {
             "type": "string"
@@ -2618,11 +2979,17 @@
           },
           "latency_ms": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "latest_block": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "layer": {
             "$ref": "#/components/schemas/EndpointLayer"
@@ -2673,7 +3040,9 @@
                 "type": "array"
               }
             },
-            "required": ["pools"],
+            "required": [
+              "pools"
+            ],
             "type": "object"
           }
         ]
@@ -2737,21 +3106,33 @@
             ]
           },
           "error": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "hash": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "netuid": {
             "minimum": 0,
             "type": "integer"
           },
           "previous_hash": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "schema_url": {
             "format": "uri",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "status": {
             "enum": [
@@ -2802,7 +3183,10 @@
                 "type": "string"
               }
             },
-            "required": ["schemas", "source"],
+            "required": [
+              "schemas",
+              "source"
+            ],
             "type": "object"
           }
         ]
@@ -2811,7 +3195,10 @@
         "additionalProperties": false,
         "properties": {
           "content_type": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "drift_status": {
             "enum": [
@@ -2823,31 +3210,51 @@
             ]
           },
           "error": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "hash": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "netuid": {
             "minimum": 0,
             "type": "integer"
           },
           "path": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "previous_hash": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "schema_url": {
             "format": "uri",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "snapshot": {
             "additionalProperties": true,
             "type": "object"
           },
           "status": {
-            "enum": ["captured", "error", "not-found", "unsafe"]
+            "enum": [
+              "captured",
+              "error",
+              "not-found",
+              "unsafe"
+            ]
           },
           "subnet_slug": {
             "type": "string"
@@ -2860,7 +3267,12 @@
             "type": "string"
           }
         },
-        "required": ["drift_status", "schema_url", "status", "surface_id"],
+        "required": [
+          "drift_status",
+          "schema_url",
+          "status",
+          "surface_id"
+        ],
         "type": "object"
       },
       "SearchArtifact": {
@@ -2882,7 +3294,9 @@
                 "type": "array"
               }
             },
-            "required": ["documents"],
+            "required": [
+              "documents"
+            ],
             "type": "object"
           }
         ]
@@ -2916,13 +3330,23 @@
             "type": "array"
           },
           "type": {
-            "enum": ["subnet", "surface", "provider"]
+            "enum": [
+              "subnet",
+              "surface",
+              "provider"
+            ]
           },
           "url": {
             "type": "string"
           }
         },
-        "required": ["id", "type", "title", "artifact_path", "tokens"],
+        "required": [
+          "id",
+          "type",
+          "title",
+          "artifact_path",
+          "tokens"
+        ],
         "type": "object"
       },
       "SourceHealthArtifact": {
@@ -2980,7 +3404,11 @@
                 "type": "object"
               }
             },
-            "required": ["providers", "source", "summary"],
+            "required": [
+              "providers",
+              "source",
+              "summary"
+            ],
             "type": "object"
           }
         ]
@@ -3131,7 +3559,10 @@
                 "type": "object"
               }
             },
-            "required": ["sources", "summary"],
+            "required": [
+              "sources",
+              "summary"
+            ],
             "type": "object"
           }
         ]
@@ -3175,11 +3606,17 @@
           },
           "dashboard_url": {
             "format": "uri",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "docs_url": {
             "format": "uri",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "gap_count": {
             "minimum": 0,
@@ -3203,20 +3640,33 @@
             "type": "string"
           },
           "native_name": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "native_name_quality": {
-            "enum": ["chain", "placeholder", "empty"]
+            "enum": [
+              "chain",
+              "placeholder",
+              "empty"
+            ]
           },
           "native_slug": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "netuid": {
             "minimum": 0,
             "type": "integer"
           },
           "notes": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "participant_count": {
             "minimum": 0,
@@ -3239,7 +3689,10 @@
           },
           "source_repo": {
             "format": "uri",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "status": {
             "$ref": "#/components/schemas/SubnetStatus"
@@ -3252,7 +3705,10 @@
             "type": "integer"
           },
           "symbol": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "tempo": {
             "minimum": 0,
@@ -3260,7 +3716,10 @@
           },
           "website_url": {
             "format": "uri",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -3324,7 +3783,12 @@
                 "type": "array"
               }
             },
-            "required": ["subnet", "surfaces", "candidate_surfaces", "gaps"],
+            "required": [
+              "subnet",
+              "surfaces",
+              "candidate_surfaces",
+              "gaps"
+            ],
             "type": "object"
           }
         ]
@@ -3357,7 +3821,11 @@
                 "$ref": "#/components/schemas/EndpointSummary"
               }
             },
-            "required": ["netuid", "summary", "endpoints"],
+            "required": [
+              "netuid",
+              "summary",
+              "endpoints"
+            ],
             "type": "object"
           }
         ]
@@ -3387,11 +3855,17 @@
           },
           "dashboard_url": {
             "format": "uri",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "docs_url": {
             "format": "uri",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "gap_count": {
             "minimum": 0,
@@ -3405,10 +3879,17 @@
             "type": "string"
           },
           "native_name": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "native_name_quality": {
-            "enum": ["chain", "placeholder", "empty"]
+            "enum": [
+              "chain",
+              "placeholder",
+              "empty"
+            ]
           },
           "netuid": {
             "minimum": 0,
@@ -3431,7 +3912,10 @@
           },
           "source_repo": {
             "format": "uri",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "status": {
             "$ref": "#/components/schemas/SubnetStatus"
@@ -3444,7 +3928,10 @@
             "type": "integer"
           },
           "symbol": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "tempo": {
             "minimum": 0,
@@ -3452,7 +3939,10 @@
           },
           "website_url": {
             "format": "uri",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -3489,19 +3979,30 @@
                 "type": "array"
               }
             },
-            "required": ["network", "source", "subnets"],
+            "required": [
+              "network",
+              "source",
+              "subnets"
+            ],
             "type": "object"
           }
         ]
       },
       "SubnetStatus": {
-        "enum": ["active", "inactive", "unknown"]
+        "enum": [
+          "active",
+          "inactive",
+          "unknown"
+        ]
       },
       "SubnetSurfacesArtifact": {
         "$ref": "#/components/schemas/SurfacesArtifact"
       },
       "SubnetType": {
-        "enum": ["root", "application"]
+        "enum": [
+          "root",
+          "application"
+        ]
       },
       "SubnetVerificationArtifact": {
         "$ref": "#/components/schemas/VerificationArtifact"
@@ -3523,7 +4024,12 @@
             "const": 1
           }
         },
-        "required": ["ok", "schema_version", "data", "meta"],
+        "required": [
+          "ok",
+          "schema_version",
+          "data",
+          "meta"
+        ],
         "type": "object"
       },
       "Surface": {
@@ -3600,7 +4106,11 @@
             "type": "string"
           },
           "schema_status": {
-            "enum": ["machine-readable", "ui-only", "not-captured"]
+            "enum": [
+              "machine-readable",
+              "ui-only",
+              "not-captured"
+            ]
           },
           "schema_url": {
             "format": "uri",
@@ -3641,37 +4151,61 @@
                 "type": "integer"
               },
               "content_type": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "default_branch": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "error": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "github_api_url": {
                 "format": "uri",
                 "type": "string"
               },
               "homepage": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "last_push_at": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "latency_ms": {
                 "minimum": 0,
-                "type": ["integer", "null"]
+                "type": [
+                  "integer",
+                  "null"
+                ]
               },
               "method_tested": {
                 "type": "string"
               },
               "redirect_target": {
                 "format": "uri",
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "status_code": {
-                "type": ["integer", "null"]
+                "type": [
+                  "integer",
+                  "null"
+                ]
               },
               "topics": {
                 "items": {
@@ -3731,7 +4265,9 @@
                 "type": "array"
               }
             },
-            "required": ["surfaces"],
+            "required": [
+              "surfaces"
+            ],
             "type": "object"
           }
         ]
@@ -3759,7 +4295,10 @@
                 "type": "object"
               }
             },
-            "required": ["candidate_count", "results"],
+            "required": [
+              "candidate_count",
+              "results"
+            ],
             "type": "object"
           }
         ]
@@ -3782,16 +4321,28 @@
             "type": "integer"
           },
           "content_type": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "default_branch": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "description": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "error": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "github_api_status": {
             "type": "integer"
@@ -3801,7 +4352,10 @@
             "type": "string"
           },
           "homepage": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "html_url": {
             "format": "uri",
@@ -3811,11 +4365,17 @@
             "$ref": "#/components/schemas/SurfaceKind"
           },
           "last_push_at": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "latency_ms": {
             "minimum": 0,
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "method_tested": {
             "type": "string"
@@ -3868,7 +4428,10 @@
           },
           "redirect_target": {
             "format": "uri",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "source_tier": {
             "$ref": "#/components/schemas/SourceTier"
@@ -3891,7 +4454,10 @@
             "$ref": "#/components/schemas/HealthStatus"
           },
           "status_code": {
-            "type": ["integer", "null"]
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "topics": {
             "items": {
@@ -3928,11 +4494,15 @@
           "type": "object"
         }
       },
-      "required": ["schemas"],
+      "required": [
+        "schemas"
+      ],
       "type": "object"
     }
   },
-  "required": ["components"],
+  "required": [
+    "components"
+  ],
   "title": "Metagraphed API Component Schemas",
   "type": "object"
 }

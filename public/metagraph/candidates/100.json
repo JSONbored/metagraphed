@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 139,
+        "latency_ms": 142,
         "method_tested": "HEAD",
         "name": "Plaτform TaoMarketCap dashboard",
         "netuid": 100,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/100",
-        "verified_at": "2026-06-06T12:18:37.947Z"
+        "verified_at": "2026-06-07T07:07:17.375Z"
       }
     },
     {
@@ -81,10 +81,10 @@
         "classification": "live",
         "confidence_score": 59,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/PlatformNetwork/platform",
         "kind": "source-repo",
-        "latency_ms": 557,
+        "latency_ms": 494,
         "method_tested": "HEAD",
         "name": "Plaτform source repository",
         "netuid": 100,
@@ -108,7 +108,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/PlatformNetwork/platform",
-        "verified_at": "2026-06-06T12:18:37.963Z"
+        "verified_at": "2026-06-07T07:07:17.382Z"
       }
     },
     {
@@ -139,7 +139,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 422,
+        "latency_ms": 305,
         "method_tested": "HEAD",
         "name": "Plaτform website",
         "netuid": 100,
@@ -163,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://platform.network/",
-        "verified_at": "2026-06-06T12:18:37.969Z"
+        "verified_at": "2026-06-07T07:07:17.390Z"
       }
     },
     {
@@ -176,7 +176,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 342,
+        "latency_ms": 354,
         "method_tested": "HEAD",
         "name": "Plaτform Tensorplex subnet docs",
         "netuid": 100,
@@ -218,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/100",
-        "verified_at": "2026-06-06T12:18:37.976Z"
+        "verified_at": "2026-06-07T07:07:17.393Z"
       }
     },
     {
@@ -231,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -247,10 +247,10 @@
         "classification": "redirected",
         "confidence_score": 50,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/CortexLM/platform",
         "kind": "source-repo",
-        "latency_ms": 514,
+        "latency_ms": 477,
         "method_tested": "HEAD",
         "name": "Plaτform source repository",
         "netuid": 100,
@@ -274,7 +274,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/CortexLM/platform",
-        "verified_at": "2026-06-06T12:18:38.002Z"
+        "verified_at": "2026-06-07T07:07:17.404Z"
       }
     },
     {
@@ -287,7 +287,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -305,7 +305,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "source-repo",
-        "latency_ms": 405,
+        "latency_ms": 508,
         "method_tested": "HEAD",
         "name": "Plaτform source repository",
         "netuid": 100,
@@ -329,7 +329,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/PlatformNetwork",
-        "verified_at": "2026-06-06T12:18:38.062Z"
+        "verified_at": "2026-06-07T07:07:17.429Z"
       }
     },
     {
@@ -342,7 +342,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -360,7 +360,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 112,
+        "latency_ms": 107,
         "method_tested": "GET",
         "name": "Plaτform API",
         "netuid": 100,
@@ -384,7 +384,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://platform.network/api",
-        "verified_at": "2026-06-06T12:18:38.067Z"
+        "verified_at": "2026-06-07T07:07:17.473Z"
       }
     },
     {
@@ -397,7 +397,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -415,7 +415,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 317,
+        "latency_ms": 343,
         "method_tested": "HEAD",
         "name": "Plaτform docs",
         "netuid": 100,
@@ -439,7 +439,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://platform.network/docs",
-        "verified_at": "2026-06-06T12:18:38.082Z"
+        "verified_at": "2026-06-07T07:07:17.477Z"
       }
     },
     {
@@ -452,7 +452,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -470,7 +470,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 106,
+        "latency_ms": 104,
         "method_tested": "GET",
         "name": "Plaτform health endpoint",
         "netuid": 100,
@@ -494,7 +494,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://platform.network/health",
-        "verified_at": "2026-06-06T12:18:38.086Z"
+        "verified_at": "2026-06-07T07:07:17.477Z"
       }
     },
     {
@@ -507,7 +507,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -525,7 +525,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 119,
+        "latency_ms": 110,
         "method_tested": "GET",
         "name": "Plaτform OpenAPI JSON",
         "netuid": 100,
@@ -549,7 +549,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://platform.network/openapi.json",
-        "verified_at": "2026-06-06T12:18:38.122Z"
+        "verified_at": "2026-06-07T07:07:17.492Z"
       }
     },
     {
@@ -562,7 +562,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -580,7 +580,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 115,
+        "latency_ms": 107,
         "method_tested": "GET",
         "name": "Plaτform Swagger UI",
         "netuid": 100,
@@ -604,7 +604,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://platform.network/swagger",
-        "verified_at": "2026-06-06T12:18:38.163Z"
+        "verified_at": "2026-06-07T07:07:17.508Z"
       }
     },
     {
@@ -617,7 +617,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -635,7 +635,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 103,
+        "latency_ms": 106,
         "method_tested": "GET",
         "name": "Plaτform Swagger JSON",
         "netuid": 100,
@@ -659,7 +659,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://platform.network/swagger.json",
-        "verified_at": "2026-06-06T12:18:38.214Z"
+        "verified_at": "2026-06-07T07:07:17.520Z"
       }
     },
     {
@@ -672,7 +672,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -690,7 +690,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 1254,
+        "latency_ms": 1353,
         "method_tested": "HEAD",
         "name": "Plaτform website page",
         "netuid": 100,
@@ -714,7 +714,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://platform.network/challenges",
-        "verified_at": "2026-06-06T12:18:38.232Z"
+        "verified_at": "2026-06-07T07:07:17.573Z"
       }
     },
     {
@@ -727,7 +727,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -745,7 +745,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 214,
+        "latency_ms": 321,
         "method_tested": "HEAD",
         "name": "Plaτform website page",
         "netuid": 100,
@@ -769,7 +769,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://platform.network/how-it-works",
-        "verified_at": "2026-06-06T12:18:38.246Z"
+        "verified_at": "2026-06-07T07:07:17.573Z"
       }
     },
     {
@@ -782,7 +782,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -800,7 +800,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 217,
+        "latency_ms": 132,
         "method_tested": "HEAD",
         "name": "Plaτform website page",
         "netuid": 100,
@@ -824,7 +824,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://platform.network/features",
-        "verified_at": "2026-06-06T12:18:38.255Z"
+        "verified_at": "2026-06-07T07:07:17.700Z"
       }
     },
     {
@@ -837,7 +837,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -855,7 +855,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 208,
+        "latency_ms": 209,
         "method_tested": "HEAD",
         "name": "Plaτform website page",
         "netuid": 100,
@@ -879,7 +879,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://platform.network/auth",
-        "verified_at": "2026-06-06T12:18:38.318Z"
+        "verified_at": "2026-06-07T07:07:17.713Z"
       }
     }
   ],

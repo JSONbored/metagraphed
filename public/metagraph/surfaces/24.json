@@ -13,7 +13,7 @@
       "kind": "data-artifact",
       "name": "Quasar data artifact",
       "netuid": 24,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 238,
+        "latency_ms": 243,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.058Z"
+        "verified_at": "2026-06-07T07:06:46.115Z"
       }
     },
     {
@@ -55,7 +55,7 @@
       "kind": "data-artifact",
       "name": "Quasar data artifact",
       "netuid": 24,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 383,
+        "latency_ms": 389,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.062Z"
+        "verified_at": "2026-06-07T07:06:46.161Z"
       }
     },
     {
@@ -125,11 +125,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 134,
+        "latency_ms": 126,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.062Z"
+        "verified_at": "2026-06-07T07:06:46.222Z"
       }
     },
     {
@@ -149,38 +149,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/24",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/24"
       ],
       "subnet_name": "Quasar",
       "subnet_slug": "sn-24",
       "url": "https://github.com/SILX-LABS/QUASAR-SUBNET",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/SILX-LABS/QUASAR-SUBNET",
-        "homepage": null,
-        "last_push_at": "2026-06-03T22:32:44Z",
+        "latency_ms": 558,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [
-          "ai",
-          "bittensor",
-          "context-window",
-          "llm",
-          "tao"
-        ],
-        "verified_at": "2026-06-06T12:18:16.063Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:46.231Z"
       }
     },
     {
@@ -218,11 +210,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 179,
+        "latency_ms": 208,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.123Z"
+        "verified_at": "2026-06-07T07:06:46.280Z"
       }
     },
     {
@@ -232,7 +224,7 @@
       "kind": "docs",
       "name": "Quasar Tensorplex subnet docs",
       "netuid": 24,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -260,11 +252,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 330,
+        "latency_ms": 391,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.138Z"
+        "verified_at": "2026-06-07T07:06:46.287Z"
       }
     },
     {
@@ -274,7 +266,7 @@
       "kind": "data-artifact",
       "name": "Quasar data artifact",
       "netuid": 24,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -302,11 +294,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 182,
+        "latency_ms": 194,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.278Z"
+        "verified_at": "2026-06-07T07:06:46.512Z"
       }
     }
   ]

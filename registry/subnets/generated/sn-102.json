@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:38.605Z"
+    "verified_at": "2026-06-07T07:07:17.979Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/102",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/102",
@@ -59,11 +59,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Connito-AI/Connito",
-        "latency_ms": 428,
+        "latency_ms": 432,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.472Z"
+        "verified_at": "2026-06-07T07:07:17.900Z"
       }
     },
     {
@@ -98,11 +98,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 112,
+        "latency_ms": 120,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.512Z"
+        "verified_at": "2026-06-07T07:07:17.916Z"
       }
     },
     {
@@ -111,7 +111,7 @@
       "id": "sn-102-tensorplex-docs",
       "kind": "docs",
       "name": "ConnitoAI Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +137,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 296,
+        "latency_ms": 372,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.515Z"
+        "verified_at": "2026-06-07T07:07:17.928Z"
       }
     },
     {
@@ -150,7 +150,7 @@
       "id": "sn-102-website-common-docs",
       "kind": "docs",
       "name": "ConnitoAI docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +176,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 161,
+        "latency_ms": 188,
         "method_tested": "HEAD",
         "redirect_target": "https://connito.ai/docs/miner/prerequisites",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.526Z"
+        "verified_at": "2026-06-07T07:07:17.940Z"
       }
     },
     {
@@ -189,7 +189,7 @@
       "id": "sn-102-website-link-connito-ai-docs-1",
       "kind": "docs",
       "name": "ConnitoAI docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +215,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 375,
+        "latency_ms": 140,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.603Z"
+        "verified_at": "2026-06-07T07:07:17.976Z"
       }
     },
     {
@@ -228,7 +228,7 @@
       "id": "sn-102-website-link-connito-ai-docs-3",
       "kind": "docs",
       "name": "ConnitoAI docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +254,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 125,
+        "latency_ms": 133,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.605Z"
+        "verified_at": "2026-06-07T07:07:17.979Z"
       }
     },
     {
@@ -293,11 +293,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 138,
+        "latency_ms": 298,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:38.467Z"
+        "verified_at": "2026-06-07T07:07:17.853Z"
       }
     }
   ],

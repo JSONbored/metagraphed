@@ -11,7 +11,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:24.171Z"
+    "verified_at": "2026-06-07T07:06:56.784Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/56",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/56",
@@ -57,11 +57,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/gradients-ai/G.O.D",
-        "latency_ms": 646,
+        "latency_ms": 975,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.025Z"
+        "verified_at": "2026-06-07T07:06:56.677Z"
       }
     },
     {
@@ -70,7 +70,7 @@
       "id": "sn-56-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Gradients source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -97,11 +97,11 @@
         "confidence_score": 50,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/rayonlabs/G.O.D",
-        "latency_ms": 636,
+        "latency_ms": 965,
         "method_tested": "HEAD",
         "redirect_target": "https://github.com/gradients-ai/G.O.D",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.031Z"
+        "verified_at": "2026-06-07T07:06:56.678Z"
       }
     },
     {
@@ -136,11 +136,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 224,
+        "latency_ms": 405,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.026Z"
+        "verified_at": "2026-06-07T07:06:56.678Z"
       }
     },
     {
@@ -149,7 +149,7 @@
       "id": "sn-56-tensorplex-docs",
       "kind": "docs",
       "name": "Gradients Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -175,11 +175,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 339,
+        "latency_ms": 1004,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.031Z"
+        "verified_at": "2026-06-07T07:06:56.678Z"
       }
     },
     {
@@ -188,7 +188,7 @@
       "id": "sn-56-website-common-docs",
       "kind": "docs",
       "name": "Gradients docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -214,11 +214,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html",
-        "latency_ms": 359,
+        "latency_ms": 1147,
         "method_tested": "HEAD",
         "redirect_target": "https://www.gradients.io/auth",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.041Z"
+        "verified_at": "2026-06-07T07:06:56.709Z"
       }
     },
     {
@@ -253,11 +253,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 153,
+        "latency_ms": 154,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.018Z"
+        "verified_at": "2026-06-07T07:06:56.621Z"
       }
     },
     {
@@ -266,7 +266,7 @@
       "id": "sn-56-website-common-swagger",
       "kind": "openapi",
       "name": "Gradients Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -293,11 +293,11 @@
         "classification": "redirected",
         "confidence_score": 63,
         "content_type": "text/html",
-        "latency_ms": 342,
+        "latency_ms": 1076,
         "method_tested": "HEAD",
         "redirect_target": "https://www.gradients.io/auth",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.162Z"
+        "verified_at": "2026-06-07T07:06:56.778Z"
       }
     },
     {
@@ -306,7 +306,7 @@
       "id": "sn-56-website-link-www-gradients-io-data-artifact-9",
       "kind": "data-artifact",
       "name": "Gradients data artifact",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -332,11 +332,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html",
-        "latency_ms": 195,
+        "latency_ms": 273,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.171Z"
+        "verified_at": "2026-06-07T07:06:56.784Z"
       }
     }
   ],

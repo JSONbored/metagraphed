@@ -7,25 +7,12 @@
   "results": [
     {
       "candidate_id": "sn-46-github-readme-resi-labs-ai-resi-dashboard-1",
-      "classification": "unsupported",
-      "confidence_score": 13,
-      "content_type": null,
-      "error": "fetch failed",
+      "classification": "unsafe",
+      "error": "candidate is not public-safe",
       "kind": "dashboard",
-      "latency_ms": 1,
-      "method_tested": "GET",
       "name": "Zipcode dashboard",
       "netuid": 46,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/resi-labs-ai/resi/blob/main/README.md",
@@ -33,9 +20,8 @@
         "https://github.com/resi-labs-ai/resi/blob/main/README.md"
       ],
       "status": "failed",
-      "status_code": null,
       "url": "https://sn46-dashboard.resilabs.ai/",
-      "verified_at": "2026-06-06T12:18:20.934Z"
+      "verified_at": "2026-06-07T07:06:52.124Z"
     },
     {
       "candidate_id": "sn-46-github-readme-resi-labs-ai-resi-labs-api-subnet-api-1",
@@ -44,7 +30,7 @@
       "content_type": null,
       "error": "fetch failed",
       "kind": "subnet-api",
-      "latency_ms": 10502,
+      "latency_ms": 10491,
       "method_tested": "GET",
       "name": "Zipcode API surface",
       "netuid": 46,
@@ -67,29 +53,16 @@
       "status": "failed",
       "status_code": null,
       "url": "http://52.15.32.154:8000/docs",
-      "verified_at": "2026-06-06T12:18:20.937Z"
+      "verified_at": "2026-06-07T07:06:52.136Z"
     },
     {
       "candidate_id": "sn-46-github-readme-resi-labs-ai-resi-labs-api-subnet-api-2",
-      "classification": "unsupported",
-      "confidence_score": 13,
-      "content_type": null,
-      "error": "fetch failed",
+      "classification": "unsafe",
+      "error": "candidate is not public-safe",
       "kind": "subnet-api",
-      "latency_ms": 3,
-      "method_tested": "GET",
       "name": "Zipcode API surface",
       "netuid": 46,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md",
@@ -97,31 +70,17 @@
         "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md"
       ],
       "status": "failed",
-      "status_code": null,
       "url": "https://s3-auth-api.resilabs.ai/",
-      "verified_at": "2026-06-06T12:18:20.937Z"
+      "verified_at": "2026-06-07T07:06:52.151Z"
     },
     {
       "candidate_id": "sn-46-github-readme-resi-labs-ai-resi-labs-api-subnet-api-3",
-      "classification": "unsupported",
-      "confidence_score": 13,
-      "content_type": null,
-      "error": "fetch failed",
+      "classification": "unsafe",
+      "error": "candidate is not public-safe",
       "kind": "subnet-api",
-      "latency_ms": 3,
-      "method_tested": "GET",
       "name": "Zipcode API surface",
       "netuid": 46,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md",
@@ -129,31 +88,17 @@
         "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md"
       ],
       "status": "failed",
-      "status_code": null,
       "url": "https://s3-auth-api.resilabs.ai/healthcheck",
-      "verified_at": "2026-06-06T12:18:20.971Z"
+      "verified_at": "2026-06-07T07:06:52.164Z"
     },
     {
       "candidate_id": "sn-46-github-readme-resi-labs-ai-resi-labs-api-subnet-api-4",
-      "classification": "unsupported",
-      "confidence_score": 13,
-      "content_type": null,
-      "error": "fetch failed",
+      "classification": "unsafe",
+      "error": "candidate is not public-safe",
       "kind": "subnet-api",
-      "latency_ms": 3,
-      "method_tested": "GET",
       "name": "Zipcode API surface",
       "netuid": 46,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md",
@@ -161,31 +106,17 @@
         "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md"
       ],
       "status": "failed",
-      "status_code": null,
       "url": "https://s3-auth-api.resilabs.ai/docs",
-      "verified_at": "2026-06-06T12:18:20.972Z"
+      "verified_at": "2026-06-07T07:06:52.189Z"
     },
     {
       "candidate_id": "sn-46-github-readme-resi-labs-ai-resi-labs-api-subnet-api-5",
-      "classification": "unsupported",
-      "confidence_score": 13,
-      "content_type": null,
-      "error": "fetch failed",
+      "classification": "unsafe",
+      "error": "candidate is not public-safe",
       "kind": "subnet-api",
-      "latency_ms": 30,
-      "method_tested": "GET",
       "name": "Zipcode API surface",
       "netuid": 46,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md",
@@ -193,31 +124,17 @@
         "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md"
       ],
       "status": "failed",
-      "status_code": null,
       "url": "https://s3-auth-api.resilabs.ai/commitment-formats",
-      "verified_at": "2026-06-06T12:18:20.976Z"
+      "verified_at": "2026-06-07T07:06:52.219Z"
     },
     {
       "candidate_id": "sn-46-github-readme-resi-labs-ai-resi-labs-api-subnet-api-6",
-      "classification": "unsupported",
-      "confidence_score": 13,
-      "content_type": null,
-      "error": "fetch failed",
+      "classification": "unsafe",
+      "error": "candidate is not public-safe",
       "kind": "subnet-api",
-      "latency_ms": 6,
-      "method_tested": "GET",
       "name": "Zipcode API surface",
       "netuid": 46,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md",
@@ -225,31 +142,17 @@
         "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md"
       ],
       "status": "failed",
-      "status_code": null,
       "url": "https://s3-auth-api-testnet.resilabs.ai/",
-      "verified_at": "2026-06-06T12:18:20.977Z"
+      "verified_at": "2026-06-07T07:06:52.219Z"
     },
     {
       "candidate_id": "sn-46-github-readme-resi-labs-ai-resi-labs-api-subnet-api-7",
-      "classification": "unsupported",
-      "confidence_score": 13,
-      "content_type": null,
-      "error": "fetch failed",
+      "classification": "unsafe",
+      "error": "candidate is not public-safe",
       "kind": "subnet-api",
-      "latency_ms": 4,
-      "method_tested": "GET",
       "name": "Zipcode API surface",
       "netuid": 46,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md",
@@ -257,31 +160,17 @@
         "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md"
       ],
       "status": "failed",
-      "status_code": null,
       "url": "https://s3-auth-api-testnet.resilabs.ai/healthcheck",
-      "verified_at": "2026-06-06T12:18:20.978Z"
+      "verified_at": "2026-06-07T07:06:52.222Z"
     },
     {
       "candidate_id": "sn-46-github-readme-resi-labs-ai-resi-labs-api-subnet-api-8",
-      "classification": "unsupported",
-      "confidence_score": 13,
-      "content_type": null,
-      "error": "fetch failed",
+      "classification": "unsafe",
+      "error": "candidate is not public-safe",
       "kind": "subnet-api",
-      "latency_ms": 5,
-      "method_tested": "GET",
       "name": "Zipcode API surface",
       "netuid": 46,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md",
@@ -289,9 +178,8 @@
         "https://github.com/resi-labs-ai/resi-labs-api/blob/main/README.md"
       ],
       "status": "failed",
-      "status_code": null,
       "url": "https://s3-auth-api-testnet.resilabs.ai/docs",
-      "verified_at": "2026-06-06T12:18:21.006Z"
+      "verified_at": "2026-06-07T07:06:52.223Z"
     },
     {
       "candidate_id": "sn-46-github-readme-resi-labs-ai-resi-models-dashboard-1",
@@ -300,7 +188,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 147,
+      "latency_ms": 168,
       "method_tested": "HEAD",
       "name": "Zipcode dashboard",
       "netuid": 46,
@@ -324,7 +212,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://dashboard.resilabs.ai/",
-      "verified_at": "2026-06-06T12:18:21.006Z"
+      "verified_at": "2026-06-07T07:06:52.244Z"
     },
     {
       "candidate_id": "sn-46-github-readme-resi-labs-ai-resi-models-docs-2",
@@ -333,7 +221,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 76,
+      "latency_ms": 82,
       "method_tested": "HEAD",
       "name": "Zipcode docs",
       "netuid": 46,
@@ -357,7 +245,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.astral.sh/uv/getting-started/installation",
-      "verified_at": "2026-06-06T12:18:21.008Z"
+      "verified_at": "2026-06-07T07:06:52.253Z"
     },
     {
       "candidate_id": "sn-46-taomarketcap-dashboard",
@@ -366,7 +254,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 562,
+      "latency_ms": 255,
       "method_tested": "HEAD",
       "name": "Zipcode TaoMarketCap dashboard",
       "netuid": 46,
@@ -390,7 +278,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/46",
-      "verified_at": "2026-06-06T12:18:21.010Z"
+      "verified_at": "2026-06-07T07:06:52.263Z"
     },
     {
       "candidate_id": "sn-46-taomarketcap-source-repo",
@@ -400,7 +288,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/resi-labs-ai/RESI-models",
       "kind": "source-repo",
-      "latency_ms": 593,
+      "latency_ms": 888,
       "method_tested": "HEAD",
       "name": "Zipcode source repository",
       "netuid": 46,
@@ -424,7 +312,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/resi-labs-ai/RESI-models",
-      "verified_at": "2026-06-06T12:18:21.012Z"
+      "verified_at": "2026-06-07T07:06:52.277Z"
     },
     {
       "candidate_id": "sn-46-taomarketcap-website",
@@ -433,7 +321,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 547,
+      "latency_ms": 613,
       "method_tested": "HEAD",
       "name": "Zipcode website",
       "netuid": 46,
@@ -457,7 +345,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://zipcode.ai/",
-      "verified_at": "2026-06-06T12:18:21.012Z"
+      "verified_at": "2026-06-07T07:06:52.279Z"
     },
     {
       "candidate_id": "sn-46-tensorplex-docs",
@@ -466,7 +354,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 401,
+      "latency_ms": 675,
       "method_tested": "HEAD",
       "name": "Zipcode Tensorplex subnet docs",
       "netuid": 46,
@@ -490,7 +378,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/46",
-      "verified_at": "2026-06-06T12:18:21.014Z"
+      "verified_at": "2026-06-07T07:06:52.279Z"
     },
     {
       "candidate_id": "sn-46-tensorplex-source-repo-1",
@@ -500,7 +388,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/resi-labs-ai/resi",
       "kind": "source-repo",
-      "latency_ms": 406,
+      "latency_ms": 921,
       "method_tested": "HEAD",
       "name": "Zipcode source repository",
       "netuid": 46,
@@ -524,7 +412,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/resi-labs-ai/resi",
-      "verified_at": "2026-06-06T12:18:21.017Z"
+      "verified_at": "2026-06-07T07:06:52.282Z"
     },
     {
       "candidate_id": "sn-46-tensorplex-source-repo-2",
@@ -534,7 +422,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/resi-labs-ai/resi-labs-api",
       "kind": "source-repo",
-      "latency_ms": 354,
+      "latency_ms": 797,
       "method_tested": "HEAD",
       "name": "Zipcode source repository",
       "netuid": 46,
@@ -558,17 +446,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/resi-labs-ai/resi-labs-api",
-      "verified_at": "2026-06-06T12:18:21.021Z"
+      "verified_at": "2026-06-07T07:06:52.286Z"
     },
     {
       "candidate_id": "sn-46-tensorplex-source-repo-3",
       "classification": "dead",
       "confidence_score": 0,
       "error": null,
-      "github_api_status": 404,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/resi-labs-ai/prospector",
       "kind": "source-repo",
-      "latency_ms": 212,
+      "latency_ms": 414,
       "method_tested": "HEAD",
       "name": "Zipcode source repository",
       "netuid": 46,
@@ -592,7 +480,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://github.com/resi-labs-ai/prospector",
-      "verified_at": "2026-06-06T12:18:21.022Z"
+      "verified_at": "2026-06-07T07:06:52.294Z"
     },
     {
       "candidate_id": "sn-46-website-common-api",
@@ -601,7 +489,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 580,
+      "latency_ms": 303,
       "method_tested": "GET",
       "name": "Zipcode API",
       "netuid": 46,
@@ -625,7 +513,7 @@
       "status": "failed",
       "status_code": 500,
       "url": "https://zipcode.ai/api",
-      "verified_at": "2026-06-06T12:18:21.046Z"
+      "verified_at": "2026-06-07T07:06:52.303Z"
     },
     {
       "candidate_id": "sn-46-website-common-docs",
@@ -634,7 +522,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 256,
+      "latency_ms": 325,
       "method_tested": "HEAD",
       "name": "Zipcode docs",
       "netuid": 46,
@@ -658,7 +546,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://zipcode.ai/docs",
-      "verified_at": "2026-06-06T12:18:21.053Z"
+      "verified_at": "2026-06-07T07:06:52.323Z"
     },
     {
       "candidate_id": "sn-46-website-common-health",
@@ -667,7 +555,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 258,
+      "latency_ms": 228,
       "method_tested": "GET",
       "name": "Zipcode health endpoint",
       "netuid": 46,
@@ -691,7 +579,7 @@
       "status": "failed",
       "status_code": 500,
       "url": "https://zipcode.ai/health",
-      "verified_at": "2026-06-06T12:18:21.053Z"
+      "verified_at": "2026-06-07T07:06:52.325Z"
     },
     {
       "candidate_id": "sn-46-website-common-openapi-json",
@@ -700,7 +588,7 @@
       "content_type": "application/json; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 144,
+      "latency_ms": 175,
       "method_tested": "HEAD",
       "name": "Zipcode OpenAPI JSON",
       "netuid": 46,
@@ -724,7 +612,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://zipcode.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:21.085Z"
+      "verified_at": "2026-06-07T07:06:52.337Z"
     },
     {
       "candidate_id": "sn-46-website-common-swagger",
@@ -733,7 +621,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 251,
+      "latency_ms": 258,
       "method_tested": "GET",
       "name": "Zipcode Swagger UI",
       "netuid": 46,
@@ -757,7 +645,7 @@
       "status": "failed",
       "status_code": 500,
       "url": "https://zipcode.ai/swagger",
-      "verified_at": "2026-06-06T12:18:21.092Z"
+      "verified_at": "2026-06-07T07:06:52.369Z"
     },
     {
       "candidate_id": "sn-46-website-common-swagger-json",
@@ -766,7 +654,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 228,
+      "latency_ms": 271,
       "method_tested": "GET",
       "name": "Zipcode Swagger JSON",
       "netuid": 46,
@@ -790,7 +678,7 @@
       "status": "failed",
       "status_code": 500,
       "url": "https://zipcode.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:21.132Z"
+      "verified_at": "2026-06-07T07:06:52.404Z"
     },
     {
       "candidate_id": "sn-46-website-link-zipcode-ai-dashboard-1",
@@ -799,7 +687,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 224,
+      "latency_ms": 263,
       "method_tested": "HEAD",
       "name": "Zipcode dashboard",
       "netuid": 46,
@@ -823,7 +711,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://zipcode.ai/dashboard",
-      "verified_at": "2026-06-06T12:18:21.154Z"
+      "verified_at": "2026-06-07T07:06:52.495Z"
     },
     {
       "candidate_id": "sn-46-website-link-zipcode-ai-subnet-api-3",
@@ -832,7 +720,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 546,
+      "latency_ms": 466,
       "method_tested": "HEAD",
       "name": "Zipcode API surface",
       "netuid": 46,
@@ -846,7 +734,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://accounts.google.com/v3/signin/identifier?opparams=%253F&dsh=S875532096%3A1780748301722551&client_id=327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com&code_challenge=pujtCq9qo5FmXkZPicxBCibJAA2Cm3nupqHA9DV5L9Q&code_challenge_method=S256&nonce=jPyVnYiYWhiTX6asydMw9jFUG3cpGeFVURtISRn7G_E&o2v=2&prompt=select_account&redirect_uri=https%3A%2F%2Fzipcode.ai%2Fapi%2Fportal-auth%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+profile&service=lso&state=AAaFjIjwVJlq1AO6wNoI7PDHbDO3bEvQ1R_VmV7ysKQ&flowName=GeneralOAuthLite&continue=https%3A%2F%2Faccounts.google.com%2Fsignin%2Foauth%2Flegacy%2Fconsent%3Fauthuser%3Dunknown%26part%3DAJi8hAMKq7VZt9i89amptvWdAPO1a49Ucb-NYG73chbR9SK5iaJcGye0JpcoUZ7a1UcWHwUE3N6f80-BdHGYyTF7Fbi-u80hVYb7MtNww2Bq-pI4RRyEF0H2qyTev4VJLsTp1YNrjDpHcoSj4b07koBog7Y1XMvnAdx4-PPOBSjp6FFlkOmchvAGxyBQa0_ijQSJX9utk_io9tzIo1MSli4BEuDx5_3B2l48zHydS-_mTCzsYSuQYRvydNvZdMmv2HYT7aD4Z3mJMhlWUCor9DsEfBZuFkmUv49dZ8s_0Z1UiBbNaOoWxxn8a5VFwyjHgwLmlCN20JzMO-I2c6sXtOfE9fIgtqjlVssLrpcfWQvopHV3_e7LVbhvT8XfSaPCeQq4jlajCyWW3brWfFdu6dD9gUUvUyaTxBGzlTK8Cz03d3Ea4v26L2MC5agOFV5VFOlvri-HyCTBF7yZyM87w0A3SyWPLIRQIw%26flowName%3DGeneralOAuthFlow%26as%3DS875532096%253A1780748301722551%26client_id%3D327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com%23&app_domain=https%3A%2F%2Fzipcode.ai&rart=ANgoxcdWGKDOmHd_6GJNiiQ_uvp1JxN1Q9hau-W-oV55hpGbdnn-QSiI85ImLLn8sQrwA4xLsrvuAh9MgneHqrIXORbZvE4dk1i9bLO3sVELkGOlzjidP14",
+      "redirect_target": "https://accounts.google.com/v3/signin/identifier?opparams=%253F&dsh=S-635629459%3A1780816012890863&client_id=327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com&code_challenge=epv0twTJ473EFF9g5EcChL-EpHb0jb2ZemH8g8FThDU&code_challenge_method=S256&nonce=XEJPC_hBLn_Kp1R9vDxlCOnsvt5DGG4Xw0fLRuWVePU&o2v=2&prompt=select_account&redirect_uri=https%3A%2F%2Fzipcode.ai%2Fapi%2Fportal-auth%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+profile&service=lso&state=QjW3O-YLe1-Zy1do0TC0X8eKf2QjqlIHEu9bnJkzSB0&flowName=GeneralOAuthLite&continue=https%3A%2F%2Faccounts.google.com%2Fsignin%2Foauth%2Flegacy%2Fconsent%3Fauthuser%3Dunknown%26part%3DAJi8hANkGiA1G4pqGDD5su8Ve2HmdxPzIuyFubwP4jq27mcu-NG2eQgkmBi1uDacKw1cU3Qbuj8x6UgNUvm5KwkjnxlxbUiBgLs1MOYfqlvLV6EQ41J41_HVAp-tGaSwk0F8EQV0JsawTjBG4UG6GgGnv2hMOMKm0f1DU6gIu_82li7e__zhh07xYpGX9yjJjb7lRt08LCfGqrPR2Ds3-jXCbgJLj6hXelXFkftAUxNOsdNe7t1YR7pc95qHPWatVUMhwhqdmOLQ150RE1pHuzyN67rIwQGgvDCpBLuUd5TBVV0klfn_8kMm0QPi1iBwIHFh3B8OJN7nOlgoHH6A6fxKS-ipshW9BvOb8Yax5GCzpPPhquuvLjsJAjBYys_--E21ejJVnAAF3Tu6fP6ych5yab9MsL4mp___s33Wh70GfNEJM99rQr3spHek4rA1ZTZxa5cDQiYKe4vALCj47M9s3NrFEMrK8Q%26flowName%3DGeneralOAuthFlow%26as%3DS-635629459%253A1780816012890863%26client_id%3D327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com%23&app_domain=https%3A%2F%2Fzipcode.ai&rart=ANgoxcdMl5imOnEeeqVkynLxBJg-kesLYpx5FKM2Lbj99QvS4eWgOvAwMsyDFcoPPUxUYCW_PaNi8yFqcj9wDebOEqMz-Nf7Gld2FLKqkGYBnLPGbHvTR8c",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
       "source_url": "https://zipcode.ai/",
@@ -856,7 +744,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://zipcode.ai/api/portal-auth/google/start",
-      "verified_at": "2026-06-06T12:18:21.229Z"
+      "verified_at": "2026-06-07T07:06:52.516Z"
     },
     {
       "candidate_id": "sn-46-website-link-zipcode-ai-website-2",
@@ -865,7 +753,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 263,
+      "latency_ms": 256,
       "method_tested": "HEAD",
       "name": "Zipcode website page",
       "netuid": 46,
@@ -889,7 +777,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://zipcode.ai/portal/login?redirect=%2Fportal",
-      "verified_at": "2026-06-06T12:18:21.270Z"
+      "verified_at": "2026-06-07T07:06:52.576Z"
     },
     {
       "candidate_id": "sn-46-website-link-zipcode-ai-website-4",
@@ -898,7 +786,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 153,
+      "latency_ms": 282,
       "method_tested": "HEAD",
       "name": "Zipcode website page",
       "netuid": 46,
@@ -922,7 +810,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://zipcode.ai/portal/register",
-      "verified_at": "2026-06-06T12:18:21.309Z"
+      "verified_at": "2026-06-07T07:06:52.601Z"
     }
   ],
   "schema_version": 1,
@@ -933,7 +821,8 @@
       "live": 11,
       "redirected": 3,
       "transient": 4,
-      "unsupported": 9
+      "unsafe": 8,
+      "unsupported": 1
     },
     "by_kind": {
       "dashboard": 4,

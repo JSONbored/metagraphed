@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 135,
+        "latency_ms": 141,
         "method_tested": "HEAD",
         "name": "GroundLayer TaoMarketCap dashboard",
         "netuid": 20,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/20",
-        "verified_at": "2026-06-06T12:18:14.965Z"
+        "verified_at": "2026-06-07T07:06:44.707Z"
       }
     },
     {
@@ -81,10 +81,10 @@
         "classification": "dead",
         "confidence_score": 0,
         "error": null,
-        "github_api_status": 404,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/RogueTensor/comingsoon",
         "kind": "source-repo",
-        "latency_ms": 197,
+        "latency_ms": 194,
         "method_tested": "HEAD",
         "name": "GroundLayer source repository",
         "netuid": 20,
@@ -108,7 +108,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://github.com/RogueTensor/comingsoon",
-        "verified_at": "2026-06-06T12:18:15.070Z"
+        "verified_at": "2026-06-07T07:06:44.740Z"
       }
     },
     {
@@ -139,7 +139,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 338,
+        "latency_ms": 358,
         "method_tested": "HEAD",
         "name": "GroundLayer website",
         "netuid": 20,
@@ -163,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://groundlayer.xyz/",
-        "verified_at": "2026-06-06T12:18:15.070Z"
+        "verified_at": "2026-06-07T07:06:44.744Z"
       }
     },
     {
@@ -176,7 +176,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 347,
+        "latency_ms": 406,
         "method_tested": "HEAD",
         "name": "GroundLayer Tensorplex subnet docs",
         "netuid": 20,
@@ -218,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/20",
-        "verified_at": "2026-06-06T12:18:15.071Z"
+        "verified_at": "2026-06-07T07:06:44.827Z"
       }
     },
     {
@@ -231,7 +231,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -249,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 113,
+        "latency_ms": 106,
         "method_tested": "GET",
         "name": "GroundLayer API",
         "netuid": 20,
@@ -273,7 +273,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://groundlayer.xyz/api",
-        "verified_at": "2026-06-06T12:18:15.100Z"
+        "verified_at": "2026-06-07T07:06:44.842Z"
       }
     },
     {
@@ -286,7 +286,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -304,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 168,
+        "latency_ms": 138,
         "method_tested": "GET",
         "name": "GroundLayer docs",
         "netuid": 20,
@@ -328,7 +328,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://groundlayer.xyz/docs",
-        "verified_at": "2026-06-06T12:18:15.109Z"
+        "verified_at": "2026-06-07T07:06:44.846Z"
       }
     },
     {
@@ -341,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -359,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 120,
+        "latency_ms": 116,
         "method_tested": "GET",
         "name": "GroundLayer health endpoint",
         "netuid": 20,
@@ -383,7 +383,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://groundlayer.xyz/health",
-        "verified_at": "2026-06-06T12:18:15.109Z"
+        "verified_at": "2026-06-07T07:06:44.850Z"
       }
     },
     {
@@ -396,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -414,7 +414,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 124,
+        "latency_ms": 135,
         "method_tested": "GET",
         "name": "GroundLayer OpenAPI JSON",
         "netuid": 20,
@@ -438,7 +438,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://groundlayer.xyz/openapi.json",
-        "verified_at": "2026-06-06T12:18:15.112Z"
+        "verified_at": "2026-06-07T07:06:44.854Z"
       }
     },
     {
@@ -451,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -493,7 +493,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://groundlayer.xyz/swagger",
-        "verified_at": "2026-06-06T12:18:15.216Z"
+        "verified_at": "2026-06-07T07:06:44.916Z"
       }
     },
     {
@@ -506,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -524,7 +524,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 125,
+        "latency_ms": 108,
         "method_tested": "GET",
         "name": "GroundLayer Swagger JSON",
         "netuid": 20,
@@ -548,7 +548,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://groundlayer.xyz/swagger.json",
-        "verified_at": "2026-06-06T12:18:15.216Z"
+        "verified_at": "2026-06-07T07:06:44.916Z"
       }
     },
     {
@@ -561,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -579,7 +579,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 328,
+        "latency_ms": 375,
         "method_tested": "HEAD",
         "name": "GroundLayer website page",
         "netuid": 20,
@@ -603,7 +603,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://groundlayer.xyz/subnet",
-        "verified_at": "2026-06-06T12:18:15.219Z"
+        "verified_at": "2026-06-07T07:06:44.931Z"
       }
     },
     {
@@ -616,7 +616,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -634,7 +634,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 326,
+        "latency_ms": 232,
         "method_tested": "HEAD",
         "name": "GroundLayer website page",
         "netuid": 20,
@@ -658,7 +658,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://groundlayer.xyz/roadmap",
-        "verified_at": "2026-06-06T12:18:15.220Z"
+        "verified_at": "2026-06-07T07:06:44.984Z"
       }
     }
   ],

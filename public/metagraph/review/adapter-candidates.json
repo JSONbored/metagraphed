@@ -356,18 +356,6 @@
       "slug": "gittensor"
     },
     {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "TensorClaw",
-      "netuid": 92,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 27,
-      "slug": "sn-92"
-    },
-    {
       "candidate_api_count": 7,
       "curation_level": "machine-verified",
       "name": "SOMA",
@@ -558,6 +546,18 @@
       "operational_surface_count": 1,
       "priority_score": 26,
       "slug": "sn-105"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "luis",
+      "netuid": 92,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 25,
+      "slug": "sn-92"
     },
     {
       "candidate_api_count": 6,
@@ -996,6 +996,16 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
+      "name": "AdTAO",
+      "netuid": 21,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 4,
+      "slug": "sn-21"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
       "name": "Endure Network",
       "netuid": 30,
       "operational_kinds": [],
@@ -1062,16 +1072,6 @@
       "operational_surface_count": 0,
       "priority_score": 3,
       "slug": "sn-20"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "AdTAO",
-      "netuid": 21,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 3,
-      "slug": "sn-21"
     },
     {
       "candidate_api_count": 1,

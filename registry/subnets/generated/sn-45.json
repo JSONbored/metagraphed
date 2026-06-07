@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:20.829Z"
+    "verified_at": "2026-06-07T07:06:52.015Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/45",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/45",
@@ -59,11 +59,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Team-Rizzo/talisman-ai",
-        "latency_ms": 666,
+        "latency_ms": 803,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.530Z"
+        "verified_at": "2026-06-07T07:06:51.713Z"
       }
     },
     {
@@ -98,11 +98,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 135,
+        "latency_ms": 138,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.586Z"
+        "verified_at": "2026-06-07T07:06:51.741Z"
       }
     },
     {
@@ -111,7 +111,7 @@
       "id": "sn-45-tensorplex-docs",
       "kind": "docs",
       "name": "Talisman AI Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +137,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 413,
+        "latency_ms": 499,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.604Z"
+        "verified_at": "2026-06-07T07:06:51.742Z"
       }
     },
     {
@@ -150,7 +150,7 @@
       "id": "sn-45-website-link-ai-talisman-xyz-docs-10",
       "kind": "docs",
       "name": "Talisman AI docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +176,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 214,
+        "latency_ms": 218,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.798Z"
+        "verified_at": "2026-06-07T07:06:51.988Z"
       }
     },
     {
@@ -189,7 +189,7 @@
       "id": "sn-45-website-link-ai-talisman-xyz-docs-8",
       "kind": "docs",
       "name": "Talisman AI docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +215,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 219,
+        "latency_ms": 211,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.802Z"
+        "verified_at": "2026-06-07T07:06:51.997Z"
       }
     },
     {
@@ -228,7 +228,7 @@
       "id": "sn-45-website-link-ai-talisman-xyz-docs-9",
       "kind": "docs",
       "name": "Talisman AI docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +254,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 193,
+        "latency_ms": 233,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.829Z"
+        "verified_at": "2026-06-07T07:06:52.015Z"
       }
     },
     {
@@ -293,11 +293,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 152,
+        "latency_ms": 132,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.453Z"
+        "verified_at": "2026-06-07T07:06:51.685Z"
       }
     }
   ],

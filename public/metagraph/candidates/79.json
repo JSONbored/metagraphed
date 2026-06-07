@@ -10,7 +10,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 575,
+        "latency_ms": 734,
         "method_tested": "HEAD",
         "name": "MVTRX docs",
         "netuid": 79,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://simulate.trading/taos-im-paper",
-        "verified_at": "2026-06-06T12:18:30.284Z"
+        "verified_at": "2026-06-07T07:07:05.785Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 29,
+        "latency_ms": 33,
         "method_tested": "GET",
         "name": "MVTRX docs",
         "netuid": 79,
@@ -107,7 +107,7 @@
         "status": "failed",
         "status_code": 403,
         "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2336772",
-        "verified_at": "2026-06-06T12:18:30.303Z"
+        "verified_at": "2026-06-07T07:07:05.829Z"
       }
     },
     {
@@ -138,7 +138,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 128,
+        "latency_ms": 141,
         "method_tested": "HEAD",
         "name": "MVTRX TaoMarketCap dashboard",
         "netuid": 79,
@@ -162,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/79",
-        "verified_at": "2026-06-06T12:18:30.306Z"
+        "verified_at": "2026-06-07T07:07:05.833Z"
       }
     },
     {
@@ -193,7 +193,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 224,
+        "latency_ms": 186,
         "method_tested": "HEAD",
         "name": "MVTRX website",
         "netuid": 79,
@@ -217,7 +217,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taos.im/",
-        "verified_at": "2026-06-06T12:18:30.328Z"
+        "verified_at": "2026-06-07T07:07:05.924Z"
       }
     },
     {
@@ -230,7 +230,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -248,7 +248,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 339,
+        "latency_ms": 598,
         "method_tested": "HEAD",
         "name": "MVTRX Tensorplex subnet docs",
         "netuid": 79,
@@ -272,7 +272,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/79",
-        "verified_at": "2026-06-06T12:18:30.328Z"
+        "verified_at": "2026-06-07T07:07:05.924Z"
       }
     },
     {
@@ -285,7 +285,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -304,7 +304,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/taos-im/sn-79",
         "kind": "source-repo",
-        "latency_ms": 485,
+        "latency_ms": 780,
         "method_tested": "HEAD",
         "name": "MVTRX source repository",
         "netuid": 79,
@@ -328,7 +328,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/taos-im/sn-79",
-        "verified_at": "2026-06-06T12:18:30.328Z"
+        "verified_at": "2026-06-07T07:07:05.924Z"
       }
     },
     {
@@ -341,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -359,7 +359,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 225,
+        "latency_ms": 228,
         "method_tested": "GET",
         "name": "MVTRX API",
         "netuid": 79,
@@ -383,7 +383,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://taos.im/api",
-        "verified_at": "2026-06-06T12:18:30.330Z"
+        "verified_at": "2026-06-07T07:07:05.932Z"
       }
     },
     {
@@ -396,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -414,7 +414,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 193,
+        "latency_ms": 257,
         "method_tested": "GET",
         "name": "MVTRX docs",
         "netuid": 79,
@@ -438,7 +438,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://taos.im/docs",
-        "verified_at": "2026-06-06T12:18:30.350Z"
+        "verified_at": "2026-06-07T07:07:05.935Z"
       }
     },
     {
@@ -451,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -469,7 +469,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 197,
+        "latency_ms": 245,
         "method_tested": "GET",
         "name": "MVTRX health endpoint",
         "netuid": 79,
@@ -493,7 +493,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://taos.im/health",
-        "verified_at": "2026-06-06T12:18:30.362Z"
+        "verified_at": "2026-06-07T07:07:05.973Z"
       }
     },
     {
@@ -506,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -524,7 +524,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 206,
+        "latency_ms": 212,
         "method_tested": "GET",
         "name": "MVTRX OpenAPI JSON",
         "netuid": 79,
@@ -548,7 +548,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://taos.im/openapi.json",
-        "verified_at": "2026-06-06T12:18:30.430Z"
+        "verified_at": "2026-06-07T07:07:06.135Z"
       }
     },
     {
@@ -561,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -579,7 +579,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 193,
+        "latency_ms": 203,
         "method_tested": "GET",
         "name": "MVTRX Swagger UI",
         "netuid": 79,
@@ -603,7 +603,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://taos.im/swagger",
-        "verified_at": "2026-06-06T12:18:30.434Z"
+        "verified_at": "2026-06-07T07:07:06.266Z"
       }
     },
     {
@@ -616,7 +616,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -634,7 +634,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 191,
+        "latency_ms": 208,
         "method_tested": "GET",
         "name": "MVTRX Swagger JSON",
         "netuid": 79,
@@ -658,7 +658,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://taos.im/swagger.json",
-        "verified_at": "2026-06-06T12:18:30.463Z"
+        "verified_at": "2026-06-07T07:07:06.386Z"
       }
     },
     {
@@ -671,7 +671,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -689,7 +689,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 229,
+        "latency_ms": 232,
         "method_tested": "HEAD",
         "name": "MVTRX website page",
         "netuid": 79,
@@ -713,7 +713,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taos.im/bizz",
-        "verified_at": "2026-06-06T12:18:30.531Z"
+        "verified_at": "2026-06-07T07:07:06.483Z"
       }
     },
     {
@@ -726,7 +726,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -744,7 +744,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 236,
+        "latency_ms": 244,
         "method_tested": "HEAD",
         "name": "MVTRX website page",
         "netuid": 79,
@@ -768,7 +768,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taos.im/tag/bittensor",
-        "verified_at": "2026-06-06T12:18:30.551Z"
+        "verified_at": "2026-06-07T07:07:06.535Z"
       }
     },
     {
@@ -781,7 +781,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -799,7 +799,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 120,
+        "latency_ms": 244,
         "method_tested": "HEAD",
         "name": "MVTRX website page",
         "netuid": 79,
@@ -823,7 +823,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taos.im/goaling",
-        "verified_at": "2026-06-06T12:18:30.552Z"
+        "verified_at": "2026-06-07T07:07:06.711Z"
       }
     },
     {
@@ -836,7 +836,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -854,7 +854,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 210,
+        "latency_ms": 220,
         "method_tested": "HEAD",
         "name": "MVTRX website page",
         "netuid": 79,
@@ -878,7 +878,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taos.im/idea",
-        "verified_at": "2026-06-06T12:18:30.631Z"
+        "verified_at": "2026-06-07T07:07:08.061Z"
       }
     },
     {
@@ -891,7 +891,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -909,7 +909,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 211,
+        "latency_ms": 217,
         "method_tested": "HEAD",
         "name": "MVTRX website page",
         "netuid": 79,
@@ -933,7 +933,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taos.im/about",
-        "verified_at": "2026-06-06T12:18:30.667Z"
+        "verified_at": "2026-06-07T07:07:08.067Z"
       }
     },
     {
@@ -946,7 +946,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -964,7 +964,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 98,
+        "latency_ms": 108,
         "method_tested": "HEAD",
         "name": "MVTRX website page",
         "netuid": 79,
@@ -988,7 +988,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taos.im/matrix",
-        "verified_at": "2026-06-06T12:18:30.671Z"
+        "verified_at": "2026-06-07T07:07:08.106Z"
       }
     },
     {
@@ -1001,7 +1001,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1019,7 +1019,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 216,
+        "latency_ms": 110,
         "method_tested": "HEAD",
         "name": "MVTRX website page",
         "netuid": 79,
@@ -1043,7 +1043,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taos.im/features",
-        "verified_at": "2026-06-06T12:18:30.707Z"
+        "verified_at": "2026-06-07T07:07:08.161Z"
       }
     },
     {
@@ -1056,7 +1056,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1074,7 +1074,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 118,
+        "latency_ms": 94,
         "method_tested": "HEAD",
         "name": "MVTRX website page",
         "netuid": 79,
@@ -1098,7 +1098,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taos.im/2026/01/27/upgrade-to-mvtrx",
-        "verified_at": "2026-06-06T12:18:30.759Z"
+        "verified_at": "2026-06-07T07:07:08.175Z"
       }
     },
     {
@@ -1111,7 +1111,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1129,7 +1129,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 234,
+        "latency_ms": 108,
         "method_tested": "HEAD",
         "name": "MVTRX website page",
         "netuid": 79,
@@ -1153,7 +1153,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taos.im/category/major-update",
-        "verified_at": "2026-06-06T12:18:30.762Z"
+        "verified_at": "2026-06-07T07:07:08.176Z"
       }
     },
     {
@@ -1166,7 +1166,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1184,7 +1184,7 @@
         "content_type": "text/html; charset=UTF-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 112,
+        "latency_ms": 100,
         "method_tested": "HEAD",
         "name": "MVTRX website page",
         "netuid": 79,
@@ -1208,7 +1208,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taos.im/2025/12/02/dis",
-        "verified_at": "2026-06-06T12:18:30.770Z"
+        "verified_at": "2026-06-07T07:07:08.218Z"
       }
     }
   ],

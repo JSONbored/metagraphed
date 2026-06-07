@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 161,
+        "latency_ms": 152,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.048Z"
+        "verified_at": "2026-06-07T07:06:51.080Z"
       }
     },
     {
@@ -74,8 +74,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/43",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/43/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/43"
       ],
       "subnet_name": "Graphite",
       "subnet_slug": "sn-43",
@@ -85,11 +84,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/GraphiteAI/Graphite-Subnet",
-        "latency_ms": 684,
+        "latency_ms": 943,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.065Z"
+        "verified_at": "2026-06-07T07:06:51.109Z"
       }
     },
     {
@@ -99,7 +98,7 @@
       "kind": "docs",
       "name": "Graphite Tensorplex subnet docs",
       "netuid": 43,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -127,11 +126,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 332,
+        "latency_ms": 627,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.121Z"
+        "verified_at": "2026-06-07T07:06:51.112Z"
       }
     }
   ]

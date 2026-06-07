@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 127,
+      "latency_ms": 136,
       "method_tested": "HEAD",
       "name": "Swap TaoMarketCap dashboard",
       "netuid": 10,
@@ -36,41 +36,41 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/10",
-      "verified_at": "2026-06-06T12:18:11.454Z"
+      "verified_at": "2026-06-07T07:06:40.369Z"
     },
     {
-      "archived": false,
       "candidate_id": "sn-10-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
-      "default_branch": "main",
-      "description": "Bringing liquidity to Bittensor",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/Swap-Subnet/swap-subnet",
-      "homepage": null,
-      "html_url": "https://github.com/Swap-Subnet/swap-subnet",
       "kind": "source-repo",
-      "last_push_at": "2025-11-05T05:40:17Z",
+      "latency_ms": 443,
+      "method_tested": "HEAD",
       "name": "Swap source repository",
       "netuid": 10,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/10",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/10",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/10/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/10"
       ],
       "status": "ok",
-      "topics": [],
+      "status_code": 200,
       "url": "https://github.com/Swap-Subnet/swap-subnet",
-      "verified_at": "2026-06-06T12:18:11.462Z"
+      "verified_at": "2026-06-07T07:06:40.378Z"
     },
     {
       "candidate_id": "sn-10-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 316,
+      "latency_ms": 331,
       "method_tested": "HEAD",
       "name": "Swap website",
       "netuid": 10,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.taofi.com/pool",
-      "verified_at": "2026-06-06T12:18:11.462Z"
+      "verified_at": "2026-06-07T07:06:40.419Z"
     },
     {
       "candidate_id": "sn-10-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 340,
+      "latency_ms": 650,
       "method_tested": "HEAD",
       "name": "Swap Tensorplex subnet docs",
       "netuid": 10,
@@ -136,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/10",
-      "verified_at": "2026-06-06T12:18:11.470Z"
+      "verified_at": "2026-06-07T07:06:40.422Z"
     },
     {
       "candidate_id": "sn-10-website-common-api",
@@ -145,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 68,
+      "latency_ms": 48,
       "method_tested": "GET",
       "name": "Swap API",
       "netuid": 10,
@@ -169,7 +169,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.taofi.com/api",
-      "verified_at": "2026-06-06T12:18:11.503Z"
+      "verified_at": "2026-06-07T07:06:40.438Z"
     },
     {
       "candidate_id": "sn-10-website-common-docs",
@@ -178,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 68,
+      "latency_ms": 53,
       "method_tested": "GET",
       "name": "Swap docs",
       "netuid": 10,
@@ -202,7 +202,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.taofi.com/docs",
-      "verified_at": "2026-06-06T12:18:11.506Z"
+      "verified_at": "2026-06-07T07:06:40.449Z"
     },
     {
       "candidate_id": "sn-10-website-common-health",
@@ -211,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 80,
+      "latency_ms": 50,
       "method_tested": "GET",
       "name": "Swap health endpoint",
       "netuid": 10,
@@ -235,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.taofi.com/health",
-      "verified_at": "2026-06-06T12:18:11.518Z"
+      "verified_at": "2026-06-07T07:06:40.462Z"
     },
     {
       "candidate_id": "sn-10-website-common-openapi-json",
@@ -244,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 60,
+      "latency_ms": 58,
       "method_tested": "GET",
       "name": "Swap OpenAPI JSON",
       "netuid": 10,
@@ -268,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.taofi.com/openapi.json",
-      "verified_at": "2026-06-06T12:18:11.536Z"
+      "verified_at": "2026-06-07T07:06:40.482Z"
     },
     {
       "candidate_id": "sn-10-website-common-swagger",
@@ -277,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 46,
+      "latency_ms": 59,
       "method_tested": "GET",
       "name": "Swap Swagger UI",
       "netuid": 10,
@@ -301,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.taofi.com/swagger",
-      "verified_at": "2026-06-06T12:18:11.536Z"
+      "verified_at": "2026-06-07T07:06:40.486Z"
     },
     {
       "candidate_id": "sn-10-website-common-swagger-json",
@@ -310,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 56,
+      "latency_ms": 54,
       "method_tested": "GET",
       "name": "Swap Swagger JSON",
       "netuid": 10,
@@ -334,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.taofi.com/swagger.json",
-      "verified_at": "2026-06-06T12:18:11.564Z"
+      "verified_at": "2026-06-07T07:06:40.489Z"
     }
   ],
   "schema_version": 1,

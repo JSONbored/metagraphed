@@ -13,7 +13,7 @@
       "kind": "subnet-api",
       "name": "Babelbit API surface",
       "netuid": 59,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 543,
+        "latency_ms": 511,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.677Z"
+        "verified_at": "2026-06-07T07:06:57.754Z"
       }
     },
     {
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 157,
+        "latency_ms": 152,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.704Z"
+        "verified_at": "2026-06-07T07:06:57.814Z"
       }
     },
     {
@@ -116,8 +116,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/59",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/59/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/59"
       ],
       "subnet_name": "Babelbit",
       "subnet_slug": "sn-59",
@@ -127,11 +126,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/babelbit/babelbit_subnet",
-        "latency_ms": 561,
+        "latency_ms": 931,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.722Z"
+        "verified_at": "2026-06-07T07:06:57.825Z"
       }
     },
     {
@@ -169,11 +168,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 278,
+        "latency_ms": 308,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.733Z"
+        "verified_at": "2026-06-07T07:06:57.862Z"
       }
     },
     {
@@ -183,7 +182,7 @@
       "kind": "docs",
       "name": "Babelbit Tensorplex subnet docs",
       "netuid": 59,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -211,11 +210,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 369,
+        "latency_ms": 760,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.741Z"
+        "verified_at": "2026-06-07T07:06:57.873Z"
       }
     },
     {
@@ -225,7 +224,7 @@
       "kind": "dashboard",
       "name": "Babelbit dashboard",
       "netuid": 59,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +252,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 396,
+        "latency_ms": 326,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:24.861Z"
+        "verified_at": "2026-06-07T07:06:58.125Z"
       }
     }
   ]

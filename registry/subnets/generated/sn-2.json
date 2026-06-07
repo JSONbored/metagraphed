@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 5,
-    "verified_at": "2026-06-06T12:18:09.732Z"
+    "verified_at": "2026-06-07T07:06:37.909Z"
   },
   "dashboard_url": "https://sn2-stats.inferencelabs.com/",
   "docs_url": "https://sn2-docs.inferencelabs.com/",
@@ -41,34 +41,28 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/2",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/2/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/2"
       ],
       "url": "https://github.com/inference-labs-inc/subnet-2",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/inference-labs-inc/subnet-2",
-        "homepage": "https://subnet2.inferencelabs.com/",
-        "last_push_at": "2026-06-04T02:15:53Z",
+        "latency_ms": 650,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [
-          "bittensor",
-          "zk",
-          "zkml"
-        ],
-        "verified_at": "2026-06-06T12:18:09.593Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:37.654Z"
       }
     },
     {
@@ -103,11 +97,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 133,
+        "latency_ms": 145,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.607Z"
+        "verified_at": "2026-06-07T07:06:37.694Z"
       }
     },
     {
@@ -116,7 +110,7 @@
       "id": "sn-2-github-readme-inference-labs-inc-subnet-2-docs-1",
       "kind": "docs",
       "name": "DSperse docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -142,11 +136,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 230,
+        "latency_ms": 267,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.545Z"
+        "verified_at": "2026-06-07T07:06:37.612Z"
       }
     },
     {
@@ -155,7 +149,7 @@
       "id": "sn-2-github-readme-inference-labs-inc-subnet-2-docs-4",
       "kind": "docs",
       "name": "DSperse docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -181,11 +175,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 363,
+        "latency_ms": 333,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/getting-started/installation",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.545Z"
+        "verified_at": "2026-06-07T07:06:37.622Z"
       }
     },
     {
@@ -194,7 +188,7 @@
       "id": "sn-2-taopedia-article",
       "kind": "docs",
       "name": "DSperse Taopedia article",
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -220,11 +214,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 495,
+        "latency_ms": 341,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.612Z"
+        "verified_at": "2026-06-07T07:06:37.702Z"
       }
     },
     {
@@ -233,7 +227,7 @@
       "id": "sn-2-tensorplex-docs",
       "kind": "docs",
       "name": "DSperse Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -259,11 +253,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 340,
+        "latency_ms": 696,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.613Z"
+        "verified_at": "2026-06-07T07:06:37.716Z"
       }
     },
     {
@@ -272,7 +266,7 @@
       "id": "sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-2",
       "kind": "dashboard",
       "name": "DSperse dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -298,11 +292,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 115,
+        "latency_ms": 116,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.448Z"
+        "verified_at": "2026-06-07T07:06:37.555Z"
       }
     },
     {
@@ -311,7 +305,7 @@
       "id": "sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-3",
       "kind": "dashboard",
       "name": "DSperse dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -337,11 +331,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 182,
+        "latency_ms": 164,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.496Z"
+        "verified_at": "2026-06-07T07:06:37.606Z"
       }
     },
     {
@@ -376,11 +370,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 135,
+        "latency_ms": 166,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.563Z"
+        "verified_at": "2026-06-07T07:06:37.629Z"
       }
     },
     {
@@ -389,7 +383,7 @@
       "id": "sn-2-website-common-swagger",
       "kind": "openapi",
       "name": "DSperse Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -416,11 +410,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 43,
+        "latency_ms": 51,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.732Z"
+        "verified_at": "2026-06-07T07:06:37.909Z"
       }
     }
   ],

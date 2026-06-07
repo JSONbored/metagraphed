@@ -1,6 +1,6 @@
 {
   "application_subnet_count": 128,
-  "candidate_count": 1634,
+  "candidate_count": 1635,
   "candidate_subnet_count": 129,
   "chain_subnet_count": 129,
   "curated_overlay_count": 129,
@@ -14,7 +14,7 @@
   "native_only_count": 0,
   "native_only_with_candidates": 0,
   "native_only_without_candidates": 0,
-  "native_snapshot_captured_at": "2026-06-06T12:04:01Z",
+  "native_snapshot_captured_at": "2026-06-07T07:06:35Z",
   "network": "finney",
   "probed_count": 129,
   "probed_surface_count": 753,

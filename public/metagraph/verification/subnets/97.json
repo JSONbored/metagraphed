@@ -12,7 +12,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 328,
+      "latency_ms": 333,
       "method_tested": "HEAD",
       "name": "Albedo dashboard",
       "netuid": 97,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://us-east-1.hippius.com/albedo/dashboard.json",
-      "verified_at": "2026-06-06T12:18:36.435Z"
+      "verified_at": "2026-06-07T07:07:15.774Z"
     },
     {
       "candidate_id": "sn-97-github-readme-unarbos-albedo-data-artifact-1",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "data-artifact",
-      "latency_ms": 194,
+      "latency_ms": 230,
       "method_tested": "HEAD",
       "name": "Albedo data artifact",
       "netuid": 97,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://huggingface.co/datasets/AlienKevin/SWE-ZERO-12M-trajectories",
-      "verified_at": "2026-06-06T12:18:36.640Z"
+      "verified_at": "2026-06-07T07:07:15.857Z"
     },
     {
       "candidate_id": "sn-97-github-readme-unarbos-albedo-data-artifact-3",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "data-artifact",
-      "latency_ms": 118,
+      "latency_ms": 133,
       "method_tested": "HEAD",
       "name": "Albedo data artifact",
       "netuid": 97,
@@ -102,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://huggingface.co/ricdomolm/mini-coder-1.7b",
-      "verified_at": "2026-06-06T12:18:36.655Z"
+      "verified_at": "2026-06-07T07:07:15.863Z"
     },
     {
       "candidate_id": "sn-97-github-readme-unitone-labs-flamewire-docs-1",
@@ -111,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 174,
+      "latency_ms": 171,
       "method_tested": "HEAD",
       "name": "Albedo docs",
       "netuid": 97,
@@ -135,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.flamewire.io/docs/miners/registration",
-      "verified_at": "2026-06-06T12:18:36.687Z"
+      "verified_at": "2026-06-07T07:07:15.999Z"
     },
     {
       "candidate_id": "sn-97-github-readme-unitone-labs-flamewire-docs-2",
@@ -144,7 +144,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 142,
+      "latency_ms": 150,
       "method_tested": "HEAD",
       "name": "Albedo docs",
       "netuid": 97,
@@ -168,7 +168,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.flamewire.io/docs/validators/guide",
-      "verified_at": "2026-06-06T12:18:36.732Z"
+      "verified_at": "2026-06-07T07:07:16.034Z"
     },
     {
       "candidate_id": "sn-97-github-readme-unitone-labs-flamewire-subnet-api-3",
@@ -177,7 +177,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 929,
+      "latency_ms": 950,
       "method_tested": "HEAD",
       "name": "Albedo API surface",
       "netuid": 97,
@@ -201,7 +201,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://app.flamewire.io/api-keys?create=true&role=validator",
-      "verified_at": "2026-06-06T12:18:36.732Z"
+      "verified_at": "2026-06-07T07:07:16.077Z"
     },
     {
       "candidate_id": "sn-97-taomarketcap-dashboard",
@@ -210,7 +210,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 164,
+      "latency_ms": 147,
       "method_tested": "HEAD",
       "name": "Albedo TaoMarketCap dashboard",
       "netuid": 97,
@@ -234,17 +234,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/97",
-      "verified_at": "2026-06-06T12:18:36.757Z"
+      "verified_at": "2026-06-07T07:07:16.092Z"
     },
     {
       "candidate_id": "sn-97-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/unarbos/albedo",
       "kind": "source-repo",
-      "latency_ms": 486,
+      "latency_ms": 566,
       "method_tested": "HEAD",
       "name": "Albedo source repository",
       "netuid": 97,
@@ -268,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/unarbos/albedo",
-      "verified_at": "2026-06-06T12:18:36.763Z"
+      "verified_at": "2026-06-07T07:07:16.144Z"
     },
     {
       "candidate_id": "sn-97-taomarketcap-website",
@@ -277,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 314,
+      "latency_ms": 360,
       "method_tested": "HEAD",
       "name": "Albedo website",
       "netuid": 97,
@@ -301,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://us-east-1.hippius.com/albedo/index.html",
-      "verified_at": "2026-06-06T12:18:36.774Z"
+      "verified_at": "2026-06-07T07:07:16.199Z"
     },
     {
       "candidate_id": "sn-97-tensorplex-docs",
@@ -310,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 335,
+      "latency_ms": 351,
       "method_tested": "HEAD",
       "name": "Albedo Tensorplex subnet docs",
       "netuid": 97,
@@ -334,17 +334,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/97",
-      "verified_at": "2026-06-06T12:18:36.834Z"
+      "verified_at": "2026-06-07T07:07:16.204Z"
     },
     {
       "candidate_id": "sn-97-tensorplex-source-repo-1",
       "classification": "live",
       "confidence_score": 55,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/unitone-labs/FlameWire",
       "kind": "source-repo",
-      "latency_ms": 581,
+      "latency_ms": 523,
       "method_tested": "HEAD",
       "name": "Albedo source repository",
       "netuid": 97,
@@ -368,7 +368,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/unitone-labs/FlameWire",
-      "verified_at": "2026-06-06T12:18:36.862Z"
+      "verified_at": "2026-06-07T07:07:16.209Z"
     },
     {
       "candidate_id": "sn-97-website-common-api",
@@ -377,7 +377,7 @@
       "content_type": "application/xml; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 500,
+      "latency_ms": 574,
       "method_tested": "GET",
       "name": "Albedo API",
       "netuid": 97,
@@ -401,7 +401,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://us-east-1.hippius.com/api",
-      "verified_at": "2026-06-06T12:18:36.872Z"
+      "verified_at": "2026-06-07T07:07:16.219Z"
     },
     {
       "candidate_id": "sn-97-website-common-docs",
@@ -410,7 +410,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 546,
+      "latency_ms": 460,
       "method_tested": "HEAD",
       "name": "Albedo docs",
       "netuid": 97,
@@ -434,7 +434,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://us-east-1.hippius.com/docs",
-      "verified_at": "2026-06-06T12:18:36.873Z"
+      "verified_at": "2026-06-07T07:07:16.221Z"
     },
     {
       "candidate_id": "sn-97-website-common-health",
@@ -443,7 +443,7 @@
       "content_type": null,
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 576,
+      "latency_ms": 561,
       "method_tested": "HEAD",
       "name": "Albedo health endpoint",
       "netuid": 97,
@@ -467,7 +467,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://us-east-1.hippius.com/health",
-      "verified_at": "2026-06-06T12:18:36.884Z"
+      "verified_at": "2026-06-07T07:07:16.241Z"
     },
     {
       "candidate_id": "sn-97-website-common-openapi-json",
@@ -476,7 +476,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 544,
+      "latency_ms": 567,
       "method_tested": "HEAD",
       "name": "Albedo OpenAPI JSON",
       "netuid": 97,
@@ -500,7 +500,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://us-east-1.hippius.com/openapi.json",
-      "verified_at": "2026-06-06T12:18:36.921Z"
+      "verified_at": "2026-06-07T07:07:16.318Z"
     },
     {
       "candidate_id": "sn-97-website-common-swagger",
@@ -509,7 +509,7 @@
       "content_type": "application/xml; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 597,
+      "latency_ms": 545,
       "method_tested": "GET",
       "name": "Albedo Swagger UI",
       "netuid": 97,
@@ -533,7 +533,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://us-east-1.hippius.com/swagger",
-      "verified_at": "2026-06-06T12:18:37.062Z"
+      "verified_at": "2026-06-07T07:07:16.319Z"
     },
     {
       "candidate_id": "sn-97-website-common-swagger-json",
@@ -542,7 +542,7 @@
       "content_type": "application/xml; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 556,
+      "latency_ms": 606,
       "method_tested": "GET",
       "name": "Albedo Swagger JSON",
       "netuid": 97,
@@ -566,7 +566,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://us-east-1.hippius.com/swagger.json",
-      "verified_at": "2026-06-06T12:18:37.088Z"
+      "verified_at": "2026-06-07T07:07:16.487Z"
     },
     {
       "candidate_id": "sn-97-website-link-us-east-1-hippius-com-website-1",
@@ -575,7 +575,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 562,
+      "latency_ms": 572,
       "method_tested": "HEAD",
       "name": "Albedo website page",
       "netuid": 97,
@@ -599,7 +599,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://us-east-1.hippius.com/albedo/kings.html",
-      "verified_at": "2026-06-06T12:18:37.168Z"
+      "verified_at": "2026-06-07T07:07:16.559Z"
     }
   ],
   "schema_version": 1,

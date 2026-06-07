@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 153,
+        "latency_ms": 154,
         "method_tested": "HEAD",
         "name": "Gradients TaoMarketCap dashboard",
         "netuid": 56,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/56",
-        "verified_at": "2026-06-06T12:18:24.018Z"
+        "verified_at": "2026-06-07T07:06:56.621Z"
       }
     },
     {
@@ -84,7 +84,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/gradients-ai/G.O.D",
         "kind": "source-repo",
-        "latency_ms": 646,
+        "latency_ms": 975,
         "method_tested": "HEAD",
         "name": "Gradients source repository",
         "netuid": 56,
@@ -108,7 +108,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/gradients-ai/G.O.D",
-        "verified_at": "2026-06-06T12:18:24.025Z"
+        "verified_at": "2026-06-07T07:06:56.677Z"
       }
     },
     {
@@ -139,7 +139,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 224,
+        "latency_ms": 405,
         "method_tested": "HEAD",
         "name": "Gradients website",
         "netuid": 56,
@@ -163,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/",
-        "verified_at": "2026-06-06T12:18:24.026Z"
+        "verified_at": "2026-06-07T07:06:56.678Z"
       }
     },
     {
@@ -176,7 +176,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 339,
+        "latency_ms": 1004,
         "method_tested": "HEAD",
         "name": "Gradients Tensorplex subnet docs",
         "netuid": 56,
@@ -218,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/56",
-        "verified_at": "2026-06-06T12:18:24.031Z"
+        "verified_at": "2026-06-07T07:06:56.678Z"
       }
     },
     {
@@ -231,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -250,7 +250,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/rayonlabs/G.O.D",
         "kind": "source-repo",
-        "latency_ms": 636,
+        "latency_ms": 965,
         "method_tested": "HEAD",
         "name": "Gradients source repository",
         "netuid": 56,
@@ -274,7 +274,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/rayonlabs/G.O.D",
-        "verified_at": "2026-06-06T12:18:24.031Z"
+        "verified_at": "2026-06-07T07:06:56.678Z"
       }
     },
     {
@@ -287,7 +287,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -305,7 +305,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 392,
+        "latency_ms": 1095,
         "method_tested": "HEAD",
         "name": "Gradients API",
         "netuid": 56,
@@ -329,7 +329,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/api",
-        "verified_at": "2026-06-06T12:18:24.041Z"
+        "verified_at": "2026-06-07T07:06:56.680Z"
       }
     },
     {
@@ -342,7 +342,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -360,7 +360,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "docs",
-        "latency_ms": 359,
+        "latency_ms": 1147,
         "method_tested": "HEAD",
         "name": "Gradients docs",
         "netuid": 56,
@@ -384,7 +384,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/docs",
-        "verified_at": "2026-06-06T12:18:24.041Z"
+        "verified_at": "2026-06-07T07:06:56.709Z"
       }
     },
     {
@@ -397,7 +397,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -415,7 +415,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 351,
+        "latency_ms": 1206,
         "method_tested": "HEAD",
         "name": "Gradients health endpoint",
         "netuid": 56,
@@ -439,7 +439,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/health",
-        "verified_at": "2026-06-06T12:18:24.082Z"
+        "verified_at": "2026-06-07T07:06:56.710Z"
       }
     },
     {
@@ -452,7 +452,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -470,7 +470,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 319,
+        "latency_ms": 1202,
         "method_tested": "HEAD",
         "name": "Gradients OpenAPI JSON",
         "netuid": 56,
@@ -494,7 +494,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/openapi.json",
-        "verified_at": "2026-06-06T12:18:24.096Z"
+        "verified_at": "2026-06-07T07:06:56.710Z"
       }
     },
     {
@@ -507,7 +507,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -525,7 +525,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 342,
+        "latency_ms": 1076,
         "method_tested": "HEAD",
         "name": "Gradients Swagger UI",
         "netuid": 56,
@@ -549,7 +549,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/swagger",
-        "verified_at": "2026-06-06T12:18:24.162Z"
+        "verified_at": "2026-06-07T07:06:56.778Z"
       }
     },
     {
@@ -562,7 +562,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -580,7 +580,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 323,
+        "latency_ms": 409,
         "method_tested": "HEAD",
         "name": "Gradients Swagger JSON",
         "netuid": 56,
@@ -604,7 +604,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/swagger.json",
-        "verified_at": "2026-06-06T12:18:24.162Z"
+        "verified_at": "2026-06-07T07:06:56.780Z"
       }
     },
     {
@@ -617,7 +617,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -635,7 +635,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "data-artifact",
-        "latency_ms": 195,
+        "latency_ms": 273,
         "method_tested": "HEAD",
         "name": "Gradients data artifact",
         "netuid": 56,
@@ -659,7 +659,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/app/my-models",
-        "verified_at": "2026-06-06T12:18:24.171Z"
+        "verified_at": "2026-06-07T07:06:56.784Z"
       }
     },
     {
@@ -672,7 +672,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -690,7 +690,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 164,
+        "latency_ms": 318,
         "method_tested": "HEAD",
         "name": "Gradients website page",
         "netuid": 56,
@@ -714,7 +714,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/platform",
-        "verified_at": "2026-06-06T12:18:24.250Z"
+        "verified_at": "2026-06-07T07:06:56.789Z"
       }
     },
     {
@@ -727,7 +727,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -745,7 +745,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 461,
+        "latency_ms": 683,
         "method_tested": "HEAD",
         "name": "Gradients website page",
         "netuid": 56,
@@ -769,7 +769,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/app/research",
-        "verified_at": "2026-06-06T12:18:24.261Z"
+        "verified_at": "2026-06-07T07:06:56.791Z"
       }
     },
     {
@@ -782,7 +782,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -800,7 +800,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 134,
+        "latency_ms": 305,
         "method_tested": "HEAD",
         "name": "Gradients website page",
         "netuid": 56,
@@ -824,7 +824,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/pricing",
-        "verified_at": "2026-06-06T12:18:24.366Z"
+        "verified_at": "2026-06-07T07:06:57.051Z"
       }
     },
     {
@@ -837,7 +837,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -855,7 +855,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 187,
+        "latency_ms": 824,
         "method_tested": "HEAD",
         "name": "Gradients website page",
         "netuid": 56,
@@ -879,7 +879,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/news",
-        "verified_at": "2026-06-06T12:18:24.370Z"
+        "verified_at": "2026-06-07T07:06:57.059Z"
       }
     },
     {
@@ -892,7 +892,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -910,7 +910,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 276,
+        "latency_ms": 318,
         "method_tested": "HEAD",
         "name": "Gradients website page",
         "netuid": 56,
@@ -934,7 +934,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/team",
-        "verified_at": "2026-06-06T12:18:24.400Z"
+        "verified_at": "2026-06-07T07:06:57.109Z"
       }
     },
     {
@@ -947,7 +947,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -965,7 +965,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 139,
+        "latency_ms": 135,
         "method_tested": "HEAD",
         "name": "Gradients website page",
         "netuid": 56,
@@ -989,7 +989,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/auth",
-        "verified_at": "2026-06-06T12:18:24.414Z"
+        "verified_at": "2026-06-07T07:06:57.135Z"
       }
     },
     {
@@ -1002,7 +1002,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1020,7 +1020,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 129,
+        "latency_ms": 2731,
         "method_tested": "HEAD",
         "name": "Gradients website page",
         "netuid": 56,
@@ -1044,7 +1044,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/app/explore",
-        "verified_at": "2026-06-06T12:18:24.416Z"
+        "verified_at": "2026-06-07T07:06:57.194Z"
       }
     },
     {
@@ -1057,7 +1057,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1075,7 +1075,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 140,
+        "latency_ms": 251,
         "method_tested": "HEAD",
         "name": "Gradients website page",
         "netuid": 56,
@@ -1099,7 +1099,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/app",
-        "verified_at": "2026-06-06T12:18:24.433Z"
+        "verified_at": "2026-06-07T07:06:57.198Z"
       }
     },
     {
@@ -1112,7 +1112,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1130,7 +1130,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 271,
+        "latency_ms": 325,
         "method_tested": "HEAD",
         "name": "Gradients website page",
         "netuid": 56,
@@ -1154,7 +1154,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.gradients.io/login",
-        "verified_at": "2026-06-06T12:18:24.434Z"
+        "verified_at": "2026-06-07T07:06:57.274Z"
       }
     }
   ],

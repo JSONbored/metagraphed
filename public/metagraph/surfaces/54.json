@@ -13,7 +13,7 @@
       "kind": "dashboard",
       "name": "Yanez MIID dashboard",
       "netuid": 54,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html",
-        "latency_ms": 139,
+        "latency_ms": 126,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:23.365Z"
+        "verified_at": "2026-06-07T07:06:55.803Z"
       }
     },
     {
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 132,
+        "latency_ms": 174,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:23.481Z"
+        "verified_at": "2026-06-07T07:06:55.863Z"
       }
     },
     {
@@ -116,8 +116,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/54",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/54/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/54"
       ],
       "subnet_name": "Yanez MIID",
       "subnet_slug": "sn-54",
@@ -127,11 +126,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/yanez-compliance/MIID-subnet",
-        "latency_ms": 589,
+        "latency_ms": 780,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:23.500Z"
+        "verified_at": "2026-06-07T07:06:55.923Z"
       }
     },
     {
@@ -169,11 +168,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 137,
+        "latency_ms": 145,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:23.504Z"
+        "verified_at": "2026-06-07T07:06:55.965Z"
       }
     },
     {
@@ -183,7 +182,7 @@
       "kind": "docs",
       "name": "Yanez MIID Tensorplex subnet docs",
       "netuid": 54,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -211,11 +210,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 374,
+        "latency_ms": 742,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:23.582Z"
+        "verified_at": "2026-06-07T07:06:56.039Z"
       }
     }
   ]

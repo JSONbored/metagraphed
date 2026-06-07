@@ -13,7 +13,7 @@
       "kind": "data-artifact",
       "name": "ReadyAI data artifact",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 230,
+        "latency_ms": 249,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.277Z"
+        "verified_at": "2026-06-07T07:06:48.910Z"
       }
     },
     {
@@ -55,7 +55,7 @@
       "kind": "data-artifact",
       "name": "ReadyAI data artifact",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 63,
+        "latency_ms": 162,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.277Z"
+        "verified_at": "2026-06-07T07:06:48.918Z"
       }
     },
     {
@@ -97,7 +97,7 @@
       "kind": "data-artifact",
       "name": "ReadyAI data artifact",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -125,11 +125,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 93,
+        "latency_ms": 99,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.313Z"
+        "verified_at": "2026-06-07T07:06:48.943Z"
       }
     },
     {
@@ -139,7 +139,7 @@
       "kind": "docs",
       "name": "ReadyAI docs",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -167,11 +167,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 85,
+        "latency_ms": 107,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/subtensor-nodes",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.336Z"
+        "verified_at": "2026-06-07T07:06:49.037Z"
       }
     },
     {
@@ -181,7 +181,7 @@
       "kind": "docs",
       "name": "ReadyAI docs",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -209,11 +209,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
+        "latency_ms": 147,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/working-with-keys/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.340Z"
+        "verified_at": "2026-06-07T07:06:49.048Z"
       }
     },
     {
@@ -223,7 +223,7 @@
       "kind": "docs",
       "name": "ReadyAI docs",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -251,11 +251,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 195,
+        "latency_ms": 199,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/miners",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.348Z"
+        "verified_at": "2026-06-07T07:06:49.083Z"
       }
     },
     {
@@ -265,7 +265,7 @@
       "kind": "docs",
       "name": "ReadyAI docs",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -293,11 +293,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html",
-        "latency_ms": 606,
+        "latency_ms": 615,
         "method_tested": "HEAD",
         "redirect_target": "https://developers.openai.com/api/docs/models",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.421Z"
+        "verified_at": "2026-06-07T07:06:49.157Z"
       }
     },
     {
@@ -335,11 +335,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 131,
+        "latency_ms": 151,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.485Z"
+        "verified_at": "2026-06-07T07:06:49.211Z"
       }
     },
     {
@@ -359,32 +359,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/33",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/33/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/33"
       ],
       "subnet_name": "ReadyAI",
       "subnet_slug": "sn-33",
       "url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/afterpartyai/bittensor-conversation-genome-project",
-        "homepage": null,
-        "last_push_at": "2026-05-30T20:11:30Z",
+        "latency_ms": 864,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:18.493Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:49.221Z"
       }
     }
   ]

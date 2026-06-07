@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:41.434Z"
+    "verified_at": "2026-06-07T07:07:21.859Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/110",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/110",
@@ -31,7 +31,7 @@
       "id": "sn-110-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Green Compute source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -58,11 +58,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Rich-Kids-of-TAO/rkt-subnet",
-        "latency_ms": 432,
+        "latency_ms": 386,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:41.233Z"
+        "verified_at": "2026-06-07T07:07:21.645Z"
       }
     },
     {
@@ -97,11 +97,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 195,
+        "latency_ms": 177,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:41.147Z"
+        "verified_at": "2026-06-07T07:07:21.595Z"
       }
     },
     {
@@ -110,7 +110,7 @@
       "id": "sn-110-tensorplex-docs",
       "kind": "docs",
       "name": "Green Compute Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -136,11 +136,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 328,
+        "latency_ms": 398,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:41.155Z"
+        "verified_at": "2026-06-07T07:07:21.601Z"
       }
     },
     {
@@ -175,11 +175,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 216,
+        "latency_ms": 125,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.939Z"
+        "verified_at": "2026-06-07T07:07:21.468Z"
       }
     },
     {
@@ -188,7 +188,7 @@
       "id": "sn-110-website-link-www-green-compute-com-data-artifact-10",
       "kind": "data-artifact",
       "name": "Green Compute data artifact",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -214,11 +214,11 @@
         "classification": "redirected",
         "confidence_score": 63,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 188,
+        "latency_ms": 223,
         "method_tested": "HEAD",
         "redirect_target": "https://www.green-compute.com/login?callbackUrl=%2Fmodels%3Fprefill%3DQwen%252FQwen2.5-7B-Instruct",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:41.343Z"
+        "verified_at": "2026-06-07T07:07:21.773Z"
       }
     },
     {
@@ -227,7 +227,7 @@
       "id": "sn-110-website-link-www-green-compute-com-data-artifact-6",
       "kind": "data-artifact",
       "name": "Green Compute data artifact",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +253,11 @@
         "classification": "redirected",
         "confidence_score": 63,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 239,
+        "latency_ms": 143,
         "method_tested": "HEAD",
         "redirect_target": "https://www.green-compute.com/login?callbackUrl=%2Fmodels",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:41.392Z"
+        "verified_at": "2026-06-07T07:07:21.817Z"
       }
     },
     {
@@ -266,7 +266,7 @@
       "id": "sn-110-website-link-www-green-compute-com-data-artifact-9",
       "kind": "data-artifact",
       "name": "Green Compute data artifact",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -292,11 +292,11 @@
         "classification": "redirected",
         "confidence_score": 63,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 240,
+        "latency_ms": 234,
         "method_tested": "HEAD",
         "redirect_target": "https://www.green-compute.com/login?callbackUrl=%2Fmodels%3Fprefill%3Dmeta-llama%252FMeta-Llama-3.1-8B-Instruct",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:41.434Z"
+        "verified_at": "2026-06-07T07:07:21.859Z"
       }
     }
   ],

@@ -10,7 +10,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 36,
+        "latency_ms": 46,
         "method_tested": "HEAD",
         "name": "OxMarkets docs",
         "netuid": 35,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.learnbittensor.org/keys/working-with-keys",
-        "verified_at": "2026-06-06T12:18:18.645Z"
+        "verified_at": "2026-06-07T07:06:49.316Z"
       }
     },
     {
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 135,
+        "latency_ms": 133,
         "method_tested": "HEAD",
         "name": "OxMarkets TaoMarketCap dashboard",
         "netuid": 35,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/35",
-        "verified_at": "2026-06-06T12:18:18.661Z"
+        "verified_at": "2026-06-07T07:06:49.325Z"
       }
     },
     {
@@ -132,27 +132,28 @@
       "subnet_name": "OxMarkets",
       "url": "https://github.com/General-Tao-Ventures/cartha-validator",
       "verification": {
-        "archived": false,
         "candidate_id": "sn-35-taomarketcap-source-repo",
         "classification": "live",
-        "confidence_score": 80,
-        "default_branch": "main",
-        "description": null,
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/General-Tao-Ventures/cartha-validator",
-        "homepage": null,
-        "html_url": "https://github.com/General-Tao-Ventures/cartha-validator",
         "kind": "source-repo",
-        "last_push_at": "2026-05-06T05:41:19Z",
+        "latency_ms": 812,
+        "method_tested": "HEAD",
         "name": "OxMarkets source repository",
         "netuid": 35,
+        "private_redirect_blocked": false,
         "provider": "taomarketcap",
         "quality_signals": {
-          "archived": false,
-          "has_default_branch": true,
-          "has_recent_push_metadata": true,
+          "content_type_matches_kind": true,
           "public_safe": true,
-          "source_tier": "third-party-index"
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
         },
+        "redirect_target": null,
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/35",
@@ -160,9 +161,9 @@
           "https://api.taomarketcap.com/public/v1/subnets/35"
         ],
         "status": "ok",
-        "topics": [],
+        "status_code": 200,
         "url": "https://github.com/General-Tao-Ventures/cartha-validator",
-        "verified_at": "2026-06-06T12:18:18.674Z"
+        "verified_at": "2026-06-07T07:06:49.340Z"
       }
     },
     {
@@ -193,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 251,
+        "latency_ms": 271,
         "method_tested": "HEAD",
         "name": "OxMarkets website",
         "netuid": 35,
@@ -217,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.0xmarkets.io/",
-        "verified_at": "2026-06-06T12:18:18.677Z"
+        "verified_at": "2026-06-07T07:06:49.360Z"
       }
     },
     {
@@ -230,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -248,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 346,
+        "latency_ms": 629,
         "method_tested": "HEAD",
         "name": "OxMarkets Tensorplex subnet docs",
         "netuid": 35,
@@ -272,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/35",
-        "verified_at": "2026-06-06T12:18:18.680Z"
+        "verified_at": "2026-06-07T07:06:49.364Z"
       }
     },
     {
@@ -285,7 +286,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -297,27 +298,28 @@
       "subnet_name": "OxMarkets",
       "url": "https://github.com/General-Tao-Ventures/cartha-cli",
       "verification": {
-        "archived": false,
         "candidate_id": "sn-35-tensorplex-source-repo-1",
         "classification": "live",
-        "confidence_score": 80,
-        "default_branch": "main",
-        "description": null,
+        "confidence_score": 55,
+        "error": null,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/General-Tao-Ventures/cartha-cli",
-        "homepage": null,
-        "html_url": "https://github.com/General-Tao-Ventures/cartha-cli",
         "kind": "source-repo",
-        "last_push_at": "2026-03-17T15:44:46Z",
+        "latency_ms": 575,
+        "method_tested": "HEAD",
         "name": "OxMarkets source repository",
         "netuid": 35,
+        "private_redirect_blocked": false,
         "provider": "tensorplex-subnet-docs",
         "quality_signals": {
-          "archived": false,
-          "has_default_branch": true,
-          "has_recent_push_metadata": true,
+          "content_type_matches_kind": true,
           "public_safe": true,
-          "source_tier": "community-docs"
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
         },
+        "redirect_target": null,
         "source_tier": "community-docs",
         "source_type": "tensorplex-subnet-docs-github",
         "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/35/subnet.json",
@@ -325,9 +327,9 @@
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/35/subnet.json"
         ],
         "status": "ok",
-        "topics": [],
+        "status_code": 200,
         "url": "https://github.com/General-Tao-Ventures/cartha-cli",
-        "verified_at": "2026-06-06T12:18:18.689Z"
+        "verified_at": "2026-06-07T07:06:49.366Z"
       }
     },
     {
@@ -340,7 +342,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -358,7 +360,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 185,
+        "latency_ms": 137,
         "method_tested": "GET",
         "name": "OxMarkets API",
         "netuid": 35,
@@ -382,7 +384,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.0xmarkets.io/api",
-        "verified_at": "2026-06-06T12:18:18.730Z"
+        "verified_at": "2026-06-07T07:06:49.367Z"
       }
     },
     {
@@ -395,7 +397,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -413,7 +415,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 175,
+        "latency_ms": 149,
         "method_tested": "GET",
         "name": "OxMarkets docs",
         "netuid": 35,
@@ -437,7 +439,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.0xmarkets.io/docs",
-        "verified_at": "2026-06-06T12:18:18.741Z"
+        "verified_at": "2026-06-07T07:06:49.419Z"
       }
     },
     {
@@ -450,7 +452,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -468,7 +470,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 776,
+        "latency_ms": 140,
         "method_tested": "GET",
         "name": "OxMarkets health endpoint",
         "netuid": 35,
@@ -492,7 +494,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.0xmarkets.io/health",
-        "verified_at": "2026-06-06T12:18:18.750Z"
+        "verified_at": "2026-06-07T07:06:49.430Z"
       }
     },
     {
@@ -505,7 +507,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -523,7 +525,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 152,
+        "latency_ms": 928,
         "method_tested": "GET",
         "name": "OxMarkets OpenAPI JSON",
         "netuid": 35,
@@ -547,7 +549,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.0xmarkets.io/openapi.json",
-        "verified_at": "2026-06-06T12:18:18.751Z"
+        "verified_at": "2026-06-07T07:06:49.455Z"
       }
     },
     {
@@ -560,7 +562,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -578,7 +580,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 138,
+        "latency_ms": 145,
         "method_tested": "GET",
         "name": "OxMarkets Swagger UI",
         "netuid": 35,
@@ -602,7 +604,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.0xmarkets.io/swagger",
-        "verified_at": "2026-06-06T12:18:18.751Z"
+        "verified_at": "2026-06-07T07:06:49.460Z"
       }
     },
     {
@@ -615,7 +617,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -657,7 +659,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.0xmarkets.io/swagger.json",
-        "verified_at": "2026-06-06T12:18:18.794Z"
+        "verified_at": "2026-06-07T07:06:49.476Z"
       }
     }
   ],

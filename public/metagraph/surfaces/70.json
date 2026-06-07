@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 150,
+        "latency_ms": 147,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.848Z"
+        "verified_at": "2026-06-07T07:07:02.564Z"
       }
     },
     {
@@ -84,11 +84,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/RendixNetwork/nexisgen",
-        "latency_ms": 477,
+        "latency_ms": 706,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.910Z"
+        "verified_at": "2026-06-07T07:07:02.575Z"
       }
     },
     {
@@ -126,11 +126,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 466,
+        "latency_ms": 400,
         "method_tested": "HEAD",
         "redirect_target": "https://www.nexisgen.ai/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.911Z"
+        "verified_at": "2026-06-07T07:07:02.583Z"
       }
     },
     {
@@ -140,7 +140,7 @@
       "kind": "docs",
       "name": "NexisGen Tensorplex subnet docs",
       "netuid": 70,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -168,11 +168,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 382,
+        "latency_ms": 791,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.947Z"
+        "verified_at": "2026-06-07T07:07:02.587Z"
       }
     },
     {
@@ -182,7 +182,7 @@
       "kind": "docs",
       "name": "NexisGen docs",
       "netuid": 70,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -210,11 +210,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 337,
+        "latency_ms": 434,
         "method_tested": "HEAD",
         "redirect_target": "https://www.nexisgen.ai/docs",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.978Z"
+        "verified_at": "2026-06-07T07:07:02.587Z"
       }
     },
     {
@@ -224,7 +224,7 @@
       "kind": "data-artifact",
       "name": "NexisGen data artifact",
       "netuid": 70,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -252,11 +252,11 @@
         "classification": "redirected",
         "confidence_score": 63,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 278,
+        "latency_ms": 335,
         "method_tested": "HEAD",
         "redirect_target": "https://www.nexisgen.ai/commission",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:28.004Z"
+        "verified_at": "2026-06-07T07:07:02.717Z"
       }
     }
   ]

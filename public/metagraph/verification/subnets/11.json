@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 138,
+      "latency_ms": 137,
       "method_tested": "HEAD",
       "name": "TrajectoryRL TaoMarketCap dashboard",
       "netuid": 11,
@@ -36,50 +36,41 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/11",
-      "verified_at": "2026-06-06T12:18:11.572Z"
+      "verified_at": "2026-06-07T07:06:40.508Z"
     },
     {
-      "archived": false,
       "candidate_id": "sn-11-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
-      "default_branch": "main",
-      "description": "Bittensor Subnet 11 — an open skill factory that uses distributed compute and RL to produce state-of-the-art skills for AI agents.",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/trajectoryRL/trajectoryRL",
-      "homepage": "https://trajrl.com/",
-      "html_url": "https://github.com/trajectoryRL/trajectoryRL",
       "kind": "source-repo",
-      "last_push_at": "2026-06-02T19:13:19Z",
+      "latency_ms": 762,
+      "method_tested": "HEAD",
       "name": "TrajectoryRL source repository",
       "netuid": 11,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/11",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/11",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/11/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/11"
       ],
       "status": "ok",
-      "topics": [
-        "agent-skills",
-        "ai-agents",
-        "bittensor",
-        "decentralized-ai",
-        "policy-optimization",
-        "reinforcement-learning",
-        "skill-factory",
-        "subnet"
-      ],
+      "status_code": 200,
       "url": "https://github.com/trajectoryRL/trajectoryRL",
-      "verified_at": "2026-06-06T12:18:11.580Z"
+      "verified_at": "2026-06-07T07:06:40.508Z"
     },
     {
       "candidate_id": "sn-11-taomarketcap-website",
@@ -88,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 339,
+      "latency_ms": 337,
       "method_tested": "HEAD",
       "name": "TrajectoryRL website",
       "netuid": 11,
@@ -112,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://trajrl.com/",
-      "verified_at": "2026-06-06T12:18:11.582Z"
+      "verified_at": "2026-06-07T07:06:40.589Z"
     },
     {
       "candidate_id": "sn-11-tensorplex-docs",
@@ -121,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 335,
+      "latency_ms": 518,
       "method_tested": "HEAD",
       "name": "TrajectoryRL Tensorplex subnet docs",
       "netuid": 11,
@@ -145,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/11",
-      "verified_at": "2026-06-06T12:18:11.582Z"
+      "verified_at": "2026-06-07T07:06:40.649Z"
     },
     {
       "candidate_id": "sn-11-website-common-api",
@@ -154,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 285,
+      "latency_ms": 161,
       "method_tested": "GET",
       "name": "TrajectoryRL API",
       "netuid": 11,
@@ -178,7 +169,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://trajrl.com/api",
-      "verified_at": "2026-06-06T12:18:11.612Z"
+      "verified_at": "2026-06-07T07:06:40.666Z"
     },
     {
       "candidate_id": "sn-11-website-common-docs",
@@ -187,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 326,
+      "latency_ms": 369,
       "method_tested": "HEAD",
       "name": "TrajectoryRL docs",
       "netuid": 11,
@@ -211,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://trajrl.com/docs",
-      "verified_at": "2026-06-06T12:18:11.698Z"
+      "verified_at": "2026-06-07T07:06:40.667Z"
     },
     {
       "candidate_id": "sn-11-website-common-health",
@@ -244,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://trajrl.com/health",
-      "verified_at": "2026-06-06T12:18:11.710Z"
+      "verified_at": "2026-06-07T07:06:40.668Z"
     },
     {
       "candidate_id": "sn-11-website-common-openapi-json",
@@ -253,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 156,
+      "latency_ms": 157,
       "method_tested": "GET",
       "name": "TrajectoryRL OpenAPI JSON",
       "netuid": 11,
@@ -277,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://trajrl.com/openapi.json",
-      "verified_at": "2026-06-06T12:18:11.724Z"
+      "verified_at": "2026-06-07T07:06:40.684Z"
     },
     {
       "candidate_id": "sn-11-website-common-swagger",
@@ -286,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 154,
+      "latency_ms": 160,
       "method_tested": "GET",
       "name": "TrajectoryRL Swagger UI",
       "netuid": 11,
@@ -310,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://trajrl.com/swagger",
-      "verified_at": "2026-06-06T12:18:11.725Z"
+      "verified_at": "2026-06-07T07:06:40.693Z"
     },
     {
       "candidate_id": "sn-11-website-common-swagger-json",
@@ -319,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 152,
+      "latency_ms": 164,
       "method_tested": "GET",
       "name": "TrajectoryRL Swagger JSON",
       "netuid": 11,
@@ -343,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://trajrl.com/swagger.json",
-      "verified_at": "2026-06-06T12:18:11.728Z"
+      "verified_at": "2026-06-07T07:06:40.705Z"
     },
     {
       "candidate_id": "sn-11-website-link-trajrl-com-dashboard-3",
@@ -352,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 443,
+      "latency_ms": 335,
       "method_tested": "HEAD",
       "name": "TrajectoryRL dashboard",
       "netuid": 11,
@@ -376,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://trajrl.com/leaderboard",
-      "verified_at": "2026-06-06T12:18:11.742Z"
+      "verified_at": "2026-06-07T07:06:40.723Z"
     },
     {
       "candidate_id": "sn-11-website-link-trajrl-com-website-1",
@@ -385,7 +376,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 436,
+      "latency_ms": 326,
       "method_tested": "HEAD",
       "name": "TrajectoryRL website page",
       "netuid": 11,
@@ -409,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://trajrl.com/live",
-      "verified_at": "2026-06-06T12:18:11.762Z"
+      "verified_at": "2026-06-07T07:06:40.756Z"
     },
     {
       "candidate_id": "sn-11-website-link-trajrl-com-website-2",
@@ -418,7 +409,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 430,
+      "latency_ms": 351,
       "method_tested": "HEAD",
       "name": "TrajectoryRL website page",
       "netuid": 11,
@@ -442,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://trajrl.com/winners",
-      "verified_at": "2026-06-06T12:18:11.778Z"
+      "verified_at": "2026-06-07T07:06:40.791Z"
     },
     {
       "candidate_id": "sn-11-website-link-trajrl-com-website-4",
@@ -451,7 +442,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 306,
+      "latency_ms": 223,
       "method_tested": "HEAD",
       "name": "TrajectoryRL website page",
       "netuid": 11,
@@ -475,7 +466,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://trajrl.com/bench",
-      "verified_at": "2026-06-06T12:18:11.783Z"
+      "verified_at": "2026-06-07T07:06:40.900Z"
     }
   ],
   "schema_version": 1,

@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 139,
+        "latency_ms": 191,
         "method_tested": "HEAD",
         "name": "Subnet 117 TaoMarketCap dashboard",
         "netuid": 117,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/117",
-        "verified_at": "2026-06-06T12:18:43.242Z"
+        "verified_at": "2026-06-07T07:07:23.764Z"
       }
     },
     {
@@ -84,7 +84,7 @@
         "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/helionlink/Chi",
         "kind": "source-repo",
-        "latency_ms": 569,
+        "latency_ms": 765,
         "method_tested": "HEAD",
         "name": "Unknown source repository",
         "netuid": 117,
@@ -108,7 +108,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/helionlink/Chi",
-        "verified_at": "2026-06-06T12:18:43.279Z"
+        "verified_at": "2026-06-07T07:07:23.789Z"
       }
     },
     {
@@ -121,7 +121,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -139,7 +139,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 290,
+        "latency_ms": 398,
         "method_tested": "HEAD",
         "name": "Subnet 117 Tensorplex subnet docs",
         "netuid": 117,
@@ -163,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/117",
-        "verified_at": "2026-06-06T12:18:43.280Z"
+        "verified_at": "2026-06-07T07:07:23.817Z"
       }
     },
     {
@@ -176,7 +176,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -192,10 +192,10 @@
         "classification": "live",
         "confidence_score": 55,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/shiftlayer-llc/brainplay-subnet",
         "kind": "source-repo",
-        "latency_ms": 506,
+        "latency_ms": 586,
         "method_tested": "HEAD",
         "name": "Subnet 117 source repository",
         "netuid": 117,
@@ -219,7 +219,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/shiftlayer-llc/brainplay-subnet",
-        "verified_at": "2026-06-06T12:18:43.297Z"
+        "verified_at": "2026-06-07T07:07:23.829Z"
       }
     }
   ],

@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 115,
+      "latency_ms": 116,
       "method_tested": "HEAD",
       "name": "DSperse dashboard",
       "netuid": 2,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://sn2-stats.inferencelabs.com/",
-      "verified_at": "2026-06-06T12:18:09.448Z"
+      "verified_at": "2026-06-07T07:06:37.555Z"
     },
     {
       "candidate_id": "sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-3",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 182,
+      "latency_ms": 164,
       "method_tested": "HEAD",
       "name": "DSperse dashboard",
       "netuid": 2,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://wandb.ai/inferencelabs/subnet-2",
-      "verified_at": "2026-06-06T12:18:09.496Z"
+      "verified_at": "2026-06-07T07:06:37.606Z"
     },
     {
       "candidate_id": "sn-2-github-readme-inference-labs-inc-subnet-2-docs-1",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 230,
+      "latency_ms": 267,
       "method_tested": "HEAD",
       "name": "DSperse docs",
       "netuid": 2,
@@ -102,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://sn2-docs.inferencelabs.com/",
-      "verified_at": "2026-06-06T12:18:09.545Z"
+      "verified_at": "2026-06-07T07:06:37.612Z"
     },
     {
       "candidate_id": "sn-2-github-readme-inference-labs-inc-subnet-2-docs-4",
@@ -111,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 363,
+      "latency_ms": 333,
       "method_tested": "HEAD",
       "name": "DSperse docs",
       "netuid": 2,
@@ -135,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.bittensor.com/getting-started/installation",
-      "verified_at": "2026-06-06T12:18:09.545Z"
+      "verified_at": "2026-06-07T07:06:37.622Z"
     },
     {
       "candidate_id": "sn-2-taomarketcap-dashboard",
@@ -144,7 +144,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 135,
+      "latency_ms": 166,
       "method_tested": "HEAD",
       "name": "DSperse TaoMarketCap dashboard",
       "netuid": 2,
@@ -168,45 +168,41 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/2",
-      "verified_at": "2026-06-06T12:18:09.563Z"
+      "verified_at": "2026-06-07T07:06:37.629Z"
     },
     {
-      "archived": false,
       "candidate_id": "sn-2-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
-      "default_branch": "main",
-      "description": "Verifiable inference on Bittensor",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/inference-labs-inc/subnet-2",
-      "homepage": "https://subnet2.inferencelabs.com/",
-      "html_url": "https://github.com/inference-labs-inc/subnet-2",
       "kind": "source-repo",
-      "last_push_at": "2026-06-04T02:15:53Z",
+      "latency_ms": 650,
+      "method_tested": "HEAD",
       "name": "DSperse source repository",
       "netuid": 2,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/2",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/2",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/2/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/2"
       ],
       "status": "ok",
-      "topics": [
-        "bittensor",
-        "zk",
-        "zkml"
-      ],
+      "status_code": 200,
       "url": "https://github.com/inference-labs-inc/subnet-2",
-      "verified_at": "2026-06-06T12:18:09.593Z"
+      "verified_at": "2026-06-07T07:06:37.654Z"
     },
     {
       "candidate_id": "sn-2-taomarketcap-website",
@@ -215,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 133,
+      "latency_ms": 145,
       "method_tested": "HEAD",
       "name": "DSperse website",
       "netuid": 2,
@@ -239,7 +235,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://subnet2.inferencelabs.com/",
-      "verified_at": "2026-06-06T12:18:09.607Z"
+      "verified_at": "2026-06-07T07:06:37.694Z"
     },
     {
       "candidate_id": "sn-2-taopedia-article",
@@ -248,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 495,
+      "latency_ms": 341,
       "method_tested": "HEAD",
       "name": "DSperse Taopedia article",
       "netuid": 2,
@@ -272,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_2/index.mdx",
-      "verified_at": "2026-06-06T12:18:09.612Z"
+      "verified_at": "2026-06-07T07:06:37.702Z"
     },
     {
       "candidate_id": "sn-2-tensorplex-docs",
@@ -281,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 340,
+      "latency_ms": 696,
       "method_tested": "HEAD",
       "name": "DSperse Tensorplex subnet docs",
       "netuid": 2,
@@ -305,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/2",
-      "verified_at": "2026-06-06T12:18:09.613Z"
+      "verified_at": "2026-06-07T07:06:37.716Z"
     },
     {
       "candidate_id": "sn-2-website-common-api",
@@ -314,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 117,
+      "latency_ms": 145,
       "method_tested": "HEAD",
       "name": "DSperse API",
       "netuid": 2,
@@ -338,7 +334,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://subnet2.inferencelabs.com/api",
-      "verified_at": "2026-06-06T12:18:09.614Z"
+      "verified_at": "2026-06-07T07:06:37.731Z"
     },
     {
       "candidate_id": "sn-2-website-common-docs",
@@ -347,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 158,
+      "latency_ms": 122,
       "method_tested": "HEAD",
       "name": "DSperse docs",
       "netuid": 2,
@@ -371,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://subnet2.inferencelabs.com/docs",
-      "verified_at": "2026-06-06T12:18:09.634Z"
+      "verified_at": "2026-06-07T07:06:37.786Z"
     },
     {
       "candidate_id": "sn-2-website-common-health",
@@ -380,7 +376,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 136,
+      "latency_ms": 125,
       "method_tested": "HEAD",
       "name": "DSperse health endpoint",
       "netuid": 2,
@@ -404,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://subnet2.inferencelabs.com/health",
-      "verified_at": "2026-06-06T12:18:09.678Z"
+      "verified_at": "2026-06-07T07:06:37.816Z"
     },
     {
       "candidate_id": "sn-2-website-common-openapi-json",
@@ -413,7 +409,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 125,
+      "latency_ms": 124,
       "method_tested": "HEAD",
       "name": "DSperse OpenAPI JSON",
       "netuid": 2,
@@ -437,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://subnet2.inferencelabs.com/openapi.json",
-      "verified_at": "2026-06-06T12:18:09.698Z"
+      "verified_at": "2026-06-07T07:06:37.821Z"
     },
     {
       "candidate_id": "sn-2-website-common-swagger",
@@ -446,7 +442,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 43,
+      "latency_ms": 51,
       "method_tested": "HEAD",
       "name": "DSperse Swagger UI",
       "netuid": 2,
@@ -470,7 +466,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://subnet2.inferencelabs.com/swagger",
-      "verified_at": "2026-06-06T12:18:09.732Z"
+      "verified_at": "2026-06-07T07:06:37.909Z"
     },
     {
       "candidate_id": "sn-2-website-common-swagger-json",
@@ -479,7 +475,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 52,
+      "latency_ms": 50,
       "method_tested": "HEAD",
       "name": "DSperse Swagger JSON",
       "netuid": 2,
@@ -503,7 +499,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://subnet2.inferencelabs.com/swagger.json",
-      "verified_at": "2026-06-06T12:18:09.739Z"
+      "verified_at": "2026-06-07T07:06:37.910Z"
     }
   ],
   "schema_version": 1,

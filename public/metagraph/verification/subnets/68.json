@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 147,
+      "latency_ms": 151,
       "method_tested": "HEAD",
       "name": "NOVA TaoMarketCap dashboard",
       "netuid": 68,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/68",
-      "verified_at": "2026-06-06T12:18:27.311Z"
+      "verified_at": "2026-06-07T07:07:01.935Z"
     },
     {
       "candidate_id": "sn-68-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/metanova-labs/nova",
       "kind": "source-repo",
-      "latency_ms": 524,
+      "latency_ms": 995,
       "method_tested": "HEAD",
       "name": "NOVA source repository",
       "netuid": 68,
@@ -65,13 +65,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/68",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/68",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/68/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/68"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/metanova-labs/nova",
-      "verified_at": "2026-06-06T12:18:27.359Z"
+      "verified_at": "2026-06-07T07:07:01.969Z"
     },
     {
       "candidate_id": "sn-68-taomarketcap-website",
@@ -80,7 +79,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 248,
+      "latency_ms": 221,
       "method_tested": "HEAD",
       "name": "NOVA website",
       "netuid": 68,
@@ -104,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.metanova-labs.ai/",
-      "verified_at": "2026-06-06T12:18:27.442Z"
+      "verified_at": "2026-06-07T07:07:01.973Z"
     },
     {
       "candidate_id": "sn-68-tensorplex-docs",
@@ -113,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 321,
+      "latency_ms": 690,
       "method_tested": "HEAD",
       "name": "NOVA Tensorplex subnet docs",
       "netuid": 68,
@@ -137,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/68",
-      "verified_at": "2026-06-06T12:18:27.458Z"
+      "verified_at": "2026-06-07T07:07:01.986Z"
     },
     {
       "candidate_id": "sn-68-website-common-api",
@@ -146,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 60,
+      "latency_ms": 66,
       "method_tested": "GET",
       "name": "NOVA API",
       "netuid": 68,
@@ -170,7 +169,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.metanova-labs.ai/api",
-      "verified_at": "2026-06-06T12:18:27.519Z"
+      "verified_at": "2026-06-07T07:07:01.997Z"
     },
     {
       "candidate_id": "sn-68-website-common-docs",
@@ -179,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 60,
+      "latency_ms": 61,
       "method_tested": "GET",
       "name": "NOVA docs",
       "netuid": 68,
@@ -203,7 +202,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.metanova-labs.ai/docs",
-      "verified_at": "2026-06-06T12:18:27.532Z"
+      "verified_at": "2026-06-07T07:07:02.089Z"
     },
     {
       "candidate_id": "sn-68-website-common-health",
@@ -212,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 62,
+      "latency_ms": 65,
       "method_tested": "GET",
       "name": "NOVA health endpoint",
       "netuid": 68,
@@ -236,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.metanova-labs.ai/health",
-      "verified_at": "2026-06-06T12:18:27.634Z"
+      "verified_at": "2026-06-07T07:07:02.235Z"
     },
     {
       "candidate_id": "sn-68-website-common-openapi-json",
@@ -245,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 63,
+      "latency_ms": 71,
       "method_tested": "GET",
       "name": "NOVA OpenAPI JSON",
       "netuid": 68,
@@ -269,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.metanova-labs.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:27.640Z"
+      "verified_at": "2026-06-07T07:07:02.363Z"
     },
     {
       "candidate_id": "sn-68-website-common-swagger",
@@ -278,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 69,
+      "latency_ms": 72,
       "method_tested": "GET",
       "name": "NOVA Swagger UI",
       "netuid": 68,
@@ -302,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.metanova-labs.ai/swagger",
-      "verified_at": "2026-06-06T12:18:27.690Z"
+      "verified_at": "2026-06-07T07:07:02.367Z"
     },
     {
       "candidate_id": "sn-68-website-common-swagger-json",
@@ -311,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 73,
+      "latency_ms": 58,
       "method_tested": "GET",
       "name": "NOVA Swagger JSON",
       "netuid": 68,
@@ -335,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.metanova-labs.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:27.711Z"
+      "verified_at": "2026-06-07T07:07:02.389Z"
     },
     {
       "candidate_id": "sn-68-website-link-www-metanova-labs-ai-dashboard-5",
@@ -344,7 +343,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 218,
+      "latency_ms": 213,
       "method_tested": "HEAD",
       "name": "NOVA dashboard",
       "netuid": 68,
@@ -368,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.metanova-labs.ai/dashboard",
-      "verified_at": "2026-06-06T12:18:27.772Z"
+      "verified_at": "2026-06-07T07:07:02.426Z"
     },
     {
       "candidate_id": "sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
@@ -377,7 +376,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "data-artifact",
-      "latency_ms": 71,
+      "latency_ms": 79,
       "method_tested": "HEAD",
       "name": "NOVA data artifact",
       "netuid": 68,
@@ -401,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.metanova-labs.ai/models",
-      "verified_at": "2026-06-06T12:18:27.772Z"
+      "verified_at": "2026-06-07T07:07:02.504Z"
     },
     {
       "candidate_id": "sn-68-website-link-www-metanova-labs-ai-docs-3",
@@ -410,7 +409,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "docs",
-      "latency_ms": 69,
+      "latency_ms": 71,
       "method_tested": "HEAD",
       "name": "NOVA docs",
       "netuid": 68,
@@ -434,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.metanova-labs.ai/whitepapers",
-      "verified_at": "2026-06-06T12:18:27.779Z"
+      "verified_at": "2026-06-07T07:07:02.507Z"
     },
     {
       "candidate_id": "sn-68-website-link-www-metanova-labs-ai-website-1",
@@ -443,7 +442,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 197,
+      "latency_ms": 213,
       "method_tested": "HEAD",
       "name": "NOVA website page",
       "netuid": 68,
@@ -467,7 +466,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.metanova-labs.ai/about",
-      "verified_at": "2026-06-06T12:18:27.807Z"
+      "verified_at": "2026-06-07T07:07:02.507Z"
     },
     {
       "candidate_id": "sn-68-website-link-www-metanova-labs-ai-website-2",
@@ -476,7 +475,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 190,
+      "latency_ms": 65,
       "method_tested": "HEAD",
       "name": "NOVA website page",
       "netuid": 68,
@@ -500,7 +499,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.metanova-labs.ai/nova",
-      "verified_at": "2026-06-06T12:18:27.818Z"
+      "verified_at": "2026-06-07T07:07:02.519Z"
     }
   ],
   "schema_version": 1,

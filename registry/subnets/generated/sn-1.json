@@ -12,8 +12,8 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 4,
-    "verified_at": "2026-06-06T12:18:09.032Z"
+    "source_count": 2,
+    "verified_at": "2026-06-07T07:06:36.946Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/1",
   "docs_url": "https://docs.macrocosmos.ai/subnets/subnet-1-apex",
@@ -42,37 +42,28 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/1",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/1"
       ],
       "url": "https://github.com/macrocosm-os/apex",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/macrocosm-os/apex",
-        "homepage": "https://apex.macrocosmos.ai/",
-        "last_push_at": "2026-06-04T09:58:25Z",
+        "latency_ms": 771,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [
-          "ai",
-          "bittensor",
-          "blockchain",
-          "cryptocurrency",
-          "llm",
-          "network"
-        ],
-        "verified_at": "2026-06-06T12:18:09.031Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:36.946Z"
       }
     },
     {
@@ -107,11 +98,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 223,
+        "latency_ms": 175,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.032Z"
+        "verified_at": "2026-06-07T07:06:36.946Z"
       }
     },
     {
@@ -120,7 +111,7 @@
       "id": "sn-1-github-readme-macrocosm-os-apex-docs-1",
       "kind": "docs",
       "name": "Apex docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -139,7 +130,6 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://apex.macrocosmos.ai/",
         "https://github.com/macrocosm-os/apex/blob/main/README.md"
       ],
       "url": "https://docs.macrocosmos.ai/subnets/subnet-1-apex",
@@ -147,11 +137,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 338,
+        "latency_ms": 408,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.macrocosmos.ai/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.028Z"
+        "verified_at": "2026-06-07T07:06:36.946Z"
       }
     },
     {
@@ -160,7 +150,7 @@
       "id": "sn-1-github-readme-macrocosm-os-apex-docs-2",
       "kind": "docs",
       "name": "Apex docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -186,11 +176,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 350,
+        "latency_ms": 462,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.macrocosmos.ai/subnets/subnet-1-apex/subnet-1-base-miner-setup",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.029Z"
+        "verified_at": "2026-06-07T07:06:36.946Z"
       }
     },
     {
@@ -199,7 +189,7 @@
       "id": "sn-1-github-readme-macrocosm-os-apex-docs-3",
       "kind": "docs",
       "name": "Apex docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -225,11 +215,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 350,
+        "latency_ms": 368,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.macrocosmos.ai/subnets/subnet-1-apex/subnet-1-base-miner-setup/apex-cli",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.029Z"
+        "verified_at": "2026-06-07T07:06:36.946Z"
       }
     },
     {
@@ -238,7 +228,7 @@
       "id": "sn-1-github-readme-macrocosm-os-apex-docs-4",
       "kind": "docs",
       "name": "Apex docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -264,11 +254,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 357,
+        "latency_ms": 470,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.macrocosmos.ai/subnets/subnet-1-apex/incentive-mechanism",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.030Z"
+        "verified_at": "2026-06-07T07:06:36.946Z"
       }
     },
     {
@@ -303,11 +293,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 347,
+        "latency_ms": 547,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.031Z"
+        "verified_at": "2026-06-07T07:06:36.946Z"
       }
     }
   ],

@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -31,7 +31,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -52,7 +52,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -73,7 +73,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -94,7 +94,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -115,7 +115,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -136,7 +136,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -157,7 +157,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -178,7 +178,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -226,8 +226,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/33",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/33",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/33/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/33"
       ],
       "state": "schema-valid",
       "url": "https://github.com/afterpartyai/bittensor-conversation-genome-project"
@@ -242,7 +241,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -265,7 +264,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -286,7 +285,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -307,7 +306,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -328,7 +327,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -349,7 +348,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -370,7 +369,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -391,7 +390,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -412,7 +411,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -433,7 +432,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -481,8 +480,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/33",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/33",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/33/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/33"
       ],
       "state": "schema-valid",
       "url": "https://github.com/afterpartyai/bittensor-conversation-genome-project"
@@ -497,7 +495,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -515,12 +513,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-1",
       "kind": "data-artifact",
-      "last_checked": "2026-06-07T05:10:08.434Z",
-      "latency_ms": 248,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "data-provider",
       "method_support": null,
@@ -542,11 +540,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 68,
+      "score": 0,
       "source_urls": [
         "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "ReadyAI",
       "subnet_slug": "sn-33",
       "surface_id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-1",
@@ -557,12 +555,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-6",
       "kind": "data-artifact",
-      "last_checked": "2026-06-07T05:10:08.256Z",
-      "latency_ms": 41,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "data-provider",
       "method_support": null,
@@ -584,11 +582,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 70,
+      "score": 0,
       "source_urls": [
         "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "ReadyAI",
       "subnet_slug": "sn-33",
       "surface_id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-6",
@@ -599,12 +597,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "dead",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-9",
       "kind": "data-artifact",
-      "last_checked": "2026-06-07T05:10:08.535Z",
-      "latency_ms": 279,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "data-provider",
       "method_support": null,
@@ -626,11 +624,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 7,
+      "score": 0,
       "source_urls": [
         "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md"
       ],
-      "status": "degraded",
+      "status": "unknown",
       "subnet_name": "ReadyAI",
       "subnet_slug": "sn-33",
       "surface_id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-9",
@@ -641,12 +639,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "redirected",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-2",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:08.401Z",
-      "latency_ms": 93,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -668,11 +666,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 69,
+      "score": 0,
       "source_urls": [
         "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "ReadyAI",
       "subnet_slug": "sn-33",
       "surface_id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-2",
@@ -683,12 +681,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "redirected",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-4",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:08.673Z",
-      "latency_ms": 366,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -710,11 +708,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 66,
+      "score": 0,
       "source_urls": [
         "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "ReadyAI",
       "subnet_slug": "sn-33",
       "surface_id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-4",
@@ -725,12 +723,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "redirected",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-5",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:08.526Z",
-      "latency_ms": 213,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -752,11 +750,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 68,
+      "score": 0,
       "source_urls": [
         "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "ReadyAI",
       "subnet_slug": "sn-33",
       "surface_id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-5",
@@ -767,12 +765,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "redirected",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-7",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:08.937Z",
-      "latency_ms": 623,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -794,11 +792,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 64,
+      "score": 0,
       "source_urls": [
         "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "ReadyAI",
       "subnet_slug": "sn-33",
       "surface_id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-docs-7",
@@ -809,12 +807,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-33-taomarketcap-source-repo",
       "kind": "source-repo",
-      "last_checked": "2026-06-07T05:10:08.931Z",
-      "latency_ms": 535,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -836,12 +834,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 65,
+      "score": 0,
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/33",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/33/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/33"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "ReadyAI",
       "subnet_slug": "sn-33",
       "surface_id": "sn-33-taomarketcap-source-repo",
@@ -852,12 +849,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-33-taomarketcap-dashboard",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:08.534Z",
-      "latency_ms": 192,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -879,11 +876,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 68,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/33"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "ReadyAI",
       "subnet_slug": "sn-33",
       "surface_id": "sn-33-taomarketcap-dashboard",
@@ -913,7 +910,7 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8347420,
+    "block": 8353128,
     "candidate_count": 12,
     "categories": [
       "baseline-curated"
@@ -929,8 +926,8 @@
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 3,
-      "verified_at": "2026-06-06T12:18:18.493Z"
+      "source_count": 2,
+      "verified_at": "2026-06-07T07:06:49.221Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/33",
@@ -968,7 +965,7 @@
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T12:04:01Z",
+        "captured_at": "2026-06-07T07:06:35Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
@@ -997,7 +994,7 @@
       "kind": "data-artifact",
       "name": "ReadyAI data artifact",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1025,11 +1022,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 230,
+        "latency_ms": 249,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.277Z"
+        "verified_at": "2026-06-07T07:06:48.910Z"
       }
     },
     {
@@ -1039,7 +1036,7 @@
       "kind": "data-artifact",
       "name": "ReadyAI data artifact",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1067,11 +1064,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 63,
+        "latency_ms": 162,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.277Z"
+        "verified_at": "2026-06-07T07:06:48.918Z"
       }
     },
     {
@@ -1081,7 +1078,7 @@
       "kind": "data-artifact",
       "name": "ReadyAI data artifact",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1109,11 +1106,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 93,
+        "latency_ms": 99,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.313Z"
+        "verified_at": "2026-06-07T07:06:48.943Z"
       }
     },
     {
@@ -1123,7 +1120,7 @@
       "kind": "docs",
       "name": "ReadyAI docs",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1151,11 +1148,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 85,
+        "latency_ms": 107,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/subtensor-nodes",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.336Z"
+        "verified_at": "2026-06-07T07:06:49.037Z"
       }
     },
     {
@@ -1165,7 +1162,7 @@
       "kind": "docs",
       "name": "ReadyAI docs",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1193,11 +1190,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
+        "latency_ms": 147,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/working-with-keys/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.340Z"
+        "verified_at": "2026-06-07T07:06:49.048Z"
       }
     },
     {
@@ -1207,7 +1204,7 @@
       "kind": "docs",
       "name": "ReadyAI docs",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1235,11 +1232,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 195,
+        "latency_ms": 199,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/miners",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.348Z"
+        "verified_at": "2026-06-07T07:06:49.083Z"
       }
     },
     {
@@ -1249,7 +1246,7 @@
       "kind": "docs",
       "name": "ReadyAI docs",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1277,11 +1274,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html",
-        "latency_ms": 606,
+        "latency_ms": 615,
         "method_tested": "HEAD",
         "redirect_target": "https://developers.openai.com/api/docs/models",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.421Z"
+        "verified_at": "2026-06-07T07:06:49.157Z"
       }
     },
     {
@@ -1319,11 +1316,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 131,
+        "latency_ms": 151,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.485Z"
+        "verified_at": "2026-06-07T07:06:49.211Z"
       }
     },
     {
@@ -1343,32 +1340,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/33",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/33/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/33"
       ],
       "subnet_name": "ReadyAI",
       "subnet_slug": "sn-33",
       "url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/afterpartyai/bittensor-conversation-genome-project",
-        "homepage": null,
-        "last_push_at": "2026-05-30T20:11:30Z",
+        "latency_ms": 864,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:18.493Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:49.221Z"
       }
     }
   ],
@@ -1380,7 +1375,7 @@
       "kind": "data-artifact",
       "name": "ReadyAI data artifact",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1408,11 +1403,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 230,
+        "latency_ms": 249,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.277Z"
+        "verified_at": "2026-06-07T07:06:48.910Z"
       }
     },
     {
@@ -1422,7 +1417,7 @@
       "kind": "data-artifact",
       "name": "ReadyAI data artifact",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1450,11 +1445,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 63,
+        "latency_ms": 162,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.277Z"
+        "verified_at": "2026-06-07T07:06:48.918Z"
       }
     },
     {
@@ -1464,7 +1459,7 @@
       "kind": "data-artifact",
       "name": "ReadyAI data artifact",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1492,11 +1487,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 93,
+        "latency_ms": 99,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.313Z"
+        "verified_at": "2026-06-07T07:06:48.943Z"
       }
     },
     {
@@ -1506,7 +1501,7 @@
       "kind": "docs",
       "name": "ReadyAI docs",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1534,11 +1529,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 85,
+        "latency_ms": 107,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/subtensor-nodes",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.336Z"
+        "verified_at": "2026-06-07T07:06:49.037Z"
       }
     },
     {
@@ -1548,7 +1543,7 @@
       "kind": "docs",
       "name": "ReadyAI docs",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1576,11 +1571,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
+        "latency_ms": 147,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/working-with-keys/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.340Z"
+        "verified_at": "2026-06-07T07:06:49.048Z"
       }
     },
     {
@@ -1590,7 +1585,7 @@
       "kind": "docs",
       "name": "ReadyAI docs",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1618,11 +1613,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 195,
+        "latency_ms": 199,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/miners",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.348Z"
+        "verified_at": "2026-06-07T07:06:49.083Z"
       }
     },
     {
@@ -1632,7 +1627,7 @@
       "kind": "docs",
       "name": "ReadyAI docs",
       "netuid": 33,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1660,11 +1655,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html",
-        "latency_ms": 606,
+        "latency_ms": 615,
         "method_tested": "HEAD",
         "redirect_target": "https://developers.openai.com/api/docs/models",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.421Z"
+        "verified_at": "2026-06-07T07:06:49.157Z"
       }
     },
     {
@@ -1702,11 +1697,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 131,
+        "latency_ms": 151,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:18.485Z"
+        "verified_at": "2026-06-07T07:06:49.211Z"
       }
     },
     {
@@ -1726,32 +1721,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/33",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/33/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/33"
       ],
       "subnet_name": "ReadyAI",
       "subnet_slug": "sn-33",
       "url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/afterpartyai/bittensor-conversation-genome-project",
-        "homepage": null,
-        "last_push_at": "2026-05-30T20:11:30Z",
+        "latency_ms": 864,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:18.493Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:49.221Z"
       }
     }
   ]

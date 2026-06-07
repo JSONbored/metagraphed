@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 176,
+        "latency_ms": 134,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:13.900Z"
+        "verified_at": "2026-06-07T07:06:43.478Z"
       }
     },
     {
@@ -65,36 +65,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/18",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/18/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/18"
       ],
       "subnet_name": "Zeus",
       "subnet_slug": "sn-18",
       "url": "https://github.com/Orpheus-AI/Zeus",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/Orpheus-AI/Zeus",
-        "homepage": null,
-        "last_push_at": "2026-06-04T16:21:46Z",
+        "latency_ms": 578,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [
-          "bittensor",
-          "climate-forecasting",
-          "weather-forecasting"
-        ],
-        "verified_at": "2026-06-06T12:18:13.912Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:43.520Z"
       }
     },
     {
@@ -132,11 +126,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 591,
+        "latency_ms": 609,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:13.938Z"
+        "verified_at": "2026-06-07T07:06:43.524Z"
       }
     },
     {
@@ -146,7 +140,7 @@
       "kind": "docs",
       "name": "Zeus Tensorplex subnet docs",
       "netuid": 18,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -174,11 +168,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 303,
+        "latency_ms": 420,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:13.939Z"
+        "verified_at": "2026-06-07T07:06:43.524Z"
       }
     },
     {
@@ -188,7 +182,7 @@
       "kind": "dashboard",
       "name": "Zeus dashboard",
       "netuid": 18,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -216,11 +210,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 505,
+        "latency_ms": 538,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:14.242Z"
+        "verified_at": "2026-06-07T07:06:43.767Z"
       }
     },
     {
@@ -230,7 +224,7 @@
       "kind": "docs",
       "name": "Zeus docs",
       "netuid": 18,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -258,11 +252,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 532,
+        "latency_ms": 557,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:14.245Z"
+        "verified_at": "2026-06-07T07:06:43.999Z"
       }
     }
   ]

@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 235,
+      "latency_ms": 240,
       "method_tested": "GET",
       "name": "Aurelius dashboard",
       "netuid": 37,
@@ -36,7 +36,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://taostats.io/subnet/455",
-      "verified_at": "2026-06-06T12:18:19.159Z"
+      "verified_at": "2026-06-07T07:06:49.992Z"
     },
     {
       "candidate_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-dashboard-3",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 210,
+      "latency_ms": 220,
       "method_tested": "GET",
       "name": "Aurelius dashboard",
       "netuid": 37,
@@ -69,7 +69,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://taostats.io/subnet/37",
-      "verified_at": "2026-06-06T12:18:19.166Z"
+      "verified_at": "2026-06-07T07:06:49.996Z"
     },
     {
       "candidate_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-docs-1",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 94,
+      "latency_ms": 104,
       "method_tested": "HEAD",
       "name": "Aurelius docs",
       "netuid": 37,
@@ -102,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.bittensor.com/",
-      "verified_at": "2026-06-06T12:18:19.178Z"
+      "verified_at": "2026-06-07T07:06:50.038Z"
     },
     {
       "candidate_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-4",
@@ -111,7 +111,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 216,
+      "latency_ms": 200,
       "method_tested": "GET",
       "name": "Aurelius API surface",
       "netuid": 37,
@@ -135,7 +135,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://new-collector-api-production.up.railway.app/",
-      "verified_at": "2026-06-06T12:18:19.178Z"
+      "verified_at": "2026-06-07T07:06:50.080Z"
     },
     {
       "candidate_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-5",
@@ -144,7 +144,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 357,
+      "latency_ms": 228,
       "method_tested": "GET",
       "name": "Aurelius API surface",
       "netuid": 37,
@@ -168,7 +168,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://new-collector-api-production.up.railway.app/health",
-      "verified_at": "2026-06-06T12:18:19.197Z"
+      "verified_at": "2026-06-07T07:06:50.083Z"
     },
     {
       "candidate_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-6",
@@ -177,7 +177,7 @@
       "content_type": null,
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 306,
+      "latency_ms": 302,
       "method_tested": "GET",
       "name": "Aurelius API surface",
       "netuid": 37,
@@ -201,7 +201,7 @@
       "status": "failed",
       "status_code": 401,
       "url": "https://api.deepseek.com/v1",
-      "verified_at": "2026-06-06T12:18:19.206Z"
+      "verified_at": "2026-06-07T07:06:50.095Z"
     },
     {
       "candidate_id": "sn-37-taomarketcap-dashboard",
@@ -210,7 +210,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 136,
+      "latency_ms": 161,
       "method_tested": "HEAD",
       "name": "Aurelius TaoMarketCap dashboard",
       "netuid": 37,
@@ -234,7 +234,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/37",
-      "verified_at": "2026-06-06T12:18:19.272Z"
+      "verified_at": "2026-06-07T07:06:50.108Z"
     },
     {
       "candidate_id": "sn-37-taomarketcap-source-repo",
@@ -244,7 +244,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/Aurelius-Protocol/Aurelius-Protocol",
       "kind": "source-repo",
-      "latency_ms": 582,
+      "latency_ms": 793,
       "method_tested": "HEAD",
       "name": "Aurelius source repository",
       "netuid": 37,
@@ -268,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
-      "verified_at": "2026-06-06T12:18:19.303Z"
+      "verified_at": "2026-06-07T07:06:50.120Z"
     },
     {
       "candidate_id": "sn-37-taomarketcap-website",
@@ -277,7 +277,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 167,
+      "latency_ms": 117,
       "method_tested": "HEAD",
       "name": "Aurelius website",
       "netuid": 37,
@@ -301,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://aureliusaligned.ai/",
-      "verified_at": "2026-06-06T12:18:19.305Z"
+      "verified_at": "2026-06-07T07:06:50.136Z"
     },
     {
       "candidate_id": "sn-37-tensorplex-docs",
@@ -310,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 349,
+      "latency_ms": 642,
       "method_tested": "HEAD",
       "name": "Aurelius Tensorplex subnet docs",
       "netuid": 37,
@@ -334,7 +334,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/37",
-      "verified_at": "2026-06-06T12:18:19.330Z"
+      "verified_at": "2026-06-07T07:06:50.146Z"
     },
     {
       "candidate_id": "sn-37-tensorplex-source-repo-1",
@@ -343,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "source-repo",
-      "latency_ms": 296,
+      "latency_ms": 723,
       "method_tested": "HEAD",
       "name": "Aurelius source repository",
       "netuid": 37,
@@ -367,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Aurelius-Protocol",
-      "verified_at": "2026-06-06T12:18:19.334Z"
+      "verified_at": "2026-06-07T07:06:50.169Z"
     },
     {
       "candidate_id": "sn-37-website-common-api",
@@ -376,7 +376,7 @@
       "content_type": "text/html; charset=iso-8859-1",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 24,
+      "latency_ms": 25,
       "method_tested": "GET",
       "name": "Aurelius API",
       "netuid": 37,
@@ -400,7 +400,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://aureliusaligned.ai/api",
-      "verified_at": "2026-06-06T12:18:19.336Z"
+      "verified_at": "2026-06-07T07:06:50.174Z"
     },
     {
       "candidate_id": "sn-37-website-common-docs",
@@ -409,7 +409,7 @@
       "content_type": "text/html; charset=iso-8859-1",
       "error": null,
       "kind": "docs",
-      "latency_ms": 68,
+      "latency_ms": 58,
       "method_tested": "GET",
       "name": "Aurelius docs",
       "netuid": 37,
@@ -433,7 +433,7 @@
       "status": "failed",
       "status_code": 403,
       "url": "https://aureliusaligned.ai/docs",
-      "verified_at": "2026-06-06T12:18:19.362Z"
+      "verified_at": "2026-06-07T07:06:50.236Z"
     },
     {
       "candidate_id": "sn-37-website-common-health",
@@ -442,7 +442,7 @@
       "content_type": "text/html; charset=iso-8859-1",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 36,
+      "latency_ms": 29,
       "method_tested": "GET",
       "name": "Aurelius health endpoint",
       "netuid": 37,
@@ -466,7 +466,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://aureliusaligned.ai/health",
-      "verified_at": "2026-06-06T12:18:19.364Z"
+      "verified_at": "2026-06-07T07:06:50.252Z"
     },
     {
       "candidate_id": "sn-37-website-common-openapi-json",
@@ -475,7 +475,7 @@
       "content_type": "text/html; charset=iso-8859-1",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 32,
+      "latency_ms": 24,
       "method_tested": "GET",
       "name": "Aurelius OpenAPI JSON",
       "netuid": 37,
@@ -499,7 +499,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://aureliusaligned.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:19.408Z"
+      "verified_at": "2026-06-07T07:06:50.299Z"
     },
     {
       "candidate_id": "sn-37-website-common-swagger",
@@ -532,7 +532,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://aureliusaligned.ai/swagger",
-      "verified_at": "2026-06-06T12:18:19.420Z"
+      "verified_at": "2026-06-07T07:06:50.307Z"
     },
     {
       "candidate_id": "sn-37-website-common-swagger-json",
@@ -541,7 +541,7 @@
       "content_type": "text/html; charset=iso-8859-1",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 31,
+      "latency_ms": 28,
       "method_tested": "GET",
       "name": "Aurelius Swagger JSON",
       "netuid": 37,
@@ -565,7 +565,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://aureliusaligned.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:19.446Z"
+      "verified_at": "2026-06-07T07:06:50.315Z"
     },
     {
       "candidate_id": "sn-37-website-link-aureliusaligned-ai-website-1",
@@ -574,7 +574,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 71,
+      "latency_ms": 65,
       "method_tested": "HEAD",
       "name": "Aurelius website page",
       "netuid": 37,
@@ -598,7 +598,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://aureliusaligned.ai/about/alignment",
-      "verified_at": "2026-06-06T12:18:19.473Z"
+      "verified_at": "2026-06-07T07:06:50.343Z"
     },
     {
       "candidate_id": "sn-37-website-link-aureliusaligned-ai-website-2",
@@ -607,7 +607,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 139,
+      "latency_ms": 57,
       "method_tested": "HEAD",
       "name": "Aurelius website page",
       "netuid": 37,
@@ -631,7 +631,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://aureliusaligned.ai/about",
-      "verified_at": "2026-06-06T12:18:19.482Z"
+      "verified_at": "2026-06-07T07:06:50.379Z"
     },
     {
       "candidate_id": "sn-37-website-link-aureliusaligned-ai-website-3",
@@ -640,7 +640,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 46,
+      "latency_ms": 56,
       "method_tested": "HEAD",
       "name": "Aurelius website page",
       "netuid": 37,
@@ -664,7 +664,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://aureliusaligned.ai/team",
-      "verified_at": "2026-06-06T12:18:19.506Z"
+      "verified_at": "2026-06-07T07:06:50.408Z"
     },
     {
       "candidate_id": "sn-37-website-link-aureliusaligned-ai-website-4",
@@ -673,7 +673,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 64,
+      "latency_ms": 132,
       "method_tested": "HEAD",
       "name": "Aurelius website page",
       "netuid": 37,
@@ -697,7 +697,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://aureliusaligned.ai/roadmap",
-      "verified_at": "2026-06-06T12:18:19.541Z"
+      "verified_at": "2026-06-07T07:06:50.414Z"
     }
   ],
   "schema_version": 1,

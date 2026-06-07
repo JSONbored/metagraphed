@@ -13,7 +13,7 @@
       "kind": "docs",
       "name": "InfiniteHash docs",
       "netuid": 89,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html",
-        "latency_ms": 153,
+        "latency_ms": 147,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:33.518Z"
+        "verified_at": "2026-06-07T07:07:12.687Z"
       }
     },
     {
@@ -55,7 +55,7 @@
       "kind": "docs",
       "name": "InfiniteHash docs",
       "netuid": 89,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -83,11 +83,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 78,
+        "latency_ms": 72,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.astral.sh/uv/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:33.543Z"
+        "verified_at": "2026-06-07T07:07:12.712Z"
       }
     },
     {
@@ -97,7 +97,7 @@
       "kind": "docs",
       "name": "InfiniteHash docs",
       "netuid": 89,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -125,11 +125,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 488,
+        "latency_ms": 481,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:33.550Z"
+        "verified_at": "2026-06-07T07:07:12.770Z"
       }
     },
     {
@@ -167,11 +167,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 130,
+        "latency_ms": 143,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:33.583Z"
+        "verified_at": "2026-06-07T07:07:12.777Z"
       }
     },
     {
@@ -200,8 +200,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/89",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/89/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/89"
       ],
       "subnet_name": "InfiniteHash",
       "subnet_slug": "sn-89",
@@ -211,11 +210,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/backend-developers-ltd/InfiniteHash",
-        "latency_ms": 396,
+        "latency_ms": 751,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:33.615Z"
+        "verified_at": "2026-06-07T07:07:12.792Z"
       }
     },
     {
@@ -225,7 +224,7 @@
       "kind": "docs",
       "name": "InfiniteHash Tensorplex subnet docs",
       "netuid": 89,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +252,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 337,
+        "latency_ms": 355,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:33.626Z"
+        "verified_at": "2026-06-07T07:07:12.837Z"
       }
     }
   ]

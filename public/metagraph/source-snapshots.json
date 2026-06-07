@@ -22,19 +22,19 @@
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
-      "hash": "c62564f72b91a1e457c6b4913dfa6d8aa2d6605e139b76431a33e9022a3c2ffb",
+      "hash": "98a2e6a11538a6b79e9e548caba8ee1aa19de47f554481c0d4a6f27e5386b381",
       "id": "candidate-surfaces",
       "kind": "candidate-discovery",
       "path": "registry/candidates",
-      "record_count": 1634
+      "record_count": 1635
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
-      "hash": "2c1de5e71ae116d4ad92c5fa8c5e0e63a062c7e9e67db26b82f48f323b7cc67c",
+      "hash": "4ddb05c7ec8bacb34d5d623e75da84b2189eed27f1c455fbd09c8a229b84eb4c",
       "id": "candidate-verification",
       "kind": "probe-results",
       "path": "registry/verification/latest.json",
-      "record_count": 1634
+      "record_count": 1635
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
@@ -45,8 +45,8 @@
       "record_count": 3
     },
     {
-      "captured_at": "2026-06-06T12:04:01Z",
-      "hash": "92d5c68aebe44363aafe35eab49d3c444f49e9920a1bdde1bc526d0ef95ff97d",
+      "captured_at": "2026-06-07T07:06:35Z",
+      "hash": "3ec0f567fe5569f2a4795c6bf36b2c056483dbb9a3190af45ea2bec64b053905",
       "id": "native-subnets",
       "kind": "native-chain",
       "path": "registry/native/finney-subnets.json",
@@ -62,7 +62,7 @@
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
-      "hash": "69920fdec8616ae3e87b40100b83dc658b8c7edc8dd12a9557a03191877e1822",
+      "hash": "bcb2e7be6d32212f76f5f9da3a330d74d855cae8d4c929de63d813a23a50a392",
       "id": "subnet-overlays",
       "kind": "registry-manifest",
       "path": "registry/subnets",
@@ -71,10 +71,10 @@
   ],
   "summary": {
     "adapter_snapshot_count": 2,
-    "candidate_count": 1634,
+    "candidate_count": 1635,
     "overlay_count": 129,
     "provider_count": 14,
     "source_count": 8,
-    "verification_result_count": 1634
+    "verification_result_count": 1635
   }
 }

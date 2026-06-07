@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 148,
+      "latency_ms": 138,
       "method_tested": "HEAD",
       "name": "Bitsota TaoMarketCap dashboard",
       "netuid": 94,
@@ -36,17 +36,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/94",
-      "verified_at": "2026-06-06T12:18:34.918Z"
+      "verified_at": "2026-06-07T07:07:14.224Z"
     },
     {
       "candidate_id": "sn-94-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/AlveusLabs/SN94-BitSota",
       "kind": "source-repo",
-      "latency_ms": 470,
+      "latency_ms": 472,
       "method_tested": "HEAD",
       "name": "Bitsota source repository",
       "netuid": 94,
@@ -70,7 +70,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/AlveusLabs/SN94-BitSota",
-      "verified_at": "2026-06-06T12:18:34.922Z"
+      "verified_at": "2026-06-07T07:07:14.300Z"
     },
     {
       "candidate_id": "sn-94-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 675,
+      "latency_ms": 685,
       "method_tested": "HEAD",
       "name": "Bitsota website",
       "netuid": 94,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://bitsota.ai/",
-      "verified_at": "2026-06-06T12:18:34.967Z"
+      "verified_at": "2026-06-07T07:07:14.301Z"
     },
     {
       "candidate_id": "sn-94-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 401,
+      "latency_ms": 435,
       "method_tested": "HEAD",
       "name": "Bitsota Tensorplex subnet docs",
       "netuid": 94,
@@ -136,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/94",
-      "verified_at": "2026-06-06T12:18:34.982Z"
+      "verified_at": "2026-06-07T07:07:14.324Z"
     },
     {
       "candidate_id": "sn-94-website-common-api",
@@ -145,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 678,
+      "latency_ms": 712,
       "method_tested": "GET",
       "name": "Bitsota API",
       "netuid": 94,
@@ -169,7 +169,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://bitsota.ai/api",
-      "verified_at": "2026-06-06T12:18:35.066Z"
+      "verified_at": "2026-06-07T07:07:14.367Z"
     },
     {
       "candidate_id": "sn-94-website-common-docs",
@@ -178,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 663,
+      "latency_ms": 717,
       "method_tested": "HEAD",
       "name": "Bitsota docs",
       "netuid": 94,
@@ -202,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://bitsota.ai/docs",
-      "verified_at": "2026-06-06T12:18:35.074Z"
+      "verified_at": "2026-06-07T07:07:14.395Z"
     },
     {
       "candidate_id": "sn-94-website-common-health",
@@ -211,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 656,
+      "latency_ms": 680,
       "method_tested": "GET",
       "name": "Bitsota health endpoint",
       "netuid": 94,
@@ -235,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://bitsota.ai/health",
-      "verified_at": "2026-06-06T12:18:35.302Z"
+      "verified_at": "2026-06-07T07:07:14.489Z"
     },
     {
       "candidate_id": "sn-94-website-common-openapi-json",
@@ -244,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 670,
+      "latency_ms": 680,
       "method_tested": "GET",
       "name": "Bitsota OpenAPI JSON",
       "netuid": 94,
@@ -268,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://bitsota.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:35.366Z"
+      "verified_at": "2026-06-07T07:07:14.652Z"
     },
     {
       "candidate_id": "sn-94-website-common-swagger",
@@ -277,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 674,
+      "latency_ms": 695,
       "method_tested": "GET",
       "name": "Bitsota Swagger UI",
       "netuid": 94,
@@ -301,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://bitsota.ai/swagger",
-      "verified_at": "2026-06-06T12:18:35.369Z"
+      "verified_at": "2026-06-07T07:07:14.761Z"
     },
     {
       "candidate_id": "sn-94-website-common-swagger-json",
@@ -310,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 707,
+      "latency_ms": 706,
       "method_tested": "GET",
       "name": "Bitsota Swagger JSON",
       "netuid": 94,
@@ -334,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://bitsota.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:35.383Z"
+      "verified_at": "2026-06-07T07:07:14.765Z"
     },
     {
       "candidate_id": "sn-94-website-link-bitsota-ai-dashboard-3",
@@ -343,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 676,
+      "latency_ms": 694,
       "method_tested": "HEAD",
       "name": "Bitsota dashboard",
       "netuid": 94,
@@ -367,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://bitsota.ai/leaderboard",
-      "verified_at": "2026-06-06T12:18:35.410Z"
+      "verified_at": "2026-06-07T07:07:14.804Z"
     },
     {
       "candidate_id": "sn-94-website-link-bitsota-ai-website-1",
@@ -376,7 +376,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 654,
+      "latency_ms": 721,
       "method_tested": "HEAD",
       "name": "Bitsota website page",
       "netuid": 94,
@@ -400,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://bitsota.ai/challenges",
-      "verified_at": "2026-06-06T12:18:35.426Z"
+      "verified_at": "2026-06-07T07:07:14.893Z"
     },
     {
       "candidate_id": "sn-94-website-link-bitsota-ai-website-2",
@@ -409,7 +409,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 683,
+      "latency_ms": 678,
       "method_tested": "HEAD",
       "name": "Bitsota website page",
       "netuid": 94,
@@ -433,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://bitsota.ai/research",
-      "verified_at": "2026-06-06T12:18:35.472Z"
+      "verified_at": "2026-06-07T07:07:14.929Z"
     }
   ],
   "schema_version": 1,

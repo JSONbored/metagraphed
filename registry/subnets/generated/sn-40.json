@@ -15,7 +15,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-06T12:18:19.802Z"
+    "verified_at": "2026-06-07T07:06:50.739Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/40",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/40",
@@ -33,7 +33,7 @@
       "id": "sn-40-tensorplex-docs",
       "kind": "docs",
       "name": "Chunking Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -59,11 +59,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 394,
+        "latency_ms": 442,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:19.802Z"
+        "verified_at": "2026-06-07T07:06:50.739Z"
       }
     },
     {
@@ -98,11 +98,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 203,
+        "latency_ms": 137,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:19.802Z"
+        "verified_at": "2026-06-07T07:06:50.729Z"
       }
     }
   ]

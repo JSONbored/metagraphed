@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
+        "latency_ms": 192,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:44.412Z"
+        "verified_at": "2026-06-07T07:07:25.360Z"
       }
     },
     {
@@ -74,8 +74,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/123",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/123/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/123"
       ],
       "subnet_name": "MANTIS",
       "subnet_slug": "sn-123",
@@ -85,11 +84,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Barbariandev/MANTIS",
-        "latency_ms": 472,
+        "latency_ms": 511,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:44.416Z"
+        "verified_at": "2026-06-07T07:07:25.411Z"
       }
     },
     {
@@ -99,7 +98,7 @@
       "kind": "docs",
       "name": "MANTIS Tensorplex subnet docs",
       "netuid": 123,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -127,11 +126,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 325,
+        "latency_ms": 292,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:44.481Z"
+        "verified_at": "2026-06-07T07:07:25.436Z"
       }
     }
   ]

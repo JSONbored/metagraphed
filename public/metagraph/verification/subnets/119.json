@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 148,
+      "latency_ms": 154,
       "method_tested": "HEAD",
       "name": "Satori TaoMarketCap dashboard",
       "netuid": 119,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/119",
-      "verified_at": "2026-06-06T12:18:43.696Z"
+      "verified_at": "2026-06-07T07:07:24.316Z"
     },
     {
       "candidate_id": "sn-119-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/Satori119/Satori",
       "kind": "source-repo",
-      "latency_ms": 164,
+      "latency_ms": 224,
       "method_tested": "HEAD",
       "name": "Satori source repository",
       "netuid": 119,
@@ -70,7 +70,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://github.com/Satori119/Satori",
-      "verified_at": "2026-06-06T12:18:43.702Z"
+      "verified_at": "2026-06-07T07:07:24.339Z"
     },
     {
       "candidate_id": "sn-119-tensorplex-docs",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 352,
+      "latency_ms": 359,
       "method_tested": "HEAD",
       "name": "Satori Tensorplex subnet docs",
       "netuid": 119,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/119",
-      "verified_at": "2026-06-06T12:18:43.714Z"
+      "verified_at": "2026-06-07T07:07:24.351Z"
     }
   ],
   "schema_version": 1,

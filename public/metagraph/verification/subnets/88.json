@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 272,
+      "latency_ms": 413,
       "method_tested": "HEAD",
       "name": "Investing dashboard",
       "netuid": 88,
@@ -31,13 +31,12 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/mobiusfund/investing/blob/main/README.md",
       "source_urls": [
-        "https://github.com/mobiusfund/investing/blob/main/README.md",
-        "https://investing88.ai/"
+        "https://github.com/mobiusfund/investing/blob/main/README.md"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://db.investing88.ai/",
-      "verified_at": "2026-06-06T12:18:33.166Z"
+      "verified_at": "2026-06-07T07:07:11.969Z"
     },
     {
       "candidate_id": "sn-88-github-readme-mobiusfund-investing-docs-2",
@@ -46,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 45,
+      "latency_ms": 62,
       "method_tested": "HEAD",
       "name": "Investing docs",
       "netuid": 88,
@@ -70,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.learnbittensor.org/miners",
-      "verified_at": "2026-06-06T12:18:33.174Z"
+      "verified_at": "2026-06-07T07:07:12.196Z"
     },
     {
       "candidate_id": "sn-88-github-readme-mobiusfund-investing-docs-3",
@@ -79,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 50,
+      "latency_ms": 69,
       "method_tested": "HEAD",
       "name": "Investing docs",
       "netuid": 88,
@@ -103,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.learnbittensor.org/learn/slippage",
-      "verified_at": "2026-06-06T12:18:33.219Z"
+      "verified_at": "2026-06-07T07:07:12.226Z"
     },
     {
       "candidate_id": "sn-88-github-readme-mobiusfund-investing-subnet-api-4",
@@ -112,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 90,
+      "latency_ms": 91,
       "method_tested": "GET",
       "name": "Investing API surface",
       "netuid": 88,
@@ -136,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://api.investing88.ai/assets",
-      "verified_at": "2026-06-06T12:18:33.220Z"
+      "verified_at": "2026-06-07T07:07:12.260Z"
     },
     {
       "candidate_id": "sn-88-github-readme-mobiusfund-investing-subnet-api-5",
@@ -145,7 +144,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 87,
+      "latency_ms": 84,
       "method_tested": "GET",
       "name": "Investing API surface",
       "netuid": 88,
@@ -169,7 +168,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://api.investing88.ai/ratio",
-      "verified_at": "2026-06-06T12:18:33.242Z"
+      "verified_at": "2026-06-07T07:07:12.297Z"
     },
     {
       "candidate_id": "sn-88-taomarketcap-dashboard",
@@ -178,7 +177,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 131,
+      "latency_ms": 163,
       "method_tested": "HEAD",
       "name": "Investing TaoMarketCap dashboard",
       "netuid": 88,
@@ -202,17 +201,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/88",
-      "verified_at": "2026-06-06T12:18:33.250Z"
+      "verified_at": "2026-06-07T07:07:12.389Z"
     },
     {
       "candidate_id": "sn-88-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/mobiusfund/investing",
       "kind": "source-repo",
-      "latency_ms": 545,
+      "latency_ms": 836,
       "method_tested": "HEAD",
       "name": "Investing source repository",
       "netuid": 88,
@@ -231,13 +230,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/88",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/88",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/88/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/88"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/mobiusfund/investing",
-      "verified_at": "2026-06-06T12:18:33.266Z"
+      "verified_at": "2026-06-07T07:07:12.419Z"
     },
     {
       "candidate_id": "sn-88-taomarketcap-website",
@@ -246,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 274,
+      "latency_ms": 296,
       "method_tested": "HEAD",
       "name": "Investing website",
       "netuid": 88,
@@ -270,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://investing88.ai/",
-      "verified_at": "2026-06-06T12:18:33.269Z"
+      "verified_at": "2026-06-07T07:07:12.426Z"
     },
     {
       "candidate_id": "sn-88-tensorplex-docs",
@@ -279,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 346,
+      "latency_ms": 502,
       "method_tested": "HEAD",
       "name": "Investing Tensorplex subnet docs",
       "netuid": 88,
@@ -303,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/88",
-      "verified_at": "2026-06-06T12:18:33.298Z"
+      "verified_at": "2026-06-07T07:07:12.442Z"
     },
     {
       "candidate_id": "sn-88-website-common-api",
@@ -312,7 +310,7 @@
       "content_type": null,
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 88,
+      "latency_ms": 93,
       "method_tested": "GET",
       "name": "Investing API",
       "netuid": 88,
@@ -336,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://investing88.ai/api",
-      "verified_at": "2026-06-06T12:18:33.304Z"
+      "verified_at": "2026-06-07T07:07:12.442Z"
     },
     {
       "candidate_id": "sn-88-website-common-docs",
@@ -345,7 +343,7 @@
       "content_type": null,
       "error": null,
       "kind": "docs",
-      "latency_ms": 90,
+      "latency_ms": 102,
       "method_tested": "GET",
       "name": "Investing docs",
       "netuid": 88,
@@ -369,7 +367,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://investing88.ai/docs",
-      "verified_at": "2026-06-06T12:18:33.309Z"
+      "verified_at": "2026-06-07T07:07:12.443Z"
     },
     {
       "candidate_id": "sn-88-website-common-health",
@@ -378,7 +376,7 @@
       "content_type": null,
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 92,
+      "latency_ms": 98,
       "method_tested": "GET",
       "name": "Investing health endpoint",
       "netuid": 88,
@@ -402,7 +400,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://investing88.ai/health",
-      "verified_at": "2026-06-06T12:18:33.342Z"
+      "verified_at": "2026-06-07T07:07:12.462Z"
     },
     {
       "candidate_id": "sn-88-website-common-openapi-json",
@@ -411,7 +409,7 @@
       "content_type": null,
       "error": null,
       "kind": "openapi",
-      "latency_ms": 84,
+      "latency_ms": 93,
       "method_tested": "GET",
       "name": "Investing OpenAPI JSON",
       "netuid": 88,
@@ -435,7 +433,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://investing88.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:33.351Z"
+      "verified_at": "2026-06-07T07:07:12.505Z"
     },
     {
       "candidate_id": "sn-88-website-common-swagger",
@@ -444,7 +442,7 @@
       "content_type": null,
       "error": null,
       "kind": "openapi",
-      "latency_ms": 80,
+      "latency_ms": 87,
       "method_tested": "GET",
       "name": "Investing Swagger UI",
       "netuid": 88,
@@ -468,7 +466,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://investing88.ai/swagger",
-      "verified_at": "2026-06-06T12:18:33.382Z"
+      "verified_at": "2026-06-07T07:07:12.508Z"
     },
     {
       "candidate_id": "sn-88-website-common-swagger-json",
@@ -477,7 +475,7 @@
       "content_type": null,
       "error": null,
       "kind": "openapi",
-      "latency_ms": 92,
+      "latency_ms": 91,
       "method_tested": "GET",
       "name": "Investing Swagger JSON",
       "netuid": 88,
@@ -501,7 +499,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://investing88.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:33.423Z"
+      "verified_at": "2026-06-07T07:07:12.541Z"
     },
     {
       "candidate_id": "sn-88-website-link-investing88-ai-website-1",
@@ -510,7 +508,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 188,
+      "latency_ms": 238,
       "method_tested": "HEAD",
       "name": "Investing website page",
       "netuid": 88,
@@ -534,7 +532,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://kym.investing88.ai/",
-      "verified_at": "2026-06-06T12:18:33.438Z"
+      "verified_at": "2026-06-07T07:07:12.554Z"
     },
     {
       "candidate_id": "sn-88-website-link-investing88-ai-website-3",
@@ -543,7 +541,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 77,
+      "latency_ms": 109,
       "method_tested": "HEAD",
       "name": "Investing website page",
       "netuid": 88,
@@ -567,7 +565,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://db.investing88.ai/88-quant-fund",
-      "verified_at": "2026-06-06T12:18:33.441Z"
+      "verified_at": "2026-06-07T07:07:12.569Z"
     },
     {
       "candidate_id": "sn-88-website-link-investing88-ai-website-4",
@@ -576,7 +574,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 171,
+      "latency_ms": 94,
       "method_tested": "HEAD",
       "name": "Investing website page",
       "netuid": 88,
@@ -600,7 +598,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://db.investing88.ai/88-public-index",
-      "verified_at": "2026-06-06T12:18:33.491Z"
+      "verified_at": "2026-06-07T07:07:12.681Z"
     }
   ],
   "schema_version": 1,

@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 234,
+      "latency_ms": 664,
       "method_tested": "HEAD",
       "name": "ninja API surface",
       "netuid": 66,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://openrouter.ai/api/v1",
-      "verified_at": "2026-06-06T12:18:26.936Z"
+      "verified_at": "2026-06-07T07:07:00.948Z"
     },
     {
       "candidate_id": "sn-66-github-readme-unarbos-tau-subnet-api-2",
@@ -45,7 +45,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 235,
+      "latency_ms": 264,
       "method_tested": "GET",
       "name": "ninja API surface",
       "netuid": 66,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ninja66.ai/api/submissions",
-      "verified_at": "2026-06-06T12:18:26.937Z"
+      "verified_at": "2026-06-07T07:07:00.986Z"
     },
     {
       "candidate_id": "sn-66-taomarketcap-dashboard",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 180,
+      "latency_ms": 254,
       "method_tested": "HEAD",
       "name": "ninja TaoMarketCap dashboard",
       "netuid": 66,
@@ -102,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/66",
-      "verified_at": "2026-06-06T12:18:26.940Z"
+      "verified_at": "2026-06-07T07:07:01.006Z"
     },
     {
       "candidate_id": "sn-66-taomarketcap-source-repo",
@@ -112,7 +112,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/unarbos/tau",
       "kind": "source-repo",
-      "latency_ms": 469,
+      "latency_ms": 889,
       "method_tested": "HEAD",
       "name": "ninja source repository",
       "netuid": 66,
@@ -131,13 +131,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/66",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/66",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/66"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/unarbos/tau",
-      "verified_at": "2026-06-06T12:18:26.972Z"
+      "verified_at": "2026-06-07T07:07:01.014Z"
     },
     {
       "candidate_id": "sn-66-taomarketcap-website",
@@ -146,7 +145,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 209,
+      "latency_ms": 589,
       "method_tested": "HEAD",
       "name": "ninja website",
       "netuid": 66,
@@ -170,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ninja.arbos.life/",
-      "verified_at": "2026-06-06T12:18:26.976Z"
+      "verified_at": "2026-06-07T07:07:01.014Z"
     },
     {
       "candidate_id": "sn-66-tensorplex-docs",
@@ -179,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 304,
+      "latency_ms": 941,
       "method_tested": "HEAD",
       "name": "ninja Tensorplex subnet docs",
       "netuid": 66,
@@ -203,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/66",
-      "verified_at": "2026-06-06T12:18:27.004Z"
+      "verified_at": "2026-06-07T07:07:01.015Z"
     },
     {
       "candidate_id": "sn-66-website-common-api",
@@ -212,7 +211,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 148,
+      "latency_ms": 590,
       "method_tested": "HEAD",
       "name": "ninja API",
       "netuid": 66,
@@ -236,7 +235,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ninja.arbos.life/api",
-      "verified_at": "2026-06-06T12:18:27.004Z"
+      "verified_at": "2026-06-07T07:07:01.015Z"
     },
     {
       "candidate_id": "sn-66-website-common-docs",
@@ -245,7 +244,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "docs",
-      "latency_ms": 145,
+      "latency_ms": 589,
       "method_tested": "HEAD",
       "name": "ninja docs",
       "netuid": 66,
@@ -269,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ninja.arbos.life/docs",
-      "verified_at": "2026-06-06T12:18:27.007Z"
+      "verified_at": "2026-06-07T07:07:01.015Z"
     },
     {
       "candidate_id": "sn-66-website-common-health",
@@ -278,7 +277,7 @@
       "content_type": "text/plain",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 120,
+      "latency_ms": 566,
       "method_tested": "HEAD",
       "name": "ninja health endpoint",
       "netuid": 66,
@@ -302,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ninja.arbos.life/health",
-      "verified_at": "2026-06-06T12:18:27.031Z"
+      "verified_at": "2026-06-07T07:07:01.205Z"
     },
     {
       "candidate_id": "sn-66-website-common-openapi-json",
@@ -311,7 +310,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 155,
+      "latency_ms": 527,
       "method_tested": "HEAD",
       "name": "ninja OpenAPI JSON",
       "netuid": 66,
@@ -335,7 +334,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ninja.arbos.life/openapi.json",
-      "verified_at": "2026-06-06T12:18:27.039Z"
+      "verified_at": "2026-06-07T07:07:01.210Z"
     },
     {
       "candidate_id": "sn-66-website-common-swagger",
@@ -344,7 +343,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 147,
+      "latency_ms": 565,
       "method_tested": "HEAD",
       "name": "ninja Swagger UI",
       "netuid": 66,
@@ -368,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ninja.arbos.life/swagger",
-      "verified_at": "2026-06-06T12:18:27.044Z"
+      "verified_at": "2026-06-07T07:07:01.210Z"
     },
     {
       "candidate_id": "sn-66-website-common-swagger-json",
@@ -377,7 +376,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 150,
+      "latency_ms": 379,
       "method_tested": "HEAD",
       "name": "ninja Swagger JSON",
       "netuid": 66,
@@ -401,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ninja.arbos.life/swagger.json",
-      "verified_at": "2026-06-06T12:18:27.044Z"
+      "verified_at": "2026-06-07T07:07:01.309Z"
     },
     {
       "candidate_id": "sn-66-website-link-ninja-arbos-life-dashboard-1",
@@ -410,7 +409,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 180,
+      "latency_ms": 310,
       "method_tested": "HEAD",
       "name": "ninja dashboard",
       "netuid": 66,
@@ -434,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ninja.arbos.life/dashboard-summary.json",
-      "verified_at": "2026-06-06T12:18:27.054Z"
+      "verified_at": "2026-06-07T07:07:01.378Z"
     },
     {
       "candidate_id": "sn-66-website-link-ninja-arbos-life-website-2",
@@ -443,7 +442,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 144,
+      "latency_ms": 84,
       "method_tested": "HEAD",
       "name": "ninja website page",
       "netuid": 66,
@@ -467,7 +466,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ninja.arbos.life/duels.html",
-      "verified_at": "2026-06-06T12:18:27.119Z"
+      "verified_at": "2026-06-07T07:07:01.646Z"
     },
     {
       "candidate_id": "sn-66-website-link-ninja-arbos-life-website-3",
@@ -476,7 +475,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 75,
+      "latency_ms": 85,
       "method_tested": "HEAD",
       "name": "ninja website page",
       "netuid": 66,
@@ -500,7 +499,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ninja.arbos.life/duels.html?duel=",
-      "verified_at": "2026-06-06T12:18:27.152Z"
+      "verified_at": "2026-06-07T07:07:01.646Z"
     }
   ],
   "schema_version": 1,

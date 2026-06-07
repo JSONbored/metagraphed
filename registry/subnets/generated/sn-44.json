@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-06T12:18:20.169Z"
+    "verified_at": "2026-06-07T07:06:51.187Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/44",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/44",
@@ -59,11 +59,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/score-technologies/turbovision",
-        "latency_ms": 500,
+        "latency_ms": 749,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.130Z"
+        "verified_at": "2026-06-07T07:06:51.153Z"
       }
     },
     {
@@ -72,7 +72,7 @@
       "id": "sn-44-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Score source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -99,11 +99,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/score-technologies/score-vision",
-        "latency_ms": 538,
+        "latency_ms": 835,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.169Z"
+        "verified_at": "2026-06-07T07:06:51.187Z"
       }
     },
     {
@@ -138,11 +138,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 522,
+        "latency_ms": 517,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.141Z"
+        "verified_at": "2026-06-07T07:06:51.164Z"
       }
     },
     {
@@ -151,7 +151,7 @@
       "id": "sn-44-tensorplex-docs",
       "kind": "docs",
       "name": "Score Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -177,11 +177,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 380,
+        "latency_ms": 528,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.151Z"
+        "verified_at": "2026-06-07T07:06:51.183Z"
       }
     },
     {
@@ -216,11 +216,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 128,
+        "latency_ms": 146,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:20.124Z"
+        "verified_at": "2026-06-07T07:06:51.141Z"
       }
     }
   ],

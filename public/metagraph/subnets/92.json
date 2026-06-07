@@ -5,7 +5,7 @@
       "confidence": "medium",
       "id": "sn-92-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "TensorClaw TaoMarketCap dashboard",
+      "name": "luis TaoMarketCap dashboard",
       "netuid": 92,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -24,49 +24,6 @@
     {
       "auth_required": false,
       "confidence": "medium",
-      "id": "sn-92-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "TensorClaw source repository",
-      "netuid": 92,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "schema_version": 1,
-      "source_tier": "third-party-index",
-      "source_type": "taomarketcap-subnet-identity-v3",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/92",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/tensorclaw/tensorclaw"
-    },
-    {
-      "auth_required": false,
-      "confidence": "medium",
-      "id": "sn-92-taomarketcap-website",
-      "kind": "website",
-      "name": "TensorClaw website",
-      "netuid": 92,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "schema_version": 1,
-      "source_tier": "third-party-index",
-      "source_type": "taomarketcap-subnet-identity-v3",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/92",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92"
-      ],
-      "state": "schema-valid",
-      "url": "https://www.tensorclaw.ai/"
-    },
-    {
-      "auth_required": false,
-      "confidence": "medium",
       "id": "sn-92-tensorplex-docs",
       "kind": "docs",
       "name": "TensorClaw Tensorplex subnet docs",
@@ -74,7 +31,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -95,7 +52,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -116,7 +73,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -137,7 +94,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -158,7 +115,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -179,7 +136,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -200,7 +157,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -221,7 +178,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -239,7 +196,7 @@
       "confidence": "medium",
       "id": "sn-92-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "TensorClaw TaoMarketCap dashboard",
+      "name": "luis TaoMarketCap dashboard",
       "netuid": 92,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -258,49 +215,6 @@
     {
       "auth_required": false,
       "confidence": "medium",
-      "id": "sn-92-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "TensorClaw source repository",
-      "netuid": 92,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "schema_version": 1,
-      "source_tier": "third-party-index",
-      "source_type": "taomarketcap-subnet-identity-v3",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/92",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json"
-      ],
-      "state": "schema-valid",
-      "url": "https://github.com/tensorclaw/tensorclaw"
-    },
-    {
-      "auth_required": false,
-      "confidence": "medium",
-      "id": "sn-92-taomarketcap-website",
-      "kind": "website",
-      "name": "TensorClaw website",
-      "netuid": 92,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "schema_version": 1,
-      "source_tier": "third-party-index",
-      "source_type": "taomarketcap-subnet-identity-v3",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/92",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92"
-      ],
-      "state": "schema-valid",
-      "url": "https://www.tensorclaw.ai/"
-    },
-    {
-      "auth_required": false,
-      "confidence": "medium",
       "id": "sn-92-tensorplex-docs",
       "kind": "docs",
       "name": "TensorClaw Tensorplex subnet docs",
@@ -308,7 +222,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -329,7 +243,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -350,7 +264,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -371,7 +285,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -392,7 +306,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -413,7 +327,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -434,7 +348,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -455,7 +369,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -473,12 +387,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-92-tensorplex-docs",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:16.144Z",
-      "latency_ms": 505,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -500,12 +414,12 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 65,
+      "score": 0,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json"
       ],
-      "status": "ok",
-      "subnet_name": "TensorClaw",
+      "status": "unknown",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "surface_id": "sn-92-tensorplex-docs",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92"
@@ -515,12 +429,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-92-website-common-docs",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:16.253Z",
-      "latency_ms": 594,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -542,12 +456,12 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 64,
+      "score": 0,
       "source_urls": [
         "https://www.tensorclaw.ai/"
       ],
-      "status": "ok",
-      "subnet_name": "TensorClaw",
+      "status": "unknown",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "surface_id": "sn-92-website-common-docs",
       "url": "https://www.tensorclaw.ai/docs"
@@ -557,97 +471,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
-      "error": null,
-      "id": "endpoint-sn-92-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "last_checked": "2026-06-07T05:10:16.104Z",
-      "latency_ms": 508,
-      "latest_block": null,
-      "layer": "docs-provider",
-      "method_support": null,
-      "method_tested": "HEAD",
-      "monitoring_policy": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "source": "surface-probe-config",
-        "timeout_ms": 10000
-      },
-      "monitoring_status": "monitored",
-      "netuid": 92,
-      "network": "finney",
-      "operator": "taomarketcap",
-      "pool_eligible": false,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "publication_state": "monitored",
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "rpc_method_count": null,
-      "score": 65,
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json"
-      ],
-      "status": "ok",
-      "subnet_name": "TensorClaw",
-      "subnet_slug": "sn-92",
-      "surface_id": "sn-92-taomarketcap-source-repo",
-      "url": "https://github.com/tensorclaw/tensorclaw"
-    },
-    {
-      "archive_support": null,
-      "auth_required": false,
-      "authority": "registry-observed",
-      "chain": "bittensor",
-      "classification": "live",
-      "error": null,
-      "id": "endpoint-sn-92-taomarketcap-website",
-      "kind": "website",
-      "last_checked": "2026-06-07T05:10:16.217Z",
-      "latency_ms": 587,
-      "latest_block": null,
-      "layer": "docs-provider",
-      "method_support": null,
-      "method_tested": "HEAD",
-      "monitoring_policy": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "source": "surface-probe-config",
-        "timeout_ms": 10000
-      },
-      "monitoring_status": "monitored",
-      "netuid": 92,
-      "network": "finney",
-      "operator": "taomarketcap",
-      "pool_eligible": false,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "publication_state": "monitored",
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "rpc_method_count": null,
-      "score": 64,
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92"
-      ],
-      "status": "ok",
-      "subnet_name": "TensorClaw",
-      "subnet_slug": "sn-92",
-      "surface_id": "sn-92-taomarketcap-website",
-      "url": "https://www.tensorclaw.ai/"
-    },
-    {
-      "archive_support": null,
-      "auth_required": false,
-      "authority": "registry-observed",
-      "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-92-taomarketcap-dashboard",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:15.696Z",
-      "latency_ms": 127,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -669,12 +498,12 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 69,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/92"
       ],
-      "status": "ok",
-      "subnet_name": "TensorClaw",
+      "status": "unknown",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "surface_id": "sn-92-taomarketcap-dashboard",
       "url": "https://taomarketcap.com/subnets/92"
@@ -684,12 +513,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-92-website-link-www-tensorclaw-ai-dashboard-1",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:16.293Z",
-      "latency_ms": 597,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -711,12 +540,12 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 64,
+      "score": 0,
       "source_urls": [
         "https://www.tensorclaw.ai/"
       ],
-      "status": "ok",
-      "subnet_name": "TensorClaw",
+      "status": "unknown",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "surface_id": "sn-92-website-link-www-tensorclaw-ai-dashboard-1",
       "url": "https://www.tensorclaw.ai/dashboard"
@@ -726,12 +555,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-92-website-common-swagger",
       "kind": "openapi",
-      "last_checked": "2026-06-07T05:10:16.284Z",
-      "latency_ms": 622,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -753,12 +582,12 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 64,
+      "score": 0,
       "source_urls": [
         "https://www.tensorclaw.ai/"
       ],
-      "status": "ok",
-      "subnet_name": "TensorClaw",
+      "status": "unknown",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "surface_id": "sn-92-website-common-swagger",
       "url": "https://www.tensorclaw.ai/swagger"
@@ -766,11 +595,15 @@
   ],
   "gaps": {
     "gap_notes": [
+      "No verified source repository yet.",
+      "No verified project website yet.",
       "No verified subnet API surface yet.",
       "No verified SSE/event stream yet.",
       "No verified data artifact yet."
     ],
     "missing_kinds": [
+      "source-repo",
+      "website",
       "subnet-api",
       "sse",
       "data-artifact"
@@ -778,22 +611,22 @@
     "supported_kinds": [
       "dashboard",
       "docs",
-      "openapi",
-      "source-repo",
-      "website"
+      "openapi"
     ]
   },
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8347420,
-    "candidate_count": 11,
+    "block": 8353128,
+    "candidate_count": 9,
     "categories": [
       "baseline-curated"
     ],
     "coverage_level": "probed",
     "curation": {
       "gap_notes": [
+        "No verified source repository yet.",
+        "No verified project website yet.",
         "No verified subnet API surface yet.",
         "No verified SSE/event stream yet.",
         "No verified data artifact yet."
@@ -802,18 +635,22 @@
       "review_state": "machine-generated",
       "reviewed_at": null,
       "source_count": 3,
-      "verified_at": "2026-06-06T12:18:34.365Z"
+      "verified_at": "2026-06-07T07:07:13.663Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/92",
     "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92",
     "gaps": {
       "gap_notes": [
+        "No verified source repository yet.",
+        "No verified project website yet.",
         "No verified subnet API surface yet.",
         "No verified SSE/event stream yet.",
         "No verified data artifact yet."
       ],
       "missing_kinds": [
+        "source-repo",
+        "website",
         "subnet-api",
         "sse",
         "data-artifact"
@@ -821,25 +658,23 @@
       "supported_kinds": [
         "dashboard",
         "docs",
-        "openapi",
-        "source-repo",
-        "website"
+        "openapi"
       ]
     },
     "links": [],
     "mechanism_count": 1,
-    "name": "TensorClaw",
-    "native_name": "TensorClaw",
+    "name": "luis",
+    "native_name": "luis",
     "native_name_quality": "chain",
-    "native_slug": "tensorclaw",
+    "native_slug": "luis",
     "netuid": 92,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
-    "participant_count": 256,
-    "probed_surface_count": 7,
+    "participant_count": 1,
+    "probed_surface_count": 5,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T12:04:01Z",
+        "captured_at": "2026-06-07T07:06:35Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
@@ -850,15 +685,15 @@
       },
       "interface_metadata": "machine-verified"
     },
-    "registered_at_block": 7013758,
+    "registered_at_block": 8352006,
     "slug": "sn-92",
-    "source_repo": "https://github.com/tensorclaw/tensorclaw",
+    "source_repo": null,
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 7,
+    "surface_count": 5,
     "symbol": "ᚂ",
     "tempo": 360,
-    "website_url": "https://www.tensorclaw.ai/"
+    "website_url": null
   },
   "surfaces": [
     {
@@ -866,7 +701,7 @@
       "authority": "registry-observed",
       "id": "sn-92-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "TensorClaw TaoMarketCap dashboard",
+      "name": "luis TaoMarketCap dashboard",
       "netuid": 92,
       "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "probe": {
@@ -889,104 +724,18 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/92"
       ],
-      "subnet_name": "TensorClaw",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "url": "https://taomarketcap.com/subnets/92",
       "verification": {
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 124,
+        "latency_ms": 146,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.033Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-92-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "TensorClaw source repository",
-      "netuid": 92,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json"
-      ],
-      "subnet_name": "TensorClaw",
-      "subnet_slug": "sn-92",
-      "url": "https://github.com/tensorclaw/tensorclaw",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 59,
-        "content_type": null,
-        "github_api_url": "https://api.github.com/repos/tensorclaw/tensorclaw",
-        "latency_ms": 526,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.038Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-92-taomarketcap-website",
-      "kind": "website",
-      "name": "TensorClaw website",
-      "netuid": 92,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92"
-      ],
-      "subnet_name": "TensorClaw",
-      "subnet_slug": "sn-92",
-      "url": "https://www.tensorclaw.ai/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 560,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.094Z"
+        "verified_at": "2026-06-07T07:07:13.306Z"
       }
     },
     {
@@ -996,7 +745,7 @@
       "kind": "docs",
       "name": "TensorClaw Tensorplex subnet docs",
       "netuid": 92,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1017,18 +766,18 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json"
       ],
-      "subnet_name": "TensorClaw",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92",
       "verification": {
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 302,
+        "latency_ms": 416,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.130Z"
+        "verified_at": "2026-06-07T07:07:13.318Z"
       }
     },
     {
@@ -1038,7 +787,7 @@
       "kind": "docs",
       "name": "TensorClaw docs",
       "netuid": 92,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1059,18 +808,18 @@
       "source_urls": [
         "https://www.tensorclaw.ai/"
       ],
-      "subnet_name": "TensorClaw",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "url": "https://www.tensorclaw.ai/docs",
       "verification": {
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 536,
+        "latency_ms": 580,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.157Z"
+        "verified_at": "2026-06-07T07:07:13.454Z"
       }
     },
     {
@@ -1080,7 +829,7 @@
       "kind": "openapi",
       "name": "TensorClaw Swagger UI",
       "netuid": 92,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1102,18 +851,18 @@
       "source_urls": [
         "https://www.tensorclaw.ai/"
       ],
-      "subnet_name": "TensorClaw",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "url": "https://www.tensorclaw.ai/swagger",
       "verification": {
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 553,
+        "latency_ms": 549,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.305Z"
+        "verified_at": "2026-06-07T07:07:13.594Z"
       }
     },
     {
@@ -1123,7 +872,7 @@
       "kind": "dashboard",
       "name": "TensorClaw dashboard",
       "netuid": 92,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1144,18 +893,18 @@
       "source_urls": [
         "https://www.tensorclaw.ai/"
       ],
-      "subnet_name": "TensorClaw",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "url": "https://www.tensorclaw.ai/dashboard",
       "verification": {
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 556,
+        "latency_ms": 559,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.365Z"
+        "verified_at": "2026-06-07T07:07:13.663Z"
       }
     }
   ],
@@ -1165,7 +914,7 @@
       "authority": "registry-observed",
       "id": "sn-92-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "TensorClaw TaoMarketCap dashboard",
+      "name": "luis TaoMarketCap dashboard",
       "netuid": 92,
       "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "probe": {
@@ -1188,104 +937,18 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/92"
       ],
-      "subnet_name": "TensorClaw",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "url": "https://taomarketcap.com/subnets/92",
       "verification": {
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 124,
+        "latency_ms": 146,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.033Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-92-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "TensorClaw source repository",
-      "netuid": 92,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json"
-      ],
-      "subnet_name": "TensorClaw",
-      "subnet_slug": "sn-92",
-      "url": "https://github.com/tensorclaw/tensorclaw",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 59,
-        "content_type": null,
-        "github_api_url": "https://api.github.com/repos/tensorclaw/tensorclaw",
-        "latency_ms": 526,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.038Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-92-taomarketcap-website",
-      "kind": "website",
-      "name": "TensorClaw website",
-      "netuid": 92,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92"
-      ],
-      "subnet_name": "TensorClaw",
-      "subnet_slug": "sn-92",
-      "url": "https://www.tensorclaw.ai/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 560,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.094Z"
+        "verified_at": "2026-06-07T07:07:13.306Z"
       }
     },
     {
@@ -1295,7 +958,7 @@
       "kind": "docs",
       "name": "TensorClaw Tensorplex subnet docs",
       "netuid": 92,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1316,18 +979,18 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json"
       ],
-      "subnet_name": "TensorClaw",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92",
       "verification": {
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 302,
+        "latency_ms": 416,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.130Z"
+        "verified_at": "2026-06-07T07:07:13.318Z"
       }
     },
     {
@@ -1337,7 +1000,7 @@
       "kind": "docs",
       "name": "TensorClaw docs",
       "netuid": 92,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1358,18 +1021,18 @@
       "source_urls": [
         "https://www.tensorclaw.ai/"
       ],
-      "subnet_name": "TensorClaw",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "url": "https://www.tensorclaw.ai/docs",
       "verification": {
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 536,
+        "latency_ms": 580,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.157Z"
+        "verified_at": "2026-06-07T07:07:13.454Z"
       }
     },
     {
@@ -1379,7 +1042,7 @@
       "kind": "openapi",
       "name": "TensorClaw Swagger UI",
       "netuid": 92,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1401,18 +1064,18 @@
       "source_urls": [
         "https://www.tensorclaw.ai/"
       ],
-      "subnet_name": "TensorClaw",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "url": "https://www.tensorclaw.ai/swagger",
       "verification": {
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 553,
+        "latency_ms": 549,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.305Z"
+        "verified_at": "2026-06-07T07:07:13.594Z"
       }
     },
     {
@@ -1422,7 +1085,7 @@
       "kind": "dashboard",
       "name": "TensorClaw dashboard",
       "netuid": 92,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1443,18 +1106,18 @@
       "source_urls": [
         "https://www.tensorclaw.ai/"
       ],
-      "subnet_name": "TensorClaw",
+      "subnet_name": "luis",
       "subnet_slug": "sn-92",
       "url": "https://www.tensorclaw.ai/dashboard",
       "verification": {
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 556,
+        "latency_ms": 559,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.365Z"
+        "verified_at": "2026-06-07T07:07:13.663Z"
       }
     }
   ]

@@ -570,14 +570,12 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
           "openapi",
           "subnet-api",
           "sse",
@@ -586,6 +584,7 @@
         "supported_kinds": [
           "dashboard",
           "docs",
+          "source-repo",
           "website"
         ]
       },
@@ -2495,11 +2494,15 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
+          "No verified source repository yet.",
+          "No verified project website yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
+          "source-repo",
+          "website",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -2507,12 +2510,10 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "openapi",
-          "source-repo",
-          "website"
+          "openapi"
         ]
       },
-      "name": "TensorClaw",
+      "name": "luis",
       "netuid": 92,
       "slug": "sn-92"
     },
@@ -2575,7 +2576,6 @@
       "gaps": {
         "gap_notes": [
           "No verified source repository yet.",
-          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
@@ -2583,7 +2583,6 @@
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -2591,10 +2590,11 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
-      "name": "nion",
+      "name": "Actual",
       "netuid": 95,
       "slug": "sn-95"
     },

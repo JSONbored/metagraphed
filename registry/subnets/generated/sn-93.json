@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-06T12:18:34.719Z"
+    "verified_at": "2026-06-07T07:07:14.168Z"
   },
   "dashboard_url": "https://dashboard.bitcast.network/",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/93",
@@ -50,8 +50,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/93",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/93/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/93"
       ],
       "url": "https://github.com/bitcast-network/bitcast",
       "verification": {
@@ -59,11 +58,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/bitcast-network/bitcast",
-        "latency_ms": 464,
+        "latency_ms": 481,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.431Z"
+        "verified_at": "2026-06-07T07:07:13.827Z"
       }
     },
     {
@@ -98,11 +97,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 295,
+        "latency_ms": 317,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.432Z"
+        "verified_at": "2026-06-07T07:07:13.837Z"
       }
     },
     {
@@ -111,7 +110,7 @@
       "id": "sn-93-tensorplex-docs",
       "kind": "docs",
       "name": "Bitcast Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +136,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 421,
+        "latency_ms": 322,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.547Z"
+        "verified_at": "2026-06-07T07:07:13.845Z"
       }
     },
     {
@@ -150,7 +149,7 @@
       "id": "sn-93-website-common-docs",
       "kind": "docs",
       "name": "Bitcast docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +175,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1198,
+        "latency_ms": 1021,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.636Z"
+        "verified_at": "2026-06-07T07:07:13.904Z"
       }
     },
     {
@@ -189,7 +188,7 @@
       "id": "sn-93-github-readme-bitcast-network-bitcast-dashboard-2",
       "kind": "dashboard",
       "name": "Bitcast dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +214,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 502,
+        "latency_ms": 494,
         "method_tested": "HEAD",
         "redirect_target": "https://creator.bitcast.network/briefs",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.415Z"
+        "verified_at": "2026-06-07T07:07:13.722Z"
       }
     },
     {
@@ -254,11 +253,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 146,
+        "latency_ms": 155,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.428Z"
+        "verified_at": "2026-06-07T07:07:13.737Z"
       }
     },
     {
@@ -267,7 +266,7 @@
       "id": "sn-93-website-link-stats-bitcast-network-dashboard-1",
       "kind": "dashboard",
       "name": "Bitcast dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -293,11 +292,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 691,
+        "latency_ms": 912,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.719Z"
+        "verified_at": "2026-06-07T07:07:14.168Z"
       }
     },
     {
@@ -306,7 +305,7 @@
       "id": "sn-93-website-common-swagger",
       "kind": "openapi",
       "name": "Bitcast Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -333,11 +332,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1211,
+        "latency_ms": 979,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:34.693Z"
+        "verified_at": "2026-06-07T07:07:14.036Z"
       }
     }
   ],

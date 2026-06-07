@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-06T12:18:40.350Z"
+    "verified_at": "2026-06-07T07:07:20.881Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/108",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/108",
@@ -51,8 +51,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/108",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/108/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/108"
       ],
       "url": "https://github.com/talkheadai/talkhead-subnet",
       "verification": {
@@ -60,11 +59,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/talkheadai/talkhead-subnet",
-        "latency_ms": 443,
+        "latency_ms": 659,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.334Z"
+        "verified_at": "2026-06-07T07:07:20.850Z"
       }
     },
     {
@@ -99,11 +98,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 603,
+        "latency_ms": 574,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.336Z"
+        "verified_at": "2026-06-07T07:07:20.860Z"
       }
     },
     {
@@ -112,7 +111,7 @@
       "id": "sn-108-tensorplex-docs",
       "kind": "docs",
       "name": "TalkHead Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -138,11 +137,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 414,
+        "latency_ms": 297,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.350Z"
+        "verified_at": "2026-06-07T07:07:20.881Z"
       }
     },
     {
@@ -177,11 +176,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
+        "latency_ms": 172,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.282Z"
+        "verified_at": "2026-06-07T07:07:20.849Z"
       }
     }
   ],

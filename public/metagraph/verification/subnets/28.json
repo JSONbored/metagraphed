@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 320,
+      "latency_ms": 145,
       "method_tested": "HEAD",
       "name": "gm TaoMarketCap dashboard",
       "netuid": 28,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/28",
-      "verified_at": "2026-06-06T12:18:17.016Z"
+      "verified_at": "2026-06-07T07:06:47.351Z"
     },
     {
       "candidate_id": "sn-28-tensorplex-docs",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 367,
+      "latency_ms": 467,
       "method_tested": "HEAD",
       "name": "gm Tensorplex subnet docs",
       "netuid": 28,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/28",
-      "verified_at": "2026-06-06T12:18:17.018Z"
+      "verified_at": "2026-06-07T07:06:47.352Z"
     }
   ],
   "schema_version": 1,

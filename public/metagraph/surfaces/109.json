@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 130,
+        "latency_ms": 139,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.771Z"
+        "verified_at": "2026-06-07T07:07:21.243Z"
       }
     },
     {
@@ -84,11 +84,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/fx-integral/academia",
-        "latency_ms": 502,
+        "latency_ms": 481,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.851Z"
+        "verified_at": "2026-06-07T07:07:21.296Z"
       }
     },
     {
@@ -98,7 +98,7 @@
       "kind": "docs",
       "name": "Academia Tensorplex subnet docs",
       "netuid": 109,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -126,11 +126,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 334,
+        "latency_ms": 300,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.902Z"
+        "verified_at": "2026-06-07T07:07:21.384Z"
       }
     }
   ]

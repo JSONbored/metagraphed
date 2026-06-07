@@ -10,14 +10,13 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://www.theredteam.io/"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
       "state": "schema-valid",
       "url": "https://dashboard.theredteam.io/"
@@ -32,14 +31,13 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://www.theredteam.io/"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
       "state": "schema-valid",
       "url": "https://docs.theredteam.io/"
@@ -81,8 +79,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/61",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/61",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/61"
       ],
       "state": "schema-valid",
       "url": "https://github.com/RedTeamSubnet/RedTeam"
@@ -118,7 +115,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -139,7 +136,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -160,7 +157,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -181,7 +178,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -202,7 +199,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -223,7 +220,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -244,7 +241,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -267,14 +264,13 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://www.theredteam.io/"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
       "state": "schema-valid",
       "url": "https://dashboard.theredteam.io/"
@@ -289,14 +285,13 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://www.theredteam.io/"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
       "state": "schema-valid",
       "url": "https://docs.theredteam.io/"
@@ -338,8 +333,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/61",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/61",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/61"
       ],
       "state": "schema-valid",
       "url": "https://github.com/RedTeamSubnet/RedTeam"
@@ -375,7 +369,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -396,7 +390,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -417,7 +411,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -438,7 +432,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -459,7 +453,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -480,7 +474,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -501,7 +495,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -519,12 +513,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-61-github-readme-redteamsubnet-redteam-docs-2",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:11.982Z",
-      "latency_ms": 191,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -546,12 +540,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 68,
+      "score": 0,
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://www.theredteam.io/"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
       "surface_id": "sn-61-github-readme-redteamsubnet-redteam-docs-2",
@@ -562,12 +555,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-61-tensorplex-docs",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:12.198Z",
-      "latency_ms": 333,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -589,11 +582,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 67,
+      "score": 0,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
       "surface_id": "sn-61-tensorplex-docs",
@@ -604,12 +597,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-61-taomarketcap-source-repo",
       "kind": "source-repo",
-      "last_checked": "2026-06-07T05:10:12.398Z",
-      "latency_ms": 599,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -631,12 +624,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 64,
+      "score": 0,
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/61",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/61"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
       "surface_id": "sn-61-taomarketcap-source-repo",
@@ -647,12 +639,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-61-taomarketcap-website",
       "kind": "website",
-      "last_checked": "2026-06-07T05:10:12.214Z",
-      "latency_ms": 355,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -674,11 +666,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 66,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/61"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
       "surface_id": "sn-61-taomarketcap-website",
@@ -689,12 +681,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-61-github-readme-redteamsubnet-redteam-dashboard-1",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:12.316Z",
-      "latency_ms": 538,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -716,12 +708,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 65,
+      "score": 0,
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://www.theredteam.io/"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
       "surface_id": "sn-61-github-readme-redteamsubnet-redteam-dashboard-1",
@@ -732,12 +723,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-61-taomarketcap-dashboard",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:12.189Z",
-      "latency_ms": 397,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -759,11 +750,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 66,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/61"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
       "surface_id": "sn-61-taomarketcap-dashboard",
@@ -793,7 +784,7 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8347420,
+    "block": 8353128,
     "candidate_count": 12,
     "categories": [
       "baseline-curated"
@@ -809,8 +800,8 @@
       "level": "machine-verified",
       "review_state": "machine-generated",
       "reviewed_at": null,
-      "source_count": 4,
-      "verified_at": "2026-06-06T12:18:25.329Z"
+      "source_count": 3,
+      "verified_at": "2026-06-07T07:06:58.705Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://dashboard.theredteam.io/",
@@ -848,7 +839,7 @@
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T12:04:01Z",
+        "captured_at": "2026-06-07T07:06:35Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
@@ -877,7 +868,7 @@
       "kind": "dashboard",
       "name": "RedTeam dashboard",
       "netuid": 61,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -896,8 +887,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://www.theredteam.io/"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
@@ -906,11 +896,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 561,
+        "latency_ms": 554,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.246Z"
+        "verified_at": "2026-06-07T07:06:58.573Z"
       }
     },
     {
@@ -920,7 +910,7 @@
       "kind": "docs",
       "name": "RedTeam docs",
       "netuid": 61,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -939,8 +929,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://www.theredteam.io/"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
@@ -953,7 +942,7 @@
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.247Z"
+        "verified_at": "2026-06-07T07:06:58.577Z"
       }
     },
     {
@@ -995,7 +984,7 @@
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.257Z"
+        "verified_at": "2026-06-07T07:06:58.621Z"
       }
     },
     {
@@ -1024,8 +1013,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/61",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/61"
       ],
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
@@ -1035,11 +1023,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/RedTeamSubnet/RedTeam",
-        "latency_ms": 451,
+        "latency_ms": 752,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.305Z"
+        "verified_at": "2026-06-07T07:06:58.625Z"
       }
     },
     {
@@ -1077,11 +1065,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 329,
+        "latency_ms": 297,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.329Z"
+        "verified_at": "2026-06-07T07:06:58.635Z"
       }
     },
     {
@@ -1091,7 +1079,7 @@
       "kind": "docs",
       "name": "RedTeam Tensorplex subnet docs",
       "netuid": 61,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1119,11 +1107,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 336,
+        "latency_ms": 730,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.329Z"
+        "verified_at": "2026-06-07T07:06:58.705Z"
       }
     }
   ],
@@ -1135,7 +1123,7 @@
       "kind": "dashboard",
       "name": "RedTeam dashboard",
       "netuid": 61,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1154,8 +1142,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://www.theredteam.io/"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
@@ -1164,11 +1151,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 561,
+        "latency_ms": 554,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.246Z"
+        "verified_at": "2026-06-07T07:06:58.573Z"
       }
     },
     {
@@ -1178,7 +1165,7 @@
       "kind": "docs",
       "name": "RedTeam docs",
       "netuid": 61,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1197,8 +1184,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://www.theredteam.io/"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
@@ -1211,7 +1197,7 @@
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.247Z"
+        "verified_at": "2026-06-07T07:06:58.577Z"
       }
     },
     {
@@ -1253,7 +1239,7 @@
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.257Z"
+        "verified_at": "2026-06-07T07:06:58.621Z"
       }
     },
     {
@@ -1282,8 +1268,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/61",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/61"
       ],
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
@@ -1293,11 +1278,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/RedTeamSubnet/RedTeam",
-        "latency_ms": 451,
+        "latency_ms": 752,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.305Z"
+        "verified_at": "2026-06-07T07:06:58.625Z"
       }
     },
     {
@@ -1335,11 +1320,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 329,
+        "latency_ms": 297,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.329Z"
+        "verified_at": "2026-06-07T07:06:58.635Z"
       }
     },
     {
@@ -1349,7 +1334,7 @@
       "kind": "docs",
       "name": "RedTeam Tensorplex subnet docs",
       "netuid": 61,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -1377,11 +1362,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 336,
+        "latency_ms": 730,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.329Z"
+        "verified_at": "2026-06-07T07:06:58.705Z"
       }
     }
   ]

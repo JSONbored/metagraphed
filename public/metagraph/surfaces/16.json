@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 145,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:13.418Z"
+        "verified_at": "2026-06-07T07:06:42.863Z"
       }
     },
     {
@@ -65,11 +65,12 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -79,17 +80,15 @@
       "subnet_slug": "sn-16",
       "url": "https://github.com/FirstTensorLabs/BitAds",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/FirstTensorLabs/BitAds",
-        "homepage": "https://bitads.ai/",
-        "last_push_at": "2026-02-17T09:03:51Z",
+        "latency_ms": 520,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:13.437Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:42.917Z"
       }
     },
     {
@@ -127,11 +126,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 539,
+        "latency_ms": 667,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:13.446Z"
+        "verified_at": "2026-06-07T07:06:42.918Z"
       }
     },
     {
@@ -141,7 +140,7 @@
       "kind": "docs",
       "name": "BitAds Tensorplex subnet docs",
       "netuid": 16,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -169,11 +168,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 312,
+        "latency_ms": 328,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:13.473Z"
+        "verified_at": "2026-06-07T07:06:42.935Z"
       }
     },
     {
@@ -183,7 +182,7 @@
       "kind": "docs",
       "name": "BitAds docs",
       "netuid": 16,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -211,11 +210,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html",
-        "latency_ms": 1081,
+        "latency_ms": 1127,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:13.501Z"
+        "verified_at": "2026-06-07T07:06:42.979Z"
       }
     },
     {
@@ -225,7 +224,7 @@
       "kind": "openapi",
       "name": "BitAds Swagger UI",
       "netuid": 16,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +253,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html",
-        "latency_ms": 1026,
+        "latency_ms": 1109,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:13.551Z"
+        "verified_at": "2026-06-07T07:06:43.010Z"
       }
     }
   ]

@@ -6,12 +6,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-86-tensorplex-docs",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:15.569Z",
-      "latency_ms": 439,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -33,11 +33,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 66,
+      "score": 0,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/86/subnet.json"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "⚒",
       "subnet_slug": "sn-86",
       "surface_id": "sn-86-tensorplex-docs",
@@ -48,12 +48,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-86-taomarketcap-dashboard",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:15.269Z",
-      "latency_ms": 152,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -75,11 +75,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 68,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/86"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "⚒",
       "subnet_slug": "sn-86",
       "surface_id": "sn-86-taomarketcap-dashboard",
@@ -104,7 +104,7 @@
       "monitored": 2
     },
     "by_status": {
-      "ok": 2
+      "unknown": 2
     },
     "endpoint_count": 2,
     "monitored_count": 2,

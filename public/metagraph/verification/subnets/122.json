@@ -12,7 +12,7 @@
       "content_type": null,
       "error": "fetch failed",
       "kind": "data-artifact",
-      "latency_ms": 256,
+      "latency_ms": 259,
       "method_tested": "GET",
       "name": "gamma_small data artifact",
       "netuid": 122,
@@ -35,7 +35,7 @@
       "status": "failed",
       "status_code": null,
       "url": "https://netflixtechblog.com/foundation-model-for-personalized-recommendation-1a0bd8e02d39",
-      "verified_at": "2026-06-06T12:18:44.342Z"
+      "verified_at": "2026-06-07T07:07:25.221Z"
     },
     {
       "candidate_id": "sn-122-taomarketcap-dashboard",
@@ -44,7 +44,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 139,
+      "latency_ms": 146,
       "method_tested": "HEAD",
       "name": "gamma_small TaoMarketCap dashboard",
       "netuid": 122,
@@ -68,7 +68,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/122",
-      "verified_at": "2026-06-06T12:18:44.342Z"
+      "verified_at": "2026-06-07T07:07:25.261Z"
     },
     {
       "candidate_id": "sn-122-tensorplex-docs",
@@ -77,7 +77,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 305,
+      "latency_ms": 355,
       "method_tested": "HEAD",
       "name": "gamma_small Tensorplex subnet docs",
       "netuid": 122,
@@ -101,7 +101,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/122",
-      "verified_at": "2026-06-06T12:18:44.400Z"
+      "verified_at": "2026-06-07T07:07:25.319Z"
     },
     {
       "candidate_id": "sn-122-tensorplex-source-repo-1",
@@ -111,7 +111,7 @@
       "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/bitrecs/bitrecs-subnet",
       "kind": "source-repo",
-      "latency_ms": 462,
+      "latency_ms": 607,
       "method_tested": "HEAD",
       "name": "gamma_small source repository",
       "netuid": 122,
@@ -135,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/bitrecs/bitrecs-subnet",
-      "verified_at": "2026-06-06T12:18:44.409Z"
+      "verified_at": "2026-06-07T07:07:25.345Z"
     }
   ],
   "schema_version": 1,

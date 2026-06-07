@@ -14,7 +14,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-06T12:18:23.278Z"
+    "verified_at": "2026-06-07T07:06:55.596Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/52",
   "docs_url": "https://docs.tensorplex.ai/tensorplex-docs/tensorplex-dojo-bittensor-subnet/subnet-mechanism",
@@ -52,8 +52,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/52",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/52/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/52"
       ],
       "url": "https://github.com/tensorplex-labs/dojo",
       "verification": {
@@ -61,11 +60,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/tensorplex-labs/dojo",
-        "latency_ms": 411,
+        "latency_ms": 651,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:23.261Z"
+        "verified_at": "2026-06-07T07:06:55.473Z"
       }
     },
     {
@@ -74,7 +73,7 @@
       "id": "sn-52-tensorplex-source-repo-3",
       "kind": "source-repo",
       "name": "Dojo source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -101,11 +100,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/tensorplex-labs/dojo-ui",
-        "latency_ms": 376,
+        "latency_ms": 629,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:23.278Z"
+        "verified_at": "2026-06-07T07:06:55.563Z"
       }
     },
     {
@@ -114,7 +113,7 @@
       "id": "sn-52-tensorplex-source-repo-4",
       "kind": "source-repo",
       "name": "Dojo source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -124,11 +123,12 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -136,17 +136,15 @@
       ],
       "url": "https://github.com/tensorplex-labs/dojo-worker-api",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 55,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/tensorplex-labs/dojo-worker-api",
-        "homepage": null,
-        "last_push_at": "2025-09-22T10:10:38Z",
+        "latency_ms": 836,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:23.278Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:55.596Z"
       }
     },
     {
@@ -155,7 +153,7 @@
       "id": "sn-52-github-readme-tensorplex-labs-dojo-docs-1",
       "kind": "docs",
       "name": "Dojo docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -181,11 +179,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 187,
+        "latency_ms": 201,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:22.993Z"
+        "verified_at": "2026-06-07T07:06:55.227Z"
       }
     },
     {
@@ -194,7 +192,7 @@
       "id": "sn-52-github-readme-tensorplex-labs-dojo-ui-docs-2",
       "kind": "docs",
       "name": "Dojo docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -220,11 +218,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 272,
+        "latency_ms": 314,
         "method_tested": "HEAD",
         "redirect_target": "https://nextjs.org/docs/pages/getting-started/fonts",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:23.001Z"
+        "verified_at": "2026-06-07T07:06:55.297Z"
       }
     },
     {
@@ -233,7 +231,7 @@
       "id": "sn-52-github-readme-tensorplex-labs-dojo-ui-docs-3",
       "kind": "docs",
       "name": "Dojo docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -259,11 +257,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 181,
+        "latency_ms": 187,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:23.080Z"
+        "verified_at": "2026-06-07T07:06:55.355Z"
       }
     },
     {
@@ -272,7 +270,7 @@
       "id": "sn-52-github-readme-tensorplex-labs-dojo-ui-docs-4",
       "kind": "docs",
       "name": "Dojo docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -298,11 +296,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 261,
+        "latency_ms": 293,
         "method_tested": "HEAD",
         "redirect_target": "https://nextjs.org/docs/pages/getting-started/deploying",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:23.100Z"
+        "verified_at": "2026-06-07T07:06:55.380Z"
       }
     },
     {
@@ -337,11 +335,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 151,
+        "latency_ms": 145,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:23.181Z"
+        "verified_at": "2026-06-07T07:06:55.416Z"
       }
     }
   ]

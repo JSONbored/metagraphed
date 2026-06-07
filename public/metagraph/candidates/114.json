@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 145,
+        "latency_ms": 166,
         "method_tested": "HEAD",
         "name": "SOMA TaoMarketCap dashboard",
         "netuid": 114,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/114",
-        "verified_at": "2026-06-06T12:18:42.347Z"
+        "verified_at": "2026-06-07T07:07:22.940Z"
       }
     },
     {
@@ -81,10 +81,10 @@
         "classification": "live",
         "confidence_score": 59,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/DendriteHQ/SOMA",
         "kind": "source-repo",
-        "latency_ms": 406,
+        "latency_ms": 540,
         "method_tested": "HEAD",
         "name": "SOMA source repository",
         "netuid": 114,
@@ -108,7 +108,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/DendriteHQ/SOMA",
-        "verified_at": "2026-06-06T12:18:42.469Z"
+        "verified_at": "2026-06-07T07:07:22.966Z"
       }
     },
     {
@@ -139,7 +139,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 348,
+        "latency_ms": 376,
         "method_tested": "HEAD",
         "name": "SOMA website",
         "netuid": 114,
@@ -163,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://thesoma.ai/",
-        "verified_at": "2026-06-06T12:18:42.484Z"
+        "verified_at": "2026-06-07T07:07:22.969Z"
       }
     },
     {
@@ -176,7 +176,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 278,
+        "latency_ms": 331,
         "method_tested": "HEAD",
         "name": "SOMA Tensorplex subnet docs",
         "netuid": 114,
@@ -218,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/114",
-        "verified_at": "2026-06-06T12:18:42.492Z"
+        "verified_at": "2026-06-07T07:07:23.108Z"
       }
     },
     {
@@ -231,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -250,7 +250,7 @@
         "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/Level114/level114-subnet",
         "kind": "source-repo",
-        "latency_ms": 550,
+        "latency_ms": 560,
         "method_tested": "HEAD",
         "name": "SOMA source repository",
         "netuid": 114,
@@ -274,7 +274,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/Level114/level114-subnet",
-        "verified_at": "2026-06-06T12:18:42.568Z"
+        "verified_at": "2026-06-07T07:07:23.109Z"
       }
     },
     {
@@ -287,7 +287,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -305,7 +305,7 @@
         "content_type": null,
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 800,
+        "latency_ms": 873,
         "method_tested": "GET",
         "name": "SOMA API",
         "netuid": 114,
@@ -329,7 +329,7 @@
         "status": "failed",
         "status_code": 308,
         "url": "https://thesoma.ai/api",
-        "verified_at": "2026-06-06T12:18:42.707Z"
+        "verified_at": "2026-06-07T07:07:23.133Z"
       }
     },
     {
@@ -342,7 +342,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -360,7 +360,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 190,
+        "latency_ms": 191,
         "method_tested": "GET",
         "name": "SOMA docs",
         "netuid": 114,
@@ -384,7 +384,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://thesoma.ai/docs",
-        "verified_at": "2026-06-06T12:18:42.707Z"
+        "verified_at": "2026-06-07T07:07:23.186Z"
       }
     },
     {
@@ -397,7 +397,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -415,7 +415,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 181,
+        "latency_ms": 208,
         "method_tested": "GET",
         "name": "SOMA health endpoint",
         "netuid": 114,
@@ -439,7 +439,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://thesoma.ai/health",
-        "verified_at": "2026-06-06T12:18:42.710Z"
+        "verified_at": "2026-06-07T07:07:23.238Z"
       }
     },
     {
@@ -452,7 +452,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -470,7 +470,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 282,
+        "latency_ms": 182,
         "method_tested": "GET",
         "name": "SOMA OpenAPI JSON",
         "netuid": 114,
@@ -494,7 +494,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://thesoma.ai/openapi.json",
-        "verified_at": "2026-06-06T12:18:42.757Z"
+        "verified_at": "2026-06-07T07:07:23.239Z"
       }
     },
     {
@@ -507,7 +507,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -525,7 +525,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 191,
+        "latency_ms": 204,
         "method_tested": "GET",
         "name": "SOMA Swagger UI",
         "netuid": 114,
@@ -549,7 +549,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://thesoma.ai/swagger",
-        "verified_at": "2026-06-06T12:18:42.770Z"
+        "verified_at": "2026-06-07T07:07:23.250Z"
       }
     },
     {
@@ -562,7 +562,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -580,7 +580,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 170,
+        "latency_ms": 192,
         "method_tested": "GET",
         "name": "SOMA Swagger JSON",
         "netuid": 114,
@@ -604,7 +604,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://thesoma.ai/swagger.json",
-        "verified_at": "2026-06-06T12:18:42.819Z"
+        "verified_at": "2026-06-07T07:07:23.285Z"
       }
     },
     {
@@ -617,7 +617,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -635,7 +635,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 304,
+        "latency_ms": 365,
         "method_tested": "HEAD",
         "name": "SOMA dashboard",
         "netuid": 114,
@@ -659,7 +659,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://thesoma.ai/dashboard",
-        "verified_at": "2026-06-06T12:18:42.832Z"
+        "verified_at": "2026-06-07T07:07:23.345Z"
       }
     },
     {
@@ -672,7 +672,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -690,7 +690,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "data-artifact",
-        "latency_ms": 356,
+        "latency_ms": 166,
         "method_tested": "HEAD",
         "name": "SOMA data artifact",
         "netuid": 114,
@@ -714,7 +714,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://thesoma.ai/mcp",
-        "verified_at": "2026-06-06T12:18:42.849Z"
+        "verified_at": "2026-06-07T07:07:23.387Z"
       }
     },
     {
@@ -727,7 +727,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -745,7 +745,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 236,
+        "latency_ms": 253,
         "method_tested": "HEAD",
         "name": "SOMA API surface",
         "netuid": 114,
@@ -769,7 +769,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://thesoma.ai/soma-access",
-        "verified_at": "2026-06-06T12:18:42.925Z"
+        "verified_at": "2026-06-07T07:07:23.429Z"
       }
     },
     {
@@ -782,7 +782,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -800,7 +800,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 350,
+        "latency_ms": 233,
         "method_tested": "HEAD",
         "name": "SOMA website page",
         "netuid": 114,
@@ -824,7 +824,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://thesoma.ai/about",
-        "verified_at": "2026-06-06T12:18:42.947Z"
+        "verified_at": "2026-06-07T07:07:23.441Z"
       }
     },
     {
@@ -837,7 +837,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -855,7 +855,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 220,
+        "latency_ms": 393,
         "method_tested": "HEAD",
         "name": "SOMA website page",
         "netuid": 114,
@@ -879,7 +879,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://thesoma.ai/contact",
-        "verified_at": "2026-06-06T12:18:42.961Z"
+        "verified_at": "2026-06-07T07:07:23.463Z"
       }
     },
     {
@@ -892,7 +892,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -910,7 +910,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 172,
+        "latency_ms": 309,
         "method_tested": "HEAD",
         "name": "SOMA website page",
         "netuid": 114,
@@ -934,7 +934,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://thesoma.ai/somarizer",
-        "verified_at": "2026-06-06T12:18:43.136Z"
+        "verified_at": "2026-06-07T07:07:23.556Z"
       }
     },
     {
@@ -947,7 +947,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -965,7 +965,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 220,
+        "latency_ms": 248,
         "method_tested": "HEAD",
         "name": "SOMA website page",
         "netuid": 114,
@@ -989,7 +989,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://thesoma.ai/compression",
-        "verified_at": "2026-06-06T12:18:43.136Z"
+        "verified_at": "2026-06-07T07:07:23.593Z"
       }
     }
   ],

@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 136,
+      "latency_ms": 159,
       "method_tested": "HEAD",
       "name": "HashiChain TaoMarketCap dashboard",
       "netuid": 115,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/115",
-      "verified_at": "2026-06-06T12:18:43.145Z"
+      "verified_at": "2026-06-07T07:07:23.600Z"
     },
     {
       "candidate_id": "sn-115-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/hashi115/hashichain",
       "kind": "source-repo",
-      "latency_ms": 529,
+      "latency_ms": 401,
       "method_tested": "HEAD",
       "name": "HashiChain source repository",
       "netuid": 115,
@@ -70,7 +70,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/hashi115/hashichain",
-      "verified_at": "2026-06-06T12:18:43.161Z"
+      "verified_at": "2026-06-07T07:07:23.675Z"
     },
     {
       "candidate_id": "sn-115-tensorplex-docs",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 344,
+      "latency_ms": 371,
       "method_tested": "HEAD",
       "name": "HashiChain Tensorplex subnet docs",
       "netuid": 115,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/115",
-      "verified_at": "2026-06-06T12:18:43.181Z"
+      "verified_at": "2026-06-07T07:07:23.688Z"
     }
   ],
   "schema_version": 1,

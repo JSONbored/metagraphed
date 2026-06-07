@@ -12,7 +12,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 139,
+      "latency_ms": 126,
       "method_tested": "HEAD",
       "name": "Yanez MIID dashboard",
       "netuid": 54,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://tao-ui-dashboard.yanez.ai/",
-      "verified_at": "2026-06-06T12:18:23.365Z"
+      "verified_at": "2026-06-07T07:06:55.803Z"
     },
     {
       "candidate_id": "sn-54-taomarketcap-dashboard",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 132,
+      "latency_ms": 174,
       "method_tested": "HEAD",
       "name": "Yanez MIID TaoMarketCap dashboard",
       "netuid": 54,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/54",
-      "verified_at": "2026-06-06T12:18:23.481Z"
+      "verified_at": "2026-06-07T07:06:55.863Z"
     },
     {
       "candidate_id": "sn-54-taomarketcap-source-repo",
@@ -79,7 +79,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/yanez-compliance/MIID-subnet",
       "kind": "source-repo",
-      "latency_ms": 589,
+      "latency_ms": 780,
       "method_tested": "HEAD",
       "name": "Yanez MIID source repository",
       "netuid": 54,
@@ -98,13 +98,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/54",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/54",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/54/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/54"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/yanez-compliance/MIID-subnet",
-      "verified_at": "2026-06-06T12:18:23.500Z"
+      "verified_at": "2026-06-07T07:06:55.923Z"
     },
     {
       "candidate_id": "sn-54-taomarketcap-website",
@@ -113,7 +112,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 137,
+      "latency_ms": 145,
       "method_tested": "HEAD",
       "name": "Yanez MIID website",
       "netuid": 54,
@@ -137,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.yanez.ai/",
-      "verified_at": "2026-06-06T12:18:23.504Z"
+      "verified_at": "2026-06-07T07:06:55.965Z"
     },
     {
       "candidate_id": "sn-54-tensorplex-docs",
@@ -146,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 374,
+      "latency_ms": 742,
       "method_tested": "HEAD",
       "name": "Yanez MIID Tensorplex subnet docs",
       "netuid": 54,
@@ -170,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/54",
-      "verified_at": "2026-06-06T12:18:23.582Z"
+      "verified_at": "2026-06-07T07:06:56.039Z"
     },
     {
       "candidate_id": "sn-54-website-common-api",
@@ -179,7 +178,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 45,
+      "latency_ms": 38,
       "method_tested": "GET",
       "name": "Yanez MIID API",
       "netuid": 54,
@@ -203,7 +202,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.yanez.ai/api",
-      "verified_at": "2026-06-06T12:18:23.590Z"
+      "verified_at": "2026-06-07T07:06:56.126Z"
     },
     {
       "candidate_id": "sn-54-website-common-docs",
@@ -212,7 +211,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 39,
+      "latency_ms": 45,
       "method_tested": "GET",
       "name": "Yanez MIID docs",
       "netuid": 54,
@@ -236,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.yanez.ai/docs",
-      "verified_at": "2026-06-06T12:18:23.601Z"
+      "verified_at": "2026-06-07T07:06:56.150Z"
     },
     {
       "candidate_id": "sn-54-website-common-health",
@@ -245,7 +244,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 58,
+      "latency_ms": 42,
       "method_tested": "GET",
       "name": "Yanez MIID health endpoint",
       "netuid": 54,
@@ -269,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.yanez.ai/health",
-      "verified_at": "2026-06-06T12:18:23.613Z"
+      "verified_at": "2026-06-07T07:06:56.164Z"
     },
     {
       "candidate_id": "sn-54-website-common-openapi-json",
@@ -278,7 +277,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 113,
+      "latency_ms": 100,
       "method_tested": "GET",
       "name": "Yanez MIID OpenAPI JSON",
       "netuid": 54,
@@ -302,7 +301,7 @@
       "status": "failed",
       "status_code": 400,
       "url": "https://www.yanez.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:23.641Z"
+      "verified_at": "2026-06-07T07:06:56.179Z"
     },
     {
       "candidate_id": "sn-54-website-common-swagger",
@@ -311,7 +310,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 41,
+      "latency_ms": 47,
       "method_tested": "GET",
       "name": "Yanez MIID Swagger UI",
       "netuid": 54,
@@ -335,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.yanez.ai/swagger",
-      "verified_at": "2026-06-06T12:18:23.697Z"
+      "verified_at": "2026-06-07T07:06:56.205Z"
     },
     {
       "candidate_id": "sn-54-website-common-swagger-json",
@@ -344,7 +343,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 117,
+      "latency_ms": 120,
       "method_tested": "GET",
       "name": "Yanez MIID Swagger JSON",
       "netuid": 54,
@@ -368,7 +367,7 @@
       "status": "failed",
       "status_code": 400,
       "url": "https://www.yanez.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:23.721Z"
+      "verified_at": "2026-06-07T07:06:56.236Z"
     },
     {
       "candidate_id": "sn-54-website-link-www-yanez-ai-website-1",
@@ -377,7 +376,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 116,
+      "latency_ms": 41,
       "method_tested": "HEAD",
       "name": "Yanez MIID website page",
       "netuid": 54,
@@ -401,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.yanez.ai/news-announcements",
-      "verified_at": "2026-06-06T12:18:23.721Z"
+      "verified_at": "2026-06-07T07:06:56.268Z"
     },
     {
       "candidate_id": "sn-54-website-link-www-yanez-ai-website-2",
@@ -410,7 +409,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 108,
+      "latency_ms": 124,
       "method_tested": "HEAD",
       "name": "Yanez MIID website page",
       "netuid": 54,
@@ -434,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.yanez.ai/resources",
-      "verified_at": "2026-06-06T12:18:23.729Z"
+      "verified_at": "2026-06-07T07:06:56.279Z"
     }
   ],
   "schema_version": 1,

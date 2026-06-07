@@ -356,18 +356,6 @@
       "slug": "gittensor"
     },
     {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "TensorClaw",
-      "netuid": 92,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 27,
-      "slug": "sn-92"
-    },
-    {
       "candidate_api_count": 7,
       "curation_level": "machine-verified",
       "name": "SOMA",
@@ -558,6 +546,18 @@
       "operational_surface_count": 1,
       "priority_score": 26,
       "slug": "sn-105"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "luis",
+      "netuid": 92,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 25,
+      "slug": "sn-92"
     },
     {
       "candidate_api_count": 6,
@@ -996,6 +996,16 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
+      "name": "AdTAO",
+      "netuid": 21,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 4,
+      "slug": "sn-21"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
       "name": "Endure Network",
       "netuid": 30,
       "operational_kinds": [],
@@ -1062,16 +1072,6 @@
       "operational_surface_count": 0,
       "priority_score": 3,
       "slug": "sn-20"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "AdTAO",
-      "netuid": 21,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 3,
-      "slug": "sn-21"
     },
     {
       "candidate_api_count": 1,
@@ -1290,6 +1290,25 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 12,
       "verified_candidate_count": 15
+    },
+    {
+      "candidate_count": 9,
+      "curation_level": "machine-verified",
+      "missing_kinds": [
+        "source-repo",
+        "website",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "luis",
+      "netuid": 92,
+      "priority_score": 73,
+      "review_state": "machine-generated",
+      "slug": "sn-92",
+      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+      "surface_count": 5,
+      "verified_candidate_count": 7
     },
     {
       "candidate_count": 8,
@@ -1670,26 +1689,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "nion",
-      "netuid": 95,
-      "priority_score": 70,
-      "review_state": "machine-generated",
-      "slug": "sn-95",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 2,
-      "verified_candidate_count": 2
-    },
-    {
-      "candidate_count": 2,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "eni",
       "netuid": 101,
       "priority_score": 70,
@@ -1755,7 +1754,7 @@
       "slug": "sn-1",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 7,
-      "verified_candidate_count": 18
+      "verified_candidate_count": 17
     },
     {
       "candidate_count": 21,
@@ -1789,25 +1788,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 7,
       "verified_candidate_count": 10
-    },
-    {
-      "candidate_count": 13,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "AdTAO",
-      "netuid": 21,
-      "priority_score": 69,
-      "review_state": "machine-generated",
-      "slug": "sn-21",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 3,
-      "verified_candidate_count": 6
     },
     {
       "candidate_count": 13,
@@ -2625,6 +2605,25 @@
       "candidate_count": 4,
       "curation_level": "machine-verified",
       "missing_kinds": [
+        "source-repo",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Actual",
+      "netuid": 95,
+      "priority_score": 60,
+      "review_state": "machine-generated",
+      "slug": "sn-95",
+      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+      "surface_count": 3,
+      "verified_candidate_count": 3
+    },
+    {
+      "candidate_count": 4,
+      "curation_level": "machine-verified",
+      "missing_kinds": [
         "website",
         "openapi",
         "subnet-api",
@@ -2839,6 +2838,24 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 6,
       "verified_candidate_count": 9
+    },
+    {
+      "candidate_count": 14,
+      "curation_level": "machine-verified",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "AdTAO",
+      "netuid": 21,
+      "priority_score": 58,
+      "review_state": "machine-generated",
+      "slug": "sn-21",
+      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+      "surface_count": 4,
+      "verified_candidate_count": 7
     },
     {
       "candidate_count": 14,
@@ -3310,23 +3327,6 @@
       "slug": "sn-71",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 6,
-      "verified_candidate_count": 9
-    },
-    {
-      "candidate_count": 11,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "TensorClaw",
-      "netuid": 92,
-      "priority_score": 51,
-      "review_state": "machine-generated",
-      "slug": "sn-92",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 7,
       "verified_candidate_count": 9
     },
     {

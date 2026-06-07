@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 145,
+        "latency_ms": 186,
         "method_tested": "HEAD",
         "name": "Mainframe dashboard",
         "netuid": 25,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.macrocosmos.ai/sn25/dashboard",
-        "verified_at": "2026-06-06T12:18:16.348Z"
+        "verified_at": "2026-06-07T07:06:46.566Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 120,
+        "latency_ms": 114,
         "method_tested": "GET",
         "name": "Mainframe docs",
         "netuid": 25,
@@ -107,7 +107,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://docs.macrocosmos.ai/subnets/subnet-25-mainframe",
-        "verified_at": "2026-06-06T12:18:16.369Z"
+        "verified_at": "2026-06-07T07:06:46.570Z"
       }
     },
     {
@@ -120,7 +120,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -138,7 +138,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 99,
+        "latency_ms": 130,
         "method_tested": "GET",
         "name": "Mainframe API surface",
         "netuid": 25,
@@ -162,7 +162,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://docs.macrocosmos.ai/developers/api-documentation/sn25-mainframe",
-        "verified_at": "2026-06-06T12:18:16.375Z"
+        "verified_at": "2026-06-07T07:06:46.584Z"
       }
     },
     {
@@ -193,7 +193,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 147,
+        "latency_ms": 221,
         "method_tested": "HEAD",
         "name": "Mainframe TaoMarketCap dashboard",
         "netuid": 25,
@@ -217,7 +217,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/25",
-        "verified_at": "2026-06-06T12:18:16.393Z"
+        "verified_at": "2026-06-07T07:06:46.590Z"
       }
     },
     {
@@ -236,51 +236,44 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/25",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/25",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/25/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/25"
       ],
       "state": "schema-valid",
       "subnet_name": "Mainframe",
       "url": "https://github.com/macrocosm-os/mainframe",
       "verification": {
-        "archived": false,
         "candidate_id": "sn-25-taomarketcap-source-repo",
         "classification": "live",
-        "confidence_score": 80,
-        "default_branch": "main",
-        "description": "Generalized Scientific Compute on BIttensor",
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/macrocosm-os/mainframe",
-        "homepage": "https://www.macrocosmos.ai/sn25",
-        "html_url": "https://github.com/macrocosm-os/mainframe",
         "kind": "source-repo",
-        "last_push_at": "2025-09-29T14:26:59Z",
+        "latency_ms": 605,
+        "method_tested": "HEAD",
         "name": "Mainframe source repository",
         "netuid": 25,
+        "private_redirect_blocked": false,
         "provider": "taomarketcap",
         "quality_signals": {
-          "archived": false,
-          "has_default_branch": true,
-          "has_recent_push_metadata": true,
+          "content_type_matches_kind": true,
           "public_safe": true,
-          "source_tier": "third-party-index"
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
         },
+        "redirect_target": null,
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/25",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/25",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/25/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/25"
         ],
         "status": "ok",
-        "topics": [
-          "bittensor",
-          "crypto",
-          "decentralized",
-          "dft",
-          "molecular-dynamics"
-        ],
+        "status_code": 200,
         "url": "https://github.com/macrocosm-os/mainframe",
-        "verified_at": "2026-06-06T12:18:16.414Z"
+        "verified_at": "2026-06-07T07:06:46.596Z"
       }
     },
     {
@@ -311,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 193,
+        "latency_ms": 215,
         "method_tested": "HEAD",
         "name": "Mainframe website",
         "netuid": 25,
@@ -335,7 +328,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://macrocosmos.ai/sn25",
-        "verified_at": "2026-06-06T12:18:16.426Z"
+        "verified_at": "2026-06-07T07:06:46.624Z"
       }
     },
     {
@@ -348,7 +341,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -366,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 312,
+        "latency_ms": 346,
         "method_tested": "HEAD",
         "name": "Mainframe Tensorplex subnet docs",
         "netuid": 25,
@@ -390,7 +383,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/25",
-        "verified_at": "2026-06-06T12:18:16.429Z"
+        "verified_at": "2026-06-07T07:06:46.632Z"
       }
     },
     {
@@ -403,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -421,7 +414,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 122,
+        "latency_ms": 145,
         "method_tested": "GET",
         "name": "Mainframe API",
         "netuid": 25,
@@ -445,7 +438,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://macrocosmos.ai/api",
-        "verified_at": "2026-06-06T12:18:16.442Z"
+        "verified_at": "2026-06-07T07:06:46.651Z"
       }
     },
     {
@@ -458,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -476,7 +469,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 243,
+        "latency_ms": 155,
         "method_tested": "GET",
         "name": "Mainframe docs",
         "netuid": 25,
@@ -500,7 +493,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://macrocosmos.ai/docs",
-        "verified_at": "2026-06-06T12:18:16.444Z"
+        "verified_at": "2026-06-07T07:06:46.671Z"
       }
     },
     {
@@ -513,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -531,7 +524,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 207,
+        "latency_ms": 282,
         "method_tested": "GET",
         "name": "Mainframe health endpoint",
         "netuid": 25,
@@ -555,7 +548,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://macrocosmos.ai/health",
-        "verified_at": "2026-06-06T12:18:16.445Z"
+        "verified_at": "2026-06-07T07:06:46.680Z"
       }
     },
     {
@@ -568,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -586,7 +579,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 120,
+        "latency_ms": 135,
         "method_tested": "GET",
         "name": "Mainframe OpenAPI JSON",
         "netuid": 25,
@@ -610,7 +603,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://macrocosmos.ai/openapi.json",
-        "verified_at": "2026-06-06T12:18:16.460Z"
+        "verified_at": "2026-06-07T07:06:46.692Z"
       }
     },
     {
@@ -623,7 +616,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -641,7 +634,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 111,
+        "latency_ms": 242,
         "method_tested": "GET",
         "name": "Mainframe Swagger UI",
         "netuid": 25,
@@ -665,7 +658,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://macrocosmos.ai/swagger",
-        "verified_at": "2026-06-06T12:18:16.460Z"
+        "verified_at": "2026-06-07T07:06:46.708Z"
       }
     },
     {
@@ -678,7 +671,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -696,7 +689,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 122,
+        "latency_ms": 161,
         "method_tested": "GET",
         "name": "Mainframe Swagger JSON",
         "netuid": 25,
@@ -720,7 +713,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://macrocosmos.ai/swagger.json",
-        "verified_at": "2026-06-06T12:18:16.468Z"
+        "verified_at": "2026-06-07T07:06:46.752Z"
       }
     },
     {
@@ -733,7 +726,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -751,7 +744,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 105,
+        "latency_ms": 106,
         "method_tested": "HEAD",
         "name": "Mainframe docs",
         "netuid": 25,
@@ -775,7 +768,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.macrocosmos.ai/",
-        "verified_at": "2026-06-06T12:18:16.476Z"
+        "verified_at": "2026-06-07T07:06:46.758Z"
       }
     },
     {
@@ -788,7 +781,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -806,7 +799,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 134,
+        "latency_ms": 127,
         "method_tested": "HEAD",
         "name": "Mainframe docs",
         "netuid": 25,
@@ -830,7 +823,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://macrocosmos.ai/delegation-guide",
-        "verified_at": "2026-06-06T12:18:16.493Z"
+        "verified_at": "2026-06-07T07:06:46.814Z"
       }
     },
     {
@@ -843,7 +836,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -861,7 +854,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 116,
+        "latency_ms": 121,
         "method_tested": "HEAD",
         "name": "Mainframe website page",
         "netuid": 25,
@@ -885,7 +878,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://macrocosmos.ai/",
-        "verified_at": "2026-06-06T12:18:16.540Z"
+        "verified_at": "2026-06-07T07:06:46.814Z"
       }
     },
     {
@@ -898,7 +891,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -916,7 +909,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 130,
+        "latency_ms": 262,
         "method_tested": "HEAD",
         "name": "Mainframe website page",
         "netuid": 25,
@@ -940,7 +933,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://macrocosmos.ai/about",
-        "verified_at": "2026-06-06T12:18:16.566Z"
+        "verified_at": "2026-06-07T07:06:46.848Z"
       }
     },
     {
@@ -953,7 +946,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -971,7 +964,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 543,
+        "latency_ms": 503,
         "method_tested": "GET",
         "name": "Mainframe website page",
         "netuid": 25,
@@ -995,7 +988,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://app.macrocosmos.ai/",
-        "verified_at": "2026-06-06T12:18:16.582Z"
+        "verified_at": "2026-06-07T07:06:46.855Z"
       }
     },
     {
@@ -1008,7 +1001,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1026,7 +1019,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 382,
+        "latency_ms": 370,
         "method_tested": "HEAD",
         "name": "Mainframe website page",
         "netuid": 25,
@@ -1050,7 +1043,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://macrocosmos.ai/team",
-        "verified_at": "2026-06-06T12:18:16.582Z"
+        "verified_at": "2026-06-07T07:06:46.868Z"
       }
     },
     {
@@ -1063,7 +1056,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1081,7 +1074,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 211,
+        "latency_ms": 141,
         "method_tested": "HEAD",
         "name": "Mainframe website page",
         "netuid": 25,
@@ -1105,7 +1098,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://macrocosmos.ai/our-purpose",
-        "verified_at": "2026-06-06T12:18:16.585Z"
+        "verified_at": "2026-06-07T07:06:46.879Z"
       }
     }
   ],

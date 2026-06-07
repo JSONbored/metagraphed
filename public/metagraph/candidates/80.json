@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 39,
+        "latency_ms": 42,
         "method_tested": "HEAD",
         "name": "dogelayer docs",
         "netuid": 80,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.learnbittensor.org/learn/introduction",
-        "verified_at": "2026-06-06T12:18:30.787Z"
+        "verified_at": "2026-06-07T07:07:08.275Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 44,
+        "latency_ms": 38,
         "method_tested": "HEAD",
         "name": "dogelayer docs",
         "netuid": 80,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.learnbittensor.org/miners",
-        "verified_at": "2026-06-06T12:18:30.826Z"
+        "verified_at": "2026-06-07T07:07:08.276Z"
       }
     },
     {
@@ -120,7 +120,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -162,7 +162,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://docs-git-permissions-list-bittensor.vercel.app/questions-and-answers",
-        "verified_at": "2026-06-06T12:18:30.842Z"
+        "verified_at": "2026-06-07T07:07:08.285Z"
       }
     },
     {
@@ -175,7 +175,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -193,7 +193,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 71,
+        "latency_ms": 150,
         "method_tested": "HEAD",
         "name": "dogelayer docs",
         "netuid": 80,
@@ -217,7 +217,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.learnbittensor.org/getting-started/wallets",
-        "verified_at": "2026-06-06T12:18:30.858Z"
+        "verified_at": "2026-06-07T07:07:08.289Z"
       }
     },
     {
@@ -230,7 +230,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -243,61 +243,6 @@
       "url": "https://docs.learnbittensor.org/miners/index.md",
       "verification": {
         "candidate_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-5",
-        "classification": "dead",
-        "confidence_score": 0,
-        "content_type": "text/html; charset=utf-8",
-        "error": null,
-        "kind": "docs",
-        "latency_ms": 46,
-        "method_tested": "GET",
-        "name": "dogelayer docs",
-        "netuid": 80,
-        "private_redirect_blocked": false,
-        "provider": "taomarketcap",
-        "quality_signals": {
-          "content_type_matches_kind": true,
-          "public_safe": true,
-          "rate_limited": false,
-          "redirected": false,
-          "source_tier": "community-docs",
-          "transient_failure": false
-        },
-        "redirect_target": null,
-        "source_tier": "community-docs",
-        "source_type": "github-readme-link",
-        "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
-        "source_urls": [
-          "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
-        ],
-        "status": "failed",
-        "status_code": 404,
-        "url": "https://docs.learnbittensor.org/miners/index.md",
-        "verified_at": "2026-06-06T12:18:30.870Z"
-      }
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-6",
-      "kind": "docs",
-      "name": "dogelayer docs",
-      "netuid": 80,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
-      "source_urls": [
-        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
-      ],
-      "state": "schema-valid",
-      "subnet_name": "dogelayer",
-      "url": "https://docs.learnbittensor.org/validators/index.md",
-      "verification": {
-        "candidate_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-6",
         "classification": "dead",
         "confidence_score": 0,
         "content_type": "text/html; charset=utf-8",
@@ -326,8 +271,63 @@
         ],
         "status": "failed",
         "status_code": 404,
+        "url": "https://docs.learnbittensor.org/miners/index.md",
+        "verified_at": "2026-06-07T07:07:08.289Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-6",
+      "kind": "docs",
+      "name": "dogelayer docs",
+      "netuid": 80,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "github-readme-link",
+      "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
+      "source_urls": [
+        "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+      ],
+      "state": "schema-valid",
+      "subnet_name": "dogelayer",
+      "url": "https://docs.learnbittensor.org/validators/index.md",
+      "verification": {
+        "candidate_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-6",
+        "classification": "dead",
+        "confidence_score": 0,
+        "content_type": "text/html; charset=utf-8",
+        "error": null,
+        "kind": "docs",
+        "latency_ms": 40,
+        "method_tested": "GET",
+        "name": "dogelayer docs",
+        "netuid": 80,
+        "private_redirect_blocked": false,
+        "provider": "taomarketcap",
+        "quality_signals": {
+          "content_type_matches_kind": true,
+          "public_safe": true,
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "community-docs",
+          "transient_failure": false
+        },
+        "redirect_target": null,
+        "source_tier": "community-docs",
+        "source_type": "github-readme-link",
+        "source_url": "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md",
+        "source_urls": [
+          "https://github.com/dogelayer-ai/dogelayer/blob/main/README.md"
+        ],
+        "status": "failed",
+        "status_code": 404,
         "url": "https://docs.learnbittensor.org/validators/index.md",
-        "verified_at": "2026-06-06T12:18:30.877Z"
+        "verified_at": "2026-06-07T07:07:08.317Z"
       }
     },
     {
@@ -340,7 +340,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -358,7 +358,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 149,
+        "latency_ms": 41,
         "method_tested": "HEAD",
         "name": "dogelayer docs",
         "netuid": 80,
@@ -382,7 +382,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.learnbittensor.org/",
-        "verified_at": "2026-06-06T12:18:30.878Z"
+        "verified_at": "2026-06-07T07:07:08.321Z"
       }
     },
     {
@@ -395,7 +395,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -413,7 +413,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "docs",
-        "latency_ms": 272,
+        "latency_ms": 226,
         "method_tested": "HEAD",
         "name": "dogelayer docs",
         "netuid": 80,
@@ -437,7 +437,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.docker.com/engine/install",
-        "verified_at": "2026-06-06T12:18:30.882Z"
+        "verified_at": "2026-06-07T07:07:08.322Z"
       }
     },
     {
@@ -468,7 +468,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 148,
+        "latency_ms": 139,
         "method_tested": "HEAD",
         "name": "dogelayer TaoMarketCap dashboard",
         "netuid": 80,
@@ -492,7 +492,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/80",
-        "verified_at": "2026-06-06T12:18:30.887Z"
+        "verified_at": "2026-06-07T07:07:08.365Z"
       }
     },
     {
@@ -521,10 +521,10 @@
         "classification": "live",
         "confidence_score": 59,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/dogelayer-ai/dogelayer",
         "kind": "source-repo",
-        "latency_ms": 458,
+        "latency_ms": 698,
         "method_tested": "HEAD",
         "name": "dogelayer source repository",
         "netuid": 80,
@@ -548,7 +548,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/dogelayer-ai/dogelayer",
-        "verified_at": "2026-06-06T12:18:30.895Z"
+        "verified_at": "2026-06-07T07:07:08.379Z"
       }
     },
     {
@@ -579,7 +579,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 691,
+        "latency_ms": 698,
         "method_tested": "HEAD",
         "name": "dogelayer website",
         "netuid": 80,
@@ -603,7 +603,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://dogelayer.ai/",
-        "verified_at": "2026-06-06T12:18:30.915Z"
+        "verified_at": "2026-06-07T07:07:08.403Z"
       }
     },
     {
@@ -616,7 +616,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -634,7 +634,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 368,
+        "latency_ms": 654,
         "method_tested": "HEAD",
         "name": "dogelayer Tensorplex subnet docs",
         "netuid": 80,
@@ -658,7 +658,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/80",
-        "verified_at": "2026-06-06T12:18:30.923Z"
+        "verified_at": "2026-06-07T07:07:08.444Z"
       }
     },
     {
@@ -671,7 +671,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -689,7 +689,7 @@
         "content_type": "application/json",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 652,
+        "latency_ms": 771,
         "method_tested": "GET",
         "name": "dogelayer API",
         "netuid": 80,
@@ -713,7 +713,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://dogelayer.ai/api",
-        "verified_at": "2026-06-06T12:18:30.927Z"
+        "verified_at": "2026-06-07T07:07:08.451Z"
       }
     },
     {
@@ -726,7 +726,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -744,7 +744,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 681,
+        "latency_ms": 720,
         "method_tested": "HEAD",
         "name": "dogelayer docs",
         "netuid": 80,
@@ -768,7 +768,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://dogelayer.ai/docs",
-        "verified_at": "2026-06-06T12:18:30.930Z"
+        "verified_at": "2026-06-07T07:07:08.455Z"
       }
     },
     {
@@ -781,7 +781,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -799,7 +799,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 279,
+        "latency_ms": 496,
         "method_tested": "HEAD",
         "name": "dogelayer health endpoint",
         "netuid": 80,
@@ -823,7 +823,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://dogelayer.ai/health",
-        "verified_at": "2026-06-06T12:18:30.935Z"
+        "verified_at": "2026-06-07T07:07:08.455Z"
       }
     },
     {
@@ -836,7 +836,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -854,7 +854,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 487,
+        "latency_ms": 484,
         "method_tested": "HEAD",
         "name": "dogelayer OpenAPI JSON",
         "netuid": 80,
@@ -878,7 +878,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://dogelayer.ai/openapi.json",
-        "verified_at": "2026-06-06T12:18:30.952Z"
+        "verified_at": "2026-06-07T07:07:08.475Z"
       }
     },
     {
@@ -891,7 +891,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -909,7 +909,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 470,
+        "latency_ms": 472,
         "method_tested": "HEAD",
         "name": "dogelayer Swagger UI",
         "netuid": 80,
@@ -933,7 +933,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://dogelayer.ai/swagger",
-        "verified_at": "2026-06-06T12:18:30.963Z"
+        "verified_at": "2026-06-07T07:07:08.475Z"
       }
     },
     {
@@ -946,7 +946,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -964,7 +964,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 464,
+        "latency_ms": 491,
         "method_tested": "HEAD",
         "name": "dogelayer Swagger JSON",
         "netuid": 80,
@@ -988,7 +988,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://dogelayer.ai/swagger.json",
-        "verified_at": "2026-06-06T12:18:30.966Z"
+        "verified_at": "2026-06-07T07:07:08.507Z"
       }
     },
     {
@@ -1001,7 +1001,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1019,7 +1019,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 493,
+        "latency_ms": 486,
         "method_tested": "HEAD",
         "name": "dogelayer dashboard",
         "netuid": 80,
@@ -1043,7 +1043,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://dogelayer.ai/en/dashboard",
-        "verified_at": "2026-06-06T12:18:30.984Z"
+        "verified_at": "2026-06-07T07:07:08.508Z"
       }
     },
     {
@@ -1056,7 +1056,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1074,7 +1074,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 470,
+        "latency_ms": 486,
         "method_tested": "HEAD",
         "name": "dogelayer docs",
         "netuid": 80,
@@ -1098,7 +1098,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://dogelayer.ai/en/docs",
-        "verified_at": "2026-06-06T12:18:30.996Z"
+        "verified_at": "2026-06-07T07:07:08.509Z"
       }
     }
   ],

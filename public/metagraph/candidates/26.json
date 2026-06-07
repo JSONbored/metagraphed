@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "application/json; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 167,
+        "latency_ms": 108,
         "method_tested": "HEAD",
         "name": "Perturb API surface",
         "netuid": 26,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://api.pexels.com/v1/search",
-        "verified_at": "2026-06-06T12:18:16.619Z"
+        "verified_at": "2026-06-07T07:06:46.932Z"
       }
     },
     {
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 182,
+        "latency_ms": 206,
         "method_tested": "HEAD",
         "name": "Perturb TaoMarketCap dashboard",
         "netuid": 26,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/26",
-        "verified_at": "2026-06-06T12:18:16.625Z"
+        "verified_at": "2026-06-07T07:06:46.942Z"
       }
     },
     {
@@ -132,27 +132,28 @@
       "subnet_name": "Perturb",
       "url": "https://github.com/0xsigurd/Perturb",
       "verification": {
-        "archived": false,
         "candidate_id": "sn-26-taomarketcap-source-repo",
         "classification": "live",
-        "confidence_score": 80,
-        "default_branch": "main",
-        "description": null,
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/0xsigurd/Perturb",
-        "homepage": null,
-        "html_url": "https://github.com/0xsigurd/Perturb",
         "kind": "source-repo",
-        "last_push_at": "2026-05-27T18:44:37Z",
+        "latency_ms": 536,
+        "method_tested": "HEAD",
         "name": "Perturb source repository",
         "netuid": 26,
+        "private_redirect_blocked": false,
         "provider": "taomarketcap",
         "quality_signals": {
-          "archived": false,
-          "has_default_branch": true,
-          "has_recent_push_metadata": true,
+          "content_type_matches_kind": true,
           "public_safe": true,
-          "source_tier": "third-party-index"
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
         },
+        "redirect_target": null,
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/26",
@@ -160,9 +161,9 @@
           "https://api.taomarketcap.com/public/v1/subnets/26"
         ],
         "status": "ok",
-        "topics": [],
+        "status_code": 200,
         "url": "https://github.com/0xsigurd/Perturb",
-        "verified_at": "2026-06-06T12:18:16.627Z"
+        "verified_at": "2026-06-07T07:06:46.947Z"
       }
     },
     {
@@ -193,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 166,
+        "latency_ms": 168,
         "method_tested": "HEAD",
         "name": "Perturb website",
         "netuid": 26,
@@ -217,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.perturbai.io/",
-        "verified_at": "2026-06-06T12:18:16.656Z"
+        "verified_at": "2026-06-07T07:06:46.980Z"
       }
     },
     {
@@ -230,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -248,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 371,
+        "latency_ms": 395,
         "method_tested": "HEAD",
         "name": "Perturb Tensorplex subnet docs",
         "netuid": 26,
@@ -272,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/26",
-        "verified_at": "2026-06-06T12:18:16.690Z"
+        "verified_at": "2026-06-07T07:06:47.009Z"
       }
     },
     {
@@ -285,7 +286,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -301,10 +302,10 @@
         "classification": "dead",
         "confidence_score": 0,
         "error": null,
-        "github_api_status": 404,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/threetau/kinitro",
         "kind": "source-repo",
-        "latency_ms": 200,
+        "latency_ms": 283,
         "method_tested": "HEAD",
         "name": "Perturb source repository",
         "netuid": 26,
@@ -328,7 +329,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://github.com/threetau/kinitro",
-        "verified_at": "2026-06-06T12:18:16.697Z"
+        "verified_at": "2026-06-07T07:06:47.026Z"
       }
     },
     {
@@ -341,7 +342,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -359,7 +360,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 72,
+        "latency_ms": 54,
         "method_tested": "GET",
         "name": "Perturb API",
         "netuid": 26,
@@ -383,7 +384,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.perturbai.io/api",
-        "verified_at": "2026-06-06T12:18:16.741Z"
+        "verified_at": "2026-06-07T07:06:47.058Z"
       }
     },
     {
@@ -396,7 +397,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -414,7 +415,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 49,
+        "latency_ms": 48,
         "method_tested": "GET",
         "name": "Perturb docs",
         "netuid": 26,
@@ -438,7 +439,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.perturbai.io/docs",
-        "verified_at": "2026-06-06T12:18:16.774Z"
+        "verified_at": "2026-06-07T07:06:47.076Z"
       }
     },
     {
@@ -451,7 +452,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -469,7 +470,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 85,
+        "latency_ms": 49,
         "method_tested": "GET",
         "name": "Perturb health endpoint",
         "netuid": 26,
@@ -493,7 +494,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.perturbai.io/health",
-        "verified_at": "2026-06-06T12:18:16.777Z"
+        "verified_at": "2026-06-07T07:06:47.092Z"
       }
     },
     {
@@ -506,7 +507,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -524,7 +525,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 49,
+        "latency_ms": 62,
         "method_tested": "GET",
         "name": "Perturb OpenAPI JSON",
         "netuid": 26,
@@ -548,7 +549,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.perturbai.io/openapi.json",
-        "verified_at": "2026-06-06T12:18:16.786Z"
+        "verified_at": "2026-06-07T07:06:47.092Z"
       }
     },
     {
@@ -561,7 +562,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -579,7 +580,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 43,
+        "latency_ms": 50,
         "method_tested": "GET",
         "name": "Perturb Swagger UI",
         "netuid": 26,
@@ -603,7 +604,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.perturbai.io/swagger",
-        "verified_at": "2026-06-06T12:18:16.796Z"
+        "verified_at": "2026-06-07T07:06:47.107Z"
       }
     },
     {
@@ -616,7 +617,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -634,7 +635,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 64,
+        "latency_ms": 61,
         "method_tested": "GET",
         "name": "Perturb Swagger JSON",
         "netuid": 26,
@@ -658,7 +659,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.perturbai.io/swagger.json",
-        "verified_at": "2026-06-06T12:18:16.806Z"
+        "verified_at": "2026-06-07T07:06:47.118Z"
       }
     },
     {
@@ -671,7 +672,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -689,7 +690,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 145,
+        "latency_ms": 166,
         "method_tested": "HEAD",
         "name": "Perturb docs",
         "netuid": 26,
@@ -713,7 +714,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.perturbai.io/whitepaper",
-        "verified_at": "2026-06-06T12:18:16.810Z"
+        "verified_at": "2026-06-07T07:06:47.150Z"
       }
     },
     {
@@ -726,7 +727,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -744,7 +745,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 175,
+        "latency_ms": 156,
         "method_tested": "HEAD",
         "name": "Perturb website page",
         "netuid": 26,
@@ -768,7 +769,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.perturbai.io/blog",
-        "verified_at": "2026-06-06T12:18:16.814Z"
+        "verified_at": "2026-06-07T07:06:47.168Z"
       }
     },
     {
@@ -781,7 +782,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -799,7 +800,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 63,
+        "latency_ms": 168,
         "method_tested": "HEAD",
         "name": "Perturb website page",
         "netuid": 26,
@@ -823,7 +824,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.perturbai.io/playground",
-        "verified_at": "2026-06-06T12:18:16.821Z"
+        "verified_at": "2026-06-07T07:06:47.180Z"
       }
     }
   ],

@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 40,
+      "latency_ms": 39,
       "method_tested": "HEAD",
       "name": "Almanac docs",
       "netuid": 41,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.learnbittensor.org/keys/wallets",
-      "verified_at": "2026-06-06T12:18:19.809Z"
+      "verified_at": "2026-06-07T07:06:50.757Z"
     },
     {
       "candidate_id": "sn-41-github-readme-sportstensor-sn41-docs-2",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 40,
+      "latency_ms": 50,
       "method_tested": "HEAD",
       "name": "Almanac docs",
       "netuid": 41,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.learnbittensor.org/miners",
-      "verified_at": "2026-06-06T12:18:19.809Z"
+      "verified_at": "2026-06-07T07:06:50.795Z"
     },
     {
       "candidate_id": "sn-41-taomarketcap-dashboard",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 149,
+      "latency_ms": 150,
       "method_tested": "HEAD",
       "name": "Almanac TaoMarketCap dashboard",
       "netuid": 41,
@@ -102,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/41",
-      "verified_at": "2026-06-06T12:18:19.818Z"
+      "verified_at": "2026-06-07T07:06:50.798Z"
     },
     {
       "candidate_id": "sn-41-taomarketcap-source-repo",
@@ -112,7 +112,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/sportstensor/sn41",
       "kind": "source-repo",
-      "latency_ms": 725,
+      "latency_ms": 784,
       "method_tested": "HEAD",
       "name": "Almanac source repository",
       "netuid": 41,
@@ -131,13 +131,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/41",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/41",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/41/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/41"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/sportstensor/sn41",
-      "verified_at": "2026-06-06T12:18:19.824Z"
+      "verified_at": "2026-06-07T07:06:50.818Z"
     },
     {
       "candidate_id": "sn-41-taomarketcap-website",
@@ -170,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://almanac.market/",
-      "verified_at": "2026-06-06T12:18:19.849Z"
+      "verified_at": "2026-06-07T07:06:50.835Z"
     },
     {
       "candidate_id": "sn-41-tensorplex-docs",
@@ -179,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 341,
+      "latency_ms": 508,
       "method_tested": "HEAD",
       "name": "Almanac Tensorplex subnet docs",
       "netuid": 41,
@@ -203,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/41",
-      "verified_at": "2026-06-06T12:18:19.849Z"
+      "verified_at": "2026-06-07T07:06:50.849Z"
     },
     {
       "candidate_id": "sn-41-website-common-api",
@@ -212,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 160,
+      "latency_ms": 178,
       "method_tested": "HEAD",
       "name": "Almanac API",
       "netuid": 41,
@@ -236,7 +235,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://almanac.market/api",
-      "verified_at": "2026-06-06T12:18:19.869Z"
+      "verified_at": "2026-06-07T07:06:50.872Z"
     },
     {
       "candidate_id": "sn-41-website-common-docs",
@@ -245,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 159,
+      "latency_ms": 172,
       "method_tested": "HEAD",
       "name": "Almanac docs",
       "netuid": 41,
@@ -269,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://almanac.market/docs",
-      "verified_at": "2026-06-06T12:18:19.889Z"
+      "verified_at": "2026-06-07T07:06:50.880Z"
     },
     {
       "candidate_id": "sn-41-website-common-health",
@@ -278,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 193,
+      "latency_ms": 178,
       "method_tested": "HEAD",
       "name": "Almanac health endpoint",
       "netuid": 41,
@@ -302,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://almanac.market/health",
-      "verified_at": "2026-06-06T12:18:19.931Z"
+      "verified_at": "2026-06-07T07:06:50.899Z"
     },
     {
       "candidate_id": "sn-41-website-common-openapi-json",
@@ -311,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 180,
+      "latency_ms": 184,
       "method_tested": "HEAD",
       "name": "Almanac OpenAPI JSON",
       "netuid": 41,
@@ -335,7 +334,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://almanac.market/openapi.json",
-      "verified_at": "2026-06-06T12:18:19.950Z"
+      "verified_at": "2026-06-07T07:06:50.921Z"
     },
     {
       "candidate_id": "sn-41-website-common-swagger",
@@ -344,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 190,
+      "latency_ms": 159,
       "method_tested": "HEAD",
       "name": "Almanac Swagger UI",
       "netuid": 41,
@@ -368,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://almanac.market/swagger",
-      "verified_at": "2026-06-06T12:18:19.951Z"
+      "verified_at": "2026-06-07T07:06:50.950Z"
     },
     {
       "candidate_id": "sn-41-website-common-swagger-json",
@@ -377,7 +376,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 154,
+      "latency_ms": 170,
       "method_tested": "HEAD",
       "name": "Almanac Swagger JSON",
       "netuid": 41,
@@ -401,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://almanac.market/swagger.json",
-      "verified_at": "2026-06-06T12:18:19.967Z"
+      "verified_at": "2026-06-07T07:06:50.978Z"
     },
     {
       "candidate_id": "sn-41-website-link-almanac-market-website-1",
@@ -410,7 +409,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 701,
+      "latency_ms": 776,
       "method_tested": "HEAD",
       "name": "Almanac website page",
       "netuid": 41,
@@ -434,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://beta.almanac.market/",
-      "verified_at": "2026-06-06T12:18:19.967Z"
+      "verified_at": "2026-06-07T07:06:51.008Z"
     }
   ],
   "schema_version": 1,

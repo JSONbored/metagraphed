@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:30.246Z"
+    "verified_at": "2026-06-07T07:07:05.625Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/78",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/78",
@@ -58,11 +58,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/vocence-78/vocence",
-        "latency_ms": 530,
+        "latency_ms": 1235,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.102Z"
+        "verified_at": "2026-06-07T07:07:05.394Z"
       }
     },
     {
@@ -71,7 +71,7 @@
       "id": "sn-78-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Vocence source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -97,11 +97,11 @@
         "classification": "live",
         "confidence_score": 65,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 478,
+        "latency_ms": 977,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.154Z"
+        "verified_at": "2026-06-07T07:07:05.501Z"
       }
     },
     {
@@ -110,7 +110,7 @@
       "id": "sn-78-tensorplex-source-repo-2",
       "kind": "source-repo",
       "name": "Vocence source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +137,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Loosh-ai/loosh-public-documentation",
-        "latency_ms": 523,
+        "latency_ms": 944,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.166Z"
+        "verified_at": "2026-06-07T07:07:05.505Z"
       }
     },
     {
@@ -176,11 +176,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 134,
+        "latency_ms": 308,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.144Z"
+        "verified_at": "2026-06-07T07:07:05.433Z"
       }
     },
     {
@@ -189,7 +189,7 @@
       "id": "sn-78-tensorplex-docs",
       "kind": "docs",
       "name": "Vocence Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -215,11 +215,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 384,
+        "latency_ms": 760,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.147Z"
+        "verified_at": "2026-06-07T07:07:05.501Z"
       }
     },
     {
@@ -228,7 +228,7 @@
       "id": "sn-78-website-common-docs",
       "kind": "docs",
       "name": "Vocence docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +254,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 129,
+        "latency_ms": 306,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.199Z"
+        "verified_at": "2026-06-07T07:07:05.521Z"
       }
     },
     {
@@ -293,11 +293,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 135,
+        "latency_ms": 131,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.064Z"
+        "verified_at": "2026-06-07T07:07:05.382Z"
       }
     },
     {
@@ -306,7 +306,7 @@
       "id": "sn-78-website-common-swagger",
       "kind": "openapi",
       "name": "Vocence Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -333,11 +333,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 184,
+        "latency_ms": 507,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:30.246Z"
+        "verified_at": "2026-06-07T07:07:05.625Z"
       }
     }
   ],

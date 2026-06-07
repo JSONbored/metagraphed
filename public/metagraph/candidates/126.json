@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 132,
+        "latency_ms": 161,
         "method_tested": "HEAD",
         "name": "Poker44 TaoMarketCap dashboard",
         "netuid": 126,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/126",
-        "verified_at": "2026-06-06T12:18:44.825Z"
+        "verified_at": "2026-06-07T07:07:25.877Z"
       }
     },
     {
@@ -84,7 +84,7 @@
         "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/Poker44/Poker44-subnet",
         "kind": "source-repo",
-        "latency_ms": 509,
+        "latency_ms": 603,
         "method_tested": "HEAD",
         "name": "Poker44 source repository",
         "netuid": 126,
@@ -108,7 +108,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/Poker44/Poker44-subnet",
-        "verified_at": "2026-06-06T12:18:44.834Z"
+        "verified_at": "2026-06-07T07:07:25.929Z"
       }
     },
     {
@@ -139,7 +139,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 559,
+        "latency_ms": 572,
         "method_tested": "HEAD",
         "name": "Poker44 website",
         "netuid": 126,
@@ -163,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://poker44.net/",
-        "verified_at": "2026-06-06T12:18:44.921Z"
+        "verified_at": "2026-06-07T07:07:26.002Z"
       }
     },
     {
@@ -176,7 +176,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -194,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 303,
+        "latency_ms": 350,
         "method_tested": "HEAD",
         "name": "Poker44 Tensorplex subnet docs",
         "netuid": 126,
@@ -218,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/126",
-        "verified_at": "2026-06-06T12:18:44.943Z"
+        "verified_at": "2026-06-07T07:07:26.036Z"
       }
     },
     {
@@ -231,7 +231,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -249,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 194,
+        "latency_ms": 214,
         "method_tested": "GET",
         "name": "Poker44 API",
         "netuid": 126,
@@ -273,7 +273,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://poker44.net/api",
-        "verified_at": "2026-06-06T12:18:44.957Z"
+        "verified_at": "2026-06-07T07:07:26.040Z"
       }
     },
     {
@@ -286,7 +286,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -304,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 194,
+        "latency_ms": 187,
         "method_tested": "GET",
         "name": "Poker44 docs",
         "netuid": 126,
@@ -328,7 +328,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://poker44.net/docs",
-        "verified_at": "2026-06-06T12:18:44.965Z"
+        "verified_at": "2026-06-07T07:07:26.127Z"
       }
     },
     {
@@ -341,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -359,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 214,
+        "latency_ms": 223,
         "method_tested": "GET",
         "name": "Poker44 health endpoint",
         "netuid": 126,
@@ -383,7 +383,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://poker44.net/health",
-        "verified_at": "2026-06-06T12:18:45.042Z"
+        "verified_at": "2026-06-07T07:07:26.149Z"
       }
     },
     {
@@ -396,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -414,7 +414,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 198,
+        "latency_ms": 215,
         "method_tested": "GET",
         "name": "Poker44 OpenAPI JSON",
         "netuid": 126,
@@ -438,7 +438,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://poker44.net/openapi.json",
-        "verified_at": "2026-06-06T12:18:45.074Z"
+        "verified_at": "2026-06-07T07:07:26.149Z"
       }
     },
     {
@@ -451,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -469,7 +469,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 194,
+        "latency_ms": 224,
         "method_tested": "GET",
         "name": "Poker44 Swagger UI",
         "netuid": 126,
@@ -493,7 +493,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://poker44.net/swagger",
-        "verified_at": "2026-06-06T12:18:45.083Z"
+        "verified_at": "2026-06-07T07:07:26.202Z"
       }
     },
     {
@@ -506,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -524,7 +524,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 194,
+        "latency_ms": 191,
         "method_tested": "GET",
         "name": "Poker44 Swagger JSON",
         "netuid": 126,
@@ -548,7 +548,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://poker44.net/swagger.json",
-        "verified_at": "2026-06-06T12:18:45.099Z"
+        "verified_at": "2026-06-07T07:07:26.318Z"
       }
     },
     {
@@ -561,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -579,7 +579,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 1211,
+        "latency_ms": 1450,
         "method_tested": "HEAD",
         "name": "Poker44 dashboard",
         "netuid": 126,
@@ -603,7 +603,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://poker44.net/dashboard",
-        "verified_at": "2026-06-06T12:18:45.246Z"
+        "verified_at": "2026-06-07T07:07:26.350Z"
       }
     },
     {
@@ -616,7 +616,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -634,7 +634,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 552,
+        "latency_ms": 640,
         "method_tested": "HEAD",
         "name": "Poker44 website page",
         "netuid": 126,
@@ -658,7 +658,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://poker44.net/poker-gameplay",
-        "verified_at": "2026-06-06T12:18:45.273Z"
+        "verified_at": "2026-06-07T07:07:26.389Z"
       }
     },
     {
@@ -671,7 +671,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -689,7 +689,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 586,
+        "latency_ms": 611,
         "method_tested": "HEAD",
         "name": "Poker44 website page",
         "netuid": 126,
@@ -713,7 +713,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://poker44.net/miners",
-        "verified_at": "2026-06-06T12:18:45.418Z"
+        "verified_at": "2026-06-07T07:07:26.616Z"
       }
     },
     {
@@ -726,7 +726,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -744,7 +744,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 296,
+        "latency_ms": 241,
         "method_tested": "HEAD",
         "name": "Poker44 website page",
         "netuid": 126,
@@ -768,7 +768,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://poker44.net/network",
-        "verified_at": "2026-06-06T12:18:45.480Z"
+        "verified_at": "2026-06-07T07:07:26.624Z"
       }
     }
   ],

@@ -31,7 +31,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -52,7 +52,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -96,7 +96,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -117,7 +117,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -135,12 +135,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-3-tensorplex-docs",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:03.788Z",
-      "latency_ms": 414,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -162,11 +162,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 66,
+      "score": 0,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/3/subnet.json"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "deprecated",
       "subnet_slug": "sn-3",
       "surface_id": "sn-3-tensorplex-docs",
@@ -177,12 +177,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "redirected",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-3-tensorplex-source-repo-1",
       "kind": "source-repo",
-      "last_checked": "2026-06-07T05:10:04.365Z",
-      "latency_ms": 975,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -204,11 +204,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 60,
+      "score": 0,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/3/subnet.json"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "deprecated",
       "subnet_slug": "sn-3",
       "surface_id": "sn-3-tensorplex-source-repo-1",
@@ -219,12 +219,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-3-taomarketcap-dashboard",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:03.561Z",
-      "latency_ms": 236,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -246,11 +246,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 68,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/3"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "deprecated",
       "subnet_slug": "sn-3",
       "surface_id": "sn-3-taomarketcap-dashboard",
@@ -281,7 +281,7 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8347420,
+    "block": 8353128,
     "candidate_count": 3,
     "categories": [
       "baseline-curated"
@@ -299,7 +299,7 @@
       "review_state": "machine-generated",
       "reviewed_at": null,
       "source_count": 2,
-      "verified_at": "2026-06-06T12:18:09.774Z"
+      "verified_at": "2026-06-07T07:06:37.944Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/3",
@@ -338,7 +338,7 @@
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T12:04:01Z",
+        "captured_at": "2026-06-07T07:06:35Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
@@ -395,11 +395,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 154,
+        "latency_ms": 136,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.757Z"
+        "verified_at": "2026-06-07T07:06:37.913Z"
       }
     },
     {
@@ -409,7 +409,7 @@
       "kind": "docs",
       "name": "deprecated Tensorplex subnet docs",
       "netuid": 3,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -437,11 +437,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 325,
+        "latency_ms": 707,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.766Z"
+        "verified_at": "2026-06-07T07:06:37.920Z"
       }
     },
     {
@@ -451,7 +451,7 @@
       "kind": "source-repo",
       "name": "deprecated source repository",
       "netuid": 3,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -461,11 +461,12 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -475,17 +476,15 @@
       "subnet_slug": "sn-3",
       "url": "https://github.com/tplr-ai/templar",
       "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
+        "classification": "redirected",
+        "confidence_score": 50,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/tplr-ai/templar",
-        "homepage": "https://www.tplr.ai/",
-        "last_push_at": "2026-03-31T02:52:51Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:09.774Z"
+        "latency_ms": 767,
+        "method_tested": "HEAD",
+        "redirect_target": "https://github.com/one-covenant/templar",
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:37.944Z"
       }
     }
   ],
@@ -525,11 +524,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 154,
+        "latency_ms": 136,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.757Z"
+        "verified_at": "2026-06-07T07:06:37.913Z"
       }
     },
     {
@@ -539,7 +538,7 @@
       "kind": "docs",
       "name": "deprecated Tensorplex subnet docs",
       "netuid": 3,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -567,11 +566,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 325,
+        "latency_ms": 707,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.766Z"
+        "verified_at": "2026-06-07T07:06:37.920Z"
       }
     },
     {
@@ -581,7 +580,7 @@
       "kind": "source-repo",
       "name": "deprecated source repository",
       "netuid": 3,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -591,11 +590,12 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -605,17 +605,15 @@
       "subnet_slug": "sn-3",
       "url": "https://github.com/tplr-ai/templar",
       "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
+        "classification": "redirected",
+        "confidence_score": 50,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/tplr-ai/templar",
-        "homepage": "https://www.tplr.ai/",
-        "last_push_at": "2026-03-31T02:52:51Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:09.774Z"
+        "latency_ms": 767,
+        "method_tested": "HEAD",
+        "redirect_target": "https://github.com/one-covenant/templar",
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:37.944Z"
       }
     }
   ]

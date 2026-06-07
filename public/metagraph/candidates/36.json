@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 147,
+        "latency_ms": 156,
         "method_tested": "HEAD",
         "name": "Eirel TaoMarketCap dashboard",
         "netuid": 36,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/36",
-        "verified_at": "2026-06-06T12:18:18.796Z"
+        "verified_at": "2026-06-07T07:06:49.480Z"
       }
     },
     {
@@ -77,27 +77,28 @@
       "subnet_name": "Eirel",
       "url": "https://github.com/RendixNetwork/eirel-ai",
       "verification": {
-        "archived": false,
         "candidate_id": "sn-36-taomarketcap-source-repo",
         "classification": "live",
-        "confidence_score": 80,
-        "default_branch": "main",
-        "description": null,
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/RendixNetwork/eirel-ai",
-        "homepage": null,
-        "html_url": "https://github.com/RendixNetwork/eirel-ai",
         "kind": "source-repo",
-        "last_push_at": "2026-05-28T20:38:49Z",
+        "latency_ms": 749,
+        "method_tested": "HEAD",
         "name": "Eirel source repository",
         "netuid": 36,
+        "private_redirect_blocked": false,
         "provider": "taomarketcap",
         "quality_signals": {
-          "archived": false,
-          "has_default_branch": true,
-          "has_recent_push_metadata": true,
+          "content_type_matches_kind": true,
           "public_safe": true,
-          "source_tier": "third-party-index"
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
         },
+        "redirect_target": null,
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/36",
@@ -105,9 +106,9 @@
           "https://api.taomarketcap.com/public/v1/subnets/36"
         ],
         "status": "ok",
-        "topics": [],
+        "status_code": 200,
         "url": "https://github.com/RendixNetwork/eirel-ai",
-        "verified_at": "2026-06-06T12:18:18.825Z"
+        "verified_at": "2026-06-07T07:06:49.639Z"
       }
     },
     {
@@ -133,12 +134,12 @@
       "url": "https://eirel.ai/",
       "verification": {
         "candidate_id": "sn-36-taomarketcap-website",
-        "classification": "redirected",
-        "confidence_score": 72,
+        "classification": "live",
+        "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 297,
+        "latency_ms": 160,
         "method_tested": "HEAD",
         "name": "Eirel website",
         "netuid": 36,
@@ -148,11 +149,11 @@
           "content_type_matches_kind": true,
           "public_safe": true,
           "rate_limited": false,
-          "redirected": true,
+          "redirected": false,
           "source_tier": "third-party-index",
           "transient_failure": false
         },
-        "redirect_target": "https://www.eirel.ai/",
+        "redirect_target": null,
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/36",
@@ -162,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://eirel.ai/",
-        "verified_at": "2026-06-06T12:18:18.833Z"
+        "verified_at": "2026-06-07T07:06:49.668Z"
       }
     },
     {
@@ -175,7 +176,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -193,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 345,
+        "latency_ms": 625,
         "method_tested": "HEAD",
         "name": "Eirel Tensorplex subnet docs",
         "netuid": 36,
@@ -217,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/36",
-        "verified_at": "2026-06-06T12:18:18.861Z"
+        "verified_at": "2026-06-07T07:06:49.679Z"
       }
     },
     {
@@ -230,7 +231,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -248,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 110,
+        "latency_ms": 53,
         "method_tested": "GET",
         "name": "Eirel API",
         "netuid": 36,
@@ -258,11 +259,11 @@
           "content_type_matches_kind": true,
           "public_safe": true,
           "rate_limited": false,
-          "redirected": true,
+          "redirected": false,
           "source_tier": "provider-claimed",
           "transient_failure": false
         },
-        "redirect_target": "https://www.eirel.ai/api",
+        "redirect_target": null,
         "source_tier": "provider-claimed",
         "source_type": "project-website-common-path",
         "source_url": "https://eirel.ai/",
@@ -272,7 +273,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://eirel.ai/api",
-        "verified_at": "2026-06-06T12:18:18.861Z"
+        "verified_at": "2026-06-07T07:06:49.756Z"
       }
     },
     {
@@ -285,7 +286,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -303,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 376,
+        "latency_ms": 232,
         "method_tested": "HEAD",
         "name": "Eirel docs",
         "netuid": 36,
@@ -317,7 +318,7 @@
           "source_tier": "provider-claimed",
           "transient_failure": false
         },
-        "redirect_target": "https://www.eirel.ai/docs/overview",
+        "redirect_target": "https://eirel.ai/docs/overview",
         "source_tier": "provider-claimed",
         "source_type": "project-website-common-path",
         "source_url": "https://eirel.ai/",
@@ -327,7 +328,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://eirel.ai/docs",
-        "verified_at": "2026-06-06T12:18:18.928Z"
+        "verified_at": "2026-06-07T07:06:49.849Z"
       }
     },
     {
@@ -340,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -358,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 108,
+        "latency_ms": 55,
         "method_tested": "GET",
         "name": "Eirel health endpoint",
         "netuid": 36,
@@ -368,11 +369,11 @@
           "content_type_matches_kind": true,
           "public_safe": true,
           "rate_limited": false,
-          "redirected": true,
+          "redirected": false,
           "source_tier": "provider-claimed",
           "transient_failure": false
         },
-        "redirect_target": "https://www.eirel.ai/health",
+        "redirect_target": null,
         "source_tier": "provider-claimed",
         "source_type": "project-website-common-path",
         "source_url": "https://eirel.ai/",
@@ -382,7 +383,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://eirel.ai/health",
-        "verified_at": "2026-06-06T12:18:18.944Z"
+        "verified_at": "2026-06-07T07:06:49.860Z"
       }
     },
     {
@@ -395,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -413,7 +414,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 102,
+        "latency_ms": 56,
         "method_tested": "GET",
         "name": "Eirel OpenAPI JSON",
         "netuid": 36,
@@ -423,11 +424,11 @@
           "content_type_matches_kind": true,
           "public_safe": true,
           "rate_limited": false,
-          "redirected": true,
+          "redirected": false,
           "source_tier": "provider-claimed",
           "transient_failure": false
         },
-        "redirect_target": "https://www.eirel.ai/openapi.json",
+        "redirect_target": null,
         "source_tier": "provider-claimed",
         "source_type": "project-website-common-path",
         "source_url": "https://eirel.ai/",
@@ -437,7 +438,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://eirel.ai/openapi.json",
-        "verified_at": "2026-06-06T12:18:18.949Z"
+        "verified_at": "2026-06-07T07:06:49.871Z"
       }
     },
     {
@@ -450,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -468,7 +469,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 113,
+        "latency_ms": 47,
         "method_tested": "GET",
         "name": "Eirel Swagger UI",
         "netuid": 36,
@@ -478,11 +479,11 @@
           "content_type_matches_kind": true,
           "public_safe": true,
           "rate_limited": false,
-          "redirected": true,
+          "redirected": false,
           "source_tier": "provider-claimed",
           "transient_failure": false
         },
-        "redirect_target": "https://www.eirel.ai/swagger",
+        "redirect_target": null,
         "source_tier": "provider-claimed",
         "source_type": "project-website-common-path",
         "source_url": "https://eirel.ai/",
@@ -492,7 +493,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://eirel.ai/swagger",
-        "verified_at": "2026-06-06T12:18:19.013Z"
+        "verified_at": "2026-06-07T07:06:49.882Z"
       }
     },
     {
@@ -505,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -523,7 +524,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 118,
+        "latency_ms": 59,
         "method_tested": "GET",
         "name": "Eirel Swagger JSON",
         "netuid": 36,
@@ -533,11 +534,11 @@
           "content_type_matches_kind": true,
           "public_safe": true,
           "rate_limited": false,
-          "redirected": true,
+          "redirected": false,
           "source_tier": "provider-claimed",
           "transient_failure": false
         },
-        "redirect_target": "https://www.eirel.ai/swagger.json",
+        "redirect_target": null,
         "source_tier": "provider-claimed",
         "source_type": "project-website-common-path",
         "source_url": "https://eirel.ai/",
@@ -547,7 +548,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://eirel.ai/swagger.json",
-        "verified_at": "2026-06-06T12:18:19.026Z"
+        "verified_at": "2026-06-07T07:06:49.886Z"
       }
     },
     {
@@ -560,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -578,7 +579,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 170,
+        "latency_ms": 169,
         "method_tested": "HEAD",
         "name": "Eirel dashboard",
         "netuid": 36,
@@ -602,7 +603,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://leaderboard.eirel.ai/",
-        "verified_at": "2026-06-06T12:18:19.027Z"
+        "verified_at": "2026-06-07T07:06:49.928Z"
       }
     },
     {
@@ -615,7 +616,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -628,12 +629,12 @@
       "url": "https://eirel.ai/privacy",
       "verification": {
         "candidate_id": "sn-36-website-link-eirel-ai-website-3",
-        "classification": "redirected",
-        "confidence_score": 71,
+        "classification": "live",
+        "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 290,
+        "latency_ms": 174,
         "method_tested": "HEAD",
         "name": "Eirel website page",
         "netuid": 36,
@@ -643,11 +644,11 @@
           "content_type_matches_kind": true,
           "public_safe": true,
           "rate_limited": false,
-          "redirected": true,
+          "redirected": false,
           "source_tier": "provider-claimed",
           "transient_failure": false
         },
-        "redirect_target": "https://www.eirel.ai/privacy",
+        "redirect_target": null,
         "source_tier": "provider-claimed",
         "source_type": "project-website-link",
         "source_url": "https://eirel.ai/",
@@ -657,7 +658,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://eirel.ai/privacy",
-        "verified_at": "2026-06-06T12:18:19.130Z"
+        "verified_at": "2026-06-07T07:06:49.959Z"
       }
     },
     {
@@ -670,7 +671,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -683,12 +684,12 @@
       "url": "https://eirel.ai/terms",
       "verification": {
         "candidate_id": "sn-36-website-link-eirel-ai-website-4",
-        "classification": "redirected",
-        "confidence_score": 71,
+        "classification": "live",
+        "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 191,
+        "latency_ms": 57,
         "method_tested": "HEAD",
         "name": "Eirel website page",
         "netuid": 36,
@@ -698,11 +699,11 @@
           "content_type_matches_kind": true,
           "public_safe": true,
           "rate_limited": false,
-          "redirected": true,
+          "redirected": false,
           "source_tier": "provider-claimed",
           "transient_failure": false
         },
-        "redirect_target": "https://www.eirel.ai/terms",
+        "redirect_target": null,
         "source_tier": "provider-claimed",
         "source_type": "project-website-link",
         "source_url": "https://eirel.ai/",
@@ -712,7 +713,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://eirel.ai/terms",
-        "verified_at": "2026-06-06T12:18:19.145Z"
+        "verified_at": "2026-06-07T07:06:49.977Z"
       }
     }
   ],

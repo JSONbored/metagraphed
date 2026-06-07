@@ -12,7 +12,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "docs",
-      "latency_ms": 153,
+      "latency_ms": 147,
       "method_tested": "HEAD",
       "name": "InfiniteHash docs",
       "netuid": 89,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.docker.com/compose/install/linux",
-      "verified_at": "2026-06-06T12:18:33.518Z"
+      "verified_at": "2026-06-07T07:07:12.687Z"
     },
     {
       "candidate_id": "sn-89-github-readme-backend-developers-ltd-infinitehash-docs-2",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 78,
+      "latency_ms": 72,
       "method_tested": "HEAD",
       "name": "InfiniteHash docs",
       "netuid": 89,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.astral.sh/uv",
-      "verified_at": "2026-06-06T12:18:33.543Z"
+      "verified_at": "2026-06-07T07:07:12.712Z"
     },
     {
       "candidate_id": "sn-89-github-readme-backend-developers-ltd-infinitehash-docs-3",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 488,
+      "latency_ms": 481,
       "method_tested": "HEAD",
       "name": "InfiniteHash docs",
       "netuid": 89,
@@ -102,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.backblaze.com/docs/cloud-storage-configure-and-manage-lifecycle-rules",
-      "verified_at": "2026-06-06T12:18:33.550Z"
+      "verified_at": "2026-06-07T07:07:12.770Z"
     },
     {
       "candidate_id": "sn-89-taomarketcap-dashboard",
@@ -111,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 130,
+      "latency_ms": 143,
       "method_tested": "HEAD",
       "name": "InfiniteHash TaoMarketCap dashboard",
       "netuid": 89,
@@ -135,17 +135,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/89",
-      "verified_at": "2026-06-06T12:18:33.583Z"
+      "verified_at": "2026-06-07T07:07:12.777Z"
     },
     {
       "candidate_id": "sn-89-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/backend-developers-ltd/InfiniteHash",
       "kind": "source-repo",
-      "latency_ms": 396,
+      "latency_ms": 751,
       "method_tested": "HEAD",
       "name": "InfiniteHash source repository",
       "netuid": 89,
@@ -164,13 +164,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/89",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/89",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/89/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/89"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/backend-developers-ltd/InfiniteHash",
-      "verified_at": "2026-06-06T12:18:33.615Z"
+      "verified_at": "2026-06-07T07:07:12.792Z"
     },
     {
       "candidate_id": "sn-89-taomarketcap-website",
@@ -179,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 53,
+      "latency_ms": 75,
       "method_tested": "GET",
       "name": "InfiniteHash website",
       "netuid": 89,
@@ -203,7 +202,7 @@
       "status": "failed",
       "status_code": 402,
       "url": "https://infinitehash.xyz/",
-      "verified_at": "2026-06-06T12:18:33.621Z"
+      "verified_at": "2026-06-07T07:07:12.814Z"
     },
     {
       "candidate_id": "sn-89-tensorplex-docs",
@@ -212,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 337,
+      "latency_ms": 355,
       "method_tested": "HEAD",
       "name": "InfiniteHash Tensorplex subnet docs",
       "netuid": 89,
@@ -236,7 +235,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/89",
-      "verified_at": "2026-06-06T12:18:33.626Z"
+      "verified_at": "2026-06-07T07:07:12.837Z"
     },
     {
       "candidate_id": "sn-89-website-common-api",
@@ -245,7 +244,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 47,
+      "latency_ms": 54,
       "method_tested": "GET",
       "name": "InfiniteHash API",
       "netuid": 89,
@@ -269,7 +268,7 @@
       "status": "failed",
       "status_code": 402,
       "url": "https://infinitehash.xyz/api",
-      "verified_at": "2026-06-06T12:18:33.643Z"
+      "verified_at": "2026-06-07T07:07:12.844Z"
     },
     {
       "candidate_id": "sn-89-website-common-docs",
@@ -278,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 52,
+      "latency_ms": 55,
       "method_tested": "GET",
       "name": "InfiniteHash docs",
       "netuid": 89,
@@ -302,7 +301,7 @@
       "status": "failed",
       "status_code": 402,
       "url": "https://infinitehash.xyz/docs",
-      "verified_at": "2026-06-06T12:18:33.662Z"
+      "verified_at": "2026-06-07T07:07:12.848Z"
     },
     {
       "candidate_id": "sn-89-website-common-health",
@@ -311,7 +310,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 47,
+      "latency_ms": 59,
       "method_tested": "GET",
       "name": "InfiniteHash health endpoint",
       "netuid": 89,
@@ -335,7 +334,7 @@
       "status": "failed",
       "status_code": 402,
       "url": "https://infinitehash.xyz/health",
-      "verified_at": "2026-06-06T12:18:33.662Z"
+      "verified_at": "2026-06-07T07:07:12.866Z"
     },
     {
       "candidate_id": "sn-89-website-common-openapi-json",
@@ -344,7 +343,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 48,
+      "latency_ms": 57,
       "method_tested": "GET",
       "name": "InfiniteHash OpenAPI JSON",
       "netuid": 89,
@@ -368,7 +367,7 @@
       "status": "failed",
       "status_code": 402,
       "url": "https://infinitehash.xyz/openapi.json",
-      "verified_at": "2026-06-06T12:18:33.667Z"
+      "verified_at": "2026-06-07T07:07:12.870Z"
     },
     {
       "candidate_id": "sn-89-website-common-swagger",
@@ -377,7 +376,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 46,
+      "latency_ms": 57,
       "method_tested": "GET",
       "name": "InfiniteHash Swagger UI",
       "netuid": 89,
@@ -401,7 +400,7 @@
       "status": "failed",
       "status_code": 402,
       "url": "https://infinitehash.xyz/swagger",
-      "verified_at": "2026-06-06T12:18:33.671Z"
+      "verified_at": "2026-06-07T07:07:12.870Z"
     },
     {
       "candidate_id": "sn-89-website-common-swagger-json",
@@ -410,7 +409,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 57,
+      "latency_ms": 56,
       "method_tested": "GET",
       "name": "InfiniteHash Swagger JSON",
       "netuid": 89,
@@ -434,7 +433,7 @@
       "status": "failed",
       "status_code": 402,
       "url": "https://infinitehash.xyz/swagger.json",
-      "verified_at": "2026-06-06T12:18:33.707Z"
+      "verified_at": "2026-06-07T07:07:12.874Z"
     }
   ],
   "schema_version": 1,

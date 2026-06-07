@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 41,
+      "latency_ms": 55,
       "method_tested": "GET",
       "name": "ConnitoAI docs",
       "netuid": 102,
@@ -36,7 +36,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://connito.ai/docs/miner",
-      "verified_at": "2026-06-06T12:18:38.459Z"
+      "verified_at": "2026-06-07T07:07:17.829Z"
     },
     {
       "candidate_id": "sn-102-github-readme-connito-ai-connito-docs-2",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 40,
+      "latency_ms": 44,
       "method_tested": "GET",
       "name": "ConnitoAI docs",
       "netuid": 102,
@@ -69,7 +69,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://connito.ai/docs/validator",
-      "verified_at": "2026-06-06T12:18:38.462Z"
+      "verified_at": "2026-06-07T07:07:17.839Z"
     },
     {
       "candidate_id": "sn-102-taomarketcap-dashboard",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 138,
+      "latency_ms": 298,
       "method_tested": "HEAD",
       "name": "ConnitoAI TaoMarketCap dashboard",
       "netuid": 102,
@@ -102,17 +102,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/102",
-      "verified_at": "2026-06-06T12:18:38.467Z"
+      "verified_at": "2026-06-07T07:07:17.853Z"
     },
     {
       "candidate_id": "sn-102-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/Connito-AI/Connito",
       "kind": "source-repo",
-      "latency_ms": 428,
+      "latency_ms": 432,
       "method_tested": "HEAD",
       "name": "ConnitoAI source repository",
       "netuid": 102,
@@ -136,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/Connito-AI/Connito",
-      "verified_at": "2026-06-06T12:18:38.472Z"
+      "verified_at": "2026-06-07T07:07:17.900Z"
     },
     {
       "candidate_id": "sn-102-taomarketcap-website",
@@ -145,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 112,
+      "latency_ms": 120,
       "method_tested": "HEAD",
       "name": "ConnitoAI website",
       "netuid": 102,
@@ -169,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://connito.ai/",
-      "verified_at": "2026-06-06T12:18:38.512Z"
+      "verified_at": "2026-06-07T07:07:17.916Z"
     },
     {
       "candidate_id": "sn-102-tensorplex-docs",
@@ -178,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 296,
+      "latency_ms": 372,
       "method_tested": "HEAD",
       "name": "ConnitoAI Tensorplex subnet docs",
       "netuid": 102,
@@ -202,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/102",
-      "verified_at": "2026-06-06T12:18:38.515Z"
+      "verified_at": "2026-06-07T07:07:17.928Z"
     },
     {
       "candidate_id": "sn-102-website-common-api",
@@ -211,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 39,
+      "latency_ms": 47,
       "method_tested": "GET",
       "name": "ConnitoAI API",
       "netuid": 102,
@@ -235,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://connito.ai/api",
-      "verified_at": "2026-06-06T12:18:38.525Z"
+      "verified_at": "2026-06-07T07:07:17.936Z"
     },
     {
       "candidate_id": "sn-102-website-common-docs",
@@ -244,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 161,
+      "latency_ms": 188,
       "method_tested": "HEAD",
       "name": "ConnitoAI docs",
       "netuid": 102,
@@ -268,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://connito.ai/docs",
-      "verified_at": "2026-06-06T12:18:38.526Z"
+      "verified_at": "2026-06-07T07:07:17.940Z"
     },
     {
       "candidate_id": "sn-102-website-common-health",
@@ -277,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 48,
+      "latency_ms": 53,
       "method_tested": "GET",
       "name": "ConnitoAI health endpoint",
       "netuid": 102,
@@ -301,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://connito.ai/health",
-      "verified_at": "2026-06-06T12:18:38.527Z"
+      "verified_at": "2026-06-07T07:07:17.950Z"
     },
     {
       "candidate_id": "sn-102-website-common-openapi-json",
@@ -310,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 38,
+      "latency_ms": 45,
       "method_tested": "GET",
       "name": "ConnitoAI OpenAPI JSON",
       "netuid": 102,
@@ -334,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://connito.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:38.582Z"
+      "verified_at": "2026-06-07T07:07:17.950Z"
     },
     {
       "candidate_id": "sn-102-website-common-swagger",
@@ -343,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 36,
+      "latency_ms": 46,
       "method_tested": "GET",
       "name": "ConnitoAI Swagger UI",
       "netuid": 102,
@@ -367,7 +367,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://connito.ai/swagger",
-      "verified_at": "2026-06-06T12:18:38.587Z"
+      "verified_at": "2026-06-07T07:07:17.963Z"
     },
     {
       "candidate_id": "sn-102-website-common-swagger-json",
@@ -376,7 +376,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 40,
+      "latency_ms": 62,
       "method_tested": "GET",
       "name": "ConnitoAI Swagger JSON",
       "netuid": 102,
@@ -400,7 +400,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://connito.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:38.600Z"
+      "verified_at": "2026-06-07T07:07:17.965Z"
     },
     {
       "candidate_id": "sn-102-website-link-connito-ai-docs-1",
@@ -409,7 +409,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 375,
+      "latency_ms": 140,
       "method_tested": "HEAD",
       "name": "ConnitoAI docs",
       "netuid": 102,
@@ -433,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://connito.ai/docs/miner/prerequisites",
-      "verified_at": "2026-06-06T12:18:38.603Z"
+      "verified_at": "2026-06-07T07:07:17.976Z"
     },
     {
       "candidate_id": "sn-102-website-link-connito-ai-docs-3",
@@ -442,7 +442,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 125,
+      "latency_ms": 133,
       "method_tested": "HEAD",
       "name": "ConnitoAI docs",
       "netuid": 102,
@@ -466,7 +466,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://connito.ai/whitepaper",
-      "verified_at": "2026-06-06T12:18:38.605Z"
+      "verified_at": "2026-06-07T07:07:17.979Z"
     },
     {
       "candidate_id": "sn-102-website-link-connito-ai-website-2",
@@ -475,7 +475,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 38,
+      "latency_ms": 43,
       "method_tested": "HEAD",
       "name": "ConnitoAI website page",
       "netuid": 102,
@@ -499,7 +499,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://connito.ai/connito-explained/the-connito-story",
-      "verified_at": "2026-06-06T12:18:38.623Z"
+      "verified_at": "2026-06-07T07:07:18.039Z"
     },
     {
       "candidate_id": "sn-102-website-link-connito-ai-website-4",
@@ -508,7 +508,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 111,
+      "latency_ms": 47,
       "method_tested": "HEAD",
       "name": "ConnitoAI website page",
       "netuid": 102,
@@ -532,7 +532,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://connito.ai/blog",
-      "verified_at": "2026-06-06T12:18:38.655Z"
+      "verified_at": "2026-06-07T07:07:18.052Z"
     }
   ],
   "schema_version": 1,

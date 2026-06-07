@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 136,
+        "latency_ms": 159,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:43.145Z"
+        "verified_at": "2026-06-07T07:07:23.600Z"
       }
     },
     {
@@ -84,11 +84,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/hashi115/hashichain",
-        "latency_ms": 529,
+        "latency_ms": 401,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:43.161Z"
+        "verified_at": "2026-06-07T07:07:23.675Z"
       }
     },
     {
@@ -98,7 +98,7 @@
       "kind": "docs",
       "name": "HashiChain Tensorplex subnet docs",
       "netuid": 115,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -126,11 +126,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 344,
+        "latency_ms": 371,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:43.181Z"
+        "verified_at": "2026-06-07T07:07:23.688Z"
       }
     }
   ]

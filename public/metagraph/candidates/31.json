@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 177,
+        "latency_ms": 161,
         "method_tested": "HEAD",
         "name": "Recall TaoMarketCap dashboard",
         "netuid": 31,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/31",
-        "verified_at": "2026-06-06T12:18:17.336Z"
+        "verified_at": "2026-06-07T07:06:47.705Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 350,
+        "latency_ms": 375,
         "method_tested": "HEAD",
         "name": "Recall Tensorplex subnet docs",
         "netuid": 31,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/31",
-        "verified_at": "2026-06-06T12:18:17.385Z"
+        "verified_at": "2026-06-07T07:06:47.823Z"
       }
     }
   ],

@@ -13,7 +13,7 @@
       "kind": "subnet-api",
       "name": "Chutes API surface",
       "netuid": 64,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -32,8 +32,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/chutesai/chutes/blob/main/README.md",
-        "https://github.com/rayonlabs/chutes/blob/main/README.md"
+        "https://github.com/chutesai/chutes/blob/main/README.md"
       ],
       "subnet_name": "Chutes",
       "subnet_slug": "sn-64",
@@ -42,11 +41,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 72,
+        "latency_ms": 77,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.095Z"
+        "verified_at": "2026-06-07T07:06:59.936Z"
       }
     },
     {
@@ -56,7 +55,7 @@
       "kind": "docs",
       "name": "Chutes docs",
       "netuid": 64,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -84,11 +83,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 307,
+        "latency_ms": 487,
         "method_tested": "HEAD",
         "redirect_target": "https://kubernetes.io/docs/reference/kubectl/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.197Z"
+        "verified_at": "2026-06-07T07:06:59.958Z"
       }
     },
     {
@@ -126,11 +125,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 234,
+        "latency_ms": 146,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.226Z"
+        "verified_at": "2026-06-07T07:06:59.967Z"
       }
     },
     {
@@ -169,11 +168,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/chutesai/chutes",
-        "latency_ms": 494,
+        "latency_ms": 1043,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.238Z"
+        "verified_at": "2026-06-07T07:07:00.085Z"
       }
     },
     {
@@ -211,11 +210,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 259,
+        "latency_ms": 329,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.258Z"
+        "verified_at": "2026-06-07T07:07:00.130Z"
       }
     },
     {
@@ -225,7 +224,7 @@
       "kind": "docs",
       "name": "Chutes Tensorplex subnet docs",
       "netuid": 64,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +252,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 444,
+        "latency_ms": 641,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.261Z"
+        "verified_at": "2026-06-07T07:07:00.134Z"
       }
     },
     {
@@ -267,7 +266,7 @@
       "kind": "source-repo",
       "name": "Chutes source repository",
       "netuid": 64,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -296,11 +295,11 @@
         "confidence_score": 50,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/rayonlabs/chutes-miner",
-        "latency_ms": 675,
+        "latency_ms": 1517,
         "method_tested": "HEAD",
         "redirect_target": "https://github.com/chutesai/chutes-miner",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.277Z"
+        "verified_at": "2026-06-07T07:07:00.174Z"
       }
     },
     {
@@ -310,7 +309,7 @@
       "kind": "source-repo",
       "name": "Chutes source repository",
       "netuid": 64,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -339,11 +338,11 @@
         "confidence_score": 50,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/rayonlabs/chutes",
-        "latency_ms": 454,
+        "latency_ms": 929,
         "method_tested": "HEAD",
         "redirect_target": "https://github.com/chutesai/chutes",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.283Z"
+        "verified_at": "2026-06-07T07:07:00.176Z"
       }
     },
     {
@@ -353,7 +352,7 @@
       "kind": "docs",
       "name": "Chutes docs",
       "netuid": 64,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -381,11 +380,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 120,
+        "latency_ms": 177,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.301Z"
+        "verified_at": "2026-06-07T07:07:00.250Z"
       }
     },
     {
@@ -395,7 +394,7 @@
       "kind": "data-artifact",
       "name": "Chutes data artifact",
       "netuid": 64,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -423,11 +422,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html",
-        "latency_ms": 217,
+        "latency_ms": 253,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.424Z"
+        "verified_at": "2026-06-07T07:07:00.292Z"
       }
     },
     {
@@ -437,7 +436,7 @@
       "kind": "data-artifact",
       "name": "Chutes data artifact",
       "netuid": 64,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -465,11 +464,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html",
-        "latency_ms": 233,
+        "latency_ms": 248,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:26.461Z"
+        "verified_at": "2026-06-07T07:07:00.296Z"
       }
     }
   ]

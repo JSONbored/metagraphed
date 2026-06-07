@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": null,
         "error": "fetch failed",
         "kind": "dashboard",
-        "latency_ms": 75,
+        "latency_ms": 74,
         "method_tested": "GET",
         "name": "Bitcast dashboard",
         "netuid": 93,
@@ -51,7 +51,7 @@
         "status": "failed",
         "status_code": null,
         "url": "https://www.dashboard.bitcast.network/briefs",
-        "verified_at": "2026-06-06T12:18:34.406Z"
+        "verified_at": "2026-06-07T07:07:13.722Z"
       }
     },
     {
@@ -64,7 +64,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -82,7 +82,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 502,
+        "latency_ms": 494,
         "method_tested": "HEAD",
         "name": "Bitcast dashboard",
         "netuid": 93,
@@ -106,7 +106,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://dashboard.bitcast.network/",
-        "verified_at": "2026-06-06T12:18:34.415Z"
+        "verified_at": "2026-06-07T07:07:13.722Z"
       }
     },
     {
@@ -137,7 +137,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 146,
+        "latency_ms": 155,
         "method_tested": "HEAD",
         "name": "Bitcast TaoMarketCap dashboard",
         "netuid": 93,
@@ -161,7 +161,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/93",
-        "verified_at": "2026-06-06T12:18:34.428Z"
+        "verified_at": "2026-06-07T07:07:13.737Z"
       }
     },
     {
@@ -180,8 +180,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/93",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/93",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/93/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/93"
       ],
       "state": "schema-valid",
       "subnet_name": "Bitcast",
@@ -191,10 +190,10 @@
         "classification": "live",
         "confidence_score": 59,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/bitcast-network/bitcast",
         "kind": "source-repo",
-        "latency_ms": 464,
+        "latency_ms": 481,
         "method_tested": "HEAD",
         "name": "Bitcast source repository",
         "netuid": 93,
@@ -213,13 +212,12 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/93",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/93",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/93/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/93"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/bitcast-network/bitcast",
-        "verified_at": "2026-06-06T12:18:34.431Z"
+        "verified_at": "2026-06-07T07:07:13.827Z"
       }
     },
     {
@@ -250,7 +248,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 295,
+        "latency_ms": 317,
         "method_tested": "HEAD",
         "name": "Bitcast website",
         "netuid": 93,
@@ -274,7 +272,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://stats.bitcast.network/",
-        "verified_at": "2026-06-06T12:18:34.432Z"
+        "verified_at": "2026-06-07T07:07:13.837Z"
       }
     },
     {
@@ -287,7 +285,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -305,7 +303,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 421,
+        "latency_ms": 322,
         "method_tested": "HEAD",
         "name": "Bitcast Tensorplex subnet docs",
         "netuid": 93,
@@ -329,7 +327,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/93",
-        "verified_at": "2026-06-06T12:18:34.547Z"
+        "verified_at": "2026-06-07T07:07:13.845Z"
       }
     },
     {
@@ -342,7 +340,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -360,7 +358,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 1240,
+        "latency_ms": 1219,
         "method_tested": "HEAD",
         "name": "Bitcast API",
         "netuid": 93,
@@ -384,7 +382,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://stats.bitcast.network/api",
-        "verified_at": "2026-06-06T12:18:34.574Z"
+        "verified_at": "2026-06-07T07:07:13.845Z"
       }
     },
     {
@@ -397,7 +395,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -415,7 +413,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 1198,
+        "latency_ms": 1021,
         "method_tested": "HEAD",
         "name": "Bitcast docs",
         "netuid": 93,
@@ -439,7 +437,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://stats.bitcast.network/docs",
-        "verified_at": "2026-06-06T12:18:34.636Z"
+        "verified_at": "2026-06-07T07:07:13.904Z"
       }
     },
     {
@@ -452,7 +450,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -470,7 +468,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 1056,
+        "latency_ms": 1062,
         "method_tested": "HEAD",
         "name": "Bitcast health endpoint",
         "netuid": 93,
@@ -494,7 +492,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://stats.bitcast.network/health",
-        "verified_at": "2026-06-06T12:18:34.654Z"
+        "verified_at": "2026-06-07T07:07:13.924Z"
       }
     },
     {
@@ -507,7 +505,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -525,7 +523,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 708,
+        "latency_ms": 695,
         "method_tested": "HEAD",
         "name": "Bitcast OpenAPI JSON",
         "netuid": 93,
@@ -549,7 +547,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://stats.bitcast.network/openapi.json",
-        "verified_at": "2026-06-06T12:18:34.658Z"
+        "verified_at": "2026-06-07T07:07:13.946Z"
       }
     },
     {
@@ -562,7 +560,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -580,7 +578,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 1211,
+        "latency_ms": 979,
         "method_tested": "HEAD",
         "name": "Bitcast Swagger UI",
         "netuid": 93,
@@ -604,7 +602,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://stats.bitcast.network/swagger",
-        "verified_at": "2026-06-06T12:18:34.693Z"
+        "verified_at": "2026-06-07T07:07:14.036Z"
       }
     },
     {
@@ -617,7 +615,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -635,7 +633,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 675,
+        "latency_ms": 708,
         "method_tested": "HEAD",
         "name": "Bitcast Swagger JSON",
         "netuid": 93,
@@ -659,7 +657,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://stats.bitcast.network/swagger.json",
-        "verified_at": "2026-06-06T12:18:34.694Z"
+        "verified_at": "2026-06-07T07:07:14.051Z"
       }
     },
     {
@@ -672,7 +670,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -690,7 +688,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 691,
+        "latency_ms": 912,
         "method_tested": "HEAD",
         "name": "Bitcast dashboard",
         "netuid": 93,
@@ -714,7 +712,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://stats.bitcast.network/bitcast",
-        "verified_at": "2026-06-06T12:18:34.719Z"
+        "verified_at": "2026-06-07T07:07:14.168Z"
       }
     },
     {
@@ -727,7 +725,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -745,7 +743,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 575,
+        "latency_ms": 944,
         "method_tested": "HEAD",
         "name": "Bitcast dashboard",
         "netuid": 93,
@@ -769,7 +767,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://stats.bitcast.network/stitch3",
-        "verified_at": "2026-06-06T12:18:34.727Z"
+        "verified_at": "2026-06-07T07:07:14.171Z"
       }
     },
     {
@@ -782,7 +780,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -800,7 +798,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 632,
+        "latency_ms": 942,
         "method_tested": "HEAD",
         "name": "Bitcast dashboard",
         "netuid": 93,
@@ -824,7 +822,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://stats.bitcast.network/rewards",
-        "verified_at": "2026-06-06T12:18:34.794Z"
+        "verified_at": "2026-06-07T07:07:14.188Z"
       }
     },
     {
@@ -837,7 +835,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -855,7 +853,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 840,
+        "latency_ms": 609,
         "method_tested": "HEAD",
         "name": "Bitcast dashboard",
         "netuid": 93,
@@ -879,7 +877,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://stats.bitcast.network/revenue",
-        "verified_at": "2026-06-06T12:18:34.858Z"
+        "verified_at": "2026-06-07T07:07:14.193Z"
       }
     },
     {
@@ -892,7 +890,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -910,7 +908,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 216,
+        "latency_ms": 253,
         "method_tested": "HEAD",
         "name": "Bitcast website page",
         "netuid": 93,
@@ -934,7 +932,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://bitcast.network/",
-        "verified_at": "2026-06-06T12:18:34.858Z"
+        "verified_at": "2026-06-07T07:07:14.195Z"
       }
     }
   ],

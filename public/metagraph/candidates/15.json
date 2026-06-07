@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 200,
+        "latency_ms": 249,
         "method_tested": "HEAD",
         "name": "ORO dashboard",
         "netuid": 15,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://oroagents.com/",
-        "verified_at": "2026-06-06T12:18:13.010Z"
+        "verified_at": "2026-06-07T07:06:42.380Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 311,
+        "latency_ms": 227,
         "method_tested": "HEAD",
         "name": "ORO docs",
         "netuid": 15,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.oroagents.com/docs/validators/installation",
-        "verified_at": "2026-06-06T12:18:13.016Z"
+        "verified_at": "2026-06-07T07:06:42.388Z"
       }
     },
     {
@@ -120,7 +120,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -138,7 +138,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 291,
+        "latency_ms": 247,
         "method_tested": "HEAD",
         "name": "ORO docs",
         "netuid": 15,
@@ -162,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.oroagents.com/docs/miners/quick-start",
-        "verified_at": "2026-06-06T12:18:13.020Z"
+        "verified_at": "2026-06-07T07:06:42.407Z"
       }
     },
     {
@@ -175,7 +175,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -193,7 +193,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 279,
+        "latency_ms": 233,
         "method_tested": "HEAD",
         "name": "ORO docs",
         "netuid": 15,
@@ -217,7 +217,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.oroagents.com/docs/validators/overview",
-        "verified_at": "2026-06-06T12:18:13.028Z"
+        "verified_at": "2026-06-07T07:06:42.423Z"
       }
     },
     {
@@ -230,14 +230,13 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
       "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
       "source_urls": [
-        "https://github.com/ORO-AI/oro/blob/main/README.md",
-        "https://oroagents.com/"
+        "https://github.com/ORO-AI/oro/blob/main/README.md"
       ],
       "state": "schema-valid",
       "subnet_name": "ORO",
@@ -249,7 +248,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 274,
+        "latency_ms": 220,
         "method_tested": "HEAD",
         "name": "ORO docs",
         "netuid": 15,
@@ -268,13 +267,12 @@
         "source_type": "github-readme-link",
         "source_url": "https://github.com/ORO-AI/oro/blob/main/README.md",
         "source_urls": [
-          "https://github.com/ORO-AI/oro/blob/main/README.md",
-          "https://oroagents.com/"
+          "https://github.com/ORO-AI/oro/blob/main/README.md"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.oroagents.com/",
-        "verified_at": "2026-06-06T12:18:13.038Z"
+        "verified_at": "2026-06-07T07:06:42.456Z"
       }
     },
     {
@@ -287,7 +285,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -305,7 +303,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 245,
+        "latency_ms": 213,
         "method_tested": "HEAD",
         "name": "ORO docs",
         "netuid": 15,
@@ -329,7 +327,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.oroagents.com/docs/architecture",
-        "verified_at": "2026-06-06T12:18:13.048Z"
+        "verified_at": "2026-06-07T07:06:42.456Z"
       }
     },
     {
@@ -342,7 +340,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -360,7 +358,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 266,
+        "latency_ms": 227,
         "method_tested": "HEAD",
         "name": "ORO docs",
         "netuid": 15,
@@ -384,7 +382,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.oroagents.com/docs/miners/agent-interface",
-        "verified_at": "2026-06-06T12:18:13.053Z"
+        "verified_at": "2026-06-07T07:06:42.468Z"
       }
     },
     {
@@ -397,7 +395,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -415,7 +413,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 230,
+        "latency_ms": 195,
         "method_tested": "HEAD",
         "name": "ORO docs",
         "netuid": 15,
@@ -439,7 +437,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.oroagents.com/docs/validators/configuration",
-        "verified_at": "2026-06-06T12:18:13.064Z"
+        "verified_at": "2026-06-07T07:06:42.498Z"
       }
     },
     {
@@ -452,7 +450,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -470,7 +468,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 268,
+        "latency_ms": 169,
         "method_tested": "HEAD",
         "name": "ORO docs",
         "netuid": 15,
@@ -494,7 +492,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.oroagents.com/docs/miners/local-testing",
-        "verified_at": "2026-06-06T12:18:13.069Z"
+        "verified_at": "2026-06-07T07:06:42.662Z"
       }
     },
     {
@@ -507,7 +505,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -525,7 +523,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 97,
+        "latency_ms": 93,
         "method_tested": "GET",
         "name": "ORO API surface",
         "netuid": 15,
@@ -549,7 +547,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://docs.oroagents.com/docs/api/endpoints",
-        "verified_at": "2026-06-06T12:18:13.118Z"
+        "verified_at": "2026-06-07T07:06:42.667Z"
       }
     },
     {
@@ -580,7 +578,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 127,
+        "latency_ms": 141,
         "method_tested": "HEAD",
         "name": "ORO TaoMarketCap dashboard",
         "netuid": 15,
@@ -604,7 +602,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/15",
-        "verified_at": "2026-06-06T12:18:13.153Z"
+        "verified_at": "2026-06-07T07:06:42.673Z"
       }
     },
     {
@@ -623,45 +621,44 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/15",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/15"
       ],
       "state": "schema-valid",
       "subnet_name": "ORO",
       "url": "https://github.com/ORO-AI/oro",
       "verification": {
-        "archived": false,
         "candidate_id": "sn-15-taomarketcap-source-repo",
         "classification": "live",
-        "confidence_score": 80,
-        "default_branch": "main",
-        "description": "ORO - AI agents for online commerce on Bittensor",
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/ORO-AI/oro",
-        "homepage": null,
-        "html_url": "https://github.com/ORO-AI/oro",
         "kind": "source-repo",
-        "last_push_at": "2026-06-04T17:41:32Z",
+        "latency_ms": 596,
+        "method_tested": "HEAD",
         "name": "ORO source repository",
         "netuid": 15,
+        "private_redirect_blocked": false,
         "provider": "taomarketcap",
         "quality_signals": {
-          "archived": false,
-          "has_default_branch": true,
-          "has_recent_push_metadata": true,
+          "content_type_matches_kind": true,
           "public_safe": true,
-          "source_tier": "third-party-index"
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
         },
+        "redirect_target": null,
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/15",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/15"
         ],
         "status": "ok",
-        "topics": [],
+        "status_code": 200,
         "url": "https://github.com/ORO-AI/oro",
-        "verified_at": "2026-06-06T12:18:13.210Z"
+        "verified_at": "2026-06-07T07:06:42.674Z"
       }
     },
     {
@@ -692,7 +689,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 89,
+        "latency_ms": 153,
         "method_tested": "HEAD",
         "name": "ORO website",
         "netuid": 15,
@@ -716,7 +713,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://oroagents.com/",
-        "verified_at": "2026-06-06T12:18:13.213Z"
+        "verified_at": "2026-06-07T07:06:42.679Z"
       }
     },
     {
@@ -729,7 +726,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -747,7 +744,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 279,
+        "latency_ms": 376,
         "method_tested": "HEAD",
         "name": "ORO Tensorplex subnet docs",
         "netuid": 15,
@@ -771,7 +768,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/15",
-        "verified_at": "2026-06-06T12:18:13.280Z"
+        "verified_at": "2026-06-07T07:06:42.686Z"
       }
     },
     {
@@ -784,7 +781,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -802,7 +799,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 81,
+        "latency_ms": 138,
         "method_tested": "GET",
         "name": "ORO API",
         "netuid": 15,
@@ -826,7 +823,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://oroagents.com/api",
-        "verified_at": "2026-06-06T12:18:13.294Z"
+        "verified_at": "2026-06-07T07:06:42.687Z"
       }
     },
     {
@@ -839,7 +836,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -857,7 +854,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 152,
+        "latency_ms": 169,
         "method_tested": "HEAD",
         "name": "ORO docs",
         "netuid": 15,
@@ -881,7 +878,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://oroagents.com/docs",
-        "verified_at": "2026-06-06T12:18:13.294Z"
+        "verified_at": "2026-06-07T07:06:42.691Z"
       }
     },
     {
@@ -894,7 +891,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -912,7 +909,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 136,
+        "latency_ms": 90,
         "method_tested": "GET",
         "name": "ORO health endpoint",
         "netuid": 15,
@@ -936,7 +933,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://oroagents.com/health",
-        "verified_at": "2026-06-06T12:18:13.302Z"
+        "verified_at": "2026-06-07T07:06:42.699Z"
       }
     },
     {
@@ -949,7 +946,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -967,7 +964,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 81,
+        "latency_ms": 149,
         "method_tested": "GET",
         "name": "ORO OpenAPI JSON",
         "netuid": 15,
@@ -991,7 +988,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://oroagents.com/openapi.json",
-        "verified_at": "2026-06-06T12:18:13.307Z"
+        "verified_at": "2026-06-07T07:06:42.699Z"
       }
     },
     {
@@ -1004,7 +1001,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -1022,7 +1019,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 88,
+        "latency_ms": 92,
         "method_tested": "GET",
         "name": "ORO Swagger UI",
         "netuid": 15,
@@ -1046,7 +1043,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://oroagents.com/swagger",
-        "verified_at": "2026-06-06T12:18:13.312Z"
+        "verified_at": "2026-06-07T07:06:42.742Z"
       }
     },
     {
@@ -1059,7 +1056,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -1077,7 +1074,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 93,
+        "latency_ms": 92,
         "method_tested": "GET",
         "name": "ORO Swagger JSON",
         "netuid": 15,
@@ -1101,7 +1098,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://oroagents.com/swagger.json",
-        "verified_at": "2026-06-06T12:18:13.313Z"
+        "verified_at": "2026-06-07T07:06:42.787Z"
       }
     },
     {
@@ -1114,7 +1111,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1156,7 +1153,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://oroagents.com/leaderboard",
-        "verified_at": "2026-06-06T12:18:13.320Z"
+        "verified_at": "2026-06-07T07:06:42.816Z"
       }
     },
     {
@@ -1169,7 +1166,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1187,7 +1184,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 145,
+        "latency_ms": 176,
         "method_tested": "HEAD",
         "name": "ORO docs",
         "netuid": 15,
@@ -1211,7 +1208,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://oroagents.com/blog/oro-trajectory-paper",
-        "verified_at": "2026-06-06T12:18:13.328Z"
+        "verified_at": "2026-06-07T07:06:42.835Z"
       }
     },
     {
@@ -1224,7 +1221,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1242,7 +1239,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 163,
+        "latency_ms": 95,
         "method_tested": "HEAD",
         "name": "ORO docs",
         "netuid": 15,
@@ -1266,7 +1263,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://oroagents.com/docs/resources/changelog",
-        "verified_at": "2026-06-06T12:18:13.338Z"
+        "verified_at": "2026-06-07T07:06:42.835Z"
       }
     },
     {
@@ -1279,7 +1276,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1297,7 +1294,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 145,
+        "latency_ms": 221,
         "method_tested": "HEAD",
         "name": "ORO website page",
         "netuid": 15,
@@ -1321,7 +1318,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://oroagents.com/blog",
-        "verified_at": "2026-06-06T12:18:13.406Z"
+        "verified_at": "2026-06-07T07:06:42.851Z"
       }
     }
   ],

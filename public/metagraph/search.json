@@ -271,6 +271,23 @@
       "url": "/subnets/109"
     },
     {
+      "artifact_path": "/metagraph/subnets/95.json",
+      "id": "subnet:95",
+      "netuid": 95,
+      "slug": "sn-95",
+      "subtitle": "SN95 ᚅ",
+      "title": "Actual",
+      "tokens": [
+        "95",
+        "actual",
+        "baseline",
+        "curated",
+        "sn"
+      ],
+      "type": "subnet",
+      "url": "/subnets/95"
+    },
+    {
       "artifact_path": "/metagraph/subnets/21.json",
       "id": "subnet:21",
       "netuid": 21,
@@ -1458,6 +1475,23 @@
       "url": "/subnets/51"
     },
     {
+      "artifact_path": "/metagraph/subnets/92.json",
+      "id": "subnet:92",
+      "netuid": 92,
+      "slug": "sn-92",
+      "subtitle": "SN92 ᚂ",
+      "title": "luis",
+      "tokens": [
+        "92",
+        "baseline",
+        "curated",
+        "luis",
+        "sn"
+      ],
+      "type": "subnet",
+      "url": "/subnets/92"
+    },
+    {
       "artifact_path": "/metagraph/subnets/87.json",
       "id": "subnet:87",
       "netuid": 87,
@@ -1628,23 +1662,6 @@
       ],
       "type": "subnet",
       "url": "/subnets/55"
-    },
-    {
-      "artifact_path": "/metagraph/subnets/95.json",
-      "id": "subnet:95",
-      "netuid": 95,
-      "slug": "sn-95",
-      "subtitle": "SN95 ᚅ",
-      "title": "nion",
-      "tokens": [
-        "95",
-        "baseline",
-        "curated",
-        "nion",
-        "sn"
-      ],
-      "type": "subnet",
-      "url": "/subnets/95"
     },
     {
       "artifact_path": "/metagraph/subnets/27.json",
@@ -2215,23 +2232,6 @@
       "url": "/subnets/4"
     },
     {
-      "artifact_path": "/metagraph/subnets/92.json",
-      "id": "subnet:92",
-      "netuid": 92,
-      "slug": "sn-92",
-      "subtitle": "SN92 ᚂ",
-      "title": "TensorClaw",
-      "tokens": [
-        "92",
-        "baseline",
-        "curated",
-        "sn",
-        "tensorclaw"
-      ],
-      "type": "subnet",
-      "url": "/subnets/92"
-    },
-    {
       "artifact_path": "/metagraph/subnets/113.json",
       "id": "subnet:113",
       "netuid": 113,
@@ -2662,6 +2662,59 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-95-taomarketcap-dashboard",
+      "netuid": 95,
+      "slug": "sn-95",
+      "subtitle": "dashboard / taomarketcap",
+      "title": "Actual TaoMarketCap dashboard",
+      "tokens": [
+        "95",
+        "actual",
+        "dashboard",
+        "sn",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://taomarketcap.com/subnets/95"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-95-taomarketcap-website",
+      "netuid": 95,
+      "slug": "sn-95",
+      "subtitle": "website / taomarketcap",
+      "title": "Actual website",
+      "tokens": [
+        "95",
+        "actual",
+        "sn",
+        "taomarketcap",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://actual.inc/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-21-taomarketcap-source-repo",
+      "netuid": 21,
+      "slug": "sn-21",
+      "subtitle": "source-repo / taomarketcap",
+      "title": "AdTAO source repository",
+      "tokens": [
+        "21",
+        "adtao",
+        "repo",
+        "repository",
+        "sn",
+        "source",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://github.com/ippcteam/SN21-adtao"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-21-taomarketcap-dashboard",
       "netuid": 21,
       "slug": "sn-21",
@@ -2710,7 +2763,7 @@
         "website"
       ],
       "type": "surface",
-      "url": "https://ppcrebel.com/"
+      "url": "https://adtao.io/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10064,6 +10117,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-92-taomarketcap-dashboard",
+      "netuid": 92,
+      "slug": "sn-92",
+      "subtitle": "dashboard / taomarketcap",
+      "title": "luis TaoMarketCap dashboard",
+      "tokens": [
+        "92",
+        "dashboard",
+        "luis",
+        "sn",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://taomarketcap.com/subnets/92"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-87-taomarketcap-dashboard",
       "netuid": 87,
       "slug": "sn-87",
@@ -11071,23 +11141,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-95-taomarketcap-dashboard",
-      "netuid": 95,
-      "slug": "sn-95",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "nion TaoMarketCap dashboard",
-      "tokens": [
-        "95",
-        "dashboard",
-        "nion",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://taomarketcap.com/subnets/95"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-95-tensorplex-docs",
       "netuid": 95,
       "slug": "sn-95",
@@ -11095,6 +11148,7 @@
       "title": "nion Tensorplex subnet docs",
       "tokens": [
         "95",
+        "actual",
         "docs",
         "nion",
         "sn",
@@ -14313,6 +14367,7 @@
       "tokens": [
         "92",
         "dashboard",
+        "luis",
         "sn",
         "taomarketcap",
         "tensorclaw"
@@ -14330,31 +14385,13 @@
       "tokens": [
         "92",
         "docs",
+        "luis",
         "sn",
         "taomarketcap",
         "tensorclaw"
       ],
       "type": "surface",
       "url": "https://www.tensorclaw.ai/docs"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-92-taomarketcap-source-repo",
-      "netuid": 92,
-      "slug": "sn-92",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "TensorClaw source repository",
-      "tokens": [
-        "92",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "taomarketcap",
-        "tensorclaw"
-      ],
-      "type": "surface",
-      "url": "https://github.com/tensorclaw/tensorclaw"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14365,6 +14402,7 @@
       "title": "TensorClaw Swagger UI",
       "tokens": [
         "92",
+        "luis",
         "openapi",
         "sn",
         "swagger",
@@ -14377,23 +14415,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-92-taomarketcap-dashboard",
-      "netuid": 92,
-      "slug": "sn-92",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "TensorClaw TaoMarketCap dashboard",
-      "tokens": [
-        "92",
-        "dashboard",
-        "sn",
-        "taomarketcap",
-        "tensorclaw"
-      ],
-      "type": "surface",
-      "url": "https://taomarketcap.com/subnets/92"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-92-tensorplex-docs",
       "netuid": 92,
       "slug": "sn-92",
@@ -14402,6 +14423,7 @@
       "tokens": [
         "92",
         "docs",
+        "luis",
         "sn",
         "subnet",
         "tensorclaw",
@@ -14409,23 +14431,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/92"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-92-taomarketcap-website",
-      "netuid": 92,
-      "slug": "sn-92",
-      "subtitle": "website / taomarketcap",
-      "title": "TensorClaw website",
-      "tokens": [
-        "92",
-        "sn",
-        "taomarketcap",
-        "tensorclaw",
-        "website"
-      ],
-      "type": "surface",
-      "url": "https://www.tensorclaw.ai/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

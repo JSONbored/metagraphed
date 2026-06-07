@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:25.938Z"
+    "verified_at": "2026-06-07T07:06:59.551Z"
   },
   "dashboard_url": "https://taostats.io/subnets/63",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/63",
@@ -59,11 +59,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/qbittensor-labs/enigma",
-        "latency_ms": 457,
+        "latency_ms": 969,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.898Z"
+        "verified_at": "2026-06-07T07:06:59.541Z"
       }
     },
     {
@@ -98,11 +98,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 86,
+        "latency_ms": 195,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.907Z"
+        "verified_at": "2026-06-07T07:06:59.550Z"
       }
     },
     {
@@ -111,7 +111,7 @@
       "id": "sn-63-tensorplex-docs",
       "kind": "docs",
       "name": "Enigma Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +137,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 323,
+        "latency_ms": 738,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.938Z"
+        "verified_at": "2026-06-07T07:06:59.551Z"
       }
     },
     {
@@ -150,7 +150,7 @@
       "id": "sn-63-github-readme-qbittensor-labs-enigma-dashboard-1",
       "kind": "dashboard",
       "name": "Enigma dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +176,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 229,
+        "latency_ms": 223,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.836Z"
+        "verified_at": "2026-06-07T07:06:59.450Z"
       }
     },
     {
@@ -215,11 +215,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 185,
+        "latency_ms": 131,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:25.868Z"
+        "verified_at": "2026-06-07T07:06:59.463Z"
       }
     }
   ],

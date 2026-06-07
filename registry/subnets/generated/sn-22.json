@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:15.743Z"
+    "verified_at": "2026-06-07T07:06:45.755Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/22",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/22",
@@ -41,30 +41,28 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/22",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/22"
       ],
       "url": "https://github.com/datura-ai/desearch",
       "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
+        "classification": "redirected",
+        "confidence_score": 54,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/datura-ai/desearch",
-        "homepage": "https://desearch.ai/",
-        "last_push_at": "2026-05-29T13:00:54Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:15.611Z"
+        "latency_ms": 861,
+        "method_tested": "HEAD",
+        "redirect_target": "https://github.com/Desearch-ai/subnet-22",
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:45.371Z"
       }
     },
     {
@@ -99,11 +97,11 @@
         "classification": "redirected",
         "confidence_score": 72,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 295,
+        "latency_ms": 369,
         "method_tested": "HEAD",
         "redirect_target": "https://www.desearch.ai/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.669Z"
+        "verified_at": "2026-06-07T07:06:45.439Z"
       }
     },
     {
@@ -112,7 +110,7 @@
       "id": "sn-22-tensorplex-docs",
       "kind": "docs",
       "name": "Desearch Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -138,11 +136,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 390,
+        "latency_ms": 402,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.672Z"
+        "verified_at": "2026-06-07T07:06:45.448Z"
       }
     },
     {
@@ -151,7 +149,7 @@
       "id": "sn-22-website-common-docs",
       "kind": "docs",
       "name": "Desearch docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -177,11 +175,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 306,
+        "latency_ms": 351,
         "method_tested": "HEAD",
         "redirect_target": "https://www.desearch.ai/docs",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.714Z"
+        "verified_at": "2026-06-07T07:06:45.531Z"
       }
     },
     {
@@ -216,11 +214,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 127,
+        "latency_ms": 138,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.569Z"
+        "verified_at": "2026-06-07T07:06:45.368Z"
       }
     },
     {
@@ -229,7 +227,7 @@
       "id": "sn-22-website-common-openapi-json",
       "kind": "openapi",
       "name": "Desearch OpenAPI JSON",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -257,11 +255,11 @@
         "classification": "redirected",
         "confidence_score": 73,
         "content_type": "application/json; charset=utf-8",
-        "latency_ms": 320,
+        "latency_ms": 227,
         "method_tested": "HEAD",
         "redirect_target": "https://www.desearch.ai/openapi.json",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.742Z"
+        "verified_at": "2026-06-07T07:06:45.751Z"
       }
     },
     {
@@ -270,7 +268,7 @@
       "id": "sn-22-website-common-swagger",
       "kind": "openapi",
       "name": "Desearch Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -297,11 +295,11 @@
         "classification": "redirected",
         "confidence_score": 63,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 308,
+        "latency_ms": 223,
         "method_tested": "HEAD",
         "redirect_target": "https://www.desearch.ai/swagger",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:15.743Z"
+        "verified_at": "2026-06-07T07:06:45.755Z"
       }
     }
   ],

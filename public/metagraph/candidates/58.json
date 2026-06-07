@@ -10,7 +10,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/markdown; charset=UTF-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 297,
+        "latency_ms": 186,
         "method_tested": "HEAD",
         "name": "Pending docs",
         "netuid": 58,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://handshake58.com/skill.md",
-        "verified_at": "2026-06-06T12:18:24.504Z"
+        "verified_at": "2026-06-07T07:06:57.478Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -83,7 +83,7 @@
         "content_type": "application/json",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 264,
+        "latency_ms": 168,
         "method_tested": "HEAD",
         "name": "Pending API surface",
         "netuid": 58,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://handshake58.com/api/drain/signing",
-        "verified_at": "2026-06-06T12:18:24.545Z"
+        "verified_at": "2026-06-07T07:06:57.497Z"
       }
     },
     {
@@ -120,7 +120,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -138,7 +138,7 @@
         "content_type": "application/json",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 302,
+        "latency_ms": 207,
         "method_tested": "HEAD",
         "name": "Pending API surface",
         "netuid": 58,
@@ -162,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://handshake58.com/api/mcp/providers",
-        "verified_at": "2026-06-06T12:18:24.553Z"
+        "verified_at": "2026-06-07T07:06:57.605Z"
       }
     },
     {
@@ -175,7 +175,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -193,7 +193,7 @@
         "content_type": "application/json",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 256,
+        "latency_ms": 186,
         "method_tested": "HEAD",
         "name": "Pending API surface",
         "netuid": 58,
@@ -217,7 +217,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://handshake58.com/api/mcp/providers?model=gpt-4o&category=scraping&limit=3&format=compact",
-        "verified_at": "2026-06-06T12:18:24.557Z"
+        "verified_at": "2026-06-07T07:06:57.687Z"
       }
     },
     {
@@ -248,7 +248,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 159,
+        "latency_ms": 137,
         "method_tested": "HEAD",
         "name": "Pending TaoMarketCap dashboard",
         "netuid": 58,
@@ -272,7 +272,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/58",
-        "verified_at": "2026-06-06T12:18:24.573Z"
+        "verified_at": "2026-06-07T07:06:57.733Z"
       }
     },
     {
@@ -285,7 +285,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -303,7 +303,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 326,
+        "latency_ms": 812,
         "method_tested": "HEAD",
         "name": "Pending Tensorplex subnet docs",
         "netuid": 58,
@@ -327,7 +327,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/58",
-        "verified_at": "2026-06-06T12:18:24.615Z"
+        "verified_at": "2026-06-07T07:06:57.751Z"
       }
     },
     {
@@ -340,7 +340,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -359,7 +359,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/Handshake58/HS58",
         "kind": "source-repo",
-        "latency_ms": 530,
+        "latency_ms": 1005,
         "method_tested": "HEAD",
         "name": "Pending source repository",
         "netuid": 58,
@@ -383,7 +383,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/Handshake58/HS58",
-        "verified_at": "2026-06-06T12:18:24.644Z"
+        "verified_at": "2026-06-07T07:06:57.751Z"
       }
     }
   ],

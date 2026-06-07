@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "data-artifact",
-      "latency_ms": 26,
+      "latency_ms": 34,
       "method_tested": "HEAD",
       "name": "Leoma data artifact",
       "netuid": 99,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://huggingface.co/",
-      "verified_at": "2026-06-06T12:18:37.723Z"
+      "verified_at": "2026-06-07T07:07:17.113Z"
     },
     {
       "candidate_id": "sn-99-github-readme-rendixnetwork-leoma-docs-1",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 49,
+      "latency_ms": 40,
       "method_tested": "HEAD",
       "name": "Leoma docs",
       "netuid": 99,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.learnbittensor.org/",
-      "verified_at": "2026-06-06T12:18:37.730Z"
+      "verified_at": "2026-06-07T07:07:17.113Z"
     },
     {
       "candidate_id": "sn-99-github-readme-rendixnetwork-leoma-docs-4",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 198,
+      "latency_ms": 229,
       "method_tested": "HEAD",
       "name": "Leoma docs",
       "netuid": 99,
@@ -102,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.leoma.ai/storage",
-      "verified_at": "2026-06-06T12:18:37.749Z"
+      "verified_at": "2026-06-07T07:07:17.113Z"
     },
     {
       "candidate_id": "sn-99-github-readme-rendixnetwork-leoma-docs-5",
@@ -111,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 226,
+      "latency_ms": 252,
       "method_tested": "HEAD",
       "name": "Leoma docs",
       "netuid": 99,
@@ -135,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.leoma.ai/",
-      "verified_at": "2026-06-06T12:18:37.750Z"
+      "verified_at": "2026-06-07T07:07:17.115Z"
     },
     {
       "candidate_id": "sn-99-github-readme-rendixnetwork-leoma-subnet-api-2",
@@ -144,7 +144,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 177,
+      "latency_ms": 234,
       "method_tested": "HEAD",
       "name": "Leoma API surface",
       "netuid": 99,
@@ -168,7 +168,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.leoma.ai/api",
-      "verified_at": "2026-06-06T12:18:37.764Z"
+      "verified_at": "2026-06-07T07:07:17.133Z"
     },
     {
       "candidate_id": "sn-99-github-readme-rendixnetwork-leoma-subnet-api-6",
@@ -177,7 +177,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 94,
+      "latency_ms": 87,
       "method_tested": "GET",
       "name": "Leoma API surface",
       "netuid": 99,
@@ -201,7 +201,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://api.leoma.ai/",
-      "verified_at": "2026-06-06T12:18:37.779Z"
+      "verified_at": "2026-06-07T07:07:17.144Z"
     },
     {
       "candidate_id": "sn-99-taomarketcap-dashboard",
@@ -210,7 +210,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 148,
+      "latency_ms": 146,
       "method_tested": "HEAD",
       "name": "Leoma TaoMarketCap dashboard",
       "netuid": 99,
@@ -234,17 +234,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/99",
-      "verified_at": "2026-06-06T12:18:37.782Z"
+      "verified_at": "2026-06-07T07:07:17.148Z"
     },
     {
       "candidate_id": "sn-99-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/RendixNetwork/leoma",
       "kind": "source-repo",
-      "latency_ms": 385,
+      "latency_ms": 459,
       "method_tested": "HEAD",
       "name": "Leoma source repository",
       "netuid": 99,
@@ -268,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/RendixNetwork/leoma",
-      "verified_at": "2026-06-06T12:18:37.793Z"
+      "verified_at": "2026-06-07T07:07:17.153Z"
     },
     {
       "candidate_id": "sn-99-taomarketcap-website",
@@ -277,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 170,
+      "latency_ms": 172,
       "method_tested": "HEAD",
       "name": "Leoma website",
       "netuid": 99,
@@ -301,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leoma.ai/",
-      "verified_at": "2026-06-06T12:18:37.793Z"
+      "verified_at": "2026-06-07T07:07:17.157Z"
     },
     {
       "candidate_id": "sn-99-tensorplex-docs",
@@ -310,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 352,
+      "latency_ms": 387,
       "method_tested": "HEAD",
       "name": "Leoma Tensorplex subnet docs",
       "netuid": 99,
@@ -334,17 +334,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/99",
-      "verified_at": "2026-06-06T12:18:37.811Z"
+      "verified_at": "2026-06-07T07:07:17.160Z"
     },
     {
       "candidate_id": "sn-99-tensorplex-source-repo-1",
       "classification": "live",
       "confidence_score": 55,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/subnet99/neza",
       "kind": "source-repo",
-      "latency_ms": 563,
+      "latency_ms": 584,
       "method_tested": "HEAD",
       "name": "Leoma source repository",
       "netuid": 99,
@@ -368,7 +368,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/subnet99/neza",
-      "verified_at": "2026-06-06T12:18:37.819Z"
+      "verified_at": "2026-06-07T07:07:17.168Z"
     },
     {
       "candidate_id": "sn-99-website-common-api",
@@ -377,7 +377,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 146,
+      "latency_ms": 177,
       "method_tested": "HEAD",
       "name": "Leoma API",
       "netuid": 99,
@@ -401,7 +401,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leoma.ai/api",
-      "verified_at": "2026-06-06T12:18:37.823Z"
+      "verified_at": "2026-06-07T07:07:17.185Z"
     },
     {
       "candidate_id": "sn-99-website-common-docs",
@@ -410,7 +410,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 142,
+      "latency_ms": 165,
       "method_tested": "HEAD",
       "name": "Leoma docs",
       "netuid": 99,
@@ -434,7 +434,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leoma.ai/docs",
-      "verified_at": "2026-06-06T12:18:37.860Z"
+      "verified_at": "2026-06-07T07:07:17.305Z"
     },
     {
       "candidate_id": "sn-99-website-common-health",
@@ -443,7 +443,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 148,
+      "latency_ms": 163,
       "method_tested": "HEAD",
       "name": "Leoma health endpoint",
       "netuid": 99,
@@ -467,7 +467,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leoma.ai/health",
-      "verified_at": "2026-06-06T12:18:37.914Z"
+      "verified_at": "2026-06-07T07:07:17.313Z"
     },
     {
       "candidate_id": "sn-99-website-common-openapi-json",
@@ -476,7 +476,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 137,
+      "latency_ms": 147,
       "method_tested": "HEAD",
       "name": "Leoma OpenAPI JSON",
       "netuid": 99,
@@ -500,7 +500,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leoma.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:37.930Z"
+      "verified_at": "2026-06-07T07:07:17.327Z"
     },
     {
       "candidate_id": "sn-99-website-common-swagger",
@@ -509,7 +509,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 146,
+      "latency_ms": 143,
       "method_tested": "HEAD",
       "name": "Leoma Swagger UI",
       "netuid": 99,
@@ -533,7 +533,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leoma.ai/swagger",
-      "verified_at": "2026-06-06T12:18:37.936Z"
+      "verified_at": "2026-06-07T07:07:17.361Z"
     },
     {
       "candidate_id": "sn-99-website-common-swagger-json",
@@ -542,7 +542,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 180,
+      "latency_ms": 54,
       "method_tested": "HEAD",
       "name": "Leoma Swagger JSON",
       "netuid": 99,
@@ -566,7 +566,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leoma.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:37.942Z"
+      "verified_at": "2026-06-07T07:07:17.372Z"
     }
   ],
   "schema_version": 1,

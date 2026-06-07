@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 508,
+        "latency_ms": 502,
         "method_tested": "HEAD",
         "name": "Synth API surface",
         "netuid": 50,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://api.synthdata.co/docs",
-        "verified_at": "2026-06-06T12:18:22.248Z"
+        "verified_at": "2026-06-07T07:06:53.892Z"
       }
     },
     {
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 151,
+        "latency_ms": 154,
         "method_tested": "HEAD",
         "name": "Synth TaoMarketCap dashboard",
         "netuid": 50,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/50",
-        "verified_at": "2026-06-06T12:18:22.305Z"
+        "verified_at": "2026-06-07T07:06:53.911Z"
       }
     },
     {
@@ -126,8 +126,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/50",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/50",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/50/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/50"
       ],
       "state": "schema-valid",
       "subnet_name": "Synth",
@@ -140,7 +139,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/mode-network/synth-subnet",
         "kind": "source-repo",
-        "latency_ms": 558,
+        "latency_ms": 1420,
         "method_tested": "HEAD",
         "name": "Synth source repository",
         "netuid": 50,
@@ -159,13 +158,12 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/50",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/50",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/50/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/50"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/mode-network/synth-subnet",
-        "verified_at": "2026-06-06T12:18:22.341Z"
+        "verified_at": "2026-06-07T07:06:54.001Z"
       }
     },
     {
@@ -196,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 155,
+        "latency_ms": 170,
         "method_tested": "HEAD",
         "name": "Synth website",
         "netuid": 50,
@@ -220,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://synthdata.co/",
-        "verified_at": "2026-06-06T12:18:22.350Z"
+        "verified_at": "2026-06-07T07:06:54.068Z"
       }
     },
     {
@@ -233,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -251,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 313,
+        "latency_ms": 505,
         "method_tested": "HEAD",
         "name": "Synth Tensorplex subnet docs",
         "netuid": 50,
@@ -275,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/50",
-        "verified_at": "2026-06-06T12:18:22.401Z"
+        "verified_at": "2026-06-07T07:06:54.218Z"
       }
     },
     {
@@ -288,7 +286,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -306,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 152,
+        "latency_ms": 165,
         "method_tested": "HEAD",
         "name": "Synth API",
         "netuid": 50,
@@ -330,7 +328,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://synthdata.co/api",
-        "verified_at": "2026-06-06T12:18:22.456Z"
+        "verified_at": "2026-06-07T07:06:54.225Z"
       }
     },
     {
@@ -343,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -361,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 154,
+        "latency_ms": 164,
         "method_tested": "HEAD",
         "name": "Synth docs",
         "netuid": 50,
@@ -385,7 +383,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://synthdata.co/docs",
-        "verified_at": "2026-06-06T12:18:22.494Z"
+        "verified_at": "2026-06-07T07:06:54.226Z"
       }
     },
     {
@@ -398,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -416,7 +414,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 44,
+        "latency_ms": 155,
         "method_tested": "HEAD",
         "name": "Synth health endpoint",
         "netuid": 50,
@@ -440,7 +438,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://synthdata.co/health",
-        "verified_at": "2026-06-06T12:18:22.505Z"
+        "verified_at": "2026-06-07T07:06:54.295Z"
       }
     },
     {
@@ -453,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -471,7 +469,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 192,
+        "latency_ms": 66,
         "method_tested": "HEAD",
         "name": "Synth OpenAPI JSON",
         "netuid": 50,
@@ -495,7 +493,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://synthdata.co/openapi.json",
-        "verified_at": "2026-06-06T12:18:22.531Z"
+        "verified_at": "2026-06-07T07:06:54.300Z"
       }
     },
     {
@@ -508,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -526,7 +524,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 157,
+        "latency_ms": 158,
         "method_tested": "HEAD",
         "name": "Synth Swagger UI",
         "netuid": 50,
@@ -550,7 +548,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://synthdata.co/swagger",
-        "verified_at": "2026-06-06T12:18:22.539Z"
+        "verified_at": "2026-06-07T07:06:54.301Z"
       }
     },
     {
@@ -563,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -581,7 +579,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 160,
+        "latency_ms": 170,
         "method_tested": "HEAD",
         "name": "Synth Swagger JSON",
         "netuid": 50,
@@ -605,7 +603,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://synthdata.co/swagger.json",
-        "verified_at": "2026-06-06T12:18:22.540Z"
+        "verified_at": "2026-06-07T07:06:54.326Z"
       }
     }
   ],

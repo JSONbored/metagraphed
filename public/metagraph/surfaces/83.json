@@ -45,7 +45,7 @@
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.088Z"
+        "verified_at": "2026-06-07T07:07:10.187Z"
       }
     },
     {
@@ -74,8 +74,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/83",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/83/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/83"
       ],
       "subnet_name": "CliqueAI",
       "subnet_slug": "sn-83",
@@ -85,11 +84,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/toptensor/CliqueAI",
-        "latency_ms": 397,
+        "latency_ms": 565,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.140Z"
+        "verified_at": "2026-06-07T07:07:10.187Z"
       }
     },
     {
@@ -127,11 +126,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 464,
+        "latency_ms": 458,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.140Z"
+        "verified_at": "2026-06-07T07:07:10.253Z"
       }
     },
     {
@@ -141,7 +140,7 @@
       "kind": "docs",
       "name": "CliqueAI Tensorplex subnet docs",
       "netuid": 83,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -169,11 +168,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 367,
+        "latency_ms": 587,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.141Z"
+        "verified_at": "2026-06-07T07:07:10.253Z"
       }
     },
     {
@@ -183,7 +182,7 @@
       "kind": "docs",
       "name": "CliqueAI docs",
       "netuid": 83,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -211,11 +210,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html",
-        "latency_ms": 455,
+        "latency_ms": 492,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.144Z"
+        "verified_at": "2026-06-07T07:07:10.301Z"
       }
     },
     {
@@ -225,7 +224,7 @@
       "kind": "openapi",
       "name": "CliqueAI Swagger UI",
       "netuid": 83,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +253,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html",
-        "latency_ms": 454,
+        "latency_ms": 467,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.242Z"
+        "verified_at": "2026-06-07T07:07:10.381Z"
       }
     }
   ]

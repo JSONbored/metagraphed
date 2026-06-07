@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 2,
-    "verified_at": "2026-06-06T12:18:43.938Z"
+    "verified_at": "2026-06-07T07:07:24.649Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/121",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/121",
@@ -59,11 +59,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/sundae-bar/bittensor-subnet",
-        "latency_ms": 394,
+        "latency_ms": 609,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:43.875Z"
+        "verified_at": "2026-06-07T07:07:24.572Z"
       }
     },
     {
@@ -98,11 +98,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 223,
+        "latency_ms": 291,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:43.930Z"
+        "verified_at": "2026-06-07T07:07:24.641Z"
       }
     },
     {
@@ -111,7 +111,7 @@
       "id": "sn-121-tensorplex-docs",
       "kind": "docs",
       "name": "sundae_bar Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +137,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 272,
+        "latency_ms": 364,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:43.938Z"
+        "verified_at": "2026-06-07T07:07:24.649Z"
       }
     },
     {
@@ -176,11 +176,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 156,
+        "latency_ms": 182,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:43.845Z"
+        "verified_at": "2026-06-07T07:07:24.537Z"
       }
     }
   ],

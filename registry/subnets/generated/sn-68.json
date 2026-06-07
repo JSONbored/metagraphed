@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:27.779Z"
+    "verified_at": "2026-06-07T07:07:02.507Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/68",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/68",
@@ -50,8 +50,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/68",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/68/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/68"
       ],
       "url": "https://github.com/metanova-labs/nova",
       "verification": {
@@ -59,11 +58,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/metanova-labs/nova",
-        "latency_ms": 524,
+        "latency_ms": 995,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.359Z"
+        "verified_at": "2026-06-07T07:07:01.969Z"
       }
     },
     {
@@ -98,11 +97,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 248,
+        "latency_ms": 221,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.442Z"
+        "verified_at": "2026-06-07T07:07:01.973Z"
       }
     },
     {
@@ -111,7 +110,7 @@
       "id": "sn-68-tensorplex-docs",
       "kind": "docs",
       "name": "NOVA Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +136,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 321,
+        "latency_ms": 690,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.458Z"
+        "verified_at": "2026-06-07T07:07:01.986Z"
       }
     },
     {
@@ -150,7 +149,7 @@
       "id": "sn-68-website-link-www-metanova-labs-ai-docs-3",
       "kind": "docs",
       "name": "NOVA docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +175,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html",
-        "latency_ms": 69,
+        "latency_ms": 71,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.779Z"
+        "verified_at": "2026-06-07T07:07:02.507Z"
       }
     },
     {
@@ -215,11 +214,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
+        "latency_ms": 151,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.311Z"
+        "verified_at": "2026-06-07T07:07:01.935Z"
       }
     },
     {
@@ -228,7 +227,7 @@
       "id": "sn-68-website-link-www-metanova-labs-ai-dashboard-5",
       "kind": "dashboard",
       "name": "NOVA dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +253,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html",
-        "latency_ms": 218,
+        "latency_ms": 213,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.772Z"
+        "verified_at": "2026-06-07T07:07:02.426Z"
       }
     },
     {
@@ -267,7 +266,7 @@
       "id": "sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
       "kind": "data-artifact",
       "name": "NOVA data artifact",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -293,11 +292,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "text/html",
-        "latency_ms": 71,
+        "latency_ms": 79,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:27.772Z"
+        "verified_at": "2026-06-07T07:07:02.504Z"
       }
     }
   ],

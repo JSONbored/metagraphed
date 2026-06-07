@@ -13,7 +13,7 @@
       "kind": "data-artifact",
       "name": "Hone data artifact",
       "netuid": 5,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 58,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 188,
+        "latency_ms": 127,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.171Z"
+        "verified_at": "2026-06-07T07:06:38.470Z"
       }
     },
     {
@@ -55,7 +55,7 @@
       "kind": "docs",
       "name": "Hone docs",
       "netuid": 5,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -83,11 +83,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 108,
+        "latency_ms": 86,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.181Z"
+        "verified_at": "2026-06-07T07:06:38.486Z"
       }
     },
     {
@@ -125,11 +125,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 129,
+        "latency_ms": 154,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.198Z"
+        "verified_at": "2026-06-07T07:06:38.496Z"
       }
     },
     {
@@ -149,32 +149,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/5",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/5/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/5"
       ],
       "subnet_name": "Hone",
       "subnet_slug": "sn-5",
       "url": "https://github.com/manifold-inc/hone",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/manifold-inc/hone",
-        "homepage": null,
-        "last_push_at": "2026-05-04T03:53:15Z",
+        "latency_ms": 804,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:10.203Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:38.509Z"
       }
     },
     {
@@ -212,11 +210,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 183,
+        "latency_ms": 166,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.203Z"
+        "verified_at": "2026-06-07T07:06:38.556Z"
       }
     },
     {
@@ -226,7 +224,7 @@
       "kind": "docs",
       "name": "Hone Taopedia article",
       "netuid": 5,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +252,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 359,
+        "latency_ms": 406,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.212Z"
+        "verified_at": "2026-06-07T07:06:38.565Z"
       }
     },
     {
@@ -268,7 +266,7 @@
       "kind": "docs",
       "name": "Hone Tensorplex subnet docs",
       "netuid": 5,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -296,11 +294,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 333,
+        "latency_ms": 328,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:10.254Z"
+        "verified_at": "2026-06-07T07:06:38.580Z"
       }
     }
   ]

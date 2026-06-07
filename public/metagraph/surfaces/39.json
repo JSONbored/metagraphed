@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 143,
+        "latency_ms": 135,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:19.675Z"
+        "verified_at": "2026-06-07T07:06:50.697Z"
       }
     },
     {
@@ -55,7 +55,7 @@
       "kind": "docs",
       "name": "deprecated Tensorplex subnet docs",
       "netuid": 39,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 321,
+        "latency_ms": 444,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:19.744Z"
+        "verified_at": "2026-06-07T07:06:50.717Z"
       }
     },
     {
@@ -97,7 +97,7 @@
       "kind": "source-repo",
       "name": "deprecated source repository",
       "netuid": 39,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -126,11 +126,11 @@
         "confidence_score": 50,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/tplr-ai/basilica",
-        "latency_ms": 733,
+        "latency_ms": 948,
         "method_tested": "HEAD",
         "redirect_target": "https://github.com/one-covenant/basilica",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:19.776Z"
+        "verified_at": "2026-06-07T07:06:50.729Z"
       }
     }
   ]

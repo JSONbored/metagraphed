@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 166,
+        "latency_ms": 138,
         "method_tested": "HEAD",
         "name": "Allways TaoMarketCap dashboard",
         "netuid": 7,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/7",
-        "verified_at": "2026-06-06T12:18:10.612Z"
+        "verified_at": "2026-06-07T07:06:39.328Z"
       }
     },
     {
@@ -71,45 +71,44 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/7",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/7",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/7/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/7"
       ],
       "state": "schema-valid",
       "subnet_name": "Allways",
       "url": "https://github.com/entrius/allways",
       "verification": {
-        "archived": false,
         "candidate_id": "sn-7-taomarketcap-source-repo",
         "classification": "live",
-        "confidence_score": 80,
-        "default_branch": "test",
-        "description": "SN7",
+        "confidence_score": 59,
+        "error": null,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/entrius/allways",
-        "homepage": null,
-        "html_url": "https://github.com/entrius/allways",
         "kind": "source-repo",
-        "last_push_at": "2026-06-04T20:41:16Z",
+        "latency_ms": 686,
+        "method_tested": "HEAD",
         "name": "Allways source repository",
         "netuid": 7,
+        "private_redirect_blocked": false,
         "provider": "taomarketcap",
         "quality_signals": {
-          "archived": false,
-          "has_default_branch": true,
-          "has_recent_push_metadata": true,
+          "content_type_matches_kind": true,
           "public_safe": true,
-          "source_tier": "third-party-index"
+          "rate_limited": false,
+          "redirected": false,
+          "source_tier": "third-party-index",
+          "transient_failure": false
         },
+        "redirect_target": null,
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/7",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/7",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/7/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/7"
         ],
         "status": "ok",
-        "topics": [],
+        "status_code": 200,
         "url": "https://github.com/entrius/allways",
-        "verified_at": "2026-06-06T12:18:10.656Z"
+        "verified_at": "2026-06-07T07:06:39.354Z"
       }
     },
     {
@@ -140,7 +139,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 184,
+        "latency_ms": 183,
         "method_tested": "HEAD",
         "name": "Allways website",
         "netuid": 7,
@@ -164,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://all-ways.io/",
-        "verified_at": "2026-06-06T12:18:10.690Z"
+        "verified_at": "2026-06-07T07:06:39.355Z"
       }
     },
     {
@@ -177,7 +176,7 @@
       "provider": "taopedia-articles",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "review_notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "taopedia-article",
@@ -195,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 405,
+        "latency_ms": 563,
         "method_tested": "HEAD",
         "name": "Allways Taopedia article",
         "netuid": 7,
@@ -219,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_7/index.mdx",
-        "verified_at": "2026-06-06T12:18:10.702Z"
+        "verified_at": "2026-06-07T07:06:39.356Z"
       }
     },
     {
@@ -232,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -250,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 273,
+        "latency_ms": 497,
         "method_tested": "HEAD",
         "name": "Allways Tensorplex subnet docs",
         "netuid": 7,
@@ -274,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/7",
-        "verified_at": "2026-06-06T12:18:10.715Z"
+        "verified_at": "2026-06-07T07:06:39.373Z"
       }
     },
     {
@@ -287,7 +286,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -305,7 +304,7 @@
         "content_type": "application/json; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 129,
+        "latency_ms": 96,
         "method_tested": "GET",
         "name": "Allways API",
         "netuid": 7,
@@ -329,7 +328,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://all-ways.io/api",
-        "verified_at": "2026-06-06T12:18:10.724Z"
+        "verified_at": "2026-06-07T07:06:39.388Z"
       }
     },
     {
@@ -342,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -360,7 +359,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "docs",
-        "latency_ms": 155,
+        "latency_ms": 182,
         "method_tested": "HEAD",
         "name": "Allways docs",
         "netuid": 7,
@@ -384,7 +383,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://all-ways.io/docs",
-        "verified_at": "2026-06-06T12:18:10.724Z"
+        "verified_at": "2026-06-07T07:06:39.389Z"
       }
     },
     {
@@ -397,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -415,7 +414,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 144,
+        "latency_ms": 176,
         "method_tested": "HEAD",
         "name": "Allways health endpoint",
         "netuid": 7,
@@ -439,7 +438,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://all-ways.io/health",
-        "verified_at": "2026-06-06T12:18:10.778Z"
+        "verified_at": "2026-06-07T07:06:39.391Z"
       }
     },
     {
@@ -452,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -470,7 +469,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 131,
+        "latency_ms": 179,
         "method_tested": "HEAD",
         "name": "Allways OpenAPI JSON",
         "netuid": 7,
@@ -494,7 +493,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://all-ways.io/openapi.json",
-        "verified_at": "2026-06-06T12:18:10.787Z"
+        "verified_at": "2026-06-07T07:06:39.392Z"
       }
     },
     {
@@ -507,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -525,7 +524,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 129,
+        "latency_ms": 151,
         "method_tested": "HEAD",
         "name": "Allways Swagger UI",
         "netuid": 7,
@@ -549,7 +548,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://all-ways.io/swagger",
-        "verified_at": "2026-06-06T12:18:10.830Z"
+        "verified_at": "2026-06-07T07:06:39.426Z"
       }
     },
     {
@@ -562,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -580,7 +579,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 124,
+        "latency_ms": 142,
         "method_tested": "HEAD",
         "name": "Allways Swagger JSON",
         "netuid": 7,
@@ -604,7 +603,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://all-ways.io/swagger.json",
-        "verified_at": "2026-06-06T12:18:10.858Z"
+        "verified_at": "2026-06-07T07:06:39.438Z"
       }
     }
   ],

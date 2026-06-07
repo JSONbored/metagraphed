@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 287,
+      "latency_ms": 268,
       "method_tested": "HEAD",
       "name": "iota dashboard",
       "netuid": 9,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://iota.macrocosmos.ai/dashboard/mainnet",
-      "verified_at": "2026-06-06T12:18:11.075Z"
+      "verified_at": "2026-06-07T07:06:39.918Z"
     },
     {
       "candidate_id": "sn-9-github-readme-macrocosm-os-iota-docs-2",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 136,
+      "latency_ms": 236,
       "method_tested": "GET",
       "name": "iota docs",
       "netuid": 9,
@@ -69,7 +69,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://docs.macrocosmos.ai/subnets/subnet-9-pre-training/subnet-9-iota-mining-setup-guide",
-      "verified_at": "2026-06-06T12:18:11.107Z"
+      "verified_at": "2026-06-07T07:06:39.928Z"
     },
     {
       "candidate_id": "sn-9-github-readme-macrocosm-os-iota-docs-3",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 129,
+      "latency_ms": 135,
       "method_tested": "GET",
       "name": "iota docs",
       "netuid": 9,
@@ -102,7 +102,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://docs.macrocosmos.ai/subnets/subnet-9-pre-training/subnet-9-validating",
-      "verified_at": "2026-06-06T12:18:11.108Z"
+      "verified_at": "2026-06-07T07:06:39.942Z"
     },
     {
       "candidate_id": "sn-9-github-readme-macrocosm-os-iota-docs-4",
@@ -111,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 184,
+      "latency_ms": 152,
       "method_tested": "HEAD",
       "name": "iota docs",
       "netuid": 9,
@@ -135,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.astral.sh/uv",
-      "verified_at": "2026-06-06T12:18:11.128Z"
+      "verified_at": "2026-06-07T07:06:40.005Z"
     },
     {
       "candidate_id": "sn-9-taomarketcap-dashboard",
@@ -144,7 +144,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 137,
+      "latency_ms": 222,
       "method_tested": "HEAD",
       "name": "iota TaoMarketCap dashboard",
       "netuid": 9,
@@ -168,41 +168,41 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/9",
-      "verified_at": "2026-06-06T12:18:11.136Z"
+      "verified_at": "2026-06-07T07:06:40.014Z"
     },
     {
-      "archived": false,
       "candidate_id": "sn-9-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
-      "default_branch": "main",
-      "description": "IOTA: Incentivized Orchestrated Training Architecture",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/macrocosm-os/iota",
-      "homepage": null,
-      "html_url": "https://github.com/macrocosm-os/iota",
       "kind": "source-repo",
-      "last_push_at": "2026-05-20T11:19:59Z",
+      "latency_ms": 569,
+      "method_tested": "HEAD",
       "name": "iota source repository",
       "netuid": 9,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/9",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/9",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/9/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/9"
       ],
       "status": "ok",
-      "topics": [],
+      "status_code": 200,
       "url": "https://github.com/macrocosm-os/iota",
-      "verified_at": "2026-06-06T12:18:11.155Z"
+      "verified_at": "2026-06-07T07:06:40.034Z"
     },
     {
       "candidate_id": "sn-9-taomarketcap-website",
@@ -211,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 249,
+      "latency_ms": 201,
       "method_tested": "HEAD",
       "name": "iota website",
       "netuid": 9,
@@ -235,7 +235,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://iota.macrocosmos.ai/",
-      "verified_at": "2026-06-06T12:18:11.181Z"
+      "verified_at": "2026-06-07T07:06:40.034Z"
     },
     {
       "candidate_id": "sn-9-taopedia-article",
@@ -244,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 398,
+      "latency_ms": 651,
       "method_tested": "HEAD",
       "name": "iota Taopedia article",
       "netuid": 9,
@@ -268,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_9/index.mdx",
-      "verified_at": "2026-06-06T12:18:11.182Z"
+      "verified_at": "2026-06-07T07:06:40.038Z"
     },
     {
       "candidate_id": "sn-9-tensorplex-docs",
@@ -277,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 381,
+      "latency_ms": 493,
       "method_tested": "HEAD",
       "name": "iota Tensorplex subnet docs",
       "netuid": 9,
@@ -301,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/9",
-      "verified_at": "2026-06-06T12:18:11.183Z"
+      "verified_at": "2026-06-07T07:06:40.094Z"
     },
     {
       "candidate_id": "sn-9-website-common-api",
@@ -310,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 115,
+      "latency_ms": 79,
       "method_tested": "GET",
       "name": "iota API",
       "netuid": 9,
@@ -334,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://iota.macrocosmos.ai/api",
-      "verified_at": "2026-06-06T12:18:11.184Z"
+      "verified_at": "2026-06-07T07:06:40.099Z"
     },
     {
       "candidate_id": "sn-9-website-common-docs",
@@ -343,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 270,
+      "latency_ms": 338,
       "method_tested": "HEAD",
       "name": "iota docs",
       "netuid": 9,
@@ -367,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://iota.macrocosmos.ai/docs",
-      "verified_at": "2026-06-06T12:18:11.185Z"
+      "verified_at": "2026-06-07T07:06:40.106Z"
     },
     {
       "candidate_id": "sn-9-website-common-health",
@@ -400,7 +400,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://iota.macrocosmos.ai/health",
-      "verified_at": "2026-06-06T12:18:11.252Z"
+      "verified_at": "2026-06-07T07:06:40.118Z"
     },
     {
       "candidate_id": "sn-9-website-common-openapi-json",
@@ -409,7 +409,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 72,
+      "latency_ms": 101,
       "method_tested": "GET",
       "name": "iota OpenAPI JSON",
       "netuid": 9,
@@ -433,7 +433,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://iota.macrocosmos.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:11.253Z"
+      "verified_at": "2026-06-07T07:06:40.129Z"
     },
     {
       "candidate_id": "sn-9-website-common-swagger",
@@ -442,7 +442,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 157,
+      "latency_ms": 100,
       "method_tested": "GET",
       "name": "iota Swagger UI",
       "netuid": 9,
@@ -466,7 +466,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://iota.macrocosmos.ai/swagger",
-      "verified_at": "2026-06-06T12:18:11.266Z"
+      "verified_at": "2026-06-07T07:06:40.149Z"
     },
     {
       "candidate_id": "sn-9-website-common-swagger-json",
@@ -475,7 +475,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 73,
+      "latency_ms": 72,
       "method_tested": "GET",
       "name": "iota Swagger JSON",
       "netuid": 9,
@@ -499,7 +499,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://iota.macrocosmos.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:11.274Z"
+      "verified_at": "2026-06-07T07:06:40.197Z"
     },
     {
       "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-dashboard-1",
@@ -508,7 +508,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 284,
+      "latency_ms": 273,
       "method_tested": "HEAD",
       "name": "iota dashboard",
       "netuid": 9,
@@ -532,7 +532,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://iota.macrocosmos.ai/dashboard",
-      "verified_at": "2026-06-06T12:18:11.288Z"
+      "verified_at": "2026-06-07T07:06:40.214Z"
     },
     {
       "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-docs-5",
@@ -541,7 +541,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 122,
+      "latency_ms": 118,
       "method_tested": "HEAD",
       "name": "iota docs",
       "netuid": 9,
@@ -565,7 +565,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.macrocosmos.ai/",
-      "verified_at": "2026-06-06T12:18:11.312Z"
+      "verified_at": "2026-06-07T07:06:40.233Z"
     },
     {
       "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-docs-7",
@@ -574,7 +574,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 108,
+      "latency_ms": 104,
       "method_tested": "HEAD",
       "name": "iota docs",
       "netuid": 9,
@@ -598,7 +598,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.macrocosmos.ai/product-and-services/tah/faqs",
-      "verified_at": "2026-06-06T12:18:11.355Z"
+      "verified_at": "2026-06-07T07:06:40.238Z"
     },
     {
       "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-docs-8",
@@ -607,7 +607,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 107,
+      "latency_ms": 126,
       "method_tested": "HEAD",
       "name": "iota docs",
       "netuid": 9,
@@ -631,7 +631,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.macrocosmos.ai/product-and-services/tah",
-      "verified_at": "2026-06-06T12:18:11.355Z"
+      "verified_at": "2026-06-07T07:06:40.240Z"
     },
     {
       "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-website-2",
@@ -640,7 +640,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 141,
+      "latency_ms": 218,
       "method_tested": "HEAD",
       "name": "iota website page",
       "netuid": 9,
@@ -664,7 +664,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://iota.macrocosmos.ai/overview",
-      "verified_at": "2026-06-06T12:18:11.362Z"
+      "verified_at": "2026-06-07T07:06:40.266Z"
     },
     {
       "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-website-3",
@@ -673,7 +673,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 164,
+      "latency_ms": 159,
       "method_tested": "HEAD",
       "name": "iota website page",
       "netuid": 9,
@@ -697,7 +697,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://macrocosmos.ai/about",
-      "verified_at": "2026-06-06T12:18:11.372Z"
+      "verified_at": "2026-06-07T07:06:40.345Z"
     },
     {
       "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-website-4",
@@ -706,7 +706,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 152,
+      "latency_ms": 127,
       "method_tested": "HEAD",
       "name": "iota website page",
       "netuid": 9,
@@ -730,7 +730,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://macrocosmos.ai/",
-      "verified_at": "2026-06-06T12:18:11.430Z"
+      "verified_at": "2026-06-07T07:06:40.349Z"
     },
     {
       "candidate_id": "sn-9-website-link-iota-macrocosmos-ai-website-6",
@@ -739,7 +739,7 @@
       "content_type": "binary/octet-stream",
       "error": null,
       "kind": "website",
-      "latency_ms": 578,
+      "latency_ms": 559,
       "method_tested": "GET",
       "name": "iota website page",
       "netuid": 9,
@@ -753,7 +753,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://ams3.digitaloceanspaces.com/iota-train-at-home-releases/releases/prod/darwin/arm64/IOTA%20Train%20at%20Home-3.3.4-arm64.dmg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=DO801VW62ENXU4TLZHMF%2F20260606%2Fams3%2Fs3%2Faws4_request&X-Amz-Date=20260606T121812Z&X-Amz-Expires=600&X-Amz-Signature=43fe1d747b9ce85c23ef931469e2d6c6499d1357ebc4b9e2f883b239b6085c22&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+      "redirect_target": "https://ams3.digitaloceanspaces.com/iota-train-at-home-releases/releases/prod/darwin/arm64/IOTA%20Train%20at%20Home-3.3.4-arm64.dmg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=DO801VW62ENXU4TLZHMF%2F20260607%2Fams3%2Fs3%2Faws4_request&X-Amz-Date=20260607T070641Z&X-Amz-Expires=600&X-Amz-Signature=f69c6e0501e91d4f4e2cf55842cfb3b87b5880146a180a4c771122b5c0e73d4d&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
       "source_url": "https://iota.macrocosmos.ai/",
@@ -763,7 +763,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://tah.iota.macrocosmos.ai/download/token/release-iota-signup",
-      "verified_at": "2026-06-06T12:18:11.434Z"
+      "verified_at": "2026-06-07T07:06:40.353Z"
     }
   ],
   "schema_version": 1,

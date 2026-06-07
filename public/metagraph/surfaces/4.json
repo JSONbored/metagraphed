@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 396,
+        "latency_ms": 282,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.775Z"
+        "verified_at": "2026-06-07T07:06:37.948Z"
       }
     },
     {
@@ -65,32 +65,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/4",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/4/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/4"
       ],
       "subnet_name": "Targon",
       "subnet_slug": "sn-4",
       "url": "https://github.com/manifold-inc/targon",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/manifold-inc/targon",
-        "homepage": null,
-        "last_push_at": "2026-06-05T20:39:53Z",
+        "latency_ms": 978,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:09.783Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:37.965Z"
       }
     },
     {
@@ -128,11 +126,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 178,
+        "latency_ms": 280,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.792Z"
+        "verified_at": "2026-06-07T07:06:37.965Z"
       }
     },
     {
@@ -142,7 +140,7 @@
       "kind": "docs",
       "name": "Targon Taopedia article",
       "netuid": 4,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -170,11 +168,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 560,
+        "latency_ms": 596,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.792Z"
+        "verified_at": "2026-06-07T07:06:37.965Z"
       }
     },
     {
@@ -184,7 +182,7 @@
       "kind": "docs",
       "name": "Targon Tensorplex subnet docs",
       "netuid": 4,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -212,11 +210,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 469,
+        "latency_ms": 500,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.793Z"
+        "verified_at": "2026-06-07T07:06:37.984Z"
       }
     },
     {
@@ -226,7 +224,7 @@
       "kind": "docs",
       "name": "Targon hardware requirements",
       "netuid": 4,
-      "notes": "Discovered from Tensorplex subnet-docs hardware requirements metadata.",
+      "notes": "Discovered from Tensorplex subnet-docs hardware requirements metadata. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +252,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 739,
+        "latency_ms": 761,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.815Z"
+        "verified_at": "2026-06-07T07:06:38.046Z"
       }
     },
     {
@@ -268,7 +266,7 @@
       "kind": "dashboard",
       "name": "Targon dashboard",
       "netuid": 4,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -296,11 +294,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 157,
+        "latency_ms": 816,
         "method_tested": "HEAD",
         "redirect_target": "https://targon.com/sign-in",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.970Z"
+        "verified_at": "2026-06-07T07:06:38.274Z"
       }
     },
     {
@@ -310,7 +308,7 @@
       "kind": "docs",
       "name": "Targon docs",
       "netuid": 4,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -338,11 +336,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
+        "latency_ms": 155,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:09.982Z"
+        "verified_at": "2026-06-07T07:06:38.295Z"
       }
     }
   ]

@@ -14,7 +14,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:22.150Z"
+    "verified_at": "2026-06-07T07:06:53.796Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/49",
   "docs_url": "https://docs.nepher.ai/",
@@ -60,11 +60,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/nepher-ai/nepher-subnet",
-        "latency_ms": 488,
+        "latency_ms": 832,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:22.122Z"
+        "verified_at": "2026-06-07T07:06:53.733Z"
       }
     },
     {
@@ -73,7 +73,7 @@
       "id": "sn-49-github-readme-nepher-ai-nepher-subnet-docs-1",
       "kind": "docs",
       "name": "Nepher Robotics docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -99,11 +99,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html",
-        "latency_ms": 304,
+        "latency_ms": 282,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:22.046Z"
+        "verified_at": "2026-06-07T07:06:53.671Z"
       }
     },
     {
@@ -112,7 +112,7 @@
       "id": "sn-49-tensorplex-docs",
       "kind": "docs",
       "name": "Nepher Robotics Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -138,11 +138,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 344,
+        "latency_ms": 584,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:22.150Z"
+        "verified_at": "2026-06-07T07:06:53.796Z"
       }
     },
     {
@@ -177,11 +177,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 133,
+        "latency_ms": 179,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:22.100Z"
+        "verified_at": "2026-06-07T07:06:53.728Z"
       }
     }
   ]

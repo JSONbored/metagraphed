@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-06T12:18:16.810Z"
+    "verified_at": "2026-06-07T07:06:47.150Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/26",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/26",
@@ -41,11 +41,12 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -53,17 +54,15 @@
       ],
       "url": "https://github.com/0xsigurd/Perturb",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/0xsigurd/Perturb",
-        "homepage": null,
-        "last_push_at": "2026-05-27T18:44:37Z",
+        "latency_ms": 536,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-06T12:18:16.627Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:46.947Z"
       }
     },
     {
@@ -98,11 +97,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 166,
+        "latency_ms": 168,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.656Z"
+        "verified_at": "2026-06-07T07:06:46.980Z"
       }
     },
     {
@@ -111,7 +110,7 @@
       "id": "sn-26-tensorplex-docs",
       "kind": "docs",
       "name": "Perturb Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,11 +136,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 371,
+        "latency_ms": 395,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.690Z"
+        "verified_at": "2026-06-07T07:06:47.009Z"
       }
     },
     {
@@ -150,7 +149,7 @@
       "id": "sn-26-website-link-www-perturbai-io-docs-2",
       "kind": "docs",
       "name": "Perturb docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -176,11 +175,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 145,
+        "latency_ms": 166,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.810Z"
+        "verified_at": "2026-06-07T07:06:47.150Z"
       }
     },
     {
@@ -215,11 +214,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 182,
+        "latency_ms": 206,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.625Z"
+        "verified_at": "2026-06-07T07:06:46.942Z"
       }
     },
     {
@@ -228,7 +227,7 @@
       "id": "sn-26-github-readme-0xsigurd-perturb-subnet-api-1",
       "kind": "subnet-api",
       "name": "Perturb API surface",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -254,11 +253,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json; charset=utf-8",
-        "latency_ms": 167,
+        "latency_ms": 108,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:16.619Z"
+        "verified_at": "2026-06-07T07:06:46.932Z"
       }
     }
   ],

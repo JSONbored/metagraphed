@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 127,
+        "latency_ms": 134,
         "method_tested": "HEAD",
         "name": "Hippius TaoMarketCap dashboard",
         "netuid": 75,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/75",
-        "verified_at": "2026-06-06T12:18:29.050Z"
+        "verified_at": "2026-06-07T07:07:04.169Z"
       }
     },
     {
@@ -71,8 +71,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/75",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/75",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/75/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/75"
       ],
       "state": "schema-valid",
       "subnet_name": "Hippius",
@@ -85,7 +84,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/thenervelab/thebrain",
         "kind": "source-repo",
-        "latency_ms": 441,
+        "latency_ms": 1074,
         "method_tested": "HEAD",
         "name": "Hippius source repository",
         "netuid": 75,
@@ -104,13 +103,12 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/75",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/75",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/75/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/75"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/thenervelab/thebrain",
-        "verified_at": "2026-06-06T12:18:29.053Z"
+        "verified_at": "2026-06-07T07:07:04.198Z"
       }
     },
     {
@@ -141,7 +139,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 320,
+        "latency_ms": 622,
         "method_tested": "HEAD",
         "name": "Hippius website",
         "netuid": 75,
@@ -165,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://hippius.com/",
-        "verified_at": "2026-06-06T12:18:29.070Z"
+        "verified_at": "2026-06-07T07:07:04.213Z"
       }
     },
     {
@@ -178,7 +176,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -196,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 390,
+        "latency_ms": 830,
         "method_tested": "HEAD",
         "name": "Hippius Tensorplex subnet docs",
         "netuid": 75,
@@ -220,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/75",
-        "verified_at": "2026-06-06T12:18:29.090Z"
+        "verified_at": "2026-06-07T07:07:04.213Z"
       }
     },
     {
@@ -233,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -252,7 +250,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/thenervelab/hippius-validator",
         "kind": "source-repo",
-        "latency_ms": 487,
+        "latency_ms": 887,
         "method_tested": "HEAD",
         "name": "Hippius source repository",
         "netuid": 75,
@@ -276,7 +274,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/thenervelab/hippius-validator",
-        "verified_at": "2026-06-06T12:18:29.094Z"
+        "verified_at": "2026-06-07T07:07:04.213Z"
       }
     },
     {
@@ -289,7 +287,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs-github",
@@ -308,7 +306,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/thenervelab/hippius-storage-miner",
         "kind": "source-repo",
-        "latency_ms": 557,
+        "latency_ms": 1100,
         "method_tested": "HEAD",
         "name": "Hippius source repository",
         "netuid": 75,
@@ -332,7 +330,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/thenervelab/hippius-storage-miner",
-        "verified_at": "2026-06-06T12:18:29.102Z"
+        "verified_at": "2026-06-07T07:07:04.217Z"
       }
     },
     {
@@ -345,7 +343,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -363,7 +361,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 448,
+        "latency_ms": 190,
         "method_tested": "GET",
         "name": "Hippius API",
         "netuid": 75,
@@ -387,7 +385,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://hippius.com/api",
-        "verified_at": "2026-06-06T12:18:29.106Z"
+        "verified_at": "2026-06-07T07:07:04.221Z"
       }
     },
     {
@@ -400,7 +398,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -418,7 +416,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 534,
+        "latency_ms": 195,
         "method_tested": "GET",
         "name": "Hippius docs",
         "netuid": 75,
@@ -442,7 +440,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://hippius.com/docs",
-        "verified_at": "2026-06-06T12:18:29.106Z"
+        "verified_at": "2026-06-07T07:07:04.233Z"
       }
     },
     {
@@ -455,7 +453,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -473,7 +471,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 424,
+        "latency_ms": 193,
         "method_tested": "GET",
         "name": "Hippius health endpoint",
         "netuid": 75,
@@ -497,7 +495,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://hippius.com/health",
-        "verified_at": "2026-06-06T12:18:29.111Z"
+        "verified_at": "2026-06-07T07:07:04.265Z"
       }
     },
     {
@@ -510,7 +508,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -528,7 +526,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 594,
+        "latency_ms": 204,
         "method_tested": "GET",
         "name": "Hippius OpenAPI JSON",
         "netuid": 75,
@@ -552,7 +550,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://hippius.com/openapi.json",
-        "verified_at": "2026-06-06T12:18:29.115Z"
+        "verified_at": "2026-06-07T07:07:04.305Z"
       }
     },
     {
@@ -565,7 +563,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -583,7 +581,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 465,
+        "latency_ms": 188,
         "method_tested": "GET",
         "name": "Hippius Swagger UI",
         "netuid": 75,
@@ -607,7 +605,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://hippius.com/swagger",
-        "verified_at": "2026-06-06T12:18:29.126Z"
+        "verified_at": "2026-06-07T07:07:04.424Z"
       }
     },
     {
@@ -620,7 +618,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -638,7 +636,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 642,
+        "latency_ms": 199,
         "method_tested": "GET",
         "name": "Hippius Swagger JSON",
         "netuid": 75,
@@ -662,7 +660,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://hippius.com/swagger.json",
-        "verified_at": "2026-06-06T12:18:29.154Z"
+        "verified_at": "2026-06-07T07:07:04.651Z"
       }
     },
     {
@@ -675,7 +673,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -693,7 +691,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 573,
+        "latency_ms": 538,
         "method_tested": "HEAD",
         "name": "Hippius docs",
         "netuid": 75,
@@ -717,7 +715,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.hippius.com/",
-        "verified_at": "2026-06-06T12:18:29.177Z"
+        "verified_at": "2026-06-07T07:07:04.667Z"
       }
     },
     {
@@ -730,7 +728,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -748,7 +746,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 515,
+        "latency_ms": 514,
         "method_tested": "HEAD",
         "name": "Hippius API surface",
         "netuid": 75,
@@ -772,7 +770,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.hippius.com/blockchain/api",
-        "verified_at": "2026-06-06T12:18:29.267Z"
+        "verified_at": "2026-06-07T07:07:04.737Z"
       }
     },
     {
@@ -785,7 +783,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -803,7 +801,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 197,
+        "latency_ms": 201,
         "method_tested": "HEAD",
         "name": "Hippius website page",
         "netuid": 75,
@@ -827,7 +825,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://hippius.com/why-hippius",
-        "verified_at": "2026-06-06T12:18:29.390Z"
+        "verified_at": "2026-06-07T07:07:04.874Z"
       }
     },
     {
@@ -840,7 +838,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -858,7 +856,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 459,
+        "latency_ms": 190,
         "method_tested": "HEAD",
         "name": "Hippius website page",
         "netuid": 75,
@@ -882,7 +880,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://hippius.com/product",
-        "verified_at": "2026-06-06T12:18:29.479Z"
+        "verified_at": "2026-06-07T07:07:05.021Z"
       }
     },
     {
@@ -895,7 +893,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -913,7 +911,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 498,
+        "latency_ms": 190,
         "method_tested": "HEAD",
         "name": "Hippius website page",
         "netuid": 75,
@@ -937,7 +935,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://hippius.com/pricing",
-        "verified_at": "2026-06-06T12:18:29.543Z"
+        "verified_at": "2026-06-07T07:07:05.029Z"
       }
     },
     {
@@ -950,7 +948,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -968,7 +966,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 506,
+        "latency_ms": 244,
         "method_tested": "HEAD",
         "name": "Hippius website page",
         "netuid": 75,
@@ -992,7 +990,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://hippius.com/alphanomics",
-        "verified_at": "2026-06-06T12:18:29.548Z"
+        "verified_at": "2026-06-07T07:07:05.046Z"
       }
     },
     {
@@ -1005,7 +1003,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1023,7 +1021,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 535,
+        "latency_ms": 206,
         "method_tested": "HEAD",
         "name": "Hippius website page",
         "netuid": 75,
@@ -1047,7 +1045,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://hippius.com/blog",
-        "verified_at": "2026-06-06T12:18:29.567Z"
+        "verified_at": "2026-06-07T07:07:05.061Z"
       }
     },
     {
@@ -1060,7 +1058,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1078,7 +1076,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 763,
+        "latency_ms": 815,
         "method_tested": "HEAD",
         "name": "Hippius website page",
         "netuid": 75,
@@ -1102,7 +1100,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://console.hippius.com/",
-        "verified_at": "2026-06-06T12:18:29.587Z"
+        "verified_at": "2026-06-07T07:07:05.078Z"
       }
     },
     {
@@ -1115,7 +1113,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1133,7 +1131,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 335,
+        "latency_ms": 193,
         "method_tested": "HEAD",
         "name": "Hippius website page",
         "netuid": 75,
@@ -1157,7 +1155,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://hippius.com/desktop-app",
-        "verified_at": "2026-06-06T12:18:29.663Z"
+        "verified_at": "2026-06-07T07:07:05.086Z"
       }
     },
     {
@@ -1170,7 +1168,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1188,7 +1186,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 413,
+        "latency_ms": 184,
         "method_tested": "HEAD",
         "name": "Hippius website page",
         "netuid": 75,
@@ -1212,7 +1210,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://hippius.com/hermes",
-        "verified_at": "2026-06-06T12:18:29.735Z"
+        "verified_at": "2026-06-07T07:07:05.131Z"
       }
     }
   ],

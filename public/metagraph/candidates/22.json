@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 127,
+        "latency_ms": 138,
         "method_tested": "HEAD",
         "name": "Desearch TaoMarketCap dashboard",
         "netuid": 22,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/22",
-        "verified_at": "2026-06-06T12:18:15.569Z"
+        "verified_at": "2026-06-07T07:06:45.368Z"
       }
     },
     {
@@ -71,45 +71,44 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/22",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/22",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/22"
       ],
       "state": "schema-valid",
       "subnet_name": "Desearch",
       "url": "https://github.com/datura-ai/desearch",
       "verification": {
-        "archived": false,
         "candidate_id": "sn-22-taomarketcap-source-repo",
-        "classification": "live",
-        "confidence_score": 80,
-        "default_branch": "main",
-        "description": "Subnet 22",
+        "classification": "redirected",
+        "confidence_score": 54,
+        "error": null,
+        "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/datura-ai/desearch",
-        "homepage": "https://desearch.ai/",
-        "html_url": "https://github.com/Desearch-ai/subnet-22",
         "kind": "source-repo",
-        "last_push_at": "2026-05-29T13:00:54Z",
+        "latency_ms": 861,
+        "method_tested": "HEAD",
         "name": "Desearch source repository",
         "netuid": 22,
+        "private_redirect_blocked": false,
         "provider": "taomarketcap",
         "quality_signals": {
-          "archived": false,
-          "has_default_branch": true,
-          "has_recent_push_metadata": true,
+          "content_type_matches_kind": true,
           "public_safe": true,
-          "source_tier": "third-party-index"
+          "rate_limited": false,
+          "redirected": true,
+          "source_tier": "third-party-index",
+          "transient_failure": false
         },
+        "redirect_target": "https://github.com/Desearch-ai/subnet-22",
         "source_tier": "third-party-index",
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/22",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/22",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/22"
         ],
         "status": "ok",
-        "topics": [],
+        "status_code": 200,
         "url": "https://github.com/datura-ai/desearch",
-        "verified_at": "2026-06-06T12:18:15.611Z"
+        "verified_at": "2026-06-07T07:06:45.371Z"
       }
     },
     {
@@ -140,7 +139,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 295,
+        "latency_ms": 369,
         "method_tested": "HEAD",
         "name": "Desearch website",
         "netuid": 22,
@@ -164,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://desearch.ai/",
-        "verified_at": "2026-06-06T12:18:15.669Z"
+        "verified_at": "2026-06-07T07:06:45.439Z"
       }
     },
     {
@@ -177,7 +176,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -195,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 390,
+        "latency_ms": 402,
         "method_tested": "HEAD",
         "name": "Desearch Tensorplex subnet docs",
         "netuid": 22,
@@ -219,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/22",
-        "verified_at": "2026-06-06T12:18:15.672Z"
+        "verified_at": "2026-06-07T07:06:45.448Z"
       }
     },
     {
@@ -232,7 +231,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -250,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 329,
+        "latency_ms": 362,
         "method_tested": "HEAD",
         "name": "Desearch API",
         "netuid": 22,
@@ -274,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://desearch.ai/api",
-        "verified_at": "2026-06-06T12:18:15.697Z"
+        "verified_at": "2026-06-07T07:06:45.520Z"
       }
     },
     {
@@ -287,7 +286,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -305,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 306,
+        "latency_ms": 351,
         "method_tested": "HEAD",
         "name": "Desearch docs",
         "netuid": 22,
@@ -329,7 +328,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://desearch.ai/docs",
-        "verified_at": "2026-06-06T12:18:15.714Z"
+        "verified_at": "2026-06-07T07:06:45.531Z"
       }
     },
     {
@@ -342,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -360,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 306,
+        "latency_ms": 252,
         "method_tested": "HEAD",
         "name": "Desearch health endpoint",
         "netuid": 22,
@@ -384,7 +383,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://desearch.ai/health",
-        "verified_at": "2026-06-06T12:18:15.722Z"
+        "verified_at": "2026-06-07T07:06:45.723Z"
       }
     },
     {
@@ -397,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -415,7 +414,7 @@
         "content_type": "application/json; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 320,
+        "latency_ms": 227,
         "method_tested": "HEAD",
         "name": "Desearch OpenAPI JSON",
         "netuid": 22,
@@ -439,7 +438,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://desearch.ai/openapi.json",
-        "verified_at": "2026-06-06T12:18:15.742Z"
+        "verified_at": "2026-06-07T07:06:45.751Z"
       }
     },
     {
@@ -452,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -470,7 +469,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 308,
+        "latency_ms": 223,
         "method_tested": "HEAD",
         "name": "Desearch Swagger UI",
         "netuid": 22,
@@ -494,7 +493,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://desearch.ai/swagger",
-        "verified_at": "2026-06-06T12:18:15.743Z"
+        "verified_at": "2026-06-07T07:06:45.755Z"
       }
     },
     {
@@ -507,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -525,7 +524,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 304,
+        "latency_ms": 219,
         "method_tested": "HEAD",
         "name": "Desearch Swagger JSON",
         "netuid": 22,
@@ -549,7 +548,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://desearch.ai/swagger.json",
-        "verified_at": "2026-06-06T12:18:15.754Z"
+        "verified_at": "2026-06-07T07:06:45.758Z"
       }
     }
   ],

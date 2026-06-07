@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:41.649Z"
+    "verified_at": "2026-06-07T07:07:22.091Z"
   },
   "dashboard_url": "https://taostats.io/subnets/112/chart",
   "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/112",
@@ -51,8 +51,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/112",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/112/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/112"
       ],
       "url": "https://github.com/subnet112/minotaur_subnet",
       "verification": {
@@ -60,11 +59,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/subnet112/minotaur_subnet",
-        "latency_ms": 441,
+        "latency_ms": 572,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:41.631Z"
+        "verified_at": "2026-06-07T07:07:22.026Z"
       }
     },
     {
@@ -99,11 +98,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 155,
+        "latency_ms": 137,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:41.648Z"
+        "verified_at": "2026-06-07T07:07:22.060Z"
       }
     },
     {
@@ -112,7 +111,7 @@
       "id": "sn-112-tensorplex-docs",
       "kind": "docs",
       "name": "minotaur Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -138,11 +137,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 336,
+        "latency_ms": 368,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:41.649Z"
+        "verified_at": "2026-06-07T07:07:22.091Z"
       }
     },
     {
@@ -151,7 +150,7 @@
       "id": "sn-112-github-readme-subnet112-minotaur-subnet-dashboard-2",
       "kind": "dashboard",
       "name": "minotaur dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -177,11 +176,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 216,
+        "latency_ms": 225,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:41.590Z"
+        "verified_at": "2026-06-07T07:07:22.001Z"
       }
     },
     {
@@ -216,11 +215,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 156,
+        "latency_ms": 176,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:41.621Z"
+        "verified_at": "2026-06-07T07:07:22.002Z"
       }
     }
   ],

@@ -36,17 +36,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/83",
-      "verified_at": "2026-06-06T12:18:32.088Z"
+      "verified_at": "2026-06-07T07:07:10.187Z"
     },
     {
       "candidate_id": "sn-83-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/toptensor/CliqueAI",
       "kind": "source-repo",
-      "latency_ms": 397,
+      "latency_ms": 565,
       "method_tested": "HEAD",
       "name": "CliqueAI source repository",
       "netuid": 83,
@@ -65,13 +65,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/83",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/83",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/83/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/83"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/toptensor/CliqueAI",
-      "verified_at": "2026-06-06T12:18:32.140Z"
+      "verified_at": "2026-06-07T07:07:10.187Z"
     },
     {
       "candidate_id": "sn-83-taomarketcap-website",
@@ -80,7 +79,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 464,
+      "latency_ms": 458,
       "method_tested": "HEAD",
       "name": "CliqueAI website",
       "netuid": 83,
@@ -104,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://cliqueai.toptensor.ai/",
-      "verified_at": "2026-06-06T12:18:32.140Z"
+      "verified_at": "2026-06-07T07:07:10.253Z"
     },
     {
       "candidate_id": "sn-83-tensorplex-docs",
@@ -113,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 367,
+      "latency_ms": 587,
       "method_tested": "HEAD",
       "name": "CliqueAI Tensorplex subnet docs",
       "netuid": 83,
@@ -137,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/83",
-      "verified_at": "2026-06-06T12:18:32.141Z"
+      "verified_at": "2026-06-07T07:07:10.253Z"
     },
     {
       "candidate_id": "sn-83-website-common-api",
@@ -146,7 +145,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 460,
+      "latency_ms": 480,
       "method_tested": "HEAD",
       "name": "CliqueAI API",
       "netuid": 83,
@@ -170,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://cliqueai.toptensor.ai/api",
-      "verified_at": "2026-06-06T12:18:32.144Z"
+      "verified_at": "2026-06-07T07:07:10.283Z"
     },
     {
       "candidate_id": "sn-83-website-common-docs",
@@ -179,7 +178,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "docs",
-      "latency_ms": 455,
+      "latency_ms": 492,
       "method_tested": "HEAD",
       "name": "CliqueAI docs",
       "netuid": 83,
@@ -203,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://cliqueai.toptensor.ai/docs",
-      "verified_at": "2026-06-06T12:18:32.144Z"
+      "verified_at": "2026-06-07T07:07:10.301Z"
     },
     {
       "candidate_id": "sn-83-website-common-health",
@@ -212,7 +211,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 457,
+      "latency_ms": 496,
       "method_tested": "HEAD",
       "name": "CliqueAI health endpoint",
       "netuid": 83,
@@ -236,7 +235,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://cliqueai.toptensor.ai/health",
-      "verified_at": "2026-06-06T12:18:32.147Z"
+      "verified_at": "2026-06-07T07:07:10.329Z"
     },
     {
       "candidate_id": "sn-83-website-common-openapi-json",
@@ -245,7 +244,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 442,
+      "latency_ms": 484,
       "method_tested": "HEAD",
       "name": "CliqueAI OpenAPI JSON",
       "netuid": 83,
@@ -269,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://cliqueai.toptensor.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:32.226Z"
+      "verified_at": "2026-06-07T07:07:10.345Z"
     },
     {
       "candidate_id": "sn-83-website-common-swagger",
@@ -278,7 +277,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 454,
+      "latency_ms": 467,
       "method_tested": "HEAD",
       "name": "CliqueAI Swagger UI",
       "netuid": 83,
@@ -302,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://cliqueai.toptensor.ai/swagger",
-      "verified_at": "2026-06-06T12:18:32.242Z"
+      "verified_at": "2026-06-07T07:07:10.381Z"
     },
     {
       "candidate_id": "sn-83-website-common-swagger-json",
@@ -311,7 +310,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 473,
+      "latency_ms": 498,
       "method_tested": "HEAD",
       "name": "CliqueAI Swagger JSON",
       "netuid": 83,
@@ -335,7 +334,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://cliqueai.toptensor.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:32.258Z"
+      "verified_at": "2026-06-07T07:07:10.559Z"
     }
   ],
   "schema_version": 1,

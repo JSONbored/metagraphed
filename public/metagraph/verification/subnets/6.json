@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 231,
+      "latency_ms": 947,
       "method_tested": "HEAD",
       "name": "Numinous dashboard",
       "netuid": 6,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://app.hex.tech/1644b22a-abe5-4113-9d5f-3ad05e4a8de7/app/Numinous-031erYRYSssIrH3W3KcyHg/latest",
-      "verified_at": "2026-06-06T12:18:10.382Z"
+      "verified_at": "2026-06-07T07:06:38.862Z"
     },
     {
       "candidate_id": "sn-6-github-readme-numinouslabs-numinous-dashboard-2",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 316,
+      "latency_ms": 333,
       "method_tested": "HEAD",
       "name": "Numinous dashboard",
       "netuid": 6,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taostats.io/subnets/6/chart",
-      "verified_at": "2026-06-06T12:18:10.386Z"
+      "verified_at": "2026-06-07T07:06:38.862Z"
     },
     {
       "candidate_id": "sn-6-taomarketcap-dashboard",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 135,
+      "latency_ms": 123,
       "method_tested": "HEAD",
       "name": "Numinous TaoMarketCap dashboard",
       "netuid": 6,
@@ -102,41 +102,41 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/6",
-      "verified_at": "2026-06-06T12:18:10.399Z"
+      "verified_at": "2026-06-07T07:06:38.878Z"
     },
     {
-      "archived": false,
       "candidate_id": "sn-6-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
-      "default_branch": "main",
-      "description": "Open source forecasting agent competition.",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/numinouslabs/numinous",
-      "homepage": null,
-      "html_url": "https://github.com/numinouslabs/numinous",
       "kind": "source-repo",
-      "last_push_at": "2026-06-05T09:27:27Z",
+      "latency_ms": 578,
+      "method_tested": "HEAD",
       "name": "Numinous source repository",
       "netuid": 6,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/6",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/6",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/6"
       ],
       "status": "ok",
-      "topics": [],
+      "status_code": 200,
       "url": "https://github.com/numinouslabs/numinous",
-      "verified_at": "2026-06-06T12:18:10.475Z"
+      "verified_at": "2026-06-07T07:06:38.892Z"
     },
     {
       "candidate_id": "sn-6-taomarketcap-website",
@@ -145,7 +145,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 163,
+      "latency_ms": 119,
       "method_tested": "HEAD",
       "name": "Numinous website",
       "netuid": 6,
@@ -169,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://numinouslabs.io/",
-      "verified_at": "2026-06-06T12:18:10.492Z"
+      "verified_at": "2026-06-07T07:06:38.910Z"
     },
     {
       "candidate_id": "sn-6-taopedia-article",
@@ -178,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 384,
+      "latency_ms": 445,
       "method_tested": "HEAD",
       "name": "Numinous Taopedia article",
       "netuid": 6,
@@ -202,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
-      "verified_at": "2026-06-06T12:18:10.508Z"
+      "verified_at": "2026-06-07T07:06:38.926Z"
     },
     {
       "candidate_id": "sn-6-tensorplex-docs",
@@ -211,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 280,
+      "latency_ms": 470,
       "method_tested": "HEAD",
       "name": "Numinous Tensorplex subnet docs",
       "netuid": 6,
@@ -235,7 +235,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/6",
-      "verified_at": "2026-06-06T12:18:10.508Z"
+      "verified_at": "2026-06-07T07:06:38.964Z"
     },
     {
       "candidate_id": "sn-6-website-common-api",
@@ -244,7 +244,7 @@
       "content_type": "application/xml",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 94,
+      "latency_ms": 88,
       "method_tested": "GET",
       "name": "Numinous API",
       "netuid": 6,
@@ -268,7 +268,7 @@
       "status": "failed",
       "status_code": 403,
       "url": "https://numinouslabs.io/api",
-      "verified_at": "2026-06-06T12:18:10.508Z"
+      "verified_at": "2026-06-07T07:06:38.974Z"
     },
     {
       "candidate_id": "sn-6-website-common-docs",
@@ -277,7 +277,7 @@
       "content_type": "application/xml",
       "error": null,
       "kind": "docs",
-      "latency_ms": 93,
+      "latency_ms": 82,
       "method_tested": "GET",
       "name": "Numinous docs",
       "netuid": 6,
@@ -301,7 +301,7 @@
       "status": "failed",
       "status_code": 403,
       "url": "https://numinouslabs.io/docs",
-      "verified_at": "2026-06-06T12:18:10.509Z"
+      "verified_at": "2026-06-07T07:06:38.990Z"
     },
     {
       "candidate_id": "sn-6-website-common-health",
@@ -310,7 +310,7 @@
       "content_type": "application/xml",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 92,
+      "latency_ms": 97,
       "method_tested": "GET",
       "name": "Numinous health endpoint",
       "netuid": 6,
@@ -334,7 +334,7 @@
       "status": "failed",
       "status_code": 403,
       "url": "https://numinouslabs.io/health",
-      "verified_at": "2026-06-06T12:18:10.522Z"
+      "verified_at": "2026-06-07T07:06:39.004Z"
     },
     {
       "candidate_id": "sn-6-website-common-openapi-json",
@@ -343,7 +343,7 @@
       "content_type": "application/xml",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 92,
+      "latency_ms": 88,
       "method_tested": "GET",
       "name": "Numinous OpenAPI JSON",
       "netuid": 6,
@@ -367,7 +367,7 @@
       "status": "failed",
       "status_code": 403,
       "url": "https://numinouslabs.io/openapi.json",
-      "verified_at": "2026-06-06T12:18:10.534Z"
+      "verified_at": "2026-06-07T07:06:39.023Z"
     },
     {
       "candidate_id": "sn-6-website-common-swagger",
@@ -376,7 +376,7 @@
       "content_type": "application/xml",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 192,
+      "latency_ms": 85,
       "method_tested": "GET",
       "name": "Numinous Swagger UI",
       "netuid": 6,
@@ -400,7 +400,7 @@
       "status": "failed",
       "status_code": 403,
       "url": "https://numinouslabs.io/swagger",
-      "verified_at": "2026-06-06T12:18:10.534Z"
+      "verified_at": "2026-06-07T07:06:39.061Z"
     },
     {
       "candidate_id": "sn-6-website-common-swagger-json",
@@ -409,7 +409,7 @@
       "content_type": "application/xml",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 89,
+      "latency_ms": 80,
       "method_tested": "GET",
       "name": "Numinous Swagger JSON",
       "netuid": 6,
@@ -433,7 +433,7 @@
       "status": "failed",
       "status_code": 403,
       "url": "https://numinouslabs.io/swagger.json",
-      "verified_at": "2026-06-06T12:18:10.550Z"
+      "verified_at": "2026-06-07T07:06:39.101Z"
     },
     {
       "candidate_id": "sn-6-website-link-numinouslabs-io-dashboard-3",
@@ -442,7 +442,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 162,
+      "latency_ms": 89,
       "method_tested": "HEAD",
       "name": "Numinous dashboard",
       "netuid": 6,
@@ -466,7 +466,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leaderboard.numinouslabs.io/",
-      "verified_at": "2026-06-06T12:18:10.553Z"
+      "verified_at": "2026-06-07T07:06:39.186Z"
     },
     {
       "candidate_id": "sn-6-website-link-numinouslabs-io-subnet-api-2",
@@ -475,7 +475,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 295,
+      "latency_ms": 329,
       "method_tested": "HEAD",
       "name": "Numinous API surface",
       "netuid": 6,
@@ -499,7 +499,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://api.numinouslabs.io/api/docs",
-      "verified_at": "2026-06-06T12:18:10.563Z"
+      "verified_at": "2026-06-07T07:06:39.189Z"
     },
     {
       "candidate_id": "sn-6-website-link-numinouslabs-io-website-1",
@@ -532,7 +532,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://numinouslabs.io/cdn-cgi/l/email-protection",
-      "verified_at": "2026-06-06T12:18:10.571Z"
+      "verified_at": "2026-06-07T07:06:39.197Z"
     },
     {
       "candidate_id": "sn-6-website-link-numinouslabs-io-website-4",
@@ -541,7 +541,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 137,
+      "latency_ms": 129,
       "method_tested": "HEAD",
       "name": "Numinous website page",
       "netuid": 6,
@@ -565,7 +565,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://eversight.numinouslabs.io/",
-      "verified_at": "2026-06-06T12:18:10.588Z"
+      "verified_at": "2026-06-07T07:06:39.322Z"
     }
   ],
   "schema_version": 1,

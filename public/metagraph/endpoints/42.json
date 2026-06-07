@@ -6,12 +6,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-42-tensorplex-docs",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:09.810Z",
-      "latency_ms": 643,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -33,11 +33,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 64,
+      "score": 0,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/42/subnet.json"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Subnet 42",
       "subnet_slug": "sn-42",
       "surface_id": "sn-42-tensorplex-docs",
@@ -48,12 +48,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-42-taomarketcap-dashboard",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:09.322Z",
-      "latency_ms": 156,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -75,11 +75,11 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 68,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/42"
       ],
-      "status": "ok",
+      "status": "unknown",
       "subnet_name": "Subnet 42",
       "subnet_slug": "sn-42",
       "surface_id": "sn-42-taomarketcap-dashboard",
@@ -104,7 +104,7 @@
       "monitored": 2
     },
     "by_status": {
-      "ok": 2
+      "unknown": 2
     },
     "endpoint_count": 2,
     "monitored_count": 2,

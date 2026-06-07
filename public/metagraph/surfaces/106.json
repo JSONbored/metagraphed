@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 146,
+        "latency_ms": 462,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.327Z"
+        "verified_at": "2026-06-07T07:07:19.620Z"
       }
     },
     {
@@ -84,11 +84,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/v0idai/SN106",
-        "latency_ms": 362,
+        "latency_ms": 802,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.328Z"
+        "verified_at": "2026-06-07T07:07:19.636Z"
       }
     },
     {
@@ -126,11 +126,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 603,
+        "latency_ms": 615,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.343Z"
+        "verified_at": "2026-06-07T07:07:19.665Z"
       }
     },
     {
@@ -140,7 +140,7 @@
       "kind": "docs",
       "name": "VoidAI Tensorplex subnet docs",
       "netuid": 106,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -168,11 +168,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 346,
+        "latency_ms": 399,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.374Z"
+        "verified_at": "2026-06-07T07:07:19.832Z"
       }
     },
     {
@@ -182,7 +182,7 @@
       "kind": "docs",
       "name": "VoidAI docs",
       "netuid": 106,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -210,11 +210,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 567,
+        "latency_ms": 615,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.474Z"
+        "verified_at": "2026-06-07T07:07:19.884Z"
       }
     }
   ]

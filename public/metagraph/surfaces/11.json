@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 138,
+        "latency_ms": 137,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:11.572Z"
+        "verified_at": "2026-06-07T07:06:40.508Z"
       }
     },
     {
@@ -65,41 +65,30 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/11",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/11/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/11"
       ],
       "subnet_name": "TrajectoryRL",
       "subnet_slug": "sn-11",
       "url": "https://github.com/trajectoryRL/trajectoryRL",
       "verification": {
-        "archived": false,
         "classification": "live",
-        "confidence_score": 80,
+        "confidence_score": 59,
         "content_type": null,
-        "default_branch": "main",
         "github_api_url": "https://api.github.com/repos/trajectoryRL/trajectoryRL",
-        "homepage": "https://trajrl.com/",
-        "last_push_at": "2026-06-02T19:13:19Z",
+        "latency_ms": 762,
+        "method_tested": "HEAD",
         "redirect_target": null,
-        "topics": [
-          "agent-skills",
-          "ai-agents",
-          "bittensor",
-          "decentralized-ai",
-          "policy-optimization",
-          "reinforcement-learning",
-          "skill-factory",
-          "subnet"
-        ],
-        "verified_at": "2026-06-06T12:18:11.580Z"
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:06:40.508Z"
       }
     },
     {
@@ -137,11 +126,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 339,
+        "latency_ms": 337,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:11.582Z"
+        "verified_at": "2026-06-07T07:06:40.589Z"
       }
     },
     {
@@ -151,7 +140,7 @@
       "kind": "docs",
       "name": "TrajectoryRL Tensorplex subnet docs",
       "netuid": 11,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -179,11 +168,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 335,
+        "latency_ms": 518,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:11.582Z"
+        "verified_at": "2026-06-07T07:06:40.649Z"
       }
     },
     {
@@ -193,7 +182,7 @@
       "kind": "docs",
       "name": "TrajectoryRL docs",
       "netuid": 11,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -221,11 +210,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 326,
+        "latency_ms": 369,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:11.698Z"
+        "verified_at": "2026-06-07T07:06:40.667Z"
       }
     },
     {
@@ -235,7 +224,7 @@
       "kind": "dashboard",
       "name": "TrajectoryRL dashboard",
       "netuid": 11,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -263,11 +252,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 443,
+        "latency_ms": 335,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:11.742Z"
+        "verified_at": "2026-06-07T07:06:40.723Z"
       }
     }
   ]

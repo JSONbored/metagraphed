@@ -5,7 +5,7 @@
       "confidence": "medium",
       "id": "sn-95-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "nion TaoMarketCap dashboard",
+      "name": "Actual TaoMarketCap dashboard",
       "netuid": 95,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -24,6 +24,48 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-95-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "Actual source repository",
+      "netuid": 95,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/95",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/95"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/actual-computer/actual-subnet-95"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-95-taomarketcap-website",
+      "kind": "website",
+      "name": "Actual website",
+      "netuid": 95,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/95",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/95"
+      ],
+      "state": "schema-valid",
+      "url": "https://actual.inc/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-95-tensorplex-docs",
       "kind": "docs",
       "name": "nion Tensorplex subnet docs",
@@ -31,7 +73,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -49,7 +91,7 @@
       "confidence": "medium",
       "id": "sn-95-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "nion TaoMarketCap dashboard",
+      "name": "Actual TaoMarketCap dashboard",
       "netuid": 95,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -68,6 +110,48 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-95-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "Actual source repository",
+      "netuid": 95,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/95",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/95"
+      ],
+      "state": "schema-valid",
+      "url": "https://github.com/actual-computer/actual-subnet-95"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-95-taomarketcap-website",
+      "kind": "website",
+      "name": "Actual website",
+      "netuid": 95,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taomarketcap-subnet-identity-v3",
+      "source_url": "https://api.taomarketcap.com/public/v1/subnets/95",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/95"
+      ],
+      "state": "schema-valid",
+      "url": "https://actual.inc/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-95-tensorplex-docs",
       "kind": "docs",
       "name": "nion Tensorplex subnet docs",
@@ -75,7 +159,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -93,12 +177,12 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-95-tensorplex-docs",
       "kind": "docs",
-      "last_checked": "2026-06-07T05:10:16.943Z",
-      "latency_ms": 690,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "docs-provider",
       "method_support": null,
@@ -120,12 +204,12 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 63,
+      "score": 0,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/95/subnet.json"
       ],
-      "status": "ok",
-      "subnet_name": "nion",
+      "status": "unknown",
+      "subnet_name": "Actual",
       "subnet_slug": "sn-95",
       "surface_id": "sn-95-tensorplex-docs",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/95"
@@ -135,12 +219,54 @@
       "auth_required": false,
       "authority": "registry-observed",
       "chain": "bittensor",
-      "classification": "live",
+      "classification": "unknown",
+      "error": null,
+      "id": "endpoint-sn-95-taomarketcap-website",
+      "kind": "website",
+      "last_checked": null,
+      "latency_ms": null,
+      "latest_block": null,
+      "layer": "docs-provider",
+      "method_support": null,
+      "method_tested": "HEAD",
+      "monitoring_policy": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "source": "surface-probe-config",
+        "timeout_ms": 10000
+      },
+      "monitoring_status": "monitored",
+      "netuid": 95,
+      "network": "finney",
+      "operator": "taomarketcap",
+      "pool_eligible": false,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "publication_state": "monitored",
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "rpc_method_count": null,
+      "score": 0,
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/95"
+      ],
+      "status": "unknown",
+      "subnet_name": "Actual",
+      "subnet_slug": "sn-95",
+      "surface_id": "sn-95-taomarketcap-website",
+      "url": "https://actual.inc/"
+    },
+    {
+      "archive_support": null,
+      "auth_required": false,
+      "authority": "registry-observed",
+      "chain": "bittensor",
+      "classification": "unknown",
       "error": null,
       "id": "endpoint-sn-95-taomarketcap-dashboard",
       "kind": "dashboard",
-      "last_checked": "2026-06-07T05:10:16.364Z",
-      "latency_ms": 148,
+      "last_checked": null,
+      "latency_ms": null,
       "latest_block": null,
       "layer": "subnet-app",
       "method_support": null,
@@ -162,12 +288,12 @@
       "publication_state": "monitored",
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
-      "score": 69,
+      "score": 0,
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/95"
       ],
-      "status": "ok",
-      "subnet_name": "nion",
+      "status": "unknown",
+      "subnet_name": "Actual",
       "subnet_slug": "sn-95",
       "surface_id": "sn-95-taomarketcap-dashboard",
       "url": "https://taomarketcap.com/subnets/95"
@@ -176,7 +302,6 @@
   "gaps": {
     "gap_notes": [
       "No verified source repository yet.",
-      "No verified project website yet.",
       "No verified OpenAPI/Swagger surface yet.",
       "No verified subnet API surface yet.",
       "No verified SSE/event stream yet.",
@@ -184,7 +309,6 @@
     ],
     "missing_kinds": [
       "source-repo",
-      "website",
       "openapi",
       "subnet-api",
       "sse",
@@ -192,14 +316,15 @@
     ],
     "supported_kinds": [
       "dashboard",
-      "docs"
+      "docs",
+      "website"
     ]
   },
   "generated_at": "1970-01-01T00:00:00.000Z",
   "schema_version": 1,
   "subnet": {
-    "block": 8347420,
-    "candidate_count": 2,
+    "block": 8353128,
+    "candidate_count": 4,
     "categories": [
       "baseline-curated"
     ],
@@ -207,7 +332,6 @@
     "curation": {
       "gap_notes": [
         "No verified source repository yet.",
-        "No verified project website yet.",
         "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
         "No verified SSE/event stream yet.",
@@ -217,7 +341,7 @@
       "review_state": "machine-generated",
       "reviewed_at": null,
       "source_count": 2,
-      "verified_at": "2026-06-06T12:18:35.698Z"
+      "verified_at": "2026-06-07T07:07:15.081Z"
     },
     "curation_level": "machine-verified",
     "dashboard_url": "https://taomarketcap.com/subnets/95",
@@ -225,7 +349,6 @@
     "gaps": {
       "gap_notes": [
         "No verified source repository yet.",
-        "No verified project website yet.",
         "No verified OpenAPI/Swagger surface yet.",
         "No verified subnet API surface yet.",
         "No verified SSE/event stream yet.",
@@ -233,7 +356,6 @@
       ],
       "missing_kinds": [
         "source-repo",
-        "website",
         "openapi",
         "subnet-api",
         "sse",
@@ -241,23 +363,24 @@
       ],
       "supported_kinds": [
         "dashboard",
-        "docs"
+        "docs",
+        "website"
       ]
     },
     "links": [],
     "mechanism_count": 1,
-    "name": "nion",
-    "native_name": "nion",
+    "name": "Actual",
+    "native_name": "Actual",
     "native_name_quality": "chain",
-    "native_slug": "nion",
+    "native_slug": "actual",
     "netuid": 95,
     "notes": "Machine-generated baseline overlay from verified public-source candidates.",
     "participant_count": 256,
-    "probed_surface_count": 2,
+    "probed_surface_count": 3,
     "provenance": {
       "existence": {
         "authority": "native-chain",
-        "captured_at": "2026-06-06T12:04:01Z",
+        "captured_at": "2026-06-07T07:06:35Z",
         "method": "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
         "network": "finney",
         "source_kind": "bittensor-sdk"
@@ -273,10 +396,10 @@
     "source_repo": null,
     "status": "active",
     "subnet_type": "application",
-    "surface_count": 2,
+    "surface_count": 3,
     "symbol": "ᚅ",
     "tempo": 360,
-    "website_url": null
+    "website_url": "https://actual.inc/"
   },
   "surfaces": [
     {
@@ -284,7 +407,7 @@
       "authority": "registry-observed",
       "id": "sn-95-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "nion TaoMarketCap dashboard",
+      "name": "Actual TaoMarketCap dashboard",
       "netuid": 95,
       "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "probe": {
@@ -307,18 +430,60 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/95"
       ],
-      "subnet_name": "nion",
+      "subnet_name": "Actual",
       "subnet_slug": "sn-95",
       "url": "https://taomarketcap.com/subnets/95",
       "verification": {
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 127,
+        "latency_ms": 137,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:35.642Z"
+        "verified_at": "2026-06-07T07:07:14.989Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-95-taomarketcap-website",
+      "kind": "website",
+      "name": "Actual website",
+      "netuid": 95,
+      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/95"
+      ],
+      "subnet_name": "Actual",
+      "subnet_slug": "sn-95",
+      "url": "https://actual.inc/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 373,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:07:15.041Z"
       }
     },
     {
@@ -328,7 +493,7 @@
       "kind": "docs",
       "name": "nion Tensorplex subnet docs",
       "netuid": 95,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -349,18 +514,18 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/95/subnet.json"
       ],
-      "subnet_name": "nion",
+      "subnet_name": "Actual",
       "subnet_slug": "sn-95",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/95",
       "verification": {
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 345,
+        "latency_ms": 370,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:35.698Z"
+        "verified_at": "2026-06-07T07:07:15.081Z"
       }
     }
   ],
@@ -370,7 +535,7 @@
       "authority": "registry-observed",
       "id": "sn-95-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "nion TaoMarketCap dashboard",
+      "name": "Actual TaoMarketCap dashboard",
       "netuid": 95,
       "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "probe": {
@@ -393,18 +558,60 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/95"
       ],
-      "subnet_name": "nion",
+      "subnet_name": "Actual",
       "subnet_slug": "sn-95",
       "url": "https://taomarketcap.com/subnets/95",
       "verification": {
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 127,
+        "latency_ms": 137,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:35.642Z"
+        "verified_at": "2026-06-07T07:07:14.989Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-95-taomarketcap-website",
+      "kind": "website",
+      "name": "Actual website",
+      "netuid": 95,
+      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/95"
+      ],
+      "subnet_name": "Actual",
+      "subnet_slug": "sn-95",
+      "url": "https://actual.inc/",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 77,
+        "content_type": "text/html; charset=utf-8",
+        "latency_ms": 373,
+        "method_tested": "HEAD",
+        "redirect_target": null,
+        "status_code": 200,
+        "verified_at": "2026-06-07T07:07:15.041Z"
       }
     },
     {
@@ -414,7 +621,7 @@
       "kind": "docs",
       "name": "nion Tensorplex subnet docs",
       "netuid": 95,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -435,18 +642,18 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/95/subnet.json"
       ],
-      "subnet_name": "nion",
+      "subnet_name": "Actual",
       "subnet_slug": "sn-95",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/95",
       "verification": {
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 345,
+        "latency_ms": 370,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:35.698Z"
+        "verified_at": "2026-06-07T07:07:15.081Z"
       }
     }
   ]

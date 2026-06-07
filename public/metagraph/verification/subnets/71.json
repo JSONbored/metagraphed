@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 460,
+      "latency_ms": 466,
       "method_tested": "HEAD",
       "name": "Leadpoet API surface",
       "netuid": 71,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.scrapingdog.com/",
-      "verified_at": "2026-06-06T12:18:28.282Z"
+      "verified_at": "2026-06-07T07:07:03.055Z"
     },
     {
       "candidate_id": "sn-71-taomarketcap-dashboard",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 139,
+      "latency_ms": 167,
       "method_tested": "HEAD",
       "name": "Leadpoet TaoMarketCap dashboard",
       "netuid": 71,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/71",
-      "verified_at": "2026-06-06T12:18:28.295Z"
+      "verified_at": "2026-06-07T07:07:03.071Z"
     },
     {
       "candidate_id": "sn-71-taomarketcap-source-repo",
@@ -79,7 +79,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/leadpoet/leadpoet",
       "kind": "source-repo",
-      "latency_ms": 491,
+      "latency_ms": 1038,
       "method_tested": "HEAD",
       "name": "Leadpoet source repository",
       "netuid": 71,
@@ -98,13 +98,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/71",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/71",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/71/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/71"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/leadpoet/leadpoet",
-      "verified_at": "2026-06-06T12:18:28.311Z"
+      "verified_at": "2026-06-07T07:07:03.078Z"
     },
     {
       "candidate_id": "sn-71-taomarketcap-website",
@@ -113,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 415,
+      "latency_ms": 499,
       "method_tested": "HEAD",
       "name": "Leadpoet website",
       "netuid": 71,
@@ -137,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leadpoet.com/",
-      "verified_at": "2026-06-06T12:18:28.315Z"
+      "verified_at": "2026-06-07T07:07:03.082Z"
     },
     {
       "candidate_id": "sn-71-tensorplex-docs",
@@ -146,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 347,
+      "latency_ms": 765,
       "method_tested": "HEAD",
       "name": "Leadpoet Tensorplex subnet docs",
       "netuid": 71,
@@ -170,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/71",
-      "verified_at": "2026-06-06T12:18:28.329Z"
+      "verified_at": "2026-06-07T07:07:03.125Z"
     },
     {
       "candidate_id": "sn-71-website-common-api",
@@ -179,7 +178,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 438,
+      "latency_ms": 477,
       "method_tested": "HEAD",
       "name": "Leadpoet API",
       "netuid": 71,
@@ -203,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leadpoet.com/api",
-      "verified_at": "2026-06-06T12:18:28.373Z"
+      "verified_at": "2026-06-07T07:07:03.135Z"
     },
     {
       "candidate_id": "sn-71-website-common-docs",
@@ -212,7 +211,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 430,
+      "latency_ms": 449,
       "method_tested": "HEAD",
       "name": "Leadpoet docs",
       "netuid": 71,
@@ -236,7 +235,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leadpoet.com/docs",
-      "verified_at": "2026-06-06T12:18:28.376Z"
+      "verified_at": "2026-06-07T07:07:03.174Z"
     },
     {
       "candidate_id": "sn-71-website-common-health",
@@ -245,7 +244,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 439,
+      "latency_ms": 447,
       "method_tested": "HEAD",
       "name": "Leadpoet health endpoint",
       "netuid": 71,
@@ -269,7 +268,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leadpoet.com/health",
-      "verified_at": "2026-06-06T12:18:28.401Z"
+      "verified_at": "2026-06-07T07:07:03.179Z"
     },
     {
       "candidate_id": "sn-71-website-common-openapi-json",
@@ -278,7 +277,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 439,
+      "latency_ms": 465,
       "method_tested": "HEAD",
       "name": "Leadpoet OpenAPI JSON",
       "netuid": 71,
@@ -302,7 +301,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leadpoet.com/openapi.json",
-      "verified_at": "2026-06-06T12:18:28.402Z"
+      "verified_at": "2026-06-07T07:07:03.180Z"
     },
     {
       "candidate_id": "sn-71-website-common-swagger",
@@ -311,7 +310,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 445,
+      "latency_ms": 492,
       "method_tested": "HEAD",
       "name": "Leadpoet Swagger UI",
       "netuid": 71,
@@ -335,7 +334,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leadpoet.com/swagger",
-      "verified_at": "2026-06-06T12:18:28.402Z"
+      "verified_at": "2026-06-07T07:07:03.199Z"
     },
     {
       "candidate_id": "sn-71-website-common-swagger-json",
@@ -344,7 +343,7 @@
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 445,
+      "latency_ms": 436,
       "method_tested": "HEAD",
       "name": "Leadpoet Swagger JSON",
       "netuid": 71,
@@ -368,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://leadpoet.com/swagger.json",
-      "verified_at": "2026-06-06T12:18:28.402Z"
+      "verified_at": "2026-06-07T07:07:03.209Z"
     }
   ],
   "schema_version": 1,

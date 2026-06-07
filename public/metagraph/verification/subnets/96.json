@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 588,
+      "latency_ms": 573,
       "method_tested": "GET",
       "name": "Verathos docs",
       "netuid": 96,
@@ -31,13 +31,12 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/verathos-ai/verathos/blob/main/README.md",
       "source_urls": [
-        "https://github.com/verathos-ai/verathos/blob/main/README.md",
-        "https://verathos.ai/"
+        "https://github.com/verathos-ai/verathos/blob/main/README.md"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://verathos.ai/docs",
-      "verified_at": "2026-06-06T12:18:35.709Z"
+      "verified_at": "2026-06-07T07:07:15.093Z"
     },
     {
       "candidate_id": "sn-96-github-readme-verathos-ai-verathos-docs-2",
@@ -46,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 580,
+      "latency_ms": 575,
       "method_tested": "GET",
       "name": "Verathos docs",
       "netuid": 96,
@@ -70,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://verathos.ai/docs?page=setup",
-      "verified_at": "2026-06-06T12:18:35.738Z"
+      "verified_at": "2026-06-07T07:07:15.117Z"
     },
     {
       "candidate_id": "sn-96-github-readme-verathos-ai-verathos-subnet-api-3",
@@ -79,7 +78,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 602,
+      "latency_ms": 935,
       "method_tested": "GET",
       "name": "Verathos API surface",
       "netuid": 96,
@@ -103,7 +102,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://api.verathos.ai/v1",
-      "verified_at": "2026-06-06T12:18:35.770Z"
+      "verified_at": "2026-06-07T07:07:15.132Z"
     },
     {
       "candidate_id": "sn-96-taomarketcap-dashboard",
@@ -112,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 150,
+      "latency_ms": 153,
       "method_tested": "HEAD",
       "name": "Verathos TaoMarketCap dashboard",
       "netuid": 96,
@@ -136,17 +135,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/96",
-      "verified_at": "2026-06-06T12:18:35.813Z"
+      "verified_at": "2026-06-07T07:07:15.136Z"
     },
     {
       "candidate_id": "sn-96-taomarketcap-source-repo",
       "classification": "live",
       "confidence_score": 59,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/verathos-ai/verathos",
       "kind": "source-repo",
-      "latency_ms": 525,
+      "latency_ms": 527,
       "method_tested": "HEAD",
       "name": "Verathos source repository",
       "netuid": 96,
@@ -170,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/verathos-ai/verathos",
-      "verified_at": "2026-06-06T12:18:35.834Z"
+      "verified_at": "2026-06-07T07:07:15.140Z"
     },
     {
       "candidate_id": "sn-96-taomarketcap-website",
@@ -179,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 586,
+      "latency_ms": 593,
       "method_tested": "GET",
       "name": "Verathos website",
       "netuid": 96,
@@ -203,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://verathos.ai/",
-      "verified_at": "2026-06-06T12:18:35.904Z"
+      "verified_at": "2026-06-07T07:07:15.304Z"
     },
     {
       "candidate_id": "sn-96-tensorplex-docs",
@@ -212,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 300,
+      "latency_ms": 355,
       "method_tested": "HEAD",
       "name": "Verathos Tensorplex subnet docs",
       "netuid": 96,
@@ -236,17 +235,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/96",
-      "verified_at": "2026-06-06T12:18:35.963Z"
+      "verified_at": "2026-06-07T07:07:15.336Z"
     },
     {
       "candidate_id": "sn-96-tensorplex-source-repo-1",
       "classification": "live",
       "confidence_score": 55,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/FLock-io/FLock-subnet",
       "kind": "source-repo",
-      "latency_ms": 529,
+      "latency_ms": 528,
       "method_tested": "HEAD",
       "name": "Verathos source repository",
       "netuid": 96,
@@ -270,7 +269,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/FLock-io/FLock-subnet",
-      "verified_at": "2026-06-06T12:18:36.043Z"
+      "verified_at": "2026-06-07T07:07:15.469Z"
     },
     {
       "candidate_id": "sn-96-website-common-api",
@@ -279,7 +278,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 586,
+      "latency_ms": 587,
       "method_tested": "GET",
       "name": "Verathos API",
       "netuid": 96,
@@ -303,7 +302,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://verathos.ai/api",
-      "verified_at": "2026-06-06T12:18:36.080Z"
+      "verified_at": "2026-06-07T07:07:15.480Z"
     },
     {
       "candidate_id": "sn-96-website-common-health",
@@ -312,7 +311,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 584,
+      "latency_ms": 619,
       "method_tested": "GET",
       "name": "Verathos health endpoint",
       "netuid": 96,
@@ -336,7 +335,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://verathos.ai/health",
-      "verified_at": "2026-06-06T12:18:36.086Z"
+      "verified_at": "2026-06-07T07:07:15.500Z"
     },
     {
       "candidate_id": "sn-96-website-common-openapi-json",
@@ -345,7 +344,7 @@
       "content_type": "application/json",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 577,
+      "latency_ms": 589,
       "method_tested": "HEAD",
       "name": "Verathos OpenAPI JSON",
       "netuid": 96,
@@ -369,7 +368,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://verathos.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:36.155Z"
+      "verified_at": "2026-06-07T07:07:15.609Z"
     },
     {
       "candidate_id": "sn-96-website-common-swagger",
@@ -378,7 +377,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 571,
+      "latency_ms": 598,
       "method_tested": "GET",
       "name": "Verathos Swagger UI",
       "netuid": 96,
@@ -402,7 +401,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://verathos.ai/swagger",
-      "verified_at": "2026-06-06T12:18:36.263Z"
+      "verified_at": "2026-06-07T07:07:15.618Z"
     },
     {
       "candidate_id": "sn-96-website-common-swagger-json",
@@ -411,7 +410,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 591,
+      "latency_ms": 598,
       "method_tested": "GET",
       "name": "Verathos Swagger JSON",
       "netuid": 96,
@@ -435,7 +434,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://verathos.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:36.419Z"
+      "verified_at": "2026-06-07T07:07:15.697Z"
     }
   ],
   "schema_version": 1,

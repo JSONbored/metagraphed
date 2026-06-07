@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 33,
+      "latency_ms": 31,
       "method_tested": "GET",
       "name": "ItsAI dashboard",
       "netuid": 32,
@@ -36,7 +36,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://raid-bench.xyz/leaderboard",
-      "verified_at": "2026-06-06T12:18:17.430Z"
+      "verified_at": "2026-06-07T07:06:47.836Z"
     },
     {
       "candidate_id": "sn-32-github-readme-it-s-ai-llm-detection-docs-1",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 149,
+      "latency_ms": 120,
       "method_tested": "HEAD",
       "name": "ItsAI docs",
       "netuid": 32,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://arxiv.org/abs/2405.07940",
-      "verified_at": "2026-06-06T12:18:17.436Z"
+      "verified_at": "2026-06-07T07:06:47.870Z"
     },
     {
       "candidate_id": "sn-32-taomarketcap-dashboard",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 159,
+      "latency_ms": 146,
       "method_tested": "HEAD",
       "name": "ItsAI TaoMarketCap dashboard",
       "netuid": 32,
@@ -102,41 +102,41 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/32",
-      "verified_at": "2026-06-06T12:18:17.450Z"
+      "verified_at": "2026-06-07T07:06:47.960Z"
     },
     {
-      "archived": false,
       "candidate_id": "sn-32-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
-      "default_branch": "main",
-      "description": "It's AI: LLM Detection Subnet (SN32)",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/It-s-AI/llm-detection",
-      "homepage": "https://app.its-ai.org/",
-      "html_url": "https://github.com/It-s-AI/llm-detection",
       "kind": "source-repo",
-      "last_push_at": "2026-05-16T23:09:06Z",
+      "latency_ms": 794,
+      "method_tested": "HEAD",
       "name": "ItsAI source repository",
       "netuid": 32,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/32",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/32",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/32/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/32"
       ],
       "status": "ok",
-      "topics": [],
+      "status_code": 200,
       "url": "https://github.com/It-s-AI/llm-detection",
-      "verified_at": "2026-06-06T12:18:17.457Z"
+      "verified_at": "2026-06-07T07:06:48.024Z"
     },
     {
       "candidate_id": "sn-32-taomarketcap-website",
@@ -145,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 600,
+      "latency_ms": 629,
       "method_tested": "HEAD",
       "name": "ItsAI website",
       "netuid": 32,
@@ -169,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://its-ai.org/en",
-      "verified_at": "2026-06-06T12:18:17.513Z"
+      "verified_at": "2026-06-07T07:06:48.025Z"
     },
     {
       "candidate_id": "sn-32-tensorplex-docs",
@@ -178,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 285,
+      "latency_ms": 596,
       "method_tested": "HEAD",
       "name": "ItsAI Tensorplex subnet docs",
       "netuid": 32,
@@ -202,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/32",
-      "verified_at": "2026-06-06T12:18:17.560Z"
+      "verified_at": "2026-06-07T07:06:48.072Z"
     },
     {
       "candidate_id": "sn-32-website-common-api",
@@ -211,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 389,
+      "latency_ms": 419,
       "method_tested": "GET",
       "name": "ItsAI API",
       "netuid": 32,
@@ -235,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://its-ai.org/api",
-      "verified_at": "2026-06-06T12:18:17.585Z"
+      "verified_at": "2026-06-07T07:06:48.108Z"
     },
     {
       "candidate_id": "sn-32-website-common-docs",
@@ -244,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 388,
+      "latency_ms": 380,
       "method_tested": "GET",
       "name": "ItsAI docs",
       "netuid": 32,
@@ -268,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://its-ai.org/docs",
-      "verified_at": "2026-06-06T12:18:17.589Z"
+      "verified_at": "2026-06-07T07:06:48.125Z"
     },
     {
       "candidate_id": "sn-32-website-common-health",
@@ -277,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 399,
+      "latency_ms": 405,
       "method_tested": "GET",
       "name": "ItsAI health endpoint",
       "netuid": 32,
@@ -301,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://its-ai.org/health",
-      "verified_at": "2026-06-06T12:18:17.608Z"
+      "verified_at": "2026-06-07T07:06:48.182Z"
     },
     {
       "candidate_id": "sn-32-website-common-openapi-json",
@@ -310,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 591,
+      "latency_ms": 628,
       "method_tested": "HEAD",
       "name": "ItsAI OpenAPI JSON",
       "netuid": 32,
@@ -334,7 +334,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://its-ai.org/openapi.json",
-      "verified_at": "2026-06-06T12:18:17.647Z"
+      "verified_at": "2026-06-07T07:06:48.200Z"
     },
     {
       "candidate_id": "sn-32-website-common-swagger",
@@ -343,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 388,
+      "latency_ms": 387,
       "method_tested": "GET",
       "name": "ItsAI Swagger UI",
       "netuid": 32,
@@ -367,7 +367,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://its-ai.org/swagger",
-      "verified_at": "2026-06-06T12:18:17.708Z"
+      "verified_at": "2026-06-07T07:06:48.248Z"
     },
     {
       "candidate_id": "sn-32-website-common-swagger-json",
@@ -376,7 +376,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 564,
+      "latency_ms": 622,
       "method_tested": "HEAD",
       "name": "ItsAI Swagger JSON",
       "netuid": 32,
@@ -400,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://its-ai.org/swagger.json",
-      "verified_at": "2026-06-06T12:18:17.709Z"
+      "verified_at": "2026-06-07T07:06:48.319Z"
     },
     {
       "candidate_id": "sn-32-website-link-its-ai-org-subnet-api-5",
@@ -409,7 +409,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 552,
+      "latency_ms": 569,
       "method_tested": "HEAD",
       "name": "ItsAI API surface",
       "netuid": 32,
@@ -433,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://app.its-ai.org/en/main/api/table",
-      "verified_at": "2026-06-06T12:18:17.726Z"
+      "verified_at": "2026-06-07T07:06:48.446Z"
     },
     {
       "candidate_id": "sn-32-website-link-its-ai-org-website-1",
@@ -442,7 +442,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 613,
+      "latency_ms": 608,
       "method_tested": "HEAD",
       "name": "ItsAI website page",
       "netuid": 32,
@@ -466,7 +466,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://its-ai.org/en/about",
-      "verified_at": "2026-06-06T12:18:17.735Z"
+      "verified_at": "2026-06-07T07:06:48.560Z"
     },
     {
       "candidate_id": "sn-32-website-link-its-ai-org-website-10",
@@ -475,7 +475,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 582,
+      "latency_ms": 655,
       "method_tested": "HEAD",
       "name": "ItsAI website page",
       "netuid": 32,
@@ -499,7 +499,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://its-ai.org/en/students",
-      "verified_at": "2026-06-06T12:18:17.754Z"
+      "verified_at": "2026-06-07T07:06:48.596Z"
     },
     {
       "candidate_id": "sn-32-website-link-its-ai-org-website-2",
@@ -508,7 +508,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 754,
+      "latency_ms": 714,
       "method_tested": "HEAD",
       "name": "ItsAI website page",
       "netuid": 32,
@@ -532,7 +532,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://its-ai.org/en/blog",
-      "verified_at": "2026-06-06T12:18:17.846Z"
+      "verified_at": "2026-06-07T07:06:48.596Z"
     },
     {
       "candidate_id": "sn-32-website-link-its-ai-org-website-3",
@@ -541,7 +541,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 600,
+      "latency_ms": 593,
       "method_tested": "HEAD",
       "name": "ItsAI website page",
       "netuid": 32,
@@ -565,10 +565,76 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://its-ai.org/en/accuracy",
-      "verified_at": "2026-06-06T12:18:17.877Z"
+      "verified_at": "2026-06-07T07:06:48.624Z"
     },
     {
       "candidate_id": "sn-32-website-link-its-ai-org-website-4",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 581,
+      "method_tested": "HEAD",
+      "name": "ItsAI website page",
+      "netuid": 32,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://its-ai.org/en",
+      "source_urls": [
+        "https://its-ai.org/en"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://its-ai.org/en/contacts",
+      "verified_at": "2026-06-07T07:06:48.640Z"
+    },
+    {
+      "candidate_id": "sn-32-website-link-its-ai-org-website-6",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "website",
+      "latency_ms": 595,
+      "method_tested": "HEAD",
+      "name": "ItsAI website page",
+      "netuid": 32,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://its-ai.org/en",
+      "source_urls": [
+        "https://its-ai.org/en"
+      ],
+      "status": "ok",
+      "status_code": 200,
+      "url": "https://its-ai.org/en/coming-soon",
+      "verified_at": "2026-06-07T07:06:48.664Z"
+    },
+    {
+      "candidate_id": "sn-32-website-link-its-ai-org-website-7",
       "classification": "live",
       "confidence_score": 76,
       "content_type": "text/html; charset=utf-8",
@@ -597,74 +663,8 @@
       ],
       "status": "ok",
       "status_code": 200,
-      "url": "https://its-ai.org/en/contacts",
-      "verified_at": "2026-06-06T12:18:17.886Z"
-    },
-    {
-      "candidate_id": "sn-32-website-link-its-ai-org-website-6",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "latency_ms": 572,
-      "method_tested": "HEAD",
-      "name": "ItsAI website page",
-      "netuid": 32,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://its-ai.org/en",
-      "source_urls": [
-        "https://its-ai.org/en"
-      ],
-      "status": "ok",
-      "status_code": 200,
-      "url": "https://its-ai.org/en/coming-soon",
-      "verified_at": "2026-06-06T12:18:18.105Z"
-    },
-    {
-      "candidate_id": "sn-32-website-link-its-ai-org-website-7",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "website",
-      "latency_ms": 201,
-      "method_tested": "HEAD",
-      "name": "ItsAI website page",
-      "netuid": 32,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://its-ai.org/en",
-      "source_urls": [
-        "https://its-ai.org/en"
-      ],
-      "status": "ok",
-      "status_code": 200,
       "url": "https://its-ai.org/en/teachers",
-      "verified_at": "2026-06-06T12:18:18.113Z"
+      "verified_at": "2026-06-07T07:06:48.670Z"
     },
     {
       "candidate_id": "sn-32-website-link-its-ai-org-website-8",
@@ -673,7 +673,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 215,
+      "latency_ms": 221,
       "method_tested": "HEAD",
       "name": "ItsAI website page",
       "netuid": 32,
@@ -697,7 +697,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://its-ai.org/en/writers",
-      "verified_at": "2026-06-06T12:18:18.237Z"
+      "verified_at": "2026-06-07T07:06:48.695Z"
     },
     {
       "candidate_id": "sn-32-website-link-its-ai-org-website-9",
@@ -706,7 +706,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 236,
+      "latency_ms": 204,
       "method_tested": "HEAD",
       "name": "ItsAI website page",
       "netuid": 32,
@@ -730,7 +730,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://its-ai.org/en/managers",
-      "verified_at": "2026-06-06T12:18:18.273Z"
+      "verified_at": "2026-06-07T07:06:48.831Z"
     }
   ],
   "schema_version": 1,

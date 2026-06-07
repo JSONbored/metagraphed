@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 48,
+      "latency_ms": 46,
       "method_tested": "GET",
       "name": "Ditto dashboard",
       "netuid": 118,
@@ -36,7 +36,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://subnet-118-dashboard.vercel.app/",
-      "verified_at": "2026-06-06T12:18:43.308Z"
+      "verified_at": "2026-06-07T07:07:23.833Z"
     },
     {
       "candidate_id": "sn-118-github-readme-mobiusfund-etf-docs-1",
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.learnbittensor.org/miners",
-      "verified_at": "2026-06-06T12:18:43.341Z"
+      "verified_at": "2026-06-07T07:07:23.844Z"
     },
     {
       "candidate_id": "sn-118-github-readme-mobiusfund-etf-docs-3",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 179,
+      "latency_ms": 166,
       "method_tested": "HEAD",
       "name": "Ditto docs",
       "netuid": 118,
@@ -102,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://trustedstake.gitbook.io/trustedstake/basics/editor",
-      "verified_at": "2026-06-06T12:18:43.343Z"
+      "verified_at": "2026-06-07T07:07:23.861Z"
     },
     {
       "candidate_id": "sn-118-taomarketcap-dashboard",
@@ -111,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 139,
+      "latency_ms": 145,
       "method_tested": "HEAD",
       "name": "Ditto TaoMarketCap dashboard",
       "netuid": 118,
@@ -135,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/118",
-      "verified_at": "2026-06-06T12:18:43.357Z"
+      "verified_at": "2026-06-07T07:07:23.863Z"
     },
     {
       "candidate_id": "sn-118-taomarketcap-source-repo",
@@ -145,7 +145,7 @@
       "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/orgs/ditto-assistant",
       "kind": "source-repo",
-      "latency_ms": 402,
+      "latency_ms": 521,
       "method_tested": "HEAD",
       "name": "Ditto source repository",
       "netuid": 118,
@@ -169,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/orgs/ditto-assistant/repositories",
-      "verified_at": "2026-06-06T12:18:43.361Z"
+      "verified_at": "2026-06-07T07:07:23.867Z"
     },
     {
       "candidate_id": "sn-118-taomarketcap-website",
@@ -178,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 140,
+      "latency_ms": 125,
       "method_tested": "HEAD",
       "name": "Ditto website",
       "netuid": 118,
@@ -202,7 +202,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://heyditto.ai/",
-      "verified_at": "2026-06-06T12:18:43.382Z"
+      "verified_at": "2026-06-07T07:07:23.887Z"
     },
     {
       "candidate_id": "sn-118-tensorplex-docs",
@@ -211,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 336,
+      "latency_ms": 301,
       "method_tested": "HEAD",
       "name": "Ditto Tensorplex subnet docs",
       "netuid": 118,
@@ -235,7 +235,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/118",
-      "verified_at": "2026-06-06T12:18:43.382Z"
+      "verified_at": "2026-06-07T07:07:23.957Z"
     },
     {
       "candidate_id": "sn-118-tensorplex-source-repo-1",
@@ -245,7 +245,7 @@
       "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/mobiusfund/etf",
       "kind": "source-repo",
-      "latency_ms": 515,
+      "latency_ms": 420,
       "method_tested": "HEAD",
       "name": "Ditto source repository",
       "netuid": 118,
@@ -269,7 +269,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/mobiusfund/etf",
-      "verified_at": "2026-06-06T12:18:43.496Z"
+      "verified_at": "2026-06-07T07:07:24.028Z"
     },
     {
       "candidate_id": "sn-118-website-common-api",
@@ -278,7 +278,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 36,
+      "latency_ms": 27,
       "method_tested": "GET",
       "name": "Ditto API",
       "netuid": 118,
@@ -302,7 +302,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://heyditto.ai/api",
-      "verified_at": "2026-06-06T12:18:43.514Z"
+      "verified_at": "2026-06-07T07:07:24.038Z"
     },
     {
       "candidate_id": "sn-118-website-common-docs",
@@ -311,7 +311,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 129,
+      "latency_ms": 277,
       "method_tested": "HEAD",
       "name": "Ditto docs",
       "netuid": 118,
@@ -335,7 +335,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://heyditto.ai/docs",
-      "verified_at": "2026-06-06T12:18:43.517Z"
+      "verified_at": "2026-06-07T07:07:24.062Z"
     },
     {
       "candidate_id": "sn-118-website-common-health",
@@ -344,7 +344,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 24,
+      "latency_ms": 32,
       "method_tested": "GET",
       "name": "Ditto health endpoint",
       "netuid": 118,
@@ -368,7 +368,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://heyditto.ai/health",
-      "verified_at": "2026-06-06T12:18:43.522Z"
+      "verified_at": "2026-06-07T07:07:24.067Z"
     },
     {
       "candidate_id": "sn-118-website-common-openapi-json",
@@ -377,7 +377,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 31,
+      "latency_ms": 35,
       "method_tested": "GET",
       "name": "Ditto OpenAPI JSON",
       "netuid": 118,
@@ -401,7 +401,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://heyditto.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:43.522Z"
+      "verified_at": "2026-06-07T07:07:24.072Z"
     },
     {
       "candidate_id": "sn-118-website-common-swagger",
@@ -410,7 +410,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 32,
+      "latency_ms": 36,
       "method_tested": "GET",
       "name": "Ditto Swagger UI",
       "netuid": 118,
@@ -434,7 +434,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://heyditto.ai/swagger",
-      "verified_at": "2026-06-06T12:18:43.526Z"
+      "verified_at": "2026-06-07T07:07:24.077Z"
     },
     {
       "candidate_id": "sn-118-website-common-swagger-json",
@@ -443,7 +443,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 36,
+      "latency_ms": 67,
       "method_tested": "GET",
       "name": "Ditto Swagger JSON",
       "netuid": 118,
@@ -467,7 +467,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://heyditto.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:43.538Z"
+      "verified_at": "2026-06-07T07:07:24.105Z"
     },
     {
       "candidate_id": "sn-118-website-link-heyditto-ai-docs-5",
@@ -476,7 +476,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 111,
+      "latency_ms": 226,
       "method_tested": "HEAD",
       "name": "Ditto docs",
       "netuid": 118,
@@ -500,7 +500,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://heyditto.ai/docs/openclaw",
-      "verified_at": "2026-06-06T12:18:43.570Z"
+      "verified_at": "2026-06-07T07:07:24.120Z"
     },
     {
       "candidate_id": "sn-118-website-link-heyditto-ai-docs-6",
@@ -509,7 +509,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 136,
+      "latency_ms": 186,
       "method_tested": "HEAD",
       "name": "Ditto docs",
       "netuid": 118,
@@ -533,7 +533,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://heyditto.ai/docs/hermes-agent",
-      "verified_at": "2026-06-06T12:18:43.578Z"
+      "verified_at": "2026-06-07T07:07:24.157Z"
     },
     {
       "candidate_id": "sn-118-website-link-heyditto-ai-docs-7",
@@ -542,7 +542,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 43,
+      "latency_ms": 64,
       "method_tested": "HEAD",
       "name": "Ditto docs",
       "netuid": 118,
@@ -566,7 +566,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://heyditto.ai/docs/mcp-server",
-      "verified_at": "2026-06-06T12:18:43.642Z"
+      "verified_at": "2026-06-07T07:07:24.209Z"
     },
     {
       "candidate_id": "sn-118-website-link-heyditto-ai-docs-9",
@@ -575,7 +575,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 67,
+      "latency_ms": 61,
       "method_tested": "HEAD",
       "name": "Ditto docs",
       "netuid": 118,
@@ -599,7 +599,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://heyditto.ai/docs/agent-integrations",
-      "verified_at": "2026-06-06T12:18:43.646Z"
+      "verified_at": "2026-06-07T07:07:24.218Z"
     },
     {
       "candidate_id": "sn-118-website-link-heyditto-ai-website-1",
@@ -608,7 +608,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 67,
+      "latency_ms": 120,
       "method_tested": "HEAD",
       "name": "Ditto website page",
       "netuid": 118,
@@ -632,7 +632,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://heyditto.ai/pricing",
-      "verified_at": "2026-06-06T12:18:43.647Z"
+      "verified_at": "2026-06-07T07:07:24.261Z"
     },
     {
       "candidate_id": "sn-118-website-link-heyditto-ai-website-10",
@@ -641,7 +641,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 55,
+      "latency_ms": 66,
       "method_tested": "HEAD",
       "name": "Ditto website page",
       "netuid": 118,
@@ -665,7 +665,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://heyditto.ai/support",
-      "verified_at": "2026-06-06T12:18:43.647Z"
+      "verified_at": "2026-06-07T07:07:24.269Z"
     },
     {
       "candidate_id": "sn-118-website-link-heyditto-ai-website-2",
@@ -674,7 +674,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 64,
+      "latency_ms": 66,
       "method_tested": "HEAD",
       "name": "Ditto website page",
       "netuid": 118,
@@ -698,7 +698,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://heyditto.ai/blog",
-      "verified_at": "2026-06-06T12:18:43.650Z"
+      "verified_at": "2026-06-07T07:07:24.274Z"
     },
     {
       "candidate_id": "sn-118-website-link-heyditto-ai-website-4",
@@ -707,7 +707,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 475,
+      "latency_ms": 217,
       "method_tested": "HEAD",
       "name": "Ditto website page",
       "netuid": 118,
@@ -731,7 +731,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://assistant.heyditto.ai/",
-      "verified_at": "2026-06-06T12:18:43.681Z"
+      "verified_at": "2026-06-07T07:07:24.275Z"
     },
     {
       "candidate_id": "sn-118-website-link-heyditto-ai-website-8",
@@ -740,7 +740,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 60,
+      "latency_ms": 71,
       "method_tested": "HEAD",
       "name": "Ditto website page",
       "netuid": 118,
@@ -764,7 +764,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://heyditto.ai/testimonials/jonathan-d",
-      "verified_at": "2026-06-06T12:18:43.684Z"
+      "verified_at": "2026-06-07T07:07:24.314Z"
     }
   ],
   "schema_version": 1,

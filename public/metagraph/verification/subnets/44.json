@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 128,
+      "latency_ms": 146,
       "method_tested": "HEAD",
       "name": "Score TaoMarketCap dashboard",
       "netuid": 44,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/44",
-      "verified_at": "2026-06-06T12:18:20.124Z"
+      "verified_at": "2026-06-07T07:06:51.141Z"
     },
     {
       "candidate_id": "sn-44-taomarketcap-source-repo",
@@ -46,7 +46,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/score-technologies/turbovision",
       "kind": "source-repo",
-      "latency_ms": 500,
+      "latency_ms": 749,
       "method_tested": "HEAD",
       "name": "Score source repository",
       "netuid": 44,
@@ -70,7 +70,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/score-technologies/turbovision",
-      "verified_at": "2026-06-06T12:18:20.130Z"
+      "verified_at": "2026-06-07T07:06:51.153Z"
     },
     {
       "candidate_id": "sn-44-taomarketcap-website",
@@ -79,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 522,
+      "latency_ms": 517,
       "method_tested": "HEAD",
       "name": "Score website",
       "netuid": 44,
@@ -103,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.wearescore.com/",
-      "verified_at": "2026-06-06T12:18:20.141Z"
+      "verified_at": "2026-06-07T07:06:51.164Z"
     },
     {
       "candidate_id": "sn-44-tensorplex-docs",
@@ -112,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 380,
+      "latency_ms": 528,
       "method_tested": "HEAD",
       "name": "Score Tensorplex subnet docs",
       "netuid": 44,
@@ -136,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/44",
-      "verified_at": "2026-06-06T12:18:20.151Z"
+      "verified_at": "2026-06-07T07:06:51.183Z"
     },
     {
       "candidate_id": "sn-44-tensorplex-source-repo-1",
@@ -146,7 +146,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/score-technologies/score-vision",
       "kind": "source-repo",
-      "latency_ms": 538,
+      "latency_ms": 835,
       "method_tested": "HEAD",
       "name": "Score source repository",
       "netuid": 44,
@@ -170,7 +170,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/score-technologies/score-vision",
-      "verified_at": "2026-06-06T12:18:20.169Z"
+      "verified_at": "2026-06-07T07:06:51.187Z"
     },
     {
       "candidate_id": "sn-44-website-common-api",
@@ -179,7 +179,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 169,
+      "latency_ms": 318,
       "method_tested": "GET",
       "name": "Score API",
       "netuid": 44,
@@ -203,7 +203,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.wearescore.com/api",
-      "verified_at": "2026-06-06T12:18:20.190Z"
+      "verified_at": "2026-06-07T07:06:51.234Z"
     },
     {
       "candidate_id": "sn-44-website-common-docs",
@@ -212,7 +212,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 168,
+      "latency_ms": 180,
       "method_tested": "GET",
       "name": "Score docs",
       "netuid": 44,
@@ -236,7 +236,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.wearescore.com/docs",
-      "verified_at": "2026-06-06T12:18:20.196Z"
+      "verified_at": "2026-06-07T07:06:51.256Z"
     },
     {
       "candidate_id": "sn-44-website-common-health",
@@ -245,7 +245,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 167,
+      "latency_ms": 201,
       "method_tested": "GET",
       "name": "Score health endpoint",
       "netuid": 44,
@@ -269,7 +269,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.wearescore.com/health",
-      "verified_at": "2026-06-06T12:18:20.209Z"
+      "verified_at": "2026-06-07T07:06:51.291Z"
     },
     {
       "candidate_id": "sn-44-website-common-openapi-json",
@@ -278,7 +278,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 163,
+      "latency_ms": 240,
       "method_tested": "GET",
       "name": "Score OpenAPI JSON",
       "netuid": 44,
@@ -302,7 +302,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.wearescore.com/openapi.json",
-      "verified_at": "2026-06-06T12:18:20.252Z"
+      "verified_at": "2026-06-07T07:06:51.298Z"
     },
     {
       "candidate_id": "sn-44-website-common-swagger",
@@ -311,7 +311,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 163,
+      "latency_ms": 244,
       "method_tested": "GET",
       "name": "Score Swagger UI",
       "netuid": 44,
@@ -335,7 +335,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.wearescore.com/swagger",
-      "verified_at": "2026-06-06T12:18:20.290Z"
+      "verified_at": "2026-06-07T07:06:51.360Z"
     },
     {
       "candidate_id": "sn-44-website-common-swagger-json",
@@ -344,7 +344,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 174,
+      "latency_ms": 186,
       "method_tested": "GET",
       "name": "Score Swagger JSON",
       "netuid": 44,
@@ -368,7 +368,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.wearescore.com/swagger.json",
-      "verified_at": "2026-06-06T12:18:20.309Z"
+      "verified_at": "2026-06-07T07:06:51.361Z"
     },
     {
       "candidate_id": "sn-44-website-link-www-wearescore-com-website-1",
@@ -377,7 +377,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 522,
+      "latency_ms": 502,
       "method_tested": "HEAD",
       "name": "Score website page",
       "netuid": 44,
@@ -401,7 +401,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.wearescore.com/get-started",
-      "verified_at": "2026-06-06T12:18:20.450Z"
+      "verified_at": "2026-06-07T07:06:51.561Z"
     }
   ],
   "schema_version": 1,

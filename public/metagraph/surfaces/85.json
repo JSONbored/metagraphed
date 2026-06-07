@@ -13,7 +13,7 @@
       "kind": "docs",
       "name": "Vidaio docs",
       "netuid": 85,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,11 +41,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 106,
+        "latency_ms": 95,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.600Z"
+        "verified_at": "2026-06-07T07:07:10.759Z"
       }
     },
     {
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 138,
+        "latency_ms": 142,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.604Z"
+        "verified_at": "2026-06-07T07:07:10.773Z"
       }
     },
     {
@@ -116,8 +116,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/85",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/85/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/85"
       ],
       "subnet_name": "Vidaio",
       "subnet_slug": "sn-85",
@@ -127,11 +126,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/vidaio-subnet/vidaio-subnet",
-        "latency_ms": 528,
+        "latency_ms": 714,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.604Z"
+        "verified_at": "2026-06-07T07:07:10.795Z"
       }
     },
     {
@@ -169,11 +168,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 414,
+        "latency_ms": 1545,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.604Z"
+        "verified_at": "2026-06-07T07:07:10.831Z"
       }
     },
     {
@@ -183,7 +182,7 @@
       "kind": "docs",
       "name": "Vidaio Tensorplex subnet docs",
       "netuid": 85,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -211,11 +210,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 296,
+        "latency_ms": 508,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.614Z"
+        "verified_at": "2026-06-07T07:07:10.831Z"
       }
     },
     {
@@ -225,7 +224,7 @@
       "kind": "docs",
       "name": "Vidaio docs",
       "netuid": 85,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -253,11 +252,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 309,
+        "latency_ms": 453,
         "method_tested": "GET",
         "redirect_target": "https://vidaio.io/sign-in?authRedir=%2Fdocs",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.668Z"
+        "verified_at": "2026-06-07T07:07:10.846Z"
       }
     },
     {
@@ -267,7 +266,7 @@
       "kind": "openapi",
       "name": "Vidaio Swagger UI",
       "netuid": 85,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -296,11 +295,11 @@
         "classification": "redirected",
         "confidence_score": 63,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 315,
+        "latency_ms": 380,
         "method_tested": "GET",
         "redirect_target": "https://vidaio.io/sign-in?authRedir=%2Fswagger",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.675Z"
+        "verified_at": "2026-06-07T07:07:10.909Z"
       }
     },
     {
@@ -310,7 +309,7 @@
       "kind": "dashboard",
       "name": "Vidaio dashboard",
       "netuid": 85,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -338,11 +337,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 300,
+        "latency_ms": 621,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.705Z"
+        "verified_at": "2026-06-07T07:07:10.958Z"
       }
     },
     {
@@ -352,7 +351,7 @@
       "kind": "dashboard",
       "name": "Vidaio dashboard",
       "netuid": 85,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -380,11 +379,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 335,
+        "latency_ms": 1408,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:32.732Z"
+        "verified_at": "2026-06-07T07:07:10.979Z"
       }
     }
   ]

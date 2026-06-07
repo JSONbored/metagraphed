@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "data-artifact",
-        "latency_ms": 122,
+        "latency_ms": 128,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX data artifact",
         "netuid": 72,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://huggingface.co/natix-network-org",
-        "verified_at": "2026-06-06T12:18:28.407Z"
+        "verified_at": "2026-06-07T07:07:03.231Z"
       }
     },
     {
@@ -65,7 +65,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 90,
+        "latency_ms": 94,
         "method_tested": "GET",
         "name": "StreetVision by NATIX docs",
         "netuid": 72,
@@ -107,7 +107,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://docs.bittensor.com/learn/bittensor-building-blocks",
-        "verified_at": "2026-06-06T12:18:28.434Z"
+        "verified_at": "2026-06-07T07:07:03.241Z"
       }
     },
     {
@@ -138,7 +138,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 148,
+        "latency_ms": 142,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX TaoMarketCap dashboard",
         "netuid": 72,
@@ -162,7 +162,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/72",
-        "verified_at": "2026-06-06T12:18:28.467Z"
+        "verified_at": "2026-06-07T07:07:03.281Z"
       }
     },
     {
@@ -181,8 +181,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/72",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/72",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/72/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/72"
       ],
       "state": "schema-valid",
       "subnet_name": "StreetVision by NATIX",
@@ -195,7 +194,7 @@
         "github_api_status": 403,
         "github_api_url": "https://api.github.com/repos/natixnetwork/streetvision-subnet",
         "kind": "source-repo",
-        "latency_ms": 348,
+        "latency_ms": 986,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX source repository",
         "netuid": 72,
@@ -214,13 +213,12 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/72",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/72",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/72/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/72"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/natixnetwork/streetvision-subnet",
-        "verified_at": "2026-06-06T12:18:28.488Z"
+        "verified_at": "2026-06-07T07:07:03.359Z"
       }
     },
     {
@@ -251,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 156,
+        "latency_ms": 135,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX website",
         "netuid": 72,
@@ -275,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.natix.network/?utm_source=bittensor",
-        "verified_at": "2026-06-06T12:18:28.522Z"
+        "verified_at": "2026-06-07T07:07:03.397Z"
       }
     },
     {
@@ -288,7 +286,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -306,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 286,
+        "latency_ms": 698,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX Tensorplex subnet docs",
         "netuid": 72,
@@ -330,7 +328,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/72",
-        "verified_at": "2026-06-06T12:18:28.530Z"
+        "verified_at": "2026-06-07T07:07:03.410Z"
       }
     },
     {
@@ -343,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -361,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 37,
+        "latency_ms": 51,
         "method_tested": "GET",
         "name": "StreetVision by NATIX API",
         "netuid": 72,
@@ -385,7 +383,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.natix.network/api",
-        "verified_at": "2026-06-06T12:18:28.615Z"
+        "verified_at": "2026-06-07T07:07:03.425Z"
       }
     },
     {
@@ -398,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -416,7 +414,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 41,
+        "latency_ms": 49,
         "method_tested": "GET",
         "name": "StreetVision by NATIX docs",
         "netuid": 72,
@@ -440,7 +438,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.natix.network/docs",
-        "verified_at": "2026-06-06T12:18:28.616Z"
+        "verified_at": "2026-06-07T07:07:03.431Z"
       }
     },
     {
@@ -453,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -495,7 +493,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.natix.network/health",
-        "verified_at": "2026-06-06T12:18:28.675Z"
+        "verified_at": "2026-06-07T07:07:03.566Z"
       }
     },
     {
@@ -508,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -526,7 +524,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 36,
+        "latency_ms": 59,
         "method_tested": "GET",
         "name": "StreetVision by NATIX OpenAPI JSON",
         "netuid": 72,
@@ -550,7 +548,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.natix.network/openapi.json",
-        "verified_at": "2026-06-06T12:18:28.678Z"
+        "verified_at": "2026-06-07T07:07:03.573Z"
       }
     },
     {
@@ -563,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -581,7 +579,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 44,
+        "latency_ms": 60,
         "method_tested": "GET",
         "name": "StreetVision by NATIX Swagger UI",
         "netuid": 72,
@@ -605,7 +603,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.natix.network/swagger",
-        "verified_at": "2026-06-06T12:18:28.730Z"
+        "verified_at": "2026-06-07T07:07:03.616Z"
       }
     },
     {
@@ -618,7 +616,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -636,7 +634,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 38,
+        "latency_ms": 37,
         "method_tested": "GET",
         "name": "StreetVision by NATIX Swagger JSON",
         "netuid": 72,
@@ -660,7 +658,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.natix.network/swagger.json",
-        "verified_at": "2026-06-06T12:18:28.742Z"
+        "verified_at": "2026-06-07T07:07:03.626Z"
       }
     },
     {
@@ -673,7 +671,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -691,7 +689,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 211,
+        "latency_ms": 241,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX docs",
         "netuid": 72,
@@ -715,7 +713,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.natix.network/whitepaper",
-        "verified_at": "2026-06-06T12:18:28.759Z"
+        "verified_at": "2026-06-07T07:07:03.629Z"
       }
     },
     {
@@ -728,7 +726,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -746,7 +744,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 37,
+        "latency_ms": 100,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX website page",
         "netuid": 72,
@@ -770,7 +768,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.natix.network/vx360-depin-dashcam",
-        "verified_at": "2026-06-06T12:18:28.779Z"
+        "verified_at": "2026-06-07T07:07:03.633Z"
       }
     },
     {
@@ -783,7 +781,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -801,7 +799,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 134,
+        "latency_ms": 151,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX website page",
         "netuid": 72,
@@ -825,7 +823,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://staking.natix.network/?_gl=1*gkaumg*_gcl_au*MTQyNTIwNDgxNS4xNzcyNTI1Njg3LjIxMDE0MzE4MzcuMTc3NDk3MDkzMy4xNzc0OTcwOTMz",
-        "verified_at": "2026-06-06T12:18:28.779Z"
+        "verified_at": "2026-06-07T07:07:03.647Z"
       }
     },
     {
@@ -838,7 +836,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -856,7 +854,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 40,
+        "latency_ms": 135,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX website page",
         "netuid": 72,
@@ -880,7 +878,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.natix.network/use-cases",
-        "verified_at": "2026-06-06T12:18:28.806Z"
+        "verified_at": "2026-06-07T07:07:03.647Z"
       }
     },
     {
@@ -893,7 +891,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -911,7 +909,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 43,
+        "latency_ms": 143,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX website page",
         "netuid": 72,
@@ -935,7 +933,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.natix.network/",
-        "verified_at": "2026-06-06T12:18:28.810Z"
+        "verified_at": "2026-06-07T07:07:03.693Z"
       }
     },
     {
@@ -948,7 +946,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -966,7 +964,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 311,
+        "latency_ms": 265,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX website page",
         "netuid": 72,
@@ -990,7 +988,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.natix.network/drive-earn-app",
-        "verified_at": "2026-06-06T12:18:28.815Z"
+        "verified_at": "2026-06-07T07:07:03.739Z"
       }
     },
     {
@@ -1003,7 +1001,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1021,7 +1019,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 38,
+        "latency_ms": 48,
         "method_tested": "GET",
         "name": "StreetVision by NATIX website page",
         "netuid": 72,
@@ -1045,7 +1043,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.natix.network/drones",
-        "verified_at": "2026-06-06T12:18:28.816Z"
+        "verified_at": "2026-06-07T07:07:03.771Z"
       }
     },
     {
@@ -1058,7 +1056,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1076,7 +1074,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 36,
+        "latency_ms": 46,
         "method_tested": "GET",
         "name": "StreetVision by NATIX website page",
         "netuid": 72,
@@ -1100,7 +1098,7 @@
         "status": "failed",
         "status_code": 404,
         "url": "https://www.natix.network/data-console",
-        "verified_at": "2026-06-06T12:18:28.816Z"
+        "verified_at": "2026-06-07T07:07:03.821Z"
       }
     },
     {
@@ -1113,7 +1111,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1131,7 +1129,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 47,
+        "latency_ms": 38,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX website page",
         "netuid": 72,
@@ -1155,7 +1153,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://www.natix.network/tokens",
-        "verified_at": "2026-06-06T12:18:28.840Z"
+        "verified_at": "2026-06-07T07:07:03.838Z"
       }
     },
     {
@@ -1168,7 +1166,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -1186,7 +1184,7 @@
         "content_type": "text/html",
         "error": null,
         "kind": "website",
-        "latency_ms": 105,
+        "latency_ms": 44,
         "method_tested": "HEAD",
         "name": "StreetVision by NATIX website page",
         "netuid": 72,
@@ -1210,7 +1208,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://staking.natix.network/",
-        "verified_at": "2026-06-06T12:18:28.841Z"
+        "verified_at": "2026-06-07T07:07:03.849Z"
       }
     }
   ],

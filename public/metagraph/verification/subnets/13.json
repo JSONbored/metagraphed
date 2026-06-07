@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 660,
+      "latency_ms": 804,
       "method_tested": "GET",
       "name": "Data Universe docs",
       "netuid": 13,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/a-guide-to-lawful-basis",
-      "verified_at": "2026-06-06T12:18:12.024Z"
+      "verified_at": "2026-06-07T07:06:41.125Z"
     },
     {
       "candidate_id": "sn-13-github-readme-macrocosm-os-data-universe-docs-10",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 96,
+      "latency_ms": 94,
       "method_tested": "GET",
       "name": "Data Universe docs",
       "netuid": 13,
@@ -69,7 +69,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://docs.bittensor.com/learn/bittensor-building-blocks",
-      "verified_at": "2026-06-06T12:18:12.077Z"
+      "verified_at": "2026-06-07T07:06:41.145Z"
     },
     {
       "candidate_id": "sn-13-github-readme-macrocosm-os-data-universe-docs-2",
@@ -78,7 +78,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 708,
+      "latency_ms": 936,
       "method_tested": "GET",
       "name": "Data Universe docs",
       "netuid": 13,
@@ -102,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/individual-rights",
-      "verified_at": "2026-06-06T12:18:12.089Z"
+      "verified_at": "2026-06-07T07:06:41.168Z"
     },
     {
       "candidate_id": "sn-13-github-readme-macrocosm-os-data-universe-docs-3",
@@ -111,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 331,
+      "latency_ms": 1013,
       "method_tested": "GET",
       "name": "Data Universe docs",
       "netuid": 13,
@@ -135,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/security/a-guide-to-data-security",
-      "verified_at": "2026-06-06T12:18:12.101Z"
+      "verified_at": "2026-06-07T07:06:41.174Z"
     },
     {
       "candidate_id": "sn-13-github-readme-macrocosm-os-data-universe-docs-4",
@@ -144,7 +144,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 592,
+      "latency_ms": 792,
       "method_tested": "HEAD",
       "name": "Data Universe docs",
       "netuid": 13,
@@ -168,7 +168,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ico.org.uk/for-organisations/report-a-breach/personal-data-breach/personal-data-breaches-a-guide",
-      "verified_at": "2026-06-06T12:18:12.185Z"
+      "verified_at": "2026-06-07T07:06:41.176Z"
     },
     {
       "candidate_id": "sn-13-github-readme-macrocosm-os-data-universe-docs-5",
@@ -177,7 +177,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 336,
+      "latency_ms": 391,
       "method_tested": "GET",
       "name": "Data Universe docs",
       "netuid": 13,
@@ -201,7 +201,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://ico.org.uk/for-organisations/guide-to-eidas/key-definitions",
-      "verified_at": "2026-06-06T12:18:12.195Z"
+      "verified_at": "2026-06-07T07:06:41.184Z"
     },
     {
       "candidate_id": "sn-13-github-readme-macrocosm-os-data-universe-docs-6",
@@ -210,7 +210,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 224,
+      "latency_ms": 219,
       "method_tested": "HEAD",
       "name": "Data Universe docs",
       "netuid": 13,
@@ -234,7 +234,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.macrocosmos.ai/constellation-user-guides/gravity",
-      "verified_at": "2026-06-06T12:18:12.198Z"
+      "verified_at": "2026-06-07T07:06:41.208Z"
     },
     {
       "candidate_id": "sn-13-github-readme-macrocosm-os-data-universe-docs-8",
@@ -243,7 +243,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 98,
+      "latency_ms": 120,
       "method_tested": "GET",
       "name": "Data Universe docs",
       "netuid": 13,
@@ -267,7 +267,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://docs.macrocosmos.ai/constellation-user-guides/nebula",
-      "verified_at": "2026-06-06T12:18:12.208Z"
+      "verified_at": "2026-06-07T07:06:41.213Z"
     },
     {
       "candidate_id": "sn-13-github-readme-macrocosm-os-data-universe-docs-9",
@@ -276,7 +276,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 224,
+      "latency_ms": 240,
       "method_tested": "HEAD",
       "name": "Data Universe docs",
       "netuid": 13,
@@ -300,7 +300,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.macrocosmos.ai/developers/tools/macrocosmos-mcp",
-      "verified_at": "2026-06-06T12:18:12.217Z"
+      "verified_at": "2026-06-07T07:06:41.241Z"
     },
     {
       "candidate_id": "sn-13-github-readme-macrocosm-os-data-universe-subnet-api-7",
@@ -309,7 +309,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 109,
+      "latency_ms": 107,
       "method_tested": "GET",
       "name": "Data Universe API surface",
       "netuid": 13,
@@ -333,7 +333,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://docs.macrocosmos.ai/developers/api-documentation/sn13-data-universe",
-      "verified_at": "2026-06-06T12:18:12.250Z"
+      "verified_at": "2026-06-07T07:06:41.241Z"
     },
     {
       "candidate_id": "sn-13-taomarketcap-dashboard",
@@ -342,7 +342,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 131,
+      "latency_ms": 138,
       "method_tested": "HEAD",
       "name": "Data Universe TaoMarketCap dashboard",
       "netuid": 13,
@@ -366,41 +366,41 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/13",
-      "verified_at": "2026-06-06T12:18:12.265Z"
+      "verified_at": "2026-06-07T07:06:41.344Z"
     },
     {
-      "archived": false,
       "candidate_id": "sn-13-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
-      "default_branch": "main",
-      "description": "A Bittensor subnet for collecting and storing valuable data for other subnets",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/macrocosm-os/data-universe",
-      "homepage": null,
-      "html_url": "https://github.com/macrocosm-os/data-universe",
       "kind": "source-repo",
-      "last_push_at": "2026-06-05T21:54:10Z",
+      "latency_ms": 594,
+      "method_tested": "HEAD",
       "name": "Data Universe source repository",
       "netuid": 13,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/13",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/13",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/13/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/13"
       ],
       "status": "ok",
-      "topics": [],
+      "status_code": 200,
       "url": "https://github.com/macrocosm-os/data-universe",
-      "verified_at": "2026-06-06T12:18:12.306Z"
+      "verified_at": "2026-06-07T07:06:41.344Z"
     },
     {
       "candidate_id": "sn-13-taomarketcap-website",
@@ -409,7 +409,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 226,
+      "latency_ms": 252,
       "method_tested": "HEAD",
       "name": "Data Universe website",
       "netuid": 13,
@@ -433,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.macrocosmos.ai/gravity",
-      "verified_at": "2026-06-06T12:18:12.326Z"
+      "verified_at": "2026-06-07T07:06:41.418Z"
     },
     {
       "candidate_id": "sn-13-tensorplex-docs",
@@ -442,7 +442,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 291,
+      "latency_ms": 345,
       "method_tested": "HEAD",
       "name": "Data Universe Tensorplex subnet docs",
       "netuid": 13,
@@ -466,7 +466,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/13",
-      "verified_at": "2026-06-06T12:18:12.369Z"
+      "verified_at": "2026-06-07T07:06:41.436Z"
     },
     {
       "candidate_id": "sn-13-website-common-api",
@@ -475,7 +475,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 84,
+      "latency_ms": 86,
       "method_tested": "GET",
       "name": "Data Universe API",
       "netuid": 13,
@@ -499,7 +499,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.macrocosmos.ai/api",
-      "verified_at": "2026-06-06T12:18:12.396Z"
+      "verified_at": "2026-06-07T07:06:41.482Z"
     },
     {
       "candidate_id": "sn-13-website-common-docs",
@@ -508,7 +508,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 64,
+      "latency_ms": 77,
       "method_tested": "GET",
       "name": "Data Universe docs",
       "netuid": 13,
@@ -532,7 +532,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.macrocosmos.ai/docs",
-      "verified_at": "2026-06-06T12:18:12.405Z"
+      "verified_at": "2026-06-07T07:06:41.486Z"
     },
     {
       "candidate_id": "sn-13-website-common-health",
@@ -541,7 +541,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 73,
+      "latency_ms": 75,
       "method_tested": "GET",
       "name": "Data Universe health endpoint",
       "netuid": 13,
@@ -565,7 +565,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.macrocosmos.ai/health",
-      "verified_at": "2026-06-06T12:18:12.419Z"
+      "verified_at": "2026-06-07T07:06:41.490Z"
     },
     {
       "candidate_id": "sn-13-website-common-openapi-json",
@@ -574,7 +574,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 97,
+      "latency_ms": 174,
       "method_tested": "GET",
       "name": "Data Universe OpenAPI JSON",
       "netuid": 13,
@@ -598,7 +598,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.macrocosmos.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:12.422Z"
+      "verified_at": "2026-06-07T07:06:41.541Z"
     },
     {
       "candidate_id": "sn-13-website-common-swagger",
@@ -607,7 +607,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 67,
+      "latency_ms": 63,
       "method_tested": "GET",
       "name": "Data Universe Swagger UI",
       "netuid": 13,
@@ -631,7 +631,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.macrocosmos.ai/swagger",
-      "verified_at": "2026-06-06T12:18:12.441Z"
+      "verified_at": "2026-06-07T07:06:41.643Z"
     },
     {
       "candidate_id": "sn-13-website-common-swagger-json",
@@ -640,7 +640,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 85,
+      "latency_ms": 84,
       "method_tested": "GET",
       "name": "Data Universe Swagger JSON",
       "netuid": 13,
@@ -664,7 +664,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.macrocosmos.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:12.466Z"
+      "verified_at": "2026-06-07T07:06:41.649Z"
     },
     {
       "candidate_id": "sn-13-website-link-www-macrocosmos-ai-docs-2",
@@ -673,7 +673,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 98,
+      "latency_ms": 119,
       "method_tested": "HEAD",
       "name": "Data Universe docs",
       "netuid": 13,
@@ -697,7 +697,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.macrocosmos.ai/",
-      "verified_at": "2026-06-06T12:18:12.489Z"
+      "verified_at": "2026-06-07T07:06:41.650Z"
     },
     {
       "candidate_id": "sn-13-website-link-www-macrocosmos-ai-docs-4",
@@ -706,7 +706,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 119,
+      "latency_ms": 270,
       "method_tested": "HEAD",
       "name": "Data Universe docs",
       "netuid": 13,
@@ -730,7 +730,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://macrocosmos.ai/delegation-guide",
-      "verified_at": "2026-06-06T12:18:12.545Z"
+      "verified_at": "2026-06-07T07:06:41.713Z"
     },
     {
       "candidate_id": "sn-13-website-link-www-macrocosmos-ai-website-1",
@@ -739,7 +739,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 77,
+      "latency_ms": 70,
       "method_tested": "HEAD",
       "name": "Data Universe website page",
       "netuid": 13,
@@ -763,7 +763,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.macrocosmos.ai/",
-      "verified_at": "2026-06-06T12:18:12.552Z"
+      "verified_at": "2026-06-07T07:06:41.741Z"
     },
     {
       "candidate_id": "sn-13-website-link-www-macrocosmos-ai-website-3",
@@ -772,7 +772,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 836,
+      "latency_ms": 546,
       "method_tested": "GET",
       "name": "Data Universe website page",
       "netuid": 13,
@@ -796,7 +796,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://app.macrocosmos.ai/",
-      "verified_at": "2026-06-06T12:18:12.558Z"
+      "verified_at": "2026-06-07T07:06:41.772Z"
     },
     {
       "candidate_id": "sn-13-website-link-www-macrocosmos-ai-website-5",
@@ -805,7 +805,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 137,
+      "latency_ms": 175,
       "method_tested": "HEAD",
       "name": "Data Universe website page",
       "netuid": 13,
@@ -829,7 +829,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://macrocosmos.ai/our-purpose",
-      "verified_at": "2026-06-06T12:18:12.559Z"
+      "verified_at": "2026-06-07T07:06:41.784Z"
     },
     {
       "candidate_id": "sn-13-website-link-www-macrocosmos-ai-website-6",
@@ -838,7 +838,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 260,
+      "latency_ms": 225,
       "method_tested": "HEAD",
       "name": "Data Universe website page",
       "netuid": 13,
@@ -862,7 +862,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://macrocosmos.ai/team",
-      "verified_at": "2026-06-06T12:18:12.587Z"
+      "verified_at": "2026-06-07T07:06:41.788Z"
     }
   ],
   "schema_version": 1,

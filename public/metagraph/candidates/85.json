@@ -10,7 +10,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "github-readme-link",
@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 106,
+        "latency_ms": 95,
         "method_tested": "HEAD",
         "name": "Vidaio docs",
         "netuid": 85,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://docs.bittensor.com/",
-        "verified_at": "2026-06-06T12:18:32.600Z"
+        "verified_at": "2026-06-07T07:07:10.759Z"
       }
     },
     {
@@ -83,7 +83,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 138,
+        "latency_ms": 142,
         "method_tested": "HEAD",
         "name": "Vidaio TaoMarketCap dashboard",
         "netuid": 85,
@@ -107,7 +107,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/85",
-        "verified_at": "2026-06-06T12:18:32.604Z"
+        "verified_at": "2026-06-07T07:07:10.773Z"
       }
     },
     {
@@ -126,8 +126,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/85",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/85",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/85/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/85"
       ],
       "state": "schema-valid",
       "subnet_name": "Vidaio",
@@ -137,10 +136,10 @@
         "classification": "live",
         "confidence_score": 59,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/vidaio-subnet/vidaio-subnet",
         "kind": "source-repo",
-        "latency_ms": 528,
+        "latency_ms": 714,
         "method_tested": "HEAD",
         "name": "Vidaio source repository",
         "netuid": 85,
@@ -159,13 +158,12 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/85",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/85",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/85/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/85"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/vidaio-subnet/vidaio-subnet",
-        "verified_at": "2026-06-06T12:18:32.604Z"
+        "verified_at": "2026-06-07T07:07:10.795Z"
       }
     },
     {
@@ -196,7 +194,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 414,
+        "latency_ms": 1545,
         "method_tested": "HEAD",
         "name": "Vidaio website",
         "netuid": 85,
@@ -220,7 +218,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/",
-        "verified_at": "2026-06-06T12:18:32.604Z"
+        "verified_at": "2026-06-07T07:07:10.831Z"
       }
     },
     {
@@ -233,7 +231,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -251,7 +249,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 296,
+        "latency_ms": 508,
         "method_tested": "HEAD",
         "name": "Vidaio Tensorplex subnet docs",
         "netuid": 85,
@@ -275,7 +273,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/85",
-        "verified_at": "2026-06-06T12:18:32.614Z"
+        "verified_at": "2026-06-07T07:07:10.831Z"
       }
     },
     {
@@ -288,7 +286,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -306,7 +304,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 365,
+        "latency_ms": 953,
         "method_tested": "GET",
         "name": "Vidaio API",
         "netuid": 85,
@@ -330,7 +328,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/api",
-        "verified_at": "2026-06-06T12:18:32.638Z"
+        "verified_at": "2026-06-07T07:07:10.843Z"
       }
     },
     {
@@ -343,7 +341,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -361,7 +359,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 309,
+        "latency_ms": 453,
         "method_tested": "GET",
         "name": "Vidaio docs",
         "netuid": 85,
@@ -385,7 +383,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/docs",
-        "verified_at": "2026-06-06T12:18:32.668Z"
+        "verified_at": "2026-06-07T07:07:10.846Z"
       }
     },
     {
@@ -398,7 +396,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -416,7 +414,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "subnet-api",
-        "latency_ms": 327,
+        "latency_ms": 915,
         "method_tested": "GET",
         "name": "Vidaio health endpoint",
         "netuid": 85,
@@ -440,7 +438,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/health",
-        "verified_at": "2026-06-06T12:18:32.668Z"
+        "verified_at": "2026-06-07T07:07:10.850Z"
       }
     },
     {
@@ -453,7 +451,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -471,7 +469,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 458,
+        "latency_ms": 774,
         "method_tested": "GET",
         "name": "Vidaio OpenAPI JSON",
         "netuid": 85,
@@ -495,7 +493,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/openapi.json",
-        "verified_at": "2026-06-06T12:18:32.670Z"
+        "verified_at": "2026-06-07T07:07:10.858Z"
       }
     },
     {
@@ -508,7 +506,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -526,7 +524,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 315,
+        "latency_ms": 380,
         "method_tested": "GET",
         "name": "Vidaio Swagger UI",
         "netuid": 85,
@@ -550,7 +548,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/swagger",
-        "verified_at": "2026-06-06T12:18:32.675Z"
+        "verified_at": "2026-06-07T07:07:10.909Z"
       }
     },
     {
@@ -563,7 +561,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "review_notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-common-path",
@@ -581,7 +579,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "openapi",
-        "latency_ms": 312,
+        "latency_ms": 603,
         "method_tested": "GET",
         "name": "Vidaio Swagger JSON",
         "netuid": 85,
@@ -605,7 +603,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/swagger.json",
-        "verified_at": "2026-06-06T12:18:32.696Z"
+        "verified_at": "2026-06-07T07:07:10.917Z"
       }
     },
     {
@@ -618,7 +616,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -636,7 +634,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 300,
+        "latency_ms": 621,
         "method_tested": "HEAD",
         "name": "Vidaio dashboard",
         "netuid": 85,
@@ -660,7 +658,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/dashboard",
-        "verified_at": "2026-06-06T12:18:32.705Z"
+        "verified_at": "2026-06-07T07:07:10.958Z"
       }
     },
     {
@@ -673,7 +671,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -691,7 +689,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 335,
+        "latency_ms": 1408,
         "method_tested": "HEAD",
         "name": "Vidaio dashboard",
         "netuid": 85,
@@ -715,7 +713,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/dashboard/upscaling",
-        "verified_at": "2026-06-06T12:18:32.732Z"
+        "verified_at": "2026-06-07T07:07:10.979Z"
       }
     },
     {
@@ -728,7 +726,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -746,7 +744,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 288,
+        "latency_ms": 1365,
         "method_tested": "HEAD",
         "name": "Vidaio dashboard",
         "netuid": 85,
@@ -770,7 +768,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/dashboard/compression",
-        "verified_at": "2026-06-06T12:18:32.742Z"
+        "verified_at": "2026-06-07T07:07:11.059Z"
       }
     },
     {
@@ -783,7 +781,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -801,7 +799,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 443,
+        "latency_ms": 1470,
         "method_tested": "HEAD",
         "name": "Vidaio website page",
         "netuid": 85,
@@ -825,7 +823,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/beta-program",
-        "verified_at": "2026-06-06T12:18:32.807Z"
+        "verified_at": "2026-06-07T07:07:11.214Z"
       }
     },
     {
@@ -838,7 +836,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -856,7 +854,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 256,
+        "latency_ms": 1098,
         "method_tested": "HEAD",
         "name": "Vidaio website page",
         "netuid": 85,
@@ -880,7 +878,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/sign-in",
-        "verified_at": "2026-06-06T12:18:32.910Z"
+        "verified_at": "2026-06-07T07:07:11.342Z"
       }
     },
     {
@@ -893,7 +891,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -911,7 +909,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 394,
+        "latency_ms": 451,
         "method_tested": "GET",
         "name": "Vidaio website page",
         "netuid": 85,
@@ -935,7 +933,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/vidaio@vidaio.io",
-        "verified_at": "2026-06-06T12:18:33.006Z"
+        "verified_at": "2026-06-07T07:07:11.582Z"
       }
     },
     {
@@ -948,7 +946,7 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
@@ -966,7 +964,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "website",
-        "latency_ms": 156,
+        "latency_ms": 374,
         "method_tested": "HEAD",
         "name": "Vidaio website page",
         "netuid": 85,
@@ -990,7 +988,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://vidaio.io/subnet",
-        "verified_at": "2026-06-06T12:18:33.018Z"
+        "verified_at": "2026-06-07T07:07:11.590Z"
       }
     }
   ],

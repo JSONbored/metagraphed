@@ -12,7 +12,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-06T12:18:19.334Z"
+    "verified_at": "2026-06-07T07:06:50.169Z"
   },
   "dashboard_url": "https://taomarketcap.com/subnets/37",
   "docs_url": "https://docs.bittensor.com/",
@@ -58,11 +58,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/Aurelius-Protocol/Aurelius-Protocol",
-        "latency_ms": 582,
+        "latency_ms": 793,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:19.303Z"
+        "verified_at": "2026-06-07T07:06:50.120Z"
       }
     },
     {
@@ -71,7 +71,7 @@
       "id": "sn-37-tensorplex-source-repo-1",
       "kind": "source-repo",
       "name": "Aurelius source repository",
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -97,11 +97,11 @@
         "classification": "live",
         "confidence_score": 65,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 296,
+        "latency_ms": 723,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:19.334Z"
+        "verified_at": "2026-06-07T07:06:50.169Z"
       }
     },
     {
@@ -136,11 +136,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html",
-        "latency_ms": 167,
+        "latency_ms": 117,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:19.305Z"
+        "verified_at": "2026-06-07T07:06:50.136Z"
       }
     },
     {
@@ -149,7 +149,7 @@
       "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-docs-1",
       "kind": "docs",
       "name": "Aurelius docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -175,11 +175,11 @@
         "classification": "redirected",
         "confidence_score": 61,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 94,
+        "latency_ms": 104,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.learnbittensor.org/",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:19.178Z"
+        "verified_at": "2026-06-07T07:06:50.038Z"
       }
     },
     {
@@ -188,7 +188,7 @@
       "id": "sn-37-tensorplex-docs",
       "kind": "docs",
       "name": "Aurelius Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -214,11 +214,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 349,
+        "latency_ms": 642,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:19.330Z"
+        "verified_at": "2026-06-07T07:06:50.146Z"
       }
     },
     {
@@ -253,11 +253,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 136,
+        "latency_ms": 161,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:19.272Z"
+        "verified_at": "2026-06-07T07:06:50.108Z"
       }
     },
     {
@@ -266,7 +266,7 @@
       "id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-5",
       "kind": "subnet-api",
       "name": "Aurelius API surface",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -292,11 +292,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 357,
+        "latency_ms": 228,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:19.197Z"
+        "verified_at": "2026-06-07T07:06:50.083Z"
       }
     }
   ],

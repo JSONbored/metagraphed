@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 666,
+      "latency_ms": 263,
       "method_tested": "HEAD",
       "name": "Harnyx dashboard",
       "netuid": 67,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://dashboard.harnyx.ai/benchmark",
-      "verified_at": "2026-06-06T12:18:27.153Z"
+      "verified_at": "2026-06-07T07:07:01.646Z"
     },
     {
       "candidate_id": "sn-67-taomarketcap-dashboard",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 158,
+      "latency_ms": 155,
       "method_tested": "HEAD",
       "name": "Harnyx TaoMarketCap dashboard",
       "netuid": 67,
@@ -69,7 +69,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/67",
-      "verified_at": "2026-06-06T12:18:27.153Z"
+      "verified_at": "2026-06-07T07:07:01.689Z"
     },
     {
       "candidate_id": "sn-67-taomarketcap-website",
@@ -78,7 +78,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 272,
+      "latency_ms": 249,
       "method_tested": "HEAD",
       "name": "Harnyx website",
       "netuid": 67,
@@ -102,7 +102,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://harnyx.ai/",
-      "verified_at": "2026-06-06T12:18:27.170Z"
+      "verified_at": "2026-06-07T07:07:01.690Z"
     },
     {
       "candidate_id": "sn-67-tensorplex-docs",
@@ -111,7 +111,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 346,
+      "latency_ms": 706,
       "method_tested": "HEAD",
       "name": "Harnyx Tensorplex subnet docs",
       "netuid": 67,
@@ -135,7 +135,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/67",
-      "verified_at": "2026-06-06T12:18:27.186Z"
+      "verified_at": "2026-06-07T07:07:01.717Z"
     },
     {
       "candidate_id": "sn-67-tensorplex-source-repo-1",
@@ -145,7 +145,7 @@
       "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/harnyx/harnyx",
       "kind": "source-repo",
-      "latency_ms": 537,
+      "latency_ms": 779,
       "method_tested": "HEAD",
       "name": "Harnyx source repository",
       "netuid": 67,
@@ -169,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/harnyx/harnyx",
-      "verified_at": "2026-06-06T12:18:27.191Z"
+      "verified_at": "2026-06-07T07:07:01.725Z"
     },
     {
       "candidate_id": "sn-67-website-common-api",
@@ -178,7 +178,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 165,
+      "latency_ms": 572,
       "method_tested": "GET",
       "name": "Harnyx API",
       "netuid": 67,
@@ -202,7 +202,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://harnyx.ai/api",
-      "verified_at": "2026-06-06T12:18:27.194Z"
+      "verified_at": "2026-06-07T07:07:01.737Z"
     },
     {
       "candidate_id": "sn-67-website-common-docs",
@@ -211,7 +211,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "docs",
-      "latency_ms": 175,
+      "latency_ms": 167,
       "method_tested": "GET",
       "name": "Harnyx docs",
       "netuid": 67,
@@ -235,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://harnyx.ai/docs",
-      "verified_at": "2026-06-06T12:18:27.194Z"
+      "verified_at": "2026-06-07T07:07:01.737Z"
     },
     {
       "candidate_id": "sn-67-website-common-health",
@@ -244,7 +244,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 170,
+      "latency_ms": 179,
       "method_tested": "GET",
       "name": "Harnyx health endpoint",
       "netuid": 67,
@@ -268,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://harnyx.ai/health",
-      "verified_at": "2026-06-06T12:18:27.227Z"
+      "verified_at": "2026-06-07T07:07:01.741Z"
     },
     {
       "candidate_id": "sn-67-website-common-openapi-json",
@@ -277,7 +277,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 163,
+      "latency_ms": 571,
       "method_tested": "GET",
       "name": "Harnyx OpenAPI JSON",
       "netuid": 67,
@@ -301,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://harnyx.ai/openapi.json",
-      "verified_at": "2026-06-06T12:18:27.233Z"
+      "verified_at": "2026-06-07T07:07:01.773Z"
     },
     {
       "candidate_id": "sn-67-website-common-swagger",
@@ -310,7 +310,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 574,
+      "latency_ms": 583,
       "method_tested": "GET",
       "name": "Harnyx Swagger UI",
       "netuid": 67,
@@ -334,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://harnyx.ai/swagger",
-      "verified_at": "2026-06-06T12:18:27.264Z"
+      "verified_at": "2026-06-07T07:07:01.778Z"
     },
     {
       "candidate_id": "sn-67-website-common-swagger-json",
@@ -367,7 +367,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://harnyx.ai/swagger.json",
-      "verified_at": "2026-06-06T12:18:27.293Z"
+      "verified_at": "2026-06-07T07:07:01.780Z"
     },
     {
       "candidate_id": "sn-67-website-link-harnyx-ai-dashboard-1",
@@ -376,7 +376,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 719,
+      "latency_ms": 643,
       "method_tested": "HEAD",
       "name": "Harnyx dashboard",
       "netuid": 67,
@@ -400,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://dashboard.harnyx.ai/",
-      "verified_at": "2026-06-06T12:18:27.307Z"
+      "verified_at": "2026-06-07T07:07:01.861Z"
     },
     {
       "candidate_id": "sn-67-website-link-harnyx-ai-website-2",
@@ -409,7 +409,7 @@
       "content_type": "text/html",
       "error": null,
       "kind": "website",
-      "latency_ms": 639,
+      "latency_ms": 640,
       "method_tested": "HEAD",
       "name": "Harnyx website page",
       "netuid": 67,
@@ -433,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://harnyx.ai/vision",
-      "verified_at": "2026-06-06T12:18:27.308Z"
+      "verified_at": "2026-06-07T07:07:01.915Z"
     }
   ],
   "schema_version": 1,

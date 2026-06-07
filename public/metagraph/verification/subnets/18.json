@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 176,
+      "latency_ms": 134,
       "method_tested": "HEAD",
       "name": "Zeus TaoMarketCap dashboard",
       "netuid": 18,
@@ -36,45 +36,41 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/18",
-      "verified_at": "2026-06-06T12:18:13.900Z"
+      "verified_at": "2026-06-07T07:06:43.478Z"
     },
     {
-      "archived": false,
       "candidate_id": "sn-18-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
-      "default_branch": "main",
-      "description": "Zeus Subnet leverages AI to forecast environmental variables using real-time global data. It incentivizes innovation in climate science by enabling miners and validators to develop and evolve efficient, decentralized prediction models.",
+      "confidence_score": 59,
+      "error": null,
+      "github_api_status": 403,
       "github_api_url": "https://api.github.com/repos/Orpheus-AI/Zeus",
-      "homepage": null,
-      "html_url": "https://github.com/Orpheus-AI/Zeus",
       "kind": "source-repo",
-      "last_push_at": "2026-06-04T16:21:46Z",
+      "latency_ms": 578,
+      "method_tested": "HEAD",
       "name": "Zeus source repository",
       "netuid": 18,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "source_tier": "third-party-index",
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/18",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/18",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/18/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/18"
       ],
       "status": "ok",
-      "topics": [
-        "bittensor",
-        "climate-forecasting",
-        "weather-forecasting"
-      ],
+      "status_code": 200,
       "url": "https://github.com/Orpheus-AI/Zeus",
-      "verified_at": "2026-06-06T12:18:13.912Z"
+      "verified_at": "2026-06-07T07:06:43.520Z"
     },
     {
       "candidate_id": "sn-18-taomarketcap-website",
@@ -83,7 +79,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 591,
+      "latency_ms": 609,
       "method_tested": "HEAD",
       "name": "Zeus website",
       "netuid": 18,
@@ -107,7 +103,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.zeussubnet.com/",
-      "verified_at": "2026-06-06T12:18:13.938Z"
+      "verified_at": "2026-06-07T07:06:43.524Z"
     },
     {
       "candidate_id": "sn-18-tensorplex-docs",
@@ -116,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 303,
+      "latency_ms": 420,
       "method_tested": "HEAD",
       "name": "Zeus Tensorplex subnet docs",
       "netuid": 18,
@@ -140,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/18",
-      "verified_at": "2026-06-06T12:18:13.939Z"
+      "verified_at": "2026-06-07T07:06:43.524Z"
     },
     {
       "candidate_id": "sn-18-website-common-api",
@@ -149,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 721,
+      "latency_ms": 767,
       "method_tested": "HEAD",
       "name": "Zeus API",
       "netuid": 18,
@@ -173,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.zeussubnet.com/api",
-      "verified_at": "2026-06-06T12:18:13.956Z"
+      "verified_at": "2026-06-07T07:06:43.524Z"
     },
     {
       "candidate_id": "sn-18-website-common-docs",
@@ -182,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 176,
+      "latency_ms": 191,
       "method_tested": "GET",
       "name": "Zeus docs",
       "netuid": 18,
@@ -206,7 +202,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.zeussubnet.com/docs",
-      "verified_at": "2026-06-06T12:18:13.980Z"
+      "verified_at": "2026-06-07T07:06:43.594Z"
     },
     {
       "candidate_id": "sn-18-website-common-health",
@@ -215,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 177,
+      "latency_ms": 196,
       "method_tested": "GET",
       "name": "Zeus health endpoint",
       "netuid": 18,
@@ -239,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.zeussubnet.com/health",
-      "verified_at": "2026-06-06T12:18:13.985Z"
+      "verified_at": "2026-06-07T07:06:43.619Z"
     },
     {
       "candidate_id": "sn-18-website-common-openapi-json",
@@ -248,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 181,
+      "latency_ms": 180,
       "method_tested": "GET",
       "name": "Zeus OpenAPI JSON",
       "netuid": 18,
@@ -272,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.zeussubnet.com/openapi.json",
-      "verified_at": "2026-06-06T12:18:14.076Z"
+      "verified_at": "2026-06-07T07:06:43.623Z"
     },
     {
       "candidate_id": "sn-18-website-common-swagger",
@@ -281,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 183,
+      "latency_ms": 182,
       "method_tested": "GET",
       "name": "Zeus Swagger UI",
       "netuid": 18,
@@ -305,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.zeussubnet.com/swagger",
-      "verified_at": "2026-06-06T12:18:14.078Z"
+      "verified_at": "2026-06-07T07:06:43.647Z"
     },
     {
       "candidate_id": "sn-18-website-common-swagger-json",
@@ -314,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 176,
+      "latency_ms": 178,
       "method_tested": "GET",
       "name": "Zeus Swagger JSON",
       "netuid": 18,
@@ -338,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.zeussubnet.com/swagger.json",
-      "verified_at": "2026-06-06T12:18:14.145Z"
+      "verified_at": "2026-06-07T07:06:43.687Z"
     },
     {
       "candidate_id": "sn-18-website-link-www-zeussubnet-com-dashboard-5",
@@ -347,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 505,
+      "latency_ms": 538,
       "method_tested": "HEAD",
       "name": "Zeus dashboard",
       "netuid": 18,
@@ -371,7 +367,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.zeussubnet.com/dashboard",
-      "verified_at": "2026-06-06T12:18:14.242Z"
+      "verified_at": "2026-06-07T07:06:43.767Z"
     },
     {
       "candidate_id": "sn-18-website-link-www-zeussubnet-com-docs-4",
@@ -380,7 +376,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 532,
+      "latency_ms": 557,
       "method_tested": "HEAD",
       "name": "Zeus docs",
       "netuid": 18,
@@ -404,7 +400,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://docs.zeussubnet.com/docs/introduction",
-      "verified_at": "2026-06-06T12:18:14.245Z"
+      "verified_at": "2026-06-07T07:06:43.999Z"
     },
     {
       "candidate_id": "sn-18-website-link-www-zeussubnet-com-website-1",
@@ -413,7 +409,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 232,
+      "latency_ms": 254,
       "method_tested": "HEAD",
       "name": "Zeus website page",
       "netuid": 18,
@@ -437,7 +433,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.zeussubnet.com/company",
-      "verified_at": "2026-06-06T12:18:14.289Z"
+      "verified_at": "2026-06-07T07:06:44.047Z"
     },
     {
       "candidate_id": "sn-18-website-link-www-zeussubnet-com-website-2",
@@ -446,7 +442,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 184,
+      "latency_ms": 270,
       "method_tested": "HEAD",
       "name": "Zeus website page",
       "netuid": 18,
@@ -470,7 +466,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.zeussubnet.com/articles",
-      "verified_at": "2026-06-06T12:18:14.521Z"
+      "verified_at": "2026-06-07T07:06:44.071Z"
     },
     {
       "candidate_id": "sn-18-website-link-www-zeussubnet-com-website-3",
@@ -479,7 +475,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 179,
+      "latency_ms": 255,
       "method_tested": "HEAD",
       "name": "Zeus website page",
       "netuid": 18,
@@ -503,7 +499,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.zeussubnet.com/map",
-      "verified_at": "2026-06-06T12:18:14.529Z"
+      "verified_at": "2026-06-07T07:06:44.082Z"
     }
   ],
   "schema_version": 1,

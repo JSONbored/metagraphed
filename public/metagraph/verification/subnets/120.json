@@ -12,7 +12,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 110,
+      "latency_ms": 107,
       "method_tested": "HEAD",
       "name": "Affine dashboard",
       "netuid": 120,
@@ -36,7 +36,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.affine.io/",
-      "verified_at": "2026-06-06T12:18:43.714Z"
+      "verified_at": "2026-06-07T07:07:24.354Z"
     },
     {
       "candidate_id": "sn-120-taomarketcap-dashboard",
@@ -45,7 +45,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "dashboard",
-      "latency_ms": 130,
+      "latency_ms": 150,
       "method_tested": "HEAD",
       "name": "Affine TaoMarketCap dashboard",
       "netuid": 120,
@@ -69,17 +69,17 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://taomarketcap.com/subnets/120",
-      "verified_at": "2026-06-06T12:18:43.714Z"
+      "verified_at": "2026-06-07T07:07:24.354Z"
     },
     {
       "candidate_id": "sn-120-taomarketcap-source-repo",
       "classification": "redirected",
       "confidence_score": 54,
       "error": null,
-      "github_api_status": 403,
+      "github_api_status": 429,
       "github_api_url": "https://api.github.com/repos/AffineFoundation/affine",
       "kind": "source-repo",
-      "latency_ms": 746,
+      "latency_ms": 550,
       "method_tested": "HEAD",
       "name": "Affine source repository",
       "netuid": 120,
@@ -98,13 +98,12 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/120",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/120",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/120/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/120"
       ],
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/AffineFoundation/affine",
-      "verified_at": "2026-06-06T12:18:43.714Z"
+      "verified_at": "2026-06-07T07:07:24.354Z"
     },
     {
       "candidate_id": "sn-120-taomarketcap-website",
@@ -113,7 +112,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
-      "latency_ms": 103,
+      "latency_ms": 105,
       "method_tested": "HEAD",
       "name": "Affine website",
       "netuid": 120,
@@ -137,7 +136,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://www.affine.io/",
-      "verified_at": "2026-06-06T12:18:43.718Z"
+      "verified_at": "2026-06-07T07:07:24.393Z"
     },
     {
       "candidate_id": "sn-120-tensorplex-docs",
@@ -146,7 +145,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 314,
+      "latency_ms": 284,
       "method_tested": "HEAD",
       "name": "Affine Tensorplex subnet docs",
       "netuid": 120,
@@ -170,7 +169,7 @@
       "status": "ok",
       "status_code": 200,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/120",
-      "verified_at": "2026-06-06T12:18:43.744Z"
+      "verified_at": "2026-06-07T07:07:24.397Z"
     },
     {
       "candidate_id": "sn-120-website-common-api",
@@ -179,7 +178,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 98,
+      "latency_ms": 126,
       "method_tested": "GET",
       "name": "Affine API",
       "netuid": 120,
@@ -203,7 +202,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.affine.io/api",
-      "verified_at": "2026-06-06T12:18:43.774Z"
+      "verified_at": "2026-06-07T07:07:24.475Z"
     },
     {
       "candidate_id": "sn-120-website-common-docs",
@@ -212,7 +211,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
-      "latency_ms": 110,
+      "latency_ms": 121,
       "method_tested": "GET",
       "name": "Affine docs",
       "netuid": 120,
@@ -236,7 +235,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.affine.io/docs",
-      "verified_at": "2026-06-06T12:18:43.814Z"
+      "verified_at": "2026-06-07T07:07:24.480Z"
     },
     {
       "candidate_id": "sn-120-website-common-health",
@@ -245,7 +244,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "subnet-api",
-      "latency_ms": 108,
+      "latency_ms": 111,
       "method_tested": "GET",
       "name": "Affine health endpoint",
       "netuid": 120,
@@ -269,7 +268,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.affine.io/health",
-      "verified_at": "2026-06-06T12:18:43.822Z"
+      "verified_at": "2026-06-07T07:07:24.497Z"
     },
     {
       "candidate_id": "sn-120-website-common-openapi-json",
@@ -278,7 +277,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 108,
+      "latency_ms": 176,
       "method_tested": "GET",
       "name": "Affine OpenAPI JSON",
       "netuid": 120,
@@ -302,7 +301,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.affine.io/openapi.json",
-      "verified_at": "2026-06-06T12:18:43.824Z"
+      "verified_at": "2026-06-07T07:07:24.513Z"
     },
     {
       "candidate_id": "sn-120-website-common-swagger",
@@ -311,7 +310,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 114,
+      "latency_ms": 115,
       "method_tested": "GET",
       "name": "Affine Swagger UI",
       "netuid": 120,
@@ -335,7 +334,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.affine.io/swagger",
-      "verified_at": "2026-06-06T12:18:43.835Z"
+      "verified_at": "2026-06-07T07:07:24.515Z"
     },
     {
       "candidate_id": "sn-120-website-common-swagger-json",
@@ -344,7 +343,7 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
-      "latency_ms": 126,
+      "latency_ms": 118,
       "method_tested": "GET",
       "name": "Affine Swagger JSON",
       "netuid": 120,
@@ -368,7 +367,7 @@
       "status": "failed",
       "status_code": 404,
       "url": "https://www.affine.io/swagger.json",
-      "verified_at": "2026-06-06T12:18:43.844Z"
+      "verified_at": "2026-06-07T07:07:24.516Z"
     }
   ],
   "schema_version": 1,

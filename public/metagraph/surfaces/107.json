@@ -13,7 +13,7 @@
       "kind": "subnet-api",
       "name": "Minos API surface",
       "netuid": 107,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -41,11 +41,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 94,
+        "latency_ms": 88,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.635Z"
+        "verified_at": "2026-06-07T07:07:20.021Z"
       }
     },
     {
@@ -55,7 +55,7 @@
       "kind": "subnet-api",
       "name": "Minos API surface",
       "netuid": 107,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -83,11 +83,11 @@
         "classification": "live",
         "confidence_score": 68,
         "content_type": "application/json",
-        "latency_ms": 85,
+        "latency_ms": 92,
         "method_tested": "GET",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.650Z"
+        "verified_at": "2026-06-07T07:07:20.084Z"
       }
     },
     {
@@ -97,7 +97,7 @@
       "kind": "dashboard",
       "name": "Minos dashboard",
       "netuid": 107,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -125,11 +125,11 @@
         "classification": "live",
         "confidence_score": 66,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 226,
+        "latency_ms": 241,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.655Z"
+        "verified_at": "2026-06-07T07:07:20.111Z"
       }
     },
     {
@@ -167,11 +167,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 142,
+        "latency_ms": 127,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.660Z"
+        "verified_at": "2026-06-07T07:07:20.129Z"
       }
     },
     {
@@ -210,11 +210,11 @@
         "confidence_score": 59,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/minos-protocol/minos_subnet",
-        "latency_ms": 419,
+        "latency_ms": 537,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.719Z"
+        "verified_at": "2026-06-07T07:07:20.233Z"
       }
     },
     {
@@ -252,11 +252,11 @@
         "classification": "live",
         "confidence_score": 77,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 200,
+        "latency_ms": 229,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.767Z"
+        "verified_at": "2026-06-07T07:07:20.259Z"
       }
     },
     {
@@ -266,7 +266,7 @@
       "kind": "docs",
       "name": "Minos Tensorplex subnet docs",
       "netuid": 107,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -294,11 +294,11 @@
         "classification": "live",
         "confidence_score": 73,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 359,
+        "latency_ms": 436,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.802Z"
+        "verified_at": "2026-06-07T07:07:20.286Z"
       }
     },
     {
@@ -308,7 +308,7 @@
       "kind": "source-repo",
       "name": "Minos source repository",
       "netuid": 107,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -337,11 +337,11 @@
         "confidence_score": 55,
         "content_type": null,
         "github_api_url": "https://api.github.com/repos/tigerinvests-com/sn107-alpha",
-        "latency_ms": 500,
+        "latency_ms": 541,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.882Z"
+        "verified_at": "2026-06-07T07:07:20.335Z"
       }
     },
     {
@@ -351,7 +351,7 @@
       "kind": "docs",
       "name": "Minos docs",
       "netuid": 107,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -379,11 +379,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 216,
+        "latency_ms": 208,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:39.946Z"
+        "verified_at": "2026-06-07T07:07:20.422Z"
       }
     },
     {
@@ -393,7 +393,7 @@
       "kind": "docs",
       "name": "Minos docs",
       "netuid": 107,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -421,11 +421,11 @@
         "classification": "live",
         "confidence_score": 76,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 120,
+        "latency_ms": 234,
         "method_tested": "HEAD",
         "redirect_target": null,
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.162Z"
+        "verified_at": "2026-06-07T07:07:20.656Z"
       }
     },
     {
@@ -435,7 +435,7 @@
       "kind": "docs",
       "name": "Minos docs",
       "netuid": 107,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -463,11 +463,11 @@
         "classification": "redirected",
         "confidence_score": 71,
         "content_type": "text/html; charset=utf-8",
-        "latency_ms": 522,
+        "latency_ms": 551,
         "method_tested": "HEAD",
         "redirect_target": "https://docs.theminos.ai/overview",
         "status_code": 200,
-        "verified_at": "2026-06-06T12:18:40.208Z"
+        "verified_at": "2026-06-07T07:07:20.679Z"
       }
     }
   ]

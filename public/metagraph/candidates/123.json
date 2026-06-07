@@ -28,7 +28,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "dashboard",
-        "latency_ms": 144,
+        "latency_ms": 192,
         "method_tested": "HEAD",
         "name": "MANTIS TaoMarketCap dashboard",
         "netuid": 123,
@@ -52,7 +52,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://taomarketcap.com/subnets/123",
-        "verified_at": "2026-06-06T12:18:44.412Z"
+        "verified_at": "2026-06-07T07:07:25.360Z"
       }
     },
     {
@@ -71,8 +71,7 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/123",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/123",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/123/subnet.json"
+        "https://api.taomarketcap.com/public/v1/subnets/123"
       ],
       "state": "schema-valid",
       "subnet_name": "MANTIS",
@@ -82,10 +81,10 @@
         "classification": "live",
         "confidence_score": 59,
         "error": null,
-        "github_api_status": 403,
+        "github_api_status": 429,
         "github_api_url": "https://api.github.com/repos/Barbariandev/MANTIS",
         "kind": "source-repo",
-        "latency_ms": 472,
+        "latency_ms": 511,
         "method_tested": "HEAD",
         "name": "MANTIS source repository",
         "netuid": 123,
@@ -104,13 +103,12 @@
         "source_type": "taomarketcap-subnet-identity-v3",
         "source_url": "https://api.taomarketcap.com/public/v1/subnets/123",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/123",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/123/subnet.json"
+          "https://api.taomarketcap.com/public/v1/subnets/123"
         ],
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/Barbariandev/MANTIS",
-        "verified_at": "2026-06-06T12:18:44.416Z"
+        "verified_at": "2026-06-07T07:07:25.411Z"
       }
     },
     {
@@ -123,7 +121,7 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "review_notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority. Source refresh failed; preserved pending a successful refresh.",
       "schema_version": 1,
       "source_tier": "community-docs",
       "source_type": "tensorplex-subnet-docs",
@@ -141,7 +139,7 @@
         "content_type": "text/html; charset=utf-8",
         "error": null,
         "kind": "docs",
-        "latency_ms": 325,
+        "latency_ms": 292,
         "method_tested": "HEAD",
         "name": "MANTIS Tensorplex subnet docs",
         "netuid": 123,
@@ -165,7 +163,7 @@
         "status": "ok",
         "status_code": 200,
         "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/123",
-        "verified_at": "2026-06-06T12:18:44.481Z"
+        "verified_at": "2026-06-07T07:07:25.436Z"
       }
     }
   ],
