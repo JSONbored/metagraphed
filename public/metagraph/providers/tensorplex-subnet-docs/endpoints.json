@@ -27,6 +27,10 @@
       "netuid": 0,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -34,6 +38,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/0/subnet.json"
       ],
@@ -69,6 +74,10 @@
       "netuid": 2,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -76,6 +85,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/2/subnet.json"
       ],
@@ -111,6 +121,10 @@
       "netuid": 3,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -118,6 +132,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/3/subnet.json"
       ],
@@ -153,6 +168,10 @@
       "netuid": 3,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -160,6 +179,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/3/subnet.json"
       ],
@@ -195,6 +215,10 @@
       "netuid": 4,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -202,6 +226,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/4/subnet.json"
       ],
@@ -237,6 +262,10 @@
       "netuid": 4,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -244,6 +273,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/4/subnet.json"
       ],
@@ -279,6 +309,10 @@
       "netuid": 5,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -286,6 +320,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/5/subnet.json"
       ],
@@ -321,6 +356,10 @@
       "netuid": 6,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -328,6 +367,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json"
       ],
@@ -363,6 +403,10 @@
       "netuid": 8,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -370,6 +414,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json"
       ],
@@ -405,6 +450,10 @@
       "netuid": 9,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -412,6 +461,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/9/subnet.json"
       ],
@@ -447,6 +497,10 @@
       "netuid": 10,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -454,6 +508,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/10/subnet.json"
       ],
@@ -489,6 +544,10 @@
       "netuid": 11,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -496,6 +555,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/11/subnet.json"
       ],
@@ -531,6 +591,10 @@
       "netuid": 12,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -538,6 +602,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/12/subnet.json"
       ],
@@ -573,6 +638,10 @@
       "netuid": 14,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -580,6 +649,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/14/subnet.json"
       ],
@@ -615,6 +685,10 @@
       "netuid": 14,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -622,6 +696,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/latent-to/taohash/blob/main/README.md"
       ],
@@ -657,6 +732,10 @@
       "netuid": 16,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -664,6 +743,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/16/subnet.json"
       ],
@@ -699,6 +779,10 @@
       "netuid": 17,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -706,6 +790,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json"
       ],
@@ -741,6 +826,10 @@
       "netuid": 17,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -748,6 +837,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json"
       ],
@@ -783,6 +873,10 @@
       "netuid": 17,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -790,6 +884,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/404-Repo/three-gen-subnet/blob/main/README.md"
       ],
@@ -825,6 +920,10 @@
       "netuid": 18,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -832,6 +931,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/18/subnet.json"
       ],
@@ -867,6 +967,10 @@
       "netuid": 19,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -874,6 +978,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/19/subnet.json"
       ],
@@ -909,6 +1014,10 @@
       "netuid": 20,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -916,6 +1025,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/20/subnet.json"
       ],
@@ -951,6 +1061,10 @@
       "netuid": 21,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -958,6 +1072,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/21/subnet.json"
       ],
@@ -993,6 +1108,10 @@
       "netuid": 22,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1000,6 +1119,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json"
       ],
@@ -1035,6 +1155,10 @@
       "netuid": 23,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1042,6 +1166,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/TrishoolAI/trishool-subnet/blob/main/README.md"
       ],
@@ -1077,6 +1202,10 @@
       "netuid": 23,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1084,6 +1213,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/23/subnet.json"
       ],
@@ -1119,6 +1249,10 @@
       "netuid": 23,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1126,6 +1260,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/23/subnet.json"
       ],
@@ -1161,6 +1296,10 @@
       "netuid": 24,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1168,6 +1307,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json"
       ],
@@ -1203,6 +1343,10 @@
       "netuid": 25,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1210,6 +1354,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/25/subnet.json"
       ],
@@ -1245,6 +1390,10 @@
       "netuid": 26,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1252,6 +1401,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/26/subnet.json"
       ],
@@ -1287,6 +1437,10 @@
       "netuid": 27,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1294,6 +1448,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/27/subnet.json"
       ],
@@ -1329,6 +1484,10 @@
       "netuid": 28,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1336,6 +1495,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/28/subnet.json"
       ],
@@ -1371,6 +1531,10 @@
       "netuid": 29,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1378,6 +1542,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/29/subnet.json"
       ],
@@ -1413,6 +1578,10 @@
       "netuid": 29,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1420,6 +1589,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/29/subnet.json"
       ],
@@ -1455,6 +1625,10 @@
       "netuid": 30,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1462,6 +1636,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/30/subnet.json"
       ],
@@ -1497,6 +1672,10 @@
       "netuid": 31,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1504,6 +1683,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/31/subnet.json"
       ],
@@ -1539,6 +1719,10 @@
       "netuid": 32,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1546,6 +1730,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/32/subnet.json"
       ],
@@ -1581,6 +1766,10 @@
       "netuid": 34,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1588,6 +1777,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/34/subnet.json"
       ],
@@ -1623,6 +1813,10 @@
       "netuid": 35,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1630,6 +1824,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/General-Tao-Ventures/cartha-cli/blob/main/README.md"
       ],
@@ -1665,6 +1860,10 @@
       "netuid": 35,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1672,6 +1871,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/35/subnet.json"
       ],
@@ -1707,6 +1907,10 @@
       "netuid": 35,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1714,6 +1918,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/35/subnet.json"
       ],
@@ -1749,6 +1954,10 @@
       "netuid": 36,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1756,6 +1965,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/36/subnet.json"
       ],
@@ -1791,6 +2001,10 @@
       "netuid": 37,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1798,6 +2012,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/37/subnet.json"
       ],
@@ -1833,6 +2048,10 @@
       "netuid": 37,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1840,6 +2059,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/37/subnet.json"
       ],
@@ -1875,6 +2095,10 @@
       "netuid": 38,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1882,6 +2106,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json"
       ],
@@ -1917,6 +2142,10 @@
       "netuid": 39,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1924,6 +2153,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/39/subnet.json"
       ],
@@ -1959,6 +2189,10 @@
       "netuid": 39,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -1966,6 +2200,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/39/subnet.json"
       ],
@@ -2001,6 +2236,10 @@
       "netuid": 40,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2008,6 +2247,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json"
       ],
@@ -2043,6 +2283,10 @@
       "netuid": 41,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2050,6 +2294,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/41/subnet.json"
       ],
@@ -2085,6 +2330,10 @@
       "netuid": 42,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2092,6 +2341,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/42/subnet.json"
       ],
@@ -2127,6 +2377,10 @@
       "netuid": 43,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2134,6 +2388,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/43/subnet.json"
       ],
@@ -2169,6 +2424,10 @@
       "netuid": 44,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2176,6 +2435,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/44/subnet.json"
       ],
@@ -2211,6 +2471,10 @@
       "netuid": 44,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2218,6 +2482,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/44/subnet.json"
       ],
@@ -2253,6 +2518,10 @@
       "netuid": 45,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2260,6 +2529,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/45/subnet.json"
       ],
@@ -2295,6 +2565,10 @@
       "netuid": 46,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2302,6 +2576,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json"
       ],
@@ -2337,6 +2612,10 @@
       "netuid": 46,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2344,6 +2623,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json"
       ],
@@ -2379,6 +2659,10 @@
       "netuid": 46,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2386,6 +2670,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json"
       ],
@@ -2421,6 +2706,10 @@
       "netuid": 47,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2428,6 +2717,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/47/subnet.json"
       ],
@@ -2463,6 +2753,10 @@
       "netuid": 47,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2470,6 +2764,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/47/subnet.json"
       ],
@@ -2505,6 +2800,10 @@
       "netuid": 47,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2512,6 +2811,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/reboot-org/reboot-subnet/blob/main/README.md"
       ],
@@ -2547,6 +2847,10 @@
       "netuid": 48,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2554,6 +2858,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/48/subnet.json"
       ],
@@ -2589,6 +2894,10 @@
       "netuid": 49,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2596,6 +2905,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/49/subnet.json"
       ],
@@ -2631,6 +2941,10 @@
       "netuid": 50,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2638,6 +2952,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/50/subnet.json"
       ],
@@ -2673,6 +2988,10 @@
       "netuid": 51,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2680,6 +2999,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/51/subnet.json"
       ],
@@ -2715,6 +3035,10 @@
       "netuid": 52,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2722,6 +3046,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/dojo-ui/blob/main/README.md"
       ],
@@ -2757,6 +3082,10 @@
       "netuid": 52,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2764,6 +3093,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/dojo-ui/blob/main/README.md"
       ],
@@ -2799,6 +3129,10 @@
       "netuid": 52,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2806,6 +3140,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/dojo-ui/blob/main/README.md"
       ],
@@ -2841,6 +3176,10 @@
       "netuid": 52,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2848,6 +3187,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/52/subnet.json"
       ],
@@ -2883,6 +3223,10 @@
       "netuid": 52,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2890,6 +3234,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/52/subnet.json"
       ],
@@ -2925,6 +3270,10 @@
       "netuid": 53,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2932,6 +3281,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json"
       ],
@@ -2967,6 +3317,10 @@
       "netuid": 54,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -2974,6 +3328,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/54/subnet.json"
       ],
@@ -3009,6 +3364,10 @@
       "netuid": 55,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3016,6 +3375,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/55/subnet.json"
       ],
@@ -3051,6 +3411,10 @@
       "netuid": 56,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3058,6 +3422,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/56/subnet.json"
       ],
@@ -3093,6 +3458,10 @@
       "netuid": 56,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3100,6 +3469,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/56/subnet.json"
       ],
@@ -3135,6 +3505,10 @@
       "netuid": 57,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3142,6 +3516,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/57/subnet.json"
       ],
@@ -3177,6 +3552,10 @@
       "netuid": 57,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3184,6 +3563,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/57/subnet.json"
       ],
@@ -3219,6 +3599,10 @@
       "netuid": 58,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3226,6 +3610,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/Handshake58/HS58/blob/main/README.md"
       ],
@@ -3261,6 +3646,10 @@
       "netuid": 58,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3268,6 +3657,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/58/subnet.json"
       ],
@@ -3303,6 +3693,10 @@
       "netuid": 58,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3310,6 +3704,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/58/subnet.json"
       ],
@@ -3345,6 +3740,10 @@
       "netuid": 58,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3352,6 +3751,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/Handshake58/HS58/blob/main/README.md"
       ],
@@ -3387,6 +3787,10 @@
       "netuid": 58,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3394,6 +3798,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/Handshake58/HS58/blob/main/README.md"
       ],
@@ -3429,6 +3834,10 @@
       "netuid": 58,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3436,6 +3845,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/Handshake58/HS58/blob/main/README.md"
       ],
@@ -3471,6 +3881,10 @@
       "netuid": 59,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3478,6 +3892,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/59/subnet.json"
       ],
@@ -3513,6 +3928,10 @@
       "netuid": 60,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3520,6 +3939,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/Bitsec-AI/subnet/blob/main/README.md"
       ],
@@ -3555,6 +3975,10 @@
       "netuid": 60,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3562,6 +3986,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/60/subnet.json"
       ],
@@ -3597,6 +4022,10 @@
       "netuid": 60,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3604,6 +4033,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/60/subnet.json"
       ],
@@ -3639,6 +4069,10 @@
       "netuid": 61,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3646,6 +4080,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json"
       ],
@@ -3681,6 +4116,10 @@
       "netuid": 62,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3688,6 +4127,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/62/subnet.json"
       ],
@@ -3723,6 +4163,10 @@
       "netuid": 63,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3730,6 +4174,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/63/subnet.json"
       ],
@@ -3765,6 +4210,10 @@
       "netuid": 64,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3772,6 +4221,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/rayonlabs/chutes-miner/blob/main/README.md"
       ],
@@ -3807,6 +4257,10 @@
       "netuid": 64,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3814,6 +4268,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json"
       ],
@@ -3849,6 +4304,10 @@
       "netuid": 64,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3856,6 +4315,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json"
       ],
@@ -3891,6 +4351,10 @@
       "netuid": 64,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3898,6 +4362,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json"
       ],
@@ -3933,6 +4398,10 @@
       "netuid": 65,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3940,6 +4409,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/65/subnet.json"
       ],
@@ -3975,6 +4445,10 @@
       "netuid": 66,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -3982,6 +4456,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json"
       ],
@@ -4017,6 +4492,10 @@
       "netuid": 67,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4024,6 +4503,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/67/subnet.json"
       ],
@@ -4059,6 +4539,10 @@
       "netuid": 67,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4066,6 +4550,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/67/subnet.json"
       ],
@@ -4101,6 +4586,10 @@
       "netuid": 67,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4108,6 +4597,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/harnyx/harnyx/blob/main/README.md"
       ],
@@ -4143,6 +4633,10 @@
       "netuid": 68,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4150,6 +4644,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/68/subnet.json"
       ],
@@ -4185,6 +4680,10 @@
       "netuid": 69,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4192,6 +4691,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/69/subnet.json"
       ],
@@ -4227,6 +4727,10 @@
       "netuid": 70,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4234,6 +4738,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/70/subnet.json"
       ],
@@ -4269,6 +4774,10 @@
       "netuid": 71,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4276,6 +4785,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/71/subnet.json"
       ],
@@ -4311,6 +4821,10 @@
       "netuid": 72,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4318,6 +4832,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/72/subnet.json"
       ],
@@ -4353,6 +4868,10 @@
       "netuid": 73,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4360,6 +4879,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/73/subnet.json"
       ],
@@ -4395,6 +4915,10 @@
       "netuid": 75,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4402,6 +4926,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/75/subnet.json"
       ],
@@ -4437,6 +4962,10 @@
       "netuid": 75,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4444,6 +4973,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/75/subnet.json"
       ],
@@ -4479,6 +5009,10 @@
       "netuid": 75,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4486,6 +5020,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/75/subnet.json"
       ],
@@ -4521,6 +5056,10 @@
       "netuid": 76,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4528,6 +5067,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/76/subnet.json"
       ],
@@ -4563,6 +5103,10 @@
       "netuid": 77,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4570,6 +5114,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/77/subnet.json"
       ],
@@ -4605,6 +5150,10 @@
       "netuid": 78,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4612,6 +5161,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/78/subnet.json"
       ],
@@ -4647,6 +5197,10 @@
       "netuid": 78,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4654,6 +5208,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/78/subnet.json"
       ],
@@ -4689,6 +5244,10 @@
       "netuid": 78,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4696,6 +5255,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/78/subnet.json"
       ],
@@ -4731,6 +5291,10 @@
       "netuid": 79,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4738,6 +5302,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/taos-im/sn-79/blob/main/README.md"
       ],
@@ -4773,6 +5338,10 @@
       "netuid": 79,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4780,6 +5349,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/79/subnet.json"
       ],
@@ -4815,6 +5385,10 @@
       "netuid": 79,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4822,6 +5396,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/79/subnet.json"
       ],
@@ -4857,6 +5432,10 @@
       "netuid": 81,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4864,6 +5443,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/81/subnet.json"
       ],
@@ -4899,6 +5479,10 @@
       "netuid": 81,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4906,6 +5490,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/81/subnet.json"
       ],
@@ -4941,6 +5526,10 @@
       "netuid": 82,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4948,6 +5537,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/SN-Hermes/hermes-subnet/blob/main/README.md"
       ],
@@ -4983,6 +5573,10 @@
       "netuid": 82,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -4990,6 +5584,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/82/subnet.json"
       ],
@@ -5025,6 +5620,10 @@
       "netuid": 82,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5032,6 +5631,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/82/subnet.json"
       ],
@@ -5067,6 +5667,10 @@
       "netuid": 82,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5074,6 +5678,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/SN-Hermes/hermes-subnet/blob/main/README.md"
       ],
@@ -5109,6 +5714,10 @@
       "netuid": 83,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5116,6 +5725,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/83/subnet.json"
       ],
@@ -5151,6 +5761,10 @@
       "netuid": 84,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5158,6 +5772,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/TatsuProject/ChipForge_SN84/blob/master/README.md"
       ],
@@ -5193,6 +5808,10 @@
       "netuid": 84,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5200,6 +5819,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/84/subnet.json"
       ],
@@ -5235,6 +5855,10 @@
       "netuid": 84,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5242,6 +5866,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/84/subnet.json"
       ],
@@ -5277,6 +5902,10 @@
       "netuid": 84,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5284,6 +5913,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/84/subnet.json"
       ],
@@ -5319,6 +5949,10 @@
       "netuid": 85,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5326,6 +5960,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/85/subnet.json"
       ],
@@ -5361,6 +5996,10 @@
       "netuid": 86,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5368,6 +6007,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/86/subnet.json"
       ],
@@ -5403,6 +6043,10 @@
       "netuid": 87,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5410,6 +6054,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/87/subnet.json"
       ],
@@ -5445,6 +6090,10 @@
       "netuid": 88,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5452,6 +6101,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/88/subnet.json"
       ],
@@ -5487,6 +6137,10 @@
       "netuid": 89,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5494,6 +6148,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/89/subnet.json"
       ],
@@ -5529,6 +6184,10 @@
       "netuid": 90,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5536,6 +6195,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/90/subnet.json"
       ],
@@ -5571,6 +6231,10 @@
       "netuid": 91,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5578,6 +6242,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/91/subnet.json"
       ],
@@ -5613,6 +6278,10 @@
       "netuid": 92,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5620,6 +6289,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json"
       ],
@@ -5655,6 +6325,10 @@
       "netuid": 93,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5662,6 +6336,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/93/subnet.json"
       ],
@@ -5697,6 +6372,10 @@
       "netuid": 94,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5704,6 +6383,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/94/subnet.json"
       ],
@@ -5739,6 +6419,10 @@
       "netuid": 95,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5746,6 +6430,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/95/subnet.json"
       ],
@@ -5781,6 +6466,10 @@
       "netuid": 96,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5788,6 +6477,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/96/subnet.json"
       ],
@@ -5823,6 +6513,10 @@
       "netuid": 96,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5830,6 +6524,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/96/subnet.json"
       ],
@@ -5865,6 +6560,10 @@
       "netuid": 97,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5872,6 +6571,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/unitone-labs/FlameWire/blob/main/README.md"
       ],
@@ -5907,6 +6607,10 @@
       "netuid": 97,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5914,6 +6618,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/unitone-labs/FlameWire/blob/main/README.md"
       ],
@@ -5949,6 +6654,10 @@
       "netuid": 97,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5956,6 +6665,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/97/subnet.json"
       ],
@@ -5991,6 +6701,10 @@
       "netuid": 97,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -5998,6 +6712,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/97/subnet.json"
       ],
@@ -6033,6 +6748,10 @@
       "netuid": 98,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6040,6 +6759,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/98/subnet.json"
       ],
@@ -6075,6 +6795,10 @@
       "netuid": 98,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6082,6 +6806,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/98/subnet.json"
       ],
@@ -6117,6 +6842,10 @@
       "netuid": 99,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6124,6 +6853,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/99/subnet.json"
       ],
@@ -6159,6 +6889,10 @@
       "netuid": 99,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6166,6 +6900,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/99/subnet.json"
       ],
@@ -6201,6 +6936,10 @@
       "netuid": 100,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6208,6 +6947,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/100/subnet.json"
       ],
@@ -6243,6 +6983,10 @@
       "netuid": 100,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6250,6 +6994,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/100/subnet.json"
       ],
@@ -6285,6 +7030,10 @@
       "netuid": 100,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6292,6 +7041,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/100/subnet.json"
       ],
@@ -6327,6 +7077,10 @@
       "netuid": 101,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6334,6 +7088,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/101/subnet.json"
       ],
@@ -6369,6 +7124,10 @@
       "netuid": 102,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6376,6 +7135,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/102/subnet.json"
       ],
@@ -6411,6 +7171,10 @@
       "netuid": 103,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6418,6 +7182,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/103/subnet.json"
       ],
@@ -6453,6 +7218,10 @@
       "netuid": 104,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6460,6 +7229,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/104/subnet.json"
       ],
@@ -6495,6 +7265,10 @@
       "netuid": 105,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6502,6 +7276,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/105/subnet.json"
       ],
@@ -6537,6 +7312,10 @@
       "netuid": 106,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6544,6 +7323,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/106/subnet.json"
       ],
@@ -6579,6 +7359,10 @@
       "netuid": 107,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6586,6 +7370,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/107/subnet.json"
       ],
@@ -6621,6 +7406,10 @@
       "netuid": 107,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6628,6 +7417,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/107/subnet.json"
       ],
@@ -6663,6 +7453,10 @@
       "netuid": 107,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6670,6 +7464,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tigerinvests-com/sn107-alpha/blob/main/readme.md"
       ],
@@ -6705,6 +7500,10 @@
       "netuid": 108,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6712,6 +7511,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/108/subnet.json"
       ],
@@ -6747,6 +7547,10 @@
       "netuid": 109,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6754,6 +7558,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/109/subnet.json"
       ],
@@ -6789,6 +7594,10 @@
       "netuid": 110,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6796,6 +7605,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/110/subnet.json"
       ],
@@ -6831,6 +7641,10 @@
       "netuid": 110,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6838,6 +7652,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/110/subnet.json"
       ],
@@ -6873,6 +7688,10 @@
       "netuid": 111,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6880,6 +7699,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/111/subnet.json"
       ],
@@ -6915,6 +7735,10 @@
       "netuid": 112,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6922,6 +7746,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/112/subnet.json"
       ],
@@ -6957,6 +7782,10 @@
       "netuid": 113,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -6964,6 +7793,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/113/subnet.json"
       ],
@@ -6999,6 +7829,10 @@
       "netuid": 114,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7006,6 +7840,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/114/subnet.json"
       ],
@@ -7041,6 +7876,10 @@
       "netuid": 114,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7048,6 +7887,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/114/subnet.json"
       ],
@@ -7083,6 +7923,10 @@
       "netuid": 115,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7090,6 +7934,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/115/subnet.json"
       ],
@@ -7125,6 +7970,10 @@
       "netuid": 116,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7132,6 +7981,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/116/subnet.json"
       ],
@@ -7167,6 +8017,10 @@
       "netuid": 117,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7174,6 +8028,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/117/subnet.json"
       ],
@@ -7209,6 +8064,10 @@
       "netuid": 117,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7216,6 +8075,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/117/subnet.json"
       ],
@@ -7251,6 +8111,10 @@
       "netuid": 118,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7258,6 +8122,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/mobiusfund/etf/blob/main/README.md"
       ],
@@ -7293,6 +8158,10 @@
       "netuid": 118,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7300,6 +8169,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/mobiusfund/etf/blob/main/README.md"
       ],
@@ -7335,6 +8205,10 @@
       "netuid": 118,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7342,6 +8216,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/118/subnet.json"
       ],
@@ -7377,6 +8252,10 @@
       "netuid": 118,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7384,6 +8263,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/118/subnet.json"
       ],
@@ -7419,6 +8299,10 @@
       "netuid": 119,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7426,6 +8310,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/119/subnet.json"
       ],
@@ -7461,6 +8346,10 @@
       "netuid": 120,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7468,6 +8357,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/120/subnet.json"
       ],
@@ -7503,6 +8393,10 @@
       "netuid": 121,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7510,6 +8404,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/121/subnet.json"
       ],
@@ -7545,6 +8440,10 @@
       "netuid": 122,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7552,6 +8451,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/122/subnet.json"
       ],
@@ -7587,6 +8487,10 @@
       "netuid": 122,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7594,6 +8498,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/122/subnet.json"
       ],
@@ -7629,6 +8534,10 @@
       "netuid": 123,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7636,6 +8545,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/123/subnet.json"
       ],
@@ -7671,6 +8581,10 @@
       "netuid": 124,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7678,6 +8592,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/124/subnet.json"
       ],
@@ -7713,6 +8628,10 @@
       "netuid": 125,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7720,6 +8639,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/125/subnet.json"
       ],
@@ -7755,6 +8675,10 @@
       "netuid": 126,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7762,6 +8686,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/126/subnet.json"
       ],
@@ -7797,6 +8722,10 @@
       "netuid": 127,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7804,6 +8733,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/127/subnet.json"
       ],
@@ -7839,6 +8769,10 @@
       "netuid": 128,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7846,6 +8780,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/128/subnet.json"
       ],
@@ -7881,6 +8816,10 @@
       "netuid": 128,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -7888,6 +8827,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/128/subnet.json"
       ],

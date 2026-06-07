@@ -432,16 +432,15 @@ export function buildEndpointResourceArtifact({
   const endpoints = surfaces.map((surface) => {
     const health = healthBySurface.get(surface.id) || {};
     const monitored = surface.probe?.enabled === true && surface.public_safe;
-    const score = endpointScore({
+    const scoreBreakdown = endpointScoreBreakdown({
       ...surface,
       ...health,
       status: health.status || "unknown",
     });
-    const poolEligible =
-      isBaseLayerEndpoint(surface.kind) &&
-      health.status === "ok" &&
-      surface.auth_required === false &&
-      surface.public_safe === true;
+    const poolEligibility = endpointPoolEligibility({
+      ...surface,
+      status: health.status || "unknown",
+    });
 
     return {
       id: `endpoint-${surface.id}`,
@@ -463,10 +462,11 @@ export function buildEndpointResourceArtifact({
       monitoring_status: monitored ? "monitored" : "not_monitored",
       publication_state: endpointPublicationState({
         monitored,
-        poolEligible,
+        poolEligible: poolEligibility.eligible,
         surface,
       }),
-      pool_eligible: poolEligible,
+      pool_eligible: poolEligibility.eligible,
+      pool_eligibility_reasons: poolEligibility.reasons,
       archive_support: health.archive_support ?? null,
       latest_block: health.latest_block ?? null,
       method_support: health.methods_supported || null,
@@ -477,7 +477,8 @@ export function buildEndpointResourceArtifact({
         ? health.classification || "unknown"
         : "unknown",
       latency_ms: monitored ? (health.latency_ms ?? null) : null,
-      score,
+      score: scoreBreakdown.score,
+      score_reasons: scoreBreakdown.reasons,
       last_checked: monitored
         ? health.verified_at || health.last_checked || null
         : null,
@@ -534,15 +535,15 @@ export function buildEndpointPoolArtifact({
 }) {
   const sourceArtifact = endpointArtifact || rpcArtifact || { endpoints: [] };
   const endpoints = (sourceArtifact.endpoints || []).map((endpoint) => {
-    const score = endpointScore(endpoint);
+    const scoreBreakdown = endpointScoreBreakdown(endpoint);
+    const poolEligibility = endpointPoolEligibility(endpoint);
     return {
       ...endpoint,
-      score,
-      pool_eligible:
-        isBaseLayerEndpoint(endpoint.kind) &&
-        endpoint.status === "ok" &&
-        endpoint.auth_required === false &&
-        endpoint.public_safe === true,
+      score: scoreBreakdown.score,
+      score_reasons: endpoint.score_reasons || scoreBreakdown.reasons,
+      pool_eligible: poolEligibility.eligible,
+      pool_eligibility_reasons:
+        endpoint.pool_eligibility_reasons || poolEligibility.reasons,
       unsafe_methods_blocked: true,
     };
   });
@@ -578,6 +579,17 @@ export function buildEndpointPoolArtifact({
       rate_limit_required: true,
       waf_required: true,
     },
+    eligibility_policy: {
+      source: "probe-derived",
+      eligible_layers: ["bittensor-base"],
+      required_status: "ok",
+      requires_public_safe: true,
+      requires_no_auth: true,
+      user_reports_can_change_health: false,
+      notes:
+        "Pool eligibility is derived from monitored endpoint state only. Contributor reports can trigger review or re-probes, but cannot set health or uptime.",
+    },
+    provider_scores: endpointProviderScores(endpoints),
     pools: [
       endpointPool("finney-rpc", "subtensor-rpc", endpoints),
       endpointPool("finney-wss", "subtensor-wss", endpoints),
@@ -617,9 +629,81 @@ function endpointPool(id, kind, endpoints) {
       pool_eligible: endpoint.pool_eligible,
       provider: endpoint.provider,
       score: endpoint.score,
+      score_reasons: endpoint.score_reasons || [],
       status: endpoint.status,
       url: endpoint.url,
+      pool_eligibility_reasons: endpoint.pool_eligibility_reasons || [],
     })),
+  };
+}
+
+export function buildEndpointIncidentArtifact({
+  endpointArtifact,
+  generatedAt,
+  contractVersion,
+}) {
+  const endpoints = endpointArtifact?.endpoints || [];
+  const incidents = endpoints
+    .filter((endpoint) => endpoint.monitoring_status === "monitored")
+    .filter((endpoint) => ["failed", "degraded"].includes(endpoint.status))
+    .map((endpoint) => {
+      const severity = endpoint.status === "failed" ? "critical" : "warning";
+      const reason =
+        endpoint.error ||
+        endpoint.classification ||
+        `${endpoint.status} endpoint probe result`;
+      return {
+        id: `incident-${endpoint.id}`,
+        endpoint_id: endpoint.id,
+        surface_id: endpoint.surface_id,
+        netuid: endpoint.netuid,
+        subnet_slug: endpoint.subnet_slug,
+        subnet_name: endpoint.subnet_name,
+        layer: endpoint.layer,
+        kind: endpoint.kind,
+        provider: endpoint.provider,
+        operator: endpoint.operator,
+        status: endpoint.status,
+        classification: endpoint.classification,
+        severity,
+        state: "active",
+        reason,
+        detected_at: endpoint.last_checked || generatedAt,
+        last_checked: endpoint.last_checked,
+        pool_eligible: false,
+        user_reported: false,
+        source: "probe-derived",
+      };
+    })
+    .sort(
+      (a, b) =>
+        severityRank(b.severity) - severityRank(a.severity) ||
+        a.netuid - b.netuid ||
+        a.kind.localeCompare(b.kind) ||
+        a.endpoint_id.localeCompare(b.endpoint_id),
+    );
+
+  return {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    source: "endpoint-resource-probes",
+    notes: [
+      "Endpoint incidents are generated from observed probe state only.",
+      "Contributor reports can create review or re-probe work, but cannot set uptime, latency, health, or pool eligibility.",
+      "Resolved incident history is expected to live in R2/D1 once persistent probe history is enabled.",
+    ],
+    summary: {
+      incident_count: incidents.length,
+      active_count: incidents.filter((incident) => incident.state === "active")
+        .length,
+      by_kind: countRecord(incidents, (incident) => incident.kind),
+      by_layer: countRecord(incidents, (incident) => incident.layer),
+      by_provider: countRecord(incidents, (incident) => incident.provider),
+      by_severity: countRecord(incidents, (incident) => incident.severity),
+      by_status: countRecord(incidents, (incident) => incident.status),
+    },
+    incidents,
   };
 }
 
@@ -675,30 +759,121 @@ function endpointPublicationState({ monitored, poolEligible, surface }) {
   return "verified";
 }
 
-function endpointScore(endpoint) {
+function endpointScoreBreakdown(endpoint) {
   let score = 0;
-  if (endpoint.status === "ok") score += 50;
-  if (endpoint.archive_support === true) score += 15;
-  if (endpoint.latest_block) score += 10;
+  const reasons = [];
+  function add(reason, points) {
+    score += points;
+    reasons.push({ reason, points });
+  }
+
+  if (endpoint.status === "ok") add("status-ok", 50);
+  if (endpoint.archive_support === true) add("archive-support", 15);
+  if (endpoint.latest_block) add("latest-block-observed", 10);
   const methodSupport = endpoint.methods_supported || endpoint.method_support;
   if (
     methodSupport &&
     typeof methodSupport === "object" &&
     !Array.isArray(methodSupport)
   ) {
-    score += Math.min(
-      Object.values(methodSupport).filter(Boolean).length * 5,
-      20,
+    add(
+      "method-support",
+      Math.min(Object.values(methodSupport).filter(Boolean).length * 5, 20),
     );
   } else if (Array.isArray(methodSupport)) {
-    score += Math.min(methodSupport.length, 20);
+    add("method-support", Math.min(methodSupport.length, 20));
   }
   if (Number.isFinite(endpoint.latency_ms))
-    score += Math.max(0, 20 - Math.round(endpoint.latency_ms / 100));
-  if (endpoint.auth_required) score -= 25;
-  if (endpoint.status === "degraded") score -= 10;
-  if (endpoint.status === "failed") score -= 50;
-  return Math.max(0, score);
+    add("latency", Math.max(0, 20 - Math.round(endpoint.latency_ms / 100)));
+  if (endpoint.auth_required) add("auth-required", -25);
+  if (endpoint.status === "degraded") add("status-degraded", -10);
+  if (endpoint.status === "failed") add("status-failed", -50);
+
+  return {
+    score: Math.max(0, score),
+    reasons: reasons.filter((reason) => reason.points !== 0),
+  };
+}
+
+function endpointPoolEligibility(endpoint) {
+  const reasons = [];
+  if (!isBaseLayerEndpoint(endpoint.kind)) {
+    reasons.push("not-bittensor-base-layer");
+  }
+  if (endpoint.status !== "ok") {
+    reasons.push(`status-${endpoint.status || "unknown"}`);
+  }
+  if (endpoint.auth_required !== false) {
+    reasons.push("auth-required");
+  }
+  if (endpoint.public_safe !== true) {
+    reasons.push("not-public-safe");
+  }
+  return {
+    eligible: reasons.length === 0,
+    reasons: reasons.length ? reasons : ["eligible"],
+  };
+}
+
+function endpointProviderScores(endpoints) {
+  const providers = new Map();
+  for (const endpoint of endpoints) {
+    const provider = endpoint.provider || "unknown";
+    const row = providers.get(provider) || {
+      provider,
+      endpoint_count: 0,
+      monitored_count: 0,
+      ok_count: 0,
+      failed_count: 0,
+      degraded_count: 0,
+      pool_eligible_count: 0,
+      score_total: 0,
+    };
+    row.endpoint_count += 1;
+    if (endpoint.monitoring_status === "monitored") {
+      row.monitored_count += 1;
+    }
+    if (endpoint.status === "ok") row.ok_count += 1;
+    if (endpoint.status === "failed") row.failed_count += 1;
+    if (endpoint.status === "degraded") row.degraded_count += 1;
+    if (endpoint.pool_eligible) row.pool_eligible_count += 1;
+    row.score_total += endpoint.score || 0;
+    providers.set(provider, row);
+  }
+
+  return [...providers.values()]
+    .map((row) => {
+      const publicRow = { ...row };
+      delete publicRow.score_total;
+      return {
+        ...publicRow,
+        average_score: row.endpoint_count
+          ? Math.round(row.score_total / row.endpoint_count)
+          : 0,
+        operational_score:
+          row.endpoint_count === 0
+            ? 0
+            : Math.max(
+                0,
+                Math.round(
+                  (row.ok_count / row.endpoint_count) * 70 +
+                    (row.pool_eligible_count / row.endpoint_count) * 20 -
+                    (row.failed_count / row.endpoint_count) * 30 -
+                    (row.degraded_count / row.endpoint_count) * 10,
+                ),
+              ),
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.operational_score - a.operational_score ||
+        b.average_score - a.average_score ||
+        a.provider.localeCompare(b.provider),
+    );
+}
+
+function severityRank(severity) {
+  return { critical: 3, warning: 2, info: 1 }[severity] || 0;
 }
 
 function countRecord(items, keyFn) {

@@ -959,6 +959,162 @@
         ],
         "type": "object"
       },
+      "EndpointIncident": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "detected_at": {
+            "type": "string"
+          },
+          "endpoint_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "last_checked": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "layer": {
+            "$ref": "#/components/schemas/EndpointLayer"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "operator": {
+            "type": "string"
+          },
+          "pool_eligible": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "warning",
+              "info"
+            ]
+          },
+          "source": {
+            "const": "probe-derived"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "resolved"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "subnet_name": {
+            "type": "string"
+          },
+          "subnet_slug": {
+            "type": "string"
+          },
+          "surface_id": {
+            "type": "string"
+          },
+          "user_reported": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "endpoint_id",
+          "surface_id",
+          "netuid",
+          "layer",
+          "kind",
+          "provider",
+          "operator",
+          "status",
+          "classification",
+          "severity",
+          "state",
+          "reason",
+          "detected_at",
+          "last_checked",
+          "pool_eligible",
+          "user_reported",
+          "source"
+        ],
+        "type": "object"
+      },
+      "EndpointIncidentsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "incidents": {
+                "items": {
+                  "$ref": "#/components/schemas/EndpointIncident"
+                },
+                "type": "array"
+              },
+              "summary": {
+                "$ref": "#/components/schemas/EndpointIncidentSummary"
+              }
+            },
+            "required": [
+              "summary",
+              "incidents"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "EndpointIncidentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "active_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "by_kind": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_layer": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_provider": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_severity": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_status": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "incident_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "incident_count",
+          "active_count"
+        ],
+        "type": "object"
+      },
       "EndpointLayer": {
         "enum": [
           "bittensor-base",
@@ -1006,6 +1162,56 @@
       },
       "EndpointPoolsArtifact": {
         "$ref": "#/components/schemas/RpcPoolsArtifact"
+      },
+      "EndpointProviderScore": {
+        "additionalProperties": false,
+        "properties": {
+          "average_score": {
+            "type": "integer"
+          },
+          "degraded_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "endpoint_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "failed_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "monitored_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ok_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "operational_score": {
+            "type": "integer"
+          },
+          "pool_eligible_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "endpoint_count",
+          "monitored_count",
+          "ok_count",
+          "failed_count",
+          "degraded_count",
+          "pool_eligible_count",
+          "average_score",
+          "operational_score"
+        ],
+        "type": "object"
       },
       "EndpointPublicationState": {
         "enum": [
@@ -1117,6 +1323,12 @@
           "operator": {
             "type": "string"
           },
+          "pool_eligibility_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "pool_eligible": {
             "type": "boolean"
           },
@@ -1145,6 +1357,12 @@
           "score": {
             "minimum": 0,
             "type": "integer"
+          },
+          "score_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointScoreReason"
+            },
+            "type": "array"
           },
           "source_urls": {
             "items": {
@@ -1215,6 +1433,22 @@
             "type": "object"
           }
         ]
+      },
+      "EndpointScoreReason": {
+        "additionalProperties": false,
+        "properties": {
+          "points": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "points"
+        ],
+        "type": "object"
       },
       "EndpointSummary": {
         "additionalProperties": false,
@@ -2994,6 +3228,12 @@
           "layer": {
             "$ref": "#/components/schemas/EndpointLayer"
           },
+          "pool_eligibility_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "pool_eligible": {
             "type": "boolean"
           },
@@ -3002,6 +3242,12 @@
           },
           "score": {
             "type": "integer"
+          },
+          "score_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointScoreReason"
+            },
+            "type": "array"
           },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"
@@ -3033,9 +3279,19 @@
                 "additionalProperties": true,
                 "type": "object"
               },
+              "eligibility_policy": {
+                "additionalProperties": true,
+                "type": "object"
+              },
               "pools": {
                 "items": {
                   "$ref": "#/components/schemas/RpcPool"
+                },
+                "type": "array"
+              },
+              "provider_scores": {
+                "items": {
+                  "$ref": "#/components/schemas/EndpointProviderScore"
                 },
                 "type": "array"
               }

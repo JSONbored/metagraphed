@@ -660,6 +660,10 @@
       "netuid": 2,
       "network": "finney",
       "operator": "taomarketcap",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -667,6 +671,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md"
       ],
@@ -702,6 +707,10 @@
       "netuid": 2,
       "network": "finney",
       "operator": "taomarketcap",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -709,6 +718,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md"
       ],
@@ -744,6 +754,10 @@
       "netuid": 2,
       "network": "finney",
       "operator": "taopedia-articles",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -751,6 +765,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_2/index.mdx"
       ],
@@ -786,6 +801,10 @@
       "netuid": 2,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -793,6 +812,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/2/subnet.json"
       ],
@@ -828,6 +848,10 @@
       "netuid": 2,
       "network": "finney",
       "operator": "taomarketcap",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -835,6 +859,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/2"
       ],
@@ -870,6 +895,10 @@
       "netuid": 2,
       "network": "finney",
       "operator": "taomarketcap",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -877,6 +906,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/2"
       ],
@@ -912,6 +942,10 @@
       "netuid": 2,
       "network": "finney",
       "operator": "taomarketcap",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -919,6 +953,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md"
       ],
@@ -954,6 +989,10 @@
       "netuid": 2,
       "network": "finney",
       "operator": "taomarketcap",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -961,6 +1000,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md"
       ],
@@ -996,6 +1036,10 @@
       "netuid": 2,
       "network": "finney",
       "operator": "taomarketcap",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -1003,6 +1047,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/2"
       ],
@@ -1038,6 +1083,10 @@
       "netuid": 2,
       "network": "finney",
       "operator": "taomarketcap",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -1045,6 +1094,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://subnet2.inferencelabs.com/"
       ],

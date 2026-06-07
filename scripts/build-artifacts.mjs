@@ -3,6 +3,7 @@ import path from "node:path";
 import {
   buildEndpointResourceArtifact,
   buildEndpointPoolArtifact,
+  buildEndpointIncidentArtifact,
   buildTimestamp,
   buildRpcEndpointArtifact,
   flattenSurfaces,
@@ -153,6 +154,11 @@ const endpointResources = buildEndpointResourceArtifact({
   generatedAt,
   contractVersion,
   source: "artifact-build",
+});
+const endpointIncidents = buildEndpointIncidentArtifact({
+  endpointArtifact: endpointResources,
+  generatedAt,
+  contractVersion,
 });
 const curationReview = buildCurationReview(
   mergedSubnets,
@@ -549,6 +555,10 @@ await writeJson(
     contractVersion,
     endpointArtifact: endpointResources,
   }),
+);
+await writeJson(
+  path.join(outputRoot, "endpoint-incidents.json"),
+  endpointIncidents,
 );
 await writeJson(
   path.join(outputRoot, "source-snapshots.json"),

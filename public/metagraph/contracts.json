@@ -283,6 +283,14 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Probe-derived endpoint incident summary and active endpoint failures.",
+      "id": "endpoint-incidents",
+      "path": "/metagraph/endpoint-incidents.json",
+      "schema_ref": "#/components/schemas/EndpointIncidentsArtifact"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "OpenAPI schema snapshot/drift status.",
       "id": "schema-drift",
       "path": "/metagraph/schema-drift.json",

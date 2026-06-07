@@ -70,6 +70,8 @@ export const QUERY_ENUMS = {
     "disabled",
     "rejected",
   ],
+  endpointIncidentSeverity: ["critical", "warning", "info"],
+  endpointIncidentState: ["active", "resolved"],
   surfaceKind: [
     "archive",
     "dashboard",
@@ -153,6 +155,27 @@ export const API_QUERY_COLLECTIONS = {
       kind: enumSchema(["subtensor-rpc", "subtensor-wss", "archive"]),
     },
     sort: ["eligible_count", "endpoint_count", "id", "kind"],
+  }),
+  "endpoint-incidents": queryCollection("incidents", {
+    filters: {
+      netuid: integerSchema,
+      kind: enumSchema(QUERY_ENUMS.surfaceKind),
+      provider: textSchema,
+      status: enumSchema(QUERY_ENUMS.healthStatus),
+      severity: enumSchema(QUERY_ENUMS.endpointIncidentSeverity),
+      state: enumSchema(QUERY_ENUMS.endpointIncidentState),
+    },
+    sort: [
+      "detected_at",
+      "endpoint_id",
+      "kind",
+      "last_checked",
+      "netuid",
+      "provider",
+      "severity",
+      "state",
+      "status",
+    ],
   }),
   gaps: queryCollection("gaps", {
     filters: {
@@ -458,6 +481,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/endpoint-pools.json",
     "Generalized endpoint pool scoring for future read-only routing.",
     "EndpointPoolsArtifact",
+  ),
+  artifact(
+    "endpoint-incidents",
+    "/metagraph/endpoint-incidents.json",
+    "Probe-derived endpoint incident summary and active endpoint failures.",
+    "EndpointIncidentsArtifact",
   ),
   artifact(
     "schema-drift",
@@ -782,6 +811,16 @@ export const API_ROUTES = [
     "short",
     ["endpoints"],
     listQuery("endpoint-pools"),
+  ),
+  route(
+    "endpoint-incidents",
+    "GET",
+    "/api/v1/endpoint-incidents",
+    "/metagraph/endpoint-incidents.json",
+    "Fetch probe-derived endpoint incidents.",
+    "short",
+    ["endpoints", "health"],
+    listQuery("endpoint-incidents"),
   ),
   route(
     "schemas",

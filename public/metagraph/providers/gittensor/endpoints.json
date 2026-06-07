@@ -27,6 +27,10 @@
       "netuid": 74,
       "network": "finney",
       "operator": "gittensor",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "gittensor",
       "public_safe": true,
@@ -34,6 +38,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://docs.gittensor.io/repository-hyperparameters"
       ],
@@ -69,6 +74,10 @@
       "netuid": 74,
       "network": "finney",
       "operator": "gittensor",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "gittensor",
       "public_safe": true,
@@ -76,6 +85,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Gittensor",
@@ -109,6 +119,10 @@
       "netuid": 74,
       "network": "finney",
       "operator": "gittensor",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "gittensor",
       "public_safe": true,
@@ -116,6 +130,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Gittensor",
@@ -149,6 +164,10 @@
       "netuid": 74,
       "network": "finney",
       "operator": "gittensor",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "gittensor",
       "public_safe": true,
@@ -156,6 +175,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Gittensor",
@@ -189,6 +209,10 @@
       "netuid": 74,
       "network": "finney",
       "operator": "gittensor",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "gittensor",
       "public_safe": true,
@@ -196,6 +220,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://docs.gittensor.io/register-repository.html"
       ],
@@ -231,6 +256,10 @@
       "netuid": 74,
       "network": "finney",
       "operator": "gittensor",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "gittensor",
       "public_safe": true,
@@ -238,6 +267,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Gittensor",
@@ -271,6 +301,10 @@
       "netuid": 74,
       "network": "finney",
       "operator": "gittensor",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "gittensor",
       "public_safe": true,
@@ -278,6 +312,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Gittensor",

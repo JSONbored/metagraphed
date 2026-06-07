@@ -198,6 +198,16 @@ const checks = [
     (body) => assert.equal(Array.isArray(body.data.pools), true),
   ],
   [
+    "/api/v1/endpoint-incidents?severity=critical",
+    (body) =>
+      assert.equal(
+        body.data.incidents.every(
+          (incident) => incident.severity === "critical",
+        ),
+        true,
+      ),
+  ],
+  [
     "/api/v1/schemas",
     (body) => assert.equal(Array.isArray(body.data.schemas), true),
   ],

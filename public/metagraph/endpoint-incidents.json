@@ -1,0 +1,21 @@
+{
+  "contract_version": "2026-06-06.1",
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "incidents": [],
+  "notes": [
+    "Endpoint incidents are generated from observed probe state only.",
+    "Contributor reports can create review or re-probe work, but cannot set uptime, latency, health, or pool eligibility.",
+    "Resolved incident history is expected to live in R2/D1 once persistent probe history is enabled."
+  ],
+  "schema_version": 1,
+  "source": "endpoint-resource-probes",
+  "summary": {
+    "active_count": 0,
+    "by_kind": {},
+    "by_layer": {},
+    "by_provider": {},
+    "by_severity": {},
+    "by_status": {},
+    "incident_count": 0
+  }
+}

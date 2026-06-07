@@ -492,6 +492,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -499,6 +503,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -532,6 +537,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -539,6 +548,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -572,6 +582,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -579,6 +593,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -612,6 +627,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -619,6 +638,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -652,6 +672,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -659,6 +683,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -692,6 +717,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -699,6 +728,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -732,6 +762,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -739,6 +773,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -772,6 +807,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -779,6 +818,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -812,6 +852,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -819,6 +863,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -852,6 +897,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -859,6 +908,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -892,6 +942,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -899,6 +953,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -932,6 +987,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -939,6 +998,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -972,6 +1032,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -979,6 +1043,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -1012,6 +1077,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -1019,6 +1088,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",
@@ -1052,6 +1122,10 @@
       "netuid": 7,
       "network": "finney",
       "operator": "allways",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "allways",
       "public_safe": true,
@@ -1059,6 +1133,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "Allways",

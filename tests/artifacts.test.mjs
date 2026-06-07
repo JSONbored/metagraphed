@@ -110,6 +110,9 @@ test("public artifacts are internally consistent", () => {
   const endpointPools = JSON.parse(
     readFileSync("public/metagraph/endpoint-pools.json", "utf8"),
   );
+  const endpointIncidents = JSON.parse(
+    readFileSync("public/metagraph/endpoint-incidents.json", "utf8"),
+  );
   const rpcEndpointPools = JSON.parse(
     readFileSync("public/metagraph/rpc/pools.json", "utf8"),
   );
@@ -172,6 +175,30 @@ test("public artifacts are internally consistent", () => {
       endpointPools.pools.reduce((sum, pool) => sum + pool.eligible_count, 0),
     true,
   );
+  assert.equal(Array.isArray(endpointPools.provider_scores), true);
+  assert.equal(
+    endpoints.endpoints.every((endpoint) =>
+      Array.isArray(endpoint.pool_eligibility_reasons),
+    ),
+    true,
+  );
+  assert.equal(
+    endpoints.endpoints.every((endpoint) =>
+      Array.isArray(endpoint.score_reasons),
+    ),
+    true,
+  );
+  assert.equal(
+    endpointIncidents.summary.incident_count,
+    endpointIncidents.incidents.length,
+  );
+  assert.equal(
+    endpointIncidents.incidents.every(
+      (incident) =>
+        incident.source === "probe-derived" && !incident.user_reported,
+    ),
+    true,
+  );
   assert.equal(
     subnetEndpoints.endpoints.every((endpoint) => endpoint.netuid === 7),
     true,
@@ -213,6 +240,15 @@ test("public artifacts are internally consistent", () => {
       (artifact) =>
         artifact.id === "health-history" &&
         artifact.schema_ref === "#/components/schemas/HealthHistoryArtifact",
+    ),
+    true,
+  );
+  assert.equal(
+    contracts.artifacts.some(
+      (artifact) =>
+        artifact.id === "endpoint-incidents" &&
+        artifact.schema_ref ===
+          "#/components/schemas/EndpointIncidentsArtifact",
     ),
     true,
   );

@@ -27,6 +27,9 @@
       "netuid": 0,
       "network": "finney",
       "operator": "opentensor",
+      "pool_eligibility_reasons": [
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "opentensor",
       "public_safe": true,
@@ -34,6 +37,7 @@
       "rate_limit_notes": "Official archive endpoint. Archive support is verified through read-only historical RPC probes.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://docs.learnbittensor.org/concepts/bittensor-networks",
         "https://docs.learnbittensor.org/subtensor-nodes/subtensor-node-requirements"
@@ -70,6 +74,9 @@
       "netuid": 0,
       "network": "finney",
       "operator": "opentensor",
+      "pool_eligibility_reasons": [
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "opentensor",
       "public_safe": true,
@@ -77,6 +84,7 @@
       "rate_limit_notes": "Official public chain endpoint. Public endpoints can rate-limit and should not be treated as SLA-backed infrastructure.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://docs.learnbittensor.org/concepts/bittensor-networks"
       ],
@@ -112,6 +120,9 @@
       "netuid": 0,
       "network": "finney",
       "operator": "opentensor",
+      "pool_eligibility_reasons": [
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "opentensor",
       "public_safe": true,
@@ -119,6 +130,7 @@
       "rate_limit_notes": "Official lite endpoint. Lite endpoints are not assumed to support deep historical archive queries.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://docs.learnbittensor.org/concepts/bittensor-networks",
         "https://docs.learnbittensor.org/subtensor-nodes/subtensor-node-requirements"
@@ -155,6 +167,10 @@
       "netuid": 0,
       "network": "finney",
       "operator": "opentensor",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "opentensor",
       "public_safe": true,
@@ -162,6 +178,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "root",
@@ -195,6 +212,10 @@
       "netuid": 0,
       "network": "finney",
       "operator": "opentensor",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "opentensor",
       "public_safe": true,
@@ -202,6 +223,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "root",
@@ -235,6 +257,10 @@
       "netuid": 0,
       "network": "finney",
       "operator": "opentensor",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "opentensor",
       "public_safe": true,
@@ -242,6 +268,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "root",
@@ -275,6 +302,10 @@
       "netuid": 0,
       "network": "finney",
       "operator": "opentensor",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "opentensor",
       "public_safe": true,
@@ -282,6 +313,7 @@
       "rate_limit_notes": null,
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [],
       "status": "unknown",
       "subnet_name": "root",

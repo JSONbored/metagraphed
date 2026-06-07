@@ -140,6 +140,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/endpoint-incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch probe-derived endpoint incidents. */
+        get: operations["endpointIncidents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/endpoint-pools": {
         parameters: {
             query?: never;
@@ -787,6 +804,46 @@ export interface components {
             source_count?: number;
             verified_at?: string | null;
         };
+        EndpointIncident: {
+            classification: components["schemas"]["Classification"];
+            detected_at: string;
+            endpoint_id: string;
+            id: string;
+            kind: components["schemas"]["SurfaceKind"];
+            last_checked: string | null;
+            layer: components["schemas"]["EndpointLayer"];
+            netuid: number;
+            operator: string;
+            pool_eligible: boolean;
+            provider: string;
+            reason: string;
+            /** @enum {unknown} */
+            severity: "critical" | "warning" | "info";
+            /** @constant */
+            source: "probe-derived";
+            /** @enum {unknown} */
+            state: "active" | "resolved";
+            status: components["schemas"]["HealthStatus"];
+            subnet_name?: string;
+            subnet_slug?: string;
+            surface_id: string;
+            user_reported: boolean;
+        };
+        EndpointIncidentsArtifact: components["schemas"]["ArtifactBase"] & ({
+            incidents: components["schemas"]["EndpointIncident"][];
+            summary: components["schemas"]["EndpointIncidentSummary"];
+        } & {
+            [key: string]: unknown;
+        });
+        EndpointIncidentSummary: {
+            active_count: number;
+            by_kind?: components["schemas"]["CountMap"];
+            by_layer?: components["schemas"]["CountMap"];
+            by_provider?: components["schemas"]["CountMap"];
+            by_severity?: components["schemas"]["CountMap"];
+            by_status?: components["schemas"]["CountMap"];
+            incident_count: number;
+        };
         /** @enum {unknown} */
         EndpointLayer: "bittensor-base" | "subnet-app" | "data-provider" | "docs-provider";
         EndpointMonitoringPolicy: {
@@ -797,6 +854,17 @@ export interface components {
             timeout_ms?: number | null;
         };
         EndpointPoolsArtifact: components["schemas"]["RpcPoolsArtifact"];
+        EndpointProviderScore: {
+            average_score: number;
+            degraded_count: number;
+            endpoint_count: number;
+            failed_count: number;
+            monitored_count: number;
+            ok_count: number;
+            operational_score: number;
+            pool_eligible_count: number;
+            provider: string;
+        };
         /** @enum {unknown} */
         EndpointPublicationState: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
         EndpointResource: {
@@ -824,6 +892,7 @@ export interface components {
             /** @constant */
             network?: "finney";
             operator: string;
+            pool_eligibility_reasons?: string[];
             pool_eligible: boolean;
             provider: string;
             public_safe: boolean;
@@ -831,6 +900,7 @@ export interface components {
             rate_limit_notes?: string | null;
             rpc_method_count?: number | null;
             score: number;
+            score_reasons?: components["schemas"]["EndpointScoreReason"][];
             source_urls?: string[];
             status: components["schemas"]["HealthStatus"];
             subnet_name?: string;
@@ -845,6 +915,10 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        EndpointScoreReason: {
+            points: number;
+            reason: string;
+        };
         EndpointSummary: {
             by_kind?: components["schemas"]["CountMap"];
             by_layer?: components["schemas"]["CountMap"];
@@ -1286,9 +1360,11 @@ export interface components {
             latency_ms?: number | null;
             latest_block?: number | null;
             layer?: components["schemas"]["EndpointLayer"];
+            pool_eligibility_reasons?: string[];
             pool_eligible: boolean;
             provider: string;
             score: number;
+            score_reasons?: components["schemas"]["EndpointScoreReason"][];
             status: components["schemas"]["HealthStatus"];
             /** Format: uri */
             url: string;
@@ -1297,7 +1373,11 @@ export interface components {
             disabled_proxy_contract?: {
                 [key: string]: unknown;
             };
+            eligibility_policy?: {
+                [key: string]: unknown;
+            };
             pools: components["schemas"]["RpcPool"][];
+            provider_scores?: components["schemas"]["EndpointProviderScore"][];
         } & {
             [key: string]: unknown;
         });
@@ -2187,6 +2267,85 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["CurationArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    endpointIncidents: {
+        parameters: {
+            query?: {
+                netuid?: number;
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                provider?: string;
+                status?: "ok" | "degraded" | "failed" | "unknown";
+                severity?: "critical" | "warning" | "info";
+                state?: "active" | "resolved";
+                limit?: number;
+                cursor?: number;
+                sort?: "detected_at" | "endpoint_id" | "kind" | "last_checked" | "netuid" | "provider" | "severity" | "state" | "status";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["EndpointIncidentsArtifact"];
                     };
                 };
             };

@@ -27,6 +27,10 @@
       "netuid": 2,
       "network": "finney",
       "operator": "taopedia-articles",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -34,6 +38,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_2/index.mdx"
       ],
@@ -69,6 +74,10 @@
       "netuid": 4,
       "network": "finney",
       "operator": "taopedia-articles",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -76,6 +85,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_4/index.mdx"
       ],
@@ -111,6 +121,10 @@
       "netuid": 5,
       "network": "finney",
       "operator": "taopedia-articles",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -118,6 +132,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx"
       ],
@@ -153,6 +168,10 @@
       "netuid": 6,
       "network": "finney",
       "operator": "taopedia-articles",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -160,6 +179,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx"
       ],
@@ -195,6 +215,10 @@
       "netuid": 8,
       "network": "finney",
       "operator": "taopedia-articles",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -202,6 +226,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
       ],
@@ -237,6 +262,10 @@
       "netuid": 9,
       "network": "finney",
       "operator": "taopedia-articles",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -244,6 +273,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_9/index.mdx"
       ],

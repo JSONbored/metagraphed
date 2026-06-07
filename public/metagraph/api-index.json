@@ -212,6 +212,12 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "endpoint-incidents",
+      "path": "/metagraph/endpoint-incidents.json",
+      "schema_ref": "#/components/schemas/EndpointIncidentsArtifact"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "schema-drift",
       "path": "/metagraph/schema-drift.json",
       "schema_ref": "#/components/schemas/SchemaDriftArtifact"
@@ -2164,6 +2170,135 @@
               "endpoint_count",
               "id",
               "kind"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/endpoint-incidents.json",
+      "cache": "short",
+      "description": "Fetch probe-derived endpoint incidents.",
+      "id": "endpoint-incidents",
+      "method": "GET",
+      "path": "/api/v1/endpoint-incidents",
+      "public": true,
+      "query_collection": "endpoint-incidents",
+      "query_filter_names": [
+        "netuid",
+        "kind",
+        "provider",
+        "status",
+        "severity",
+        "state"
+      ],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "status",
+          "schema": {
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "severity",
+          "schema": {
+            "enum": [
+              "critical",
+              "warning",
+              "info"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "state",
+          "schema": {
+            "enum": [
+              "active",
+              "resolved"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "detected_at",
+              "endpoint_id",
+              "kind",
+              "last_checked",
+              "netuid",
+              "provider",
+              "severity",
+              "state",
+              "status"
             ],
             "type": "string"
           }

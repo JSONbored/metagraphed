@@ -27,6 +27,9 @@
       "netuid": 0,
       "network": "finney",
       "operator": "onfinality",
+      "pool_eligibility_reasons": [
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "onfinality",
       "public_safe": true,
@@ -34,6 +37,7 @@
       "rate_limit_notes": "Provider states the public endpoint is rate limited and suitable for testing.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://onfinality.io/en/networks/bittensor-finney"
       ],
@@ -69,6 +73,9 @@
       "netuid": 0,
       "network": "finney",
       "operator": "onfinality",
+      "pool_eligibility_reasons": [
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "onfinality",
       "public_safe": true,
@@ -76,6 +83,7 @@
       "rate_limit_notes": "Provider states the public endpoint is rate limited and suitable for testing.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://onfinality.io/en/networks/bittensor-finney"
       ],

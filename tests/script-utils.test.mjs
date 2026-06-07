@@ -10,6 +10,7 @@ import {
 import {
   buildEndpointResourceArtifact,
   buildEndpointPoolArtifact,
+  buildEndpointIncidentArtifact,
   buildRpcEndpointArtifact,
   buildTimestamp,
   classifyNativeName,
@@ -205,7 +206,7 @@ describe("script utility contracts", () => {
             authority: "provider-claimed",
             auth_required: false,
             public_safe: true,
-            probe: { method: "chain_getHeader" },
+            probe: { enabled: true, method: "chain_getHeader" },
           },
           {
             id: "root-docs",
@@ -242,6 +243,7 @@ describe("script utility contracts", () => {
             authority: "provider-claimed",
             auth_required: false,
             public_safe: true,
+            probe: { enabled: true, method: "chain_getHeader" },
           },
         ],
       },
@@ -296,6 +298,14 @@ describe("script utility contracts", () => {
           methods_supported: { chain_getHeader: true, rpc_methods: true },
           verified_at: "1970-01-01T00:00:00.000Z",
         },
+        {
+          surface_id: "root-failed-rpc",
+          status: "failed",
+          classification: "dead",
+          latency_ms: null,
+          error: "connection refused",
+          verified_at: "1970-01-01T00:00:00.000Z",
+        },
       ],
       generatedAt: "1970-01-01T00:00:00.000Z",
       contractVersion: "test",
@@ -319,6 +329,18 @@ describe("script utility contracts", () => {
         (endpoint) => endpoint.surface_id === "root-rpc",
       ).publication_state,
       "pool-eligible",
+    );
+    assert.deepEqual(
+      endpointResources.endpoints.find(
+        (endpoint) => endpoint.surface_id === "root-rpc",
+      ).pool_eligibility_reasons,
+      ["eligible"],
+    );
+    assert.equal(
+      endpointResources.endpoints.find(
+        (endpoint) => endpoint.surface_id === "root-rpc",
+      ).score_reasons.length > 0,
+      true,
     );
 
     const pools = buildEndpointPoolArtifact({
@@ -344,6 +366,29 @@ describe("script utility contracts", () => {
         0,
       true,
     );
+    assert.equal(pools.provider_scores[0].provider, "example");
+    assert.equal(
+      pools.pools
+        .find((pool) => pool.id === "finney-rpc")
+        .endpoints.every((endpoint) =>
+          Array.isArray(endpoint.pool_eligibility_reasons),
+        ),
+      true,
+    );
+
+    const incidents = buildEndpointIncidentArtifact({
+      endpointArtifact: endpointResources,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+      contractVersion: "test",
+    });
+    assert.equal(incidents.summary.incident_count, 1);
+    assert.equal(
+      incidents.incidents[0].endpoint_id,
+      "endpoint-root-failed-rpc",
+    );
+    assert.equal(incidents.incidents[0].severity, "critical");
+    assert.equal(incidents.incidents[0].user_reported, false);
+    assert.equal(incidents.incidents[0].source, "probe-derived");
   });
 
   test("evaluates artifact budgets with wildcard matching", () => {

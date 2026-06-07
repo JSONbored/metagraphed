@@ -113,6 +113,11 @@ describe("public contract registry", () => {
     assert.equal(Boolean(openapi.components.schemas.CandidateSurface), true);
     assert.equal(Boolean(openapi.components.schemas.EndpointResource), true);
     assert.equal(Boolean(openapi.components.schemas.EndpointsArtifact), true);
+    assert.equal(Boolean(openapi.components.schemas.EndpointIncident), true);
+    assert.equal(
+      Boolean(openapi.components.schemas.EndpointIncidentsArtifact),
+      true,
+    );
     assert.equal(openapi["x-metagraphed"].generated_at, generatedAt);
 
     const subnetParameters = openapi.paths["/api/v1/subnets"].get.parameters;
@@ -148,6 +153,19 @@ describe("public contract registry", () => {
         .find((parameter) => parameter.name === "sort")
         .schema.enum.includes("score"),
       true,
+    );
+
+    const incidentParameters =
+      openapi.paths["/api/v1/endpoint-incidents"].get.parameters;
+    assert.deepEqual(
+      incidentParameters.find((parameter) => parameter.name === "severity")
+        .schema.enum,
+      ["critical", "warning", "info"],
+    );
+    assert.deepEqual(
+      incidentParameters.find((parameter) => parameter.name === "state").schema
+        .enum,
+      ["active", "resolved"],
     );
   });
 

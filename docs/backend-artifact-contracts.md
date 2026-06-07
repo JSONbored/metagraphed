@@ -54,6 +54,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/rpc-endpoints.json`: Bittensor base-layer RPC/WSS endpoint registry and probe status.
 - `/metagraph/rpc/pools.json`: endpoint pool scoring for future read-only routing.
 - `/metagraph/endpoint-pools.json`: generalized endpoint pool scoring for future read-only routing.
+- `/metagraph/endpoint-incidents.json`: probe-derived endpoint incident summary and active endpoint failures.
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
 - `/metagraph/adapters/{slug}.json`: adapter-backed public metrics snapshot.
@@ -92,6 +93,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/rpc/endpoints`: fetch Bittensor RPC endpoint status.
 - `/api/v1/rpc/pools`: fetch endpoint pool scores.
 - `/api/v1/endpoint-pools`: fetch generalized endpoint pool scores.
+- `/api/v1/endpoint-incidents`: fetch probe-derived endpoint incidents.
 - `/api/v1/schemas`: fetch captured schema index.
 - `/api/v1/adapters/{slug}`: fetch adapter-backed public metrics.
 - `/api/v1/search`: fetch compact search index.

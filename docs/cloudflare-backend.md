@@ -33,6 +33,7 @@ Metagraphed uses Cloudflare as the serving, cache, and artifact-history layer. G
 - `/api/v1/rpc/endpoints`
 - `/api/v1/rpc/pools`
 - `/api/v1/endpoint-pools`
+- `/api/v1/endpoint-incidents`
 - `/api/v1/schemas`
 - `/api/v1/adapters/{slug}`
 - `/api/v1/search`

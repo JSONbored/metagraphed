@@ -534,6 +534,10 @@
       "netuid": 44,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -541,6 +545,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/44/subnet.json"
       ],
@@ -576,6 +581,10 @@
       "netuid": 44,
       "network": "finney",
       "operator": "taomarketcap",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -583,6 +592,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/44"
       ],
@@ -618,6 +628,10 @@
       "netuid": 44,
       "network": "finney",
       "operator": "tensorplex-subnet-docs",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -625,6 +639,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/44/subnet.json"
       ],
@@ -660,6 +675,10 @@
       "netuid": 44,
       "network": "finney",
       "operator": "taomarketcap",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -667,6 +686,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/44"
       ],
@@ -702,6 +722,10 @@
       "netuid": 44,
       "network": "finney",
       "operator": "taomarketcap",
+      "pool_eligibility_reasons": [
+        "not-bittensor-base-layer",
+        "status-unknown"
+      ],
       "pool_eligible": false,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -709,6 +733,7 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "rpc_method_count": null,
       "score": 0,
+      "score_reasons": [],
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/44"
       ],
