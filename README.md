@@ -224,7 +224,7 @@ npm run probes:smoke
 
 `probes:smoke` performs read-only checks against public surfaces. It does not submit transactions, mutate subnet state, send wallet data, or use credentials.
 
-`r2:manifest` generates the Cloudflare R2 upload manifest for the current artifact tree. `r2:upload` is delta-based by default, using `latest/r2-manifest.json` to skip unchanged artifacts while always refreshing R2 control files. `r2:upload`, `r2:download`, and `kv:publish` require explicit write flags so local validation cannot accidentally publish or restore.
+`r2:manifest` generates the Cloudflare R2 upload manifest for the current artifact tree. `r2:upload` is delta-based by default, using `latest/r2-manifest.json` to skip unchanged artifacts while refreshing R2 control files on full uploads. Smoke uploads with `METAGRAPH_R2_UPLOAD_LIMIT` upload only the limited artifact subset and intentionally skip control files so `latest/r2-manifest.json` never advertises artifacts that were not uploaded. `r2:upload`, `r2:download`, and `kv:publish` require explicit write flags so local validation cannot accidentally publish or restore.
 
 ## Community Submissions
 

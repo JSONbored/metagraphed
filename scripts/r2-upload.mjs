@@ -15,10 +15,13 @@ const plannedArtifacts = uploadLimit
   ? manifest.artifacts.slice(0, uploadLimit)
   : manifest.artifacts;
 const controlArtifacts = buildControlArtifacts(manifest);
+const plannedControlArtifacts = uploadLimit ? [] : controlArtifacts;
 const plannedObjectCount =
   plannedArtifacts.length +
-  controlArtifacts.length +
-  (uploadHistory ? plannedArtifacts.length + controlArtifacts.length : 0);
+  plannedControlArtifacts.length +
+  (uploadHistory
+    ? plannedArtifacts.length + plannedControlArtifacts.length
+    : 0);
 
 if (!write) {
   console.log(
@@ -26,7 +29,9 @@ if (!write) {
       mode: "dry-run",
       artifact_count: manifest.artifact_count,
       bucket_name: manifest.bucket_name,
-      control_artifact_count: controlArtifacts.length,
+      control_artifact_count: plannedControlArtifacts.length,
+      skipped_control_artifact_count:
+        controlArtifacts.length - plannedControlArtifacts.length,
       force_upload: forceUpload,
       limited_artifact_count: plannedArtifacts.length,
       latest_prefix: manifest.latest_prefix,
@@ -96,7 +101,7 @@ for (const artifact of plannedArtifacts) {
   }
 }
 
-for (const controlArtifact of controlArtifacts) {
+for (const controlArtifact of plannedControlArtifacts) {
   putObject(
     controlArtifact.local_path,
     controlArtifact.latest_key,
@@ -121,7 +126,9 @@ console.log(
     artifact_count: manifest.artifact_count,
     bucket_name: manifest.bucket_name,
     changed_artifact_count: changedArtifactCount,
-    control_artifact_count: controlArtifacts.length,
+    control_artifact_count: plannedControlArtifacts.length,
+    skipped_control_artifact_count:
+      controlArtifacts.length - plannedControlArtifacts.length,
     force_upload: forceUpload,
     limited_artifact_count: plannedArtifacts.length,
     latest_prefix: manifest.latest_prefix,

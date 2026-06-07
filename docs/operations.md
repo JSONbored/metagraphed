@@ -44,12 +44,12 @@ Actual writes require explicit environment gates:
 - `METAGRAPH_ALLOW_R2_UPLOAD=1`
 - `METAGRAPH_R2_UPLOAD_HISTORY=1` when the publish job should also write run-prefix history copies for changed artifacts and control files.
 - `METAGRAPH_R2_UPLOAD_FORCE=1` when a publish job should ignore the remote `latest/r2-manifest.json` comparison and republish every planned artifact.
-- `METAGRAPH_R2_UPLOAD_LIMIT` for smoke-only uploads against a small artifact subset.
+- `METAGRAPH_R2_UPLOAD_LIMIT` for smoke-only uploads against a small artifact subset. Limited smoke uploads skip control files so `latest/r2-manifest.json` continues to describe only a complete latest artifact set.
 - `METAGRAPH_ALLOW_KV_WRITE=1`
 - `METAGRAPH_KV_NAMESPACE_ID`
 - Cloudflare account/API credentials
 
-Normal R2 publishes are delta-based. The uploader reads `latest/r2-manifest.json`, compares artifact SHA-256 values, skips unchanged artifact files, and always refreshes `latest/r2-manifest.json` plus `latest/build-summary.json` so Worker fallback and operator summaries stay current.
+Normal R2 publishes are delta-based. The uploader reads `latest/r2-manifest.json`, compares artifact SHA-256 values, skips unchanged artifact files, and refreshes `latest/r2-manifest.json` plus `latest/build-summary.json` on full uploads so Worker fallback and operator summaries stay current.
 
 ## Restore From R2
 

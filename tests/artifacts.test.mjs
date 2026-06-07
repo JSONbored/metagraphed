@@ -344,6 +344,28 @@ test("public artifacts are internally consistent", () => {
   }
 });
 
+test("limited R2 upload dry run skips control manifests", () => {
+  const output = execFileSync(
+    process.execPath,
+    ["scripts/r2-upload.mjs", "--dry-run"],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        METAGRAPH_R2_UPLOAD_LIMIT: "5",
+      },
+      stdio: "pipe",
+    },
+  );
+  const summary = JSON.parse(output);
+
+  assert.equal(summary.limited_artifact_count, 5);
+  assert.equal(summary.control_artifact_count, 0);
+  assert.equal(summary.skipped_control_artifact_count, 2);
+  assert.equal(summary.planned_object_count, 5);
+});
+
 test("Worker API serves public artifact envelopes", async () => {
   const env = {
     ASSETS: {

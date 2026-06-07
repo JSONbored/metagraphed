@@ -69,7 +69,7 @@ Write operations require explicit environment flags:
 - `METAGRAPH_ALLOW_R2_UPLOAD=1 npm run r2:upload` uploads only artifacts whose SHA-256 differs from `latest/r2-manifest.json`, plus the current `latest/r2-manifest.json` and `latest/build-summary.json` control files.
 - `METAGRAPH_ALLOW_R2_UPLOAD=1 METAGRAPH_R2_UPLOAD_HISTORY=1 npm run r2:upload` also writes run-prefix copies for changed artifacts and control files.
 - `METAGRAPH_ALLOW_R2_UPLOAD=1 METAGRAPH_R2_UPLOAD_FORCE=1 npm run r2:upload` bypasses remote manifest comparison and republishes all planned artifacts.
-- `METAGRAPH_ALLOW_R2_UPLOAD=1 METAGRAPH_R2_UPLOAD_LIMIT=5 npm run r2:upload` can be used for a remote permission smoke.
+- `METAGRAPH_ALLOW_R2_UPLOAD=1 METAGRAPH_R2_UPLOAD_LIMIT=5 npm run r2:upload` can be used for a remote permission smoke. Limited smoke uploads skip `latest/r2-manifest.json` and `latest/build-summary.json` control files so the latest manifest cannot claim that unuploaded artifacts exist.
 - `METAGRAPH_ALLOW_R2_DOWNLOAD=1 npm run r2:download`
 - `METAGRAPH_ALLOW_KV_WRITE=1 METAGRAPH_KV_NAMESPACE_ID=... npm run kv:publish`
 
