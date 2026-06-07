@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { readJson, repoRoot, sha256Hex, stableStringify } from "./lib.mjs";
@@ -12,6 +12,10 @@ const write = args.has("--write");
 const uploadHistory = process.env.METAGRAPH_R2_UPLOAD_HISTORY === "1";
 const forceUpload = process.env.METAGRAPH_R2_UPLOAD_FORCE === "1";
 const uploadLimit = parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_LIMIT);
+const uploadConcurrency =
+  parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_CONCURRENCY) || 8;
+const progressInterval =
+  parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_PROGRESS_INTERVAL) || 25;
 const manifest = await readJson(
   path.join(repoRoot, "public/metagraph/r2-manifest.json"),
 );
@@ -67,9 +71,7 @@ const remoteManifestByPath = new Map(
 );
 let changedArtifactCount = 0;
 let skippedArtifactCount = 0;
-let uploadedLatestCount = 0;
-let uploadedHistoryCount = 0;
-let uploadedControlCount = 0;
+const uploadJobs = [];
 
 for (const artifact of plannedArtifacts) {
   const localPath = artifactLocalPath(artifact.path);
@@ -83,42 +85,54 @@ for (const artifact of plannedArtifacts) {
     continue;
   }
   changedArtifactCount += 1;
-  putObject(
+  uploadJobs.push(uploadJob(
     localPath,
     artifact.latest_key,
     manifest.bucket_name,
     artifact.content_type,
-  );
-  uploadedLatestCount += 1;
+    "latest",
+  ));
   if (uploadHistory) {
-    putObject(
+    uploadJobs.push(uploadJob(
       localPath,
       artifact.key,
       manifest.bucket_name,
       artifact.content_type,
-    );
-    uploadedHistoryCount += 1;
+      "history",
+    ));
   }
 }
 
 for (const controlArtifact of plannedControlArtifacts) {
-  putObject(
+  uploadJobs.push(uploadJob(
     controlArtifact.local_path,
     controlArtifact.latest_key,
     manifest.bucket_name,
     controlArtifact.content_type,
-  );
-  uploadedControlCount += 1;
+    "control",
+  ));
   if (uploadHistory) {
-    putObject(
+    uploadJobs.push(uploadJob(
       controlArtifact.local_path,
       controlArtifact.key,
       manifest.bucket_name,
       controlArtifact.content_type,
-    );
-    uploadedHistoryCount += 1;
+      "history",
+    ));
   }
 }
+
+await putObjects(uploadJobs, {
+  concurrency: uploadConcurrency,
+  progressInterval,
+});
+
+const uploadedLatestCount = uploadJobs.filter((job) => job.kind === "latest")
+  .length;
+const uploadedHistoryCount = uploadJobs.filter((job) => job.kind === "history")
+  .length;
+const uploadedControlCount = uploadJobs.filter((job) => job.kind === "control")
+  .length;
 
 console.log(
   stableStringify({
@@ -137,6 +151,7 @@ console.log(
     run_prefix: manifest.run_prefix,
     skipped_artifact_count: skippedArtifactCount,
     upload_history: uploadHistory,
+    upload_concurrency: uploadConcurrency,
     upload_limit: uploadLimit,
     uploaded_control_count: uploadedControlCount,
     uploaded_history_count: uploadedHistoryCount,
@@ -195,6 +210,16 @@ function buildControlArtifacts(manifest) {
   ];
 }
 
+function uploadJob(localPath, key, bucketName, contentType, kind) {
+  return {
+    bucketName,
+    contentType,
+    key,
+    kind,
+    localPath,
+  };
+}
+
 function getRemoteManifest(bucketName, key) {
   const result = spawnSync(
     wranglerBin(),
@@ -219,7 +244,35 @@ function getRemoteManifest(bucketName, key) {
   }
 }
 
-function putObject(localPath, key, bucketName, contentType) {
+async function putObjects(jobs, { concurrency, progressInterval }) {
+  if (jobs.length === 0) {
+    return;
+  }
+
+  let nextIndex = 0;
+  let completedCount = 0;
+  const workerCount = Math.min(concurrency, jobs.length);
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (nextIndex < jobs.length) {
+        const job = jobs[nextIndex];
+        nextIndex += 1;
+        await putObject(job);
+        completedCount += 1;
+        if (
+          completedCount === jobs.length ||
+          completedCount % progressInterval === 0
+        ) {
+          console.error(
+            `Uploaded ${completedCount}/${jobs.length} R2 object(s).`,
+          );
+        }
+      }
+    }),
+  );
+}
+
+function putObject({ localPath, key, bucketName, contentType }) {
   const args = [
     "r2",
     "object",
@@ -232,15 +285,39 @@ function putObject(localPath, key, bucketName, contentType) {
   if (contentType) {
     args.push("--content-type", contentType);
   }
-  const result = spawnSync(wranglerBin(), args, {
-    encoding: "utf8",
-    stdio: "pipe",
+  return new Promise((resolve, reject) => {
+    const child = spawn(wranglerBin(), args, {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(
+        new Error(
+          [
+            `wrangler r2 object put failed for ${key}`,
+            stdout.trim(),
+            stderr.trim(),
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        ),
+      );
+    });
   });
-  if (result.status !== 0) {
-    console.error(result.stdout);
-    console.error(result.stderr);
-    throw new Error(`wrangler r2 object put failed for ${key}`);
-  }
 }
 
 function wranglerBin() {
