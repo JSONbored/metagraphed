@@ -33,6 +33,9 @@ const candidateExample = await readJson(
 const providerExample = await readJson(
   path.join(repoRoot, "docs/examples/submissions/provider-profile.json"),
 );
+const directProviderExample = await readJson(
+  path.join(repoRoot, "docs/examples/submissions/direct-provider-profile.json"),
+);
 const statusReportExample = await readJson(
   path.join(repoRoot, "docs/examples/submissions/status-report.json"),
 );
@@ -115,6 +118,7 @@ checkIncludes(providerTemplate, "provider profile template", [
 
 checkIncludes(pullRequestTemplate, "pull request template", [
   "registry/candidates/community/*.json",
+  "registry/providers/community/*.json",
   "npm run submission:pr",
 ]);
 
@@ -141,6 +145,7 @@ checkIncludes(submissionGateDocs, "submission gate docs", [
 
 checkExampleCandidate(candidateExample);
 checkExampleProvider(providerExample);
+checkExampleProviderSubmission(directProviderExample);
 checkExampleStatusReport(statusReportExample);
 
 if (errors.length > 0) {
@@ -196,6 +201,31 @@ function checkExampleProvider(provider) {
     if (provider?.[field] === undefined || provider?.[field] === "") {
       errors.push(`provider example: missing ${field}`);
     }
+  }
+}
+
+function checkExampleProviderSubmission(document) {
+  if (document?.schema_version !== 1 || !document?.provider) {
+    errors.push(
+      "direct provider profile example: missing schema_version or provider",
+    );
+    return;
+  }
+  if (
+    document?.submission?.submitted_by_url !==
+    `https://github.com/${document?.submission?.submitted_by}`
+  ) {
+    errors.push(
+      "direct provider profile example: submitted_by_url must match submitted_by",
+    );
+  }
+  checkExampleProvider(document.provider);
+  if (
+    !["community", "provider-claimed"].includes(document.provider.authority)
+  ) {
+    errors.push(
+      "direct provider profile example: authority must be community or provider-claimed",
+    );
   }
 }
 

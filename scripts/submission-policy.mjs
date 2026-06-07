@@ -47,6 +47,8 @@ export const PUBLIC_PREFLIGHT_STATES = new Set([
 
 export const DIRECT_CANDIDATE_PATTERN =
   /^registry\/candidates\/community\/[a-z0-9][a-z0-9-]*\.json$/;
+export const DIRECT_PROVIDER_PATTERN =
+  /^registry\/providers\/community\/[a-z0-9][a-z0-9-]*\.json$/;
 
 export const SUPPORTED_INTERFACE_KINDS = new Set([
   "archive",
@@ -430,6 +432,7 @@ function issueSummary(issue) {
 export function buildPrSubmissionReport({
   changedFiles,
   candidateDocument = null,
+  providerDocument = null,
   submitter = null,
   native,
   providers,
@@ -443,6 +446,7 @@ export function buildPrSubmissionReport({
   const manual_reasons = [];
   const warnings = [];
   let candidate = null;
+  let provider = null;
 
   if (scope.scope === "normal-pr") {
     return {
@@ -456,6 +460,7 @@ export function buildPrSubmissionReport({
       warnings: [],
       manual_reasons: [],
       candidate: null,
+      provider: null,
       publish_allowed: false,
       auto_merge_eligible: false,
       blocking: false,
@@ -464,10 +469,16 @@ export function buildPrSubmissionReport({
     };
   }
 
-  if (errors.length === 0) {
+  if (errors.length === 0 && scope.scope === "direct-candidate") {
     const extracted = extractSingleCandidate(candidateDocument);
     errors.push(...extracted.errors);
     candidate = extracted.candidate;
+  }
+
+  if (errors.length === 0 && scope.scope === "direct-provider") {
+    const extracted = extractSingleProvider(providerDocument);
+    errors.push(...extracted.errors);
+    provider = extracted.provider;
   }
 
   if (candidate) {
@@ -479,6 +490,18 @@ export function buildPrSubmissionReport({
       providers,
       existingCandidates,
       existingSubnets,
+    });
+    errors.push(...deterministic.errors);
+    manual_reasons.push(...deterministic.manual_reasons);
+    warnings.push(...deterministic.warnings);
+  }
+
+  if (provider) {
+    const deterministic = validateProviderForSubmission({
+      provider,
+      document: providerDocument,
+      submitter,
+      providers,
     });
     errors.push(...deterministic.errors);
     manual_reasons.push(...deterministic.manual_reasons);
@@ -505,11 +528,13 @@ export function buildPrSubmissionReport({
     public_state: publicState,
     changed_files: normalizedFiles,
     direct_candidate_file: scope.candidateFiles[0] || null,
+    direct_provider_file: scope.providerFiles[0] || null,
     errors: errors.map((error) => error.message),
     error_categories: errors.map((error) => error.category),
     warnings,
     manual_reasons,
     candidate,
+    provider,
     publish_allowed: false,
     auto_merge_eligible: false,
     private_review_required:
@@ -537,29 +562,44 @@ export function classifyPrScope(changedFiles) {
   const candidateFiles = files.filter((file) =>
     DIRECT_CANDIDATE_PATTERN.test(file),
   );
+  const providerFiles = files.filter((file) =>
+    DIRECT_PROVIDER_PATTERN.test(file),
+  );
   const touchedCommunityCandidate = files.filter((file) =>
     file.startsWith("registry/candidates/community/"),
   );
+  const touchedCommunityProvider = files.filter((file) =>
+    file.startsWith("registry/providers/community/"),
+  );
   const errors = [];
 
-  if (candidateFiles.length === 0 && touchedCommunityCandidate.length === 0) {
+  if (
+    candidateFiles.length === 0 &&
+    providerFiles.length === 0 &&
+    touchedCommunityCandidate.length === 0 &&
+    touchedCommunityProvider.length === 0
+  ) {
     return {
       scope: "normal-pr",
       candidateFiles,
+      providerFiles,
       errors,
     };
   }
 
-  if (candidateFiles.length !== 1) {
+  const submissionFileCount = candidateFiles.length + providerFiles.length;
+  if (submissionFileCount !== 1) {
     errors.push({
       category: "unsupported-shape",
       message:
-        "direct submissions must change exactly one registry/candidates/community/*.json file",
+        "direct submissions must change exactly one registry/candidates/community/*.json or registry/providers/community/*.json file",
     });
   }
 
   const unrelated = files.filter(
-    (file) => !DIRECT_CANDIDATE_PATTERN.test(file),
+    (file) =>
+      !DIRECT_CANDIDATE_PATTERN.test(file) &&
+      !DIRECT_PROVIDER_PATTERN.test(file),
   );
   if (unrelated.length > 0) {
     errors.push({
@@ -569,8 +609,9 @@ export function classifyPrScope(changedFiles) {
   }
 
   return {
-    scope: "direct-candidate",
+    scope: providerFiles.length === 1 ? "direct-provider" : "direct-candidate",
     candidateFiles,
+    providerFiles,
     errors,
   };
 }
@@ -604,6 +645,39 @@ export function extractSingleCandidate(document) {
 
   return {
     candidate: document.candidates?.[0] || null,
+    errors,
+  };
+}
+
+export function extractSingleProvider(document) {
+  const errors = [];
+  if (!document || typeof document !== "object") {
+    return {
+      provider: null,
+      errors: [
+        {
+          category: "unsupported-shape",
+          message: "provider submission document must be a JSON object",
+        },
+      ],
+    };
+  }
+
+  if (document.schema_version !== 1) {
+    errors.push({
+      category: "unsupported-shape",
+      message: "provider submission document schema_version must be 1",
+    });
+  }
+  if (!document.provider || typeof document.provider !== "object") {
+    errors.push({
+      category: "unsupported-shape",
+      message: "provider submission document must include provider",
+    });
+  }
+
+  return {
+    provider: document.provider || null,
     errors,
   };
 }
@@ -788,6 +862,109 @@ export function validateCandidateForSubmission({
       });
     }
   }
+
+  return { errors, warnings, manual_reasons };
+}
+
+export function validateProviderForSubmission({
+  provider,
+  document = {},
+  submitter = null,
+  providers,
+}) {
+  const errors = [];
+  const warnings = [];
+  const manual_reasons = ["provider profile submissions require review"];
+  const providerIds = new Set(providers.map((entry) => entry.id));
+  const websiteUrl = normalizePublicUrl(provider?.website_url);
+  const docsUrl = normalizePublicUrl(provider?.docs_url);
+  const githubUrl = normalizePublicUrl(provider?.github_url);
+  const teamUrl = normalizePublicUrl(provider?.team_url);
+  const contactUrl = normalizePublicUrl(provider?.contact_url);
+
+  if (!provider || typeof provider !== "object") {
+    return {
+      errors: [
+        {
+          category: "unsupported-shape",
+          message: "provider is required",
+        },
+      ],
+      warnings,
+      manual_reasons,
+    };
+  }
+
+  if (provider.schema_version !== 1) {
+    errors.push({
+      category: "unsupported-shape",
+      message: "provider schema_version must be 1",
+    });
+  }
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(provider.id || "")) {
+    errors.push({
+      category: "unsupported-shape",
+      message: "provider id must be a lowercase slug",
+    });
+  }
+  if (!String(provider.name || "").trim()) {
+    errors.push({
+      category: "unsupported-shape",
+      message: "provider name is required",
+    });
+  }
+  if (!PROVIDER_KINDS.has(provider.kind)) {
+    errors.push({
+      category: "unsupported-shape",
+      message: "provider kind is unsupported",
+    });
+  }
+  if (!websiteUrl) {
+    errors.push({
+      category: "private-or-unsafe-url",
+      message: "provider website_url is missing, invalid, or unsafe",
+    });
+  }
+  for (const [field, normalized] of [
+    ["docs_url", docsUrl],
+    ["github_url", githubUrl],
+    ["team_url", teamUrl],
+    ["contact_url", contactUrl],
+  ]) {
+    if (provider[field] && !normalized) {
+      errors.push({
+        category: "private-or-unsafe-url",
+        message: `provider ${field} is invalid or unsafe`,
+      });
+    } else if (provider[field] && provider[field] !== normalized) {
+      warnings.push(`provider ${field} will be normalized by registry tooling`);
+    }
+  }
+  if (!["community", "provider-claimed"].includes(provider.authority)) {
+    errors.push({
+      category: "unsupported-shape",
+      message:
+        "community provider submissions can only use community or provider-claimed authority",
+    });
+  }
+  if (provider.notes !== undefined) {
+    errors.push({
+      category: "unsupported-shape",
+      message:
+        "community provider submissions must use public_notes, not notes",
+    });
+  }
+  if (provider.id && providerIds.has(provider.id)) {
+    manual_reasons.push("existing provider profile updates require review");
+  }
+
+  errors.push(...unsafeTextReasons(JSON.stringify(provider)));
+  errors.push(
+    ...validateSubmissionProvenance({
+      document,
+      submitter,
+    }),
+  );
 
   return { errors, warnings, manual_reasons };
 }

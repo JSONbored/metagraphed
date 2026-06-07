@@ -61,6 +61,7 @@
     "submission:pr": "node scripts/submission-pr.mjs",
     "submission:comment": "node scripts/submission-comment.mjs",
     "candidate:new": "node scripts/candidate-new.mjs",
+    "provider:new": "node scripts/provider-new.mjs",
     "r2:manifest": "node scripts/r2-manifest.mjs --write",
     "r2:manifest:dry-run": "node scripts/r2-manifest.mjs",
     "build-summary:refresh": "node scripts/refresh-build-summary.mjs",

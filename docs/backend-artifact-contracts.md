@@ -129,6 +129,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run validate:docs`: validate public docs against current artifact and API contracts.
 - `npm run validate:intake`: validate GitHub issue intake templates.
 - `npm run candidate:new`: generate a one-candidate community PR file.
+- `npm run provider:new`: generate a one-provider-profile community PR file.
 - `npm run submission:comment`: render a deterministic Markdown submission report.
 - `npm run validate:workflows`: validate workflow hardening rules.
 - `npm run worker:deploy:dry-run`: validate Worker/Wrangler deployment shape without contacting Cloudflare.

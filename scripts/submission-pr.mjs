@@ -11,6 +11,7 @@ import {
 } from "./lib.mjs";
 import {
   DIRECT_CANDIDATE_PATTERN,
+  DIRECT_PROVIDER_PATTERN,
   buildPrSubmissionReport,
   normalizeChangedFiles,
 } from "./submission-policy.mjs";
@@ -33,8 +34,14 @@ const changedFiles = normalizeChangedFiles(
 const directCandidateFile = changedFiles.find((file) =>
   DIRECT_CANDIDATE_PATTERN.test(file),
 );
+const directProviderFile = changedFiles.find((file) =>
+  DIRECT_PROVIDER_PATTERN.test(file),
+);
 const candidateDocument = directCandidateFile
   ? await readJson(path.resolve(directCandidateFile))
+  : null;
+const providerDocument = directProviderFile
+  ? await readJson(path.resolve(directProviderFile))
   : null;
 const existingCandidates = directCandidateFile
   ? (await loadCandidates()).filter(
@@ -44,13 +51,19 @@ const existingCandidates = directCandidateFile
         ),
     )
   : await loadCandidates();
+const existingProviders = directProviderFile
+  ? (await loadProviders()).filter(
+      (provider) => provider.id !== providerDocument?.provider?.id,
+    )
+  : await loadProviders();
 
 const report = buildPrSubmissionReport({
   changedFiles,
   candidateDocument,
+  providerDocument,
   submitter,
   native: await loadNativeSnapshot(),
-  providers: await loadProviders(),
+  providers: existingProviders,
   existingCandidates,
   existingSubnets: await loadSubnets(),
 });
