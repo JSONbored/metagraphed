@@ -1693,9 +1693,38 @@
                     "minimum": 0,
                     "type": "integer"
                   },
+                  "adapter_snapshot_as_of": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "blocking_source_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "candidate_discovery_as_of": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "health_probe_as_of": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "health_surface_count": {
                     "minimum": 0,
                     "type": "integer"
+                  },
+                  "missing_blocking_source_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "native_data_as_of": {
+                    "type": "string"
                   },
                   "native_snapshot_captured_at": {
                     "type": "string"
@@ -1704,16 +1733,55 @@
                     "minimum": 0,
                     "type": "integer"
                   },
+                  "publish_ready_without_age_check": {
+                    "type": "boolean"
+                  },
+                  "schema_snapshot_as_of": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "stale_window_warnings": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "verification_as_of": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "verification_generated_at": {
-                    "type": "string"
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "warning_source_count": {
+                    "minimum": 0,
+                    "type": "integer"
                   }
                 },
                 "required": [
                   "adapter_count",
+                  "adapter_snapshot_as_of",
+                  "blocking_source_count",
+                  "candidate_discovery_as_of",
                   "health_surface_count",
+                  "health_probe_as_of",
+                  "missing_blocking_source_count",
                   "native_snapshot_captured_at",
+                  "native_data_as_of",
                   "openapi_surface_count",
-                  "verification_generated_at"
+                  "publish_ready_without_age_check",
+                  "schema_snapshot_as_of",
+                  "stale_window_warnings",
+                  "verification_as_of",
+                  "verification_generated_at",
+                  "warning_source_count"
                 ],
                 "type": "object"
               }
@@ -1729,15 +1797,43 @@
       "FreshnessSource": {
         "additionalProperties": false,
         "properties": {
+          "as_of": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "id": {
+            "type": "string"
+          },
+          "lane": {
+            "enum": [
+              "adapter-snapshot",
+              "candidate-discovery",
+              "candidate-verification",
+              "health-probe",
+              "native-data",
+              "schema-snapshot"
+            ]
+          },
+          "notes": {
             "type": "string"
           },
           "path": {
             "type": "string"
           },
+          "required_for_publish": {
+            "type": "boolean"
+          },
           "stale_after_hours": {
             "minimum": 0,
             "type": "integer"
+          },
+          "stale_behavior": {
+            "enum": [
+              "block",
+              "warn"
+            ]
           },
           "status": {
             "enum": [
@@ -1753,14 +1849,25 @@
               "string",
               "null"
             ]
+          },
+          "timestamp_field": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
+          "as_of",
           "id",
+          "lane",
           "path",
+          "required_for_publish",
           "stale_after_hours",
+          "stale_behavior",
           "status",
-          "timestamp"
+          "timestamp",
+          "timestamp_field"
         ],
         "type": "object"
       },

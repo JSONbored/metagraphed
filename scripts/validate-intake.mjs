@@ -19,6 +19,10 @@ const providerTemplate = await fs.readFile(
   path.join(templateRoot, "add-update-provider-profile.yml"),
   "utf8",
 );
+const profileSourceTemplate = await fs.readFile(
+  path.join(templateRoot, "add-update-subnet-profile-source.yml"),
+  "utf8",
+);
 const pullRequestTemplate = await fs.readFile(
   path.join(repoRoot, ".github/pull_request_template.md"),
   "utf8",
@@ -38,6 +42,21 @@ const directProviderExample = await readJson(
 );
 const statusReportExample = await readJson(
   path.join(repoRoot, "docs/examples/submissions/status-report.json"),
+);
+const endpointResourceExample = await readJson(
+  path.join(
+    repoRoot,
+    "docs/examples/submissions/direct-endpoint-resource.json",
+  ),
+);
+const openapiSchemaExample = await readJson(
+  path.join(repoRoot, "docs/examples/submissions/direct-openapi-schema.json"),
+);
+const profileCorrectionExample = await readJson(
+  path.join(
+    repoRoot,
+    "docs/examples/submissions/direct-profile-correction.json",
+  ),
 );
 const errors = [];
 
@@ -116,6 +135,25 @@ checkIncludes(providerTemplate, "provider profile template", [
   "provider approval is required before endpoints can become pool-eligible",
 ]);
 
+checkIncludes(profileSourceTemplate, "profile source template", [
+  "interface-submission",
+  "profile-correction",
+  "metagraphed-under-review",
+  "id: netuid",
+  "id: kind",
+  "id: url",
+  "id: source_url",
+  "id: provider",
+  "id: auth_required",
+  "website",
+  "docs",
+  "source-repo",
+  "data-artifact",
+  "openapi",
+  "do not directly change observed health",
+  "read-only probes",
+]);
+
 checkIncludes(pullRequestTemplate, "pull request template", [
   "registry/candidates/community/*.json",
   "registry/providers/community/*.json",
@@ -154,6 +192,9 @@ checkExampleCandidate(candidateExample);
 checkExampleProvider(providerExample);
 checkExampleProviderSubmission(directProviderExample);
 checkExampleStatusReport(statusReportExample);
+checkExampleCandidate(endpointResourceExample);
+checkExampleCandidate(openapiSchemaExample);
+checkExampleCandidate(profileCorrectionExample);
 
 if (errors.length > 0) {
   console.error(`Intake validation failed with ${errors.length} issue(s):`);

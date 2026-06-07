@@ -1,0 +1,94 @@
+name: Add or update subnet profile source
+description: Submit an official docs, website, source repo, dashboard, or profile source correction.
+title: "profile: "
+labels:
+  - interface-submission
+  - profile-correction
+  - metagraphed-under-review
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for profile/source corrections such as official websites, docs, source repos, dashboards, or public data artifacts. These submissions become review candidates; they do not directly change observed health, uptime, latency, or pool eligibility.
+  - type: input
+    id: netuid
+    attributes:
+      label: Netuid
+      description: Bittensor subnet netuid for this profile/source correction.
+      placeholder: "7"
+    validations:
+      required: true
+  - type: input
+    id: subnet_name
+    attributes:
+      label: Subnet name
+      placeholder: Allways
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Interface kind
+      description: Choose the public surface this correction updates.
+      options:
+        - website
+        - docs
+        - source-repo
+        - dashboard
+        - data-artifact
+        - openapi
+        - subnet-api
+        - sse
+        - sdk
+        - example
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Public URL
+      description: The exact public URL that should be reviewed for this subnet profile.
+      placeholder: https://example.com/docs
+    validations:
+      required: true
+  - type: input
+    id: source_url
+    attributes:
+      label: Source URL
+      description: Public docs, repository, official site, or announcement supporting the correction.
+      placeholder: https://docs.example.com
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Provider or team
+      placeholder: example-team
+    validations:
+      required: true
+  - type: dropdown
+    id: auth_required
+    attributes:
+      label: Does this interface require authentication?
+      options:
+        - "no"
+        - "yes"
+        - "unknown"
+    validations:
+      required: true
+  - type: textarea
+    id: rate_limits
+    attributes:
+      label: Public notes
+      description: Include public-safe context about the correction, rate limits, auth requirements, or source provenance. Do not include credentials.
+  - type: checkboxes
+    id: public_safety
+    attributes:
+      label: Public-safety confirmation
+      options:
+        - label: This correction includes only public-safe source/profile metadata.
+          required: true
+        - label: The submitted URL can be checked with read-only probes if it is probeable.
+          required: true
+        - label: I understand profile/source corrections still require review before publication.
+          required: true

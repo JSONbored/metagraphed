@@ -88,22 +88,58 @@
       },
       "FreshnessSource": {
         "type": "object",
-        "required": ["id", "path", "stale_after_hours", "status", "timestamp"],
+        "required": [
+          "as_of",
+          "id",
+          "lane",
+          "path",
+          "required_for_publish",
+          "stale_after_hours",
+          "stale_behavior",
+          "status",
+          "timestamp",
+          "timestamp_field"
+        ],
         "properties": {
+          "as_of": {
+            "type": ["string", "null"]
+          },
           "id": {
+            "type": "string"
+          },
+          "lane": {
+            "enum": [
+              "adapter-snapshot",
+              "candidate-discovery",
+              "candidate-verification",
+              "health-probe",
+              "native-data",
+              "schema-snapshot"
+            ]
+          },
+          "notes": {
             "type": "string"
           },
           "path": {
             "type": "string"
           },
+          "required_for_publish": {
+            "type": "boolean"
+          },
           "stale_after_hours": {
             "type": "integer",
             "minimum": 0
+          },
+          "stale_behavior": {
+            "enum": ["block", "warn"]
           },
           "status": {
             "enum": ["captured", "current", "degraded", "missing", "stale"]
           },
           "timestamp": {
+            "type": ["string", "null"]
+          },
+          "timestamp_field": {
             "type": ["string", "null"]
           }
         },
@@ -245,29 +281,79 @@
                 "type": "object",
                 "required": [
                   "adapter_count",
+                  "adapter_snapshot_as_of",
+                  "blocking_source_count",
+                  "candidate_discovery_as_of",
                   "health_surface_count",
+                  "health_probe_as_of",
+                  "missing_blocking_source_count",
                   "native_snapshot_captured_at",
+                  "native_data_as_of",
                   "openapi_surface_count",
-                  "verification_generated_at"
+                  "publish_ready_without_age_check",
+                  "schema_snapshot_as_of",
+                  "stale_window_warnings",
+                  "verification_as_of",
+                  "verification_generated_at",
+                  "warning_source_count"
                 ],
                 "properties": {
                   "adapter_count": {
                     "type": "integer",
                     "minimum": 0
                   },
+                  "adapter_snapshot_as_of": {
+                    "type": ["string", "null"]
+                  },
+                  "blocking_source_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "candidate_discovery_as_of": {
+                    "type": ["string", "null"]
+                  },
                   "health_surface_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "health_probe_as_of": {
+                    "type": ["string", "null"]
+                  },
+                  "missing_blocking_source_count": {
                     "type": "integer",
                     "minimum": 0
                   },
                   "native_snapshot_captured_at": {
                     "type": "string"
                   },
+                  "native_data_as_of": {
+                    "type": "string"
+                  },
                   "openapi_surface_count": {
                     "type": "integer",
                     "minimum": 0
                   },
+                  "publish_ready_without_age_check": {
+                    "type": "boolean"
+                  },
+                  "schema_snapshot_as_of": {
+                    "type": ["string", "null"]
+                  },
+                  "stale_window_warnings": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "verification_as_of": {
+                    "type": ["string", "null"]
+                  },
                   "verification_generated_at": {
-                    "type": "string"
+                    "type": ["string", "null"]
+                  },
+                  "warning_source_count": {
+                    "type": "integer",
+                    "minimum": 0
                   }
                 },
                 "additionalProperties": false

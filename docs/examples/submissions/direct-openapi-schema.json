@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "example-contributor",
+    "submitted_by_url": "https://github.com/example-contributor"
+  },
+  "candidates": [
+    {
+      "schema_version": 1,
+      "id": "community-sn-7-openapi-api-all-ways-io",
+      "netuid": 7,
+      "state": "schema-valid",
+      "name": "Allways OpenAPI schema",
+      "kind": "openapi",
+      "url": "https://api.all-ways.io/swagger/json",
+      "source_url": "https://api.all-ways.io/swagger",
+      "source_urls": ["https://api.all-ways.io/swagger"],
+      "source_type": "community-pr-intake",
+      "source_tier": "official-docs",
+      "confidence": "medium",
+      "provider": "allways",
+      "auth_required": false,
+      "public_safe": true,
+      "rate_limit_notes": "Machine-readable schema URL candidate. HTML Swagger pages should be submitted as docs or dashboard unless a JSON schema URL is available.",
+      "review_notes": "Community-submitted OpenAPI/schema candidate."
+    }
+  ]
+}

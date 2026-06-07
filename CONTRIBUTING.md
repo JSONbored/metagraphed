@@ -47,8 +47,9 @@ two supported paths:
 - PR-first: add exactly one `registry/candidates/community/*.json` candidate
   document or exactly one `registry/providers/community/*.json` provider
   profile document and no other files.
-- Issue-first: submit an `interface-submission` issue and let the import
-  workflow create the candidate PR after approval.
+- Issue-first: submit an `interface-submission`, `profile-correction`,
+  `endpoint-submission`, `provider-submission`, or `status-report` issue and
+  let the import/review workflow create the candidate PR after approval.
 - Endpoint/provider/status issues: submit endpoint resources, provider profiles,
   or status reports through the matching issue template. These create review or
   re-probe work; they do not directly change observed health.
@@ -66,6 +67,8 @@ npm run provider:new -- --id example-operator --name "Example Operator" --kind i
 ```
 
 Example payloads live under `docs/examples/submissions`.
+Useful examples include direct candidates, endpoint resources, OpenAPI/schema
+URLs, provider profiles, profile/source corrections, and status reports.
 
 Do not include generated `public/metagraph/**` artifacts, native snapshots,
 workflow/script changes, secrets, wallet/PAT material, private URLs, or
@@ -97,6 +100,11 @@ Status reports never set uptime, latency, health status, incident state, or pool
 eligibility. They can only trigger review or a future re-probe; operational state
 comes from Metagraphed probes and adapters.
 
+Profile/source corrections are welcome for official websites, docs, source
+repos, dashboards, OpenAPI/schema URLs, SDKs, examples, or public data artifacts.
+Approved corrections improve profile completeness and gap reports; they do not
+override native chain state or observed endpoint health.
+
 The issue import flow is:
 
 1. Submit an `interface-submission` issue.
@@ -119,6 +127,16 @@ npm run pipeline:refresh
 ```
 
 for full local refreshes. Set `METAGRAPH_WRITE_PROBE_RESULTS=1` only when you intentionally want live probe artifacts updated.
+
+Production publishes can require freshness gates:
+
+```bash
+METAGRAPH_REQUIRE_PROBE_HEALTH=1 METAGRAPH_REQUIRE_FRESHNESS=1 npm run validate
+```
+
+Freshness is exposed in `/metagraph/freshness.json` and `/api/v1/freshness`.
+Required publish lanes include native subnet data, candidate discovery,
+candidate verification, probe-derived health, and adapter snapshots.
 
 ## Pull Requests
 

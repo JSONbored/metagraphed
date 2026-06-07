@@ -1034,6 +1034,48 @@ async function validateGeneratedArtifacts(
     "freshness: native snapshot timestamp mismatch",
   );
   assert(
+    freshnessArtifact.summary?.native_data_as_of === nativeSnapshot.captured_at,
+    "freshness: native_data_as_of mismatch",
+  );
+  assert(
+    freshnessArtifact.summary?.verification_as_of ===
+      verificationArtifact.verification_finished_at,
+    "freshness: verification_as_of mismatch",
+  );
+  assert(
+    freshnessArtifact.summary?.blocking_source_count ===
+      freshnessArtifact.sources.filter(
+        (source) => source.stale_behavior === "block",
+      ).length,
+    "freshness: blocking source count mismatch",
+  );
+  assert(
+    freshnessArtifact.summary?.missing_blocking_source_count ===
+      freshnessArtifact.sources.filter(
+        (source) =>
+          source.stale_behavior === "block" && source.status === "missing",
+      ).length,
+    "freshness: missing blocking source count mismatch",
+  );
+  for (const source of freshnessArtifact.sources) {
+    assert(
+      source.as_of === source.timestamp,
+      `freshness:${source.id}: as_of and timestamp must match`,
+    );
+    assert(
+      ["block", "warn"].includes(source.stale_behavior),
+      `freshness:${source.id}: stale_behavior is invalid`,
+    );
+    assert(
+      source.stale_behavior === "block" ||
+        source.required_for_publish === false,
+      `freshness:${source.id}: warning sources cannot be required for publish`,
+    );
+  }
+  if (requiresFreshness()) {
+    validateFreshnessForPublish(freshnessArtifact);
+  }
+  assert(
     sourceHealthArtifact.summary?.provider_count ===
       providersArtifact.providers.length,
     "source health: provider count mismatch",
@@ -1205,6 +1247,50 @@ function requiresProbeHealth() {
     process.env.GITHUB_ACTIONS === "true" &&
     process.env.GITHUB_WORKFLOW === "Publish Cloudflare Backend" &&
     process.env.GITHUB_REF === "refs/heads/main"
+  );
+}
+
+function requiresFreshness() {
+  if (process.env.METAGRAPH_REQUIRE_FRESHNESS === "1") {
+    return true;
+  }
+  return (
+    process.env.GITHUB_ACTIONS === "true" &&
+    process.env.GITHUB_WORKFLOW === "Publish Cloudflare Backend" &&
+    process.env.GITHUB_REF === "refs/heads/main"
+  );
+}
+
+function validateFreshnessForPublish(freshnessArtifact) {
+  const now = Date.now();
+  const failures = [];
+  for (const source of freshnessArtifact.sources.filter(
+    (entry) => entry.stale_behavior === "block",
+  )) {
+    if (source.status === "missing" || !source.as_of) {
+      failures.push(`${source.id} is missing`);
+      continue;
+    }
+    if (!["captured", "current"].includes(source.status)) {
+      failures.push(`${source.id} status is ${source.status}`);
+      continue;
+    }
+    const observedAt = Date.parse(source.as_of);
+    if (!Number.isFinite(observedAt)) {
+      failures.push(`${source.id} has invalid as_of timestamp`);
+      continue;
+    }
+    const ageHours = (now - observedAt) / 3_600_000;
+    if (ageHours > source.stale_after_hours) {
+      failures.push(
+        `${source.id} is stale (${ageHours.toFixed(1)}h > ${source.stale_after_hours}h)`,
+      );
+    }
+  }
+
+  assert(
+    failures.length === 0,
+    `freshness: publish requires fresh blocking sources: ${failures.join("; ")}`,
   );
 }
 

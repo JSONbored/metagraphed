@@ -1059,21 +1059,40 @@ export interface components {
             sources: components["schemas"]["FreshnessSource"][];
             summary: {
                 adapter_count: number;
+                adapter_snapshot_as_of: string | null;
+                blocking_source_count: number;
+                candidate_discovery_as_of: string | null;
+                health_probe_as_of: string | null;
                 health_surface_count: number;
+                missing_blocking_source_count: number;
+                native_data_as_of: string;
                 native_snapshot_captured_at: string;
                 openapi_surface_count: number;
-                verification_generated_at: string;
+                publish_ready_without_age_check: boolean;
+                schema_snapshot_as_of: string | null;
+                stale_window_warnings: string[];
+                verification_as_of: string | null;
+                verification_generated_at: string | null;
+                warning_source_count: number;
             };
         } & {
             [key: string]: unknown;
         });
         FreshnessSource: {
+            as_of: string | null;
             id: string;
+            /** @enum {unknown} */
+            lane: "adapter-snapshot" | "candidate-discovery" | "candidate-verification" | "health-probe" | "native-data" | "schema-snapshot";
+            notes?: string;
             path: string;
+            required_for_publish: boolean;
             stale_after_hours: number;
+            /** @enum {unknown} */
+            stale_behavior: "block" | "warn";
             /** @enum {unknown} */
             status: "captured" | "current" | "degraded" | "missing" | "stale";
             timestamp: string | null;
+            timestamp_field: string | null;
         };
         Gaps: {
             gap_notes: string[];

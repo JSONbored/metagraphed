@@ -41,6 +41,9 @@ import {
 const providers = await loadProviders();
 const overlays = await loadSubnets();
 const candidates = await loadCandidates();
+const candidateDiscovery = await readOptionalJson(
+  path.join(repoRoot, "registry/candidates/generated/public-sources.json"),
+);
 const verification = redactCredentialedUrls(await loadVerification());
 const adapterSnapshots = await loadAdapterSnapshots();
 const reviewDecisions = await loadReviewDecisions();
@@ -535,6 +538,7 @@ await writeJson(
   artifactFile("freshness.json"),
   buildFreshnessArtifact({
     adapterSnapshots,
+    candidateDiscovery,
     generatedAt,
     healthArtifacts,
     nativeSnapshot,
@@ -1617,72 +1621,213 @@ function compactTokens(values) {
 
 function buildFreshnessArtifact({
   adapterSnapshots: snapshots,
+  candidateDiscovery,
   generatedAt: timestamp,
   healthArtifacts: health,
   nativeSnapshot: native,
   schemaDrift,
   verification: verificationArtifact,
 }) {
-  const adapterRows = [...snapshots.values()].map((snapshot) => ({
-    generated_at: snapshot.generated_at,
-    slug: snapshot.slug,
-    status: snapshot.status,
-  }));
+  const adapterRows = [...snapshots.values()].map((snapshot) => {
+    const capturedAt = latestTimestamp([
+      snapshot.generated_at,
+      ...Object.values(snapshot.dimensions || {}).map(
+        (dimension) => dimension?.captured_at,
+      ),
+    ]);
+    return {
+      as_of: capturedAt || snapshot.generated_at || null,
+      generated_at: snapshot.generated_at,
+      slug: snapshot.slug,
+      status: snapshot.status,
+    };
+  });
+  const candidateDiscoveryAsOf =
+    nonPlaceholderTimestamp(candidateDiscovery?.generated_at) ||
+    candidateDiscovery?.native_snapshot_captured_at ||
+    native.captured_at ||
+    null;
+  const verificationAsOf =
+    verificationArtifact.verification_finished_at ||
+    nonPlaceholderTimestamp(verificationArtifact.generated_at) ||
+    null;
+  const healthProbeAsOf =
+    health.latest.source === "live-smoke-probe"
+      ? health.latest.probe_finished_at ||
+        nonPlaceholderTimestamp(health.latest.generated_at) ||
+        null
+      : null;
+  const adapterSnapshotAsOf = latestTimestamp(
+    adapterRows.map((row) => row.as_of),
+  );
+  const schemaSnapshotAsOf =
+    nonPlaceholderTimestamp(schemaDrift.generated_at) || null;
+  const sources = [
+    freshnessSource({
+      asOf: native.captured_at,
+      id: "native-subnets",
+      lane: "native-data",
+      pathValue: "registry/native/finney-subnets.json",
+      requiredForPublish: true,
+      staleAfterHours: 24,
+      timestampField: "native_data_as_of",
+    }),
+    freshnessSource({
+      asOf: candidateDiscoveryAsOf,
+      id: "candidate-discovery",
+      lane: "candidate-discovery",
+      pathValue: "registry/candidates/generated/public-sources.json",
+      requiredForPublish: true,
+      staleAfterHours: 24,
+      timestampField: "candidate_discovery_as_of",
+    }),
+    freshnessSource({
+      asOf: verificationAsOf,
+      id: "candidate-verification",
+      lane: "candidate-verification",
+      pathValue: "registry/verification/latest.json",
+      requiredForPublish: true,
+      staleAfterHours: 24,
+      timestampField: "verification_as_of",
+    }),
+    freshnessSource({
+      asOf: healthProbeAsOf,
+      id: "surface-health",
+      lane: "health-probe",
+      notes:
+        health.latest.source === "live-smoke-probe"
+          ? "Observed health is probe-derived."
+          : "Run probes with METAGRAPH_WRITE_PROBE_RESULTS=1 before production publish.",
+      pathValue: "public/metagraph/health/latest.json",
+      requiredForPublish: true,
+      staleAfterHours: 6,
+      status: health.latest.source === "live-smoke-probe" ? "captured" : null,
+      staleBehavior: "block",
+      timestampField: "health_probe_as_of",
+    }),
+    freshnessSource({
+      asOf: adapterSnapshotAsOf,
+      id: "adapter-snapshots",
+      lane: "adapter-snapshot",
+      pathValue: "registry/adapters/latest",
+      requiredForPublish: true,
+      staleAfterHours: 12,
+      timestampField: "adapter_snapshot_as_of",
+    }),
+    freshnessSource({
+      asOf: schemaSnapshotAsOf,
+      id: "schema-drift",
+      lane: "schema-snapshot",
+      notes:
+        "Schema drift snapshots are warning-only until more subnets publish machine-readable schemas.",
+      pathValue: "public/metagraph/schema-drift.json",
+      requiredForPublish: false,
+      staleAfterHours: 168,
+      staleBehavior: "warn",
+      timestampField: "schema_snapshot_as_of",
+    }),
+    ...adapterRows.map((row) =>
+      freshnessSource({
+        asOf: row.as_of,
+        id: `adapter:${row.slug}`,
+        lane: "adapter-snapshot",
+        pathValue: `registry/adapters/latest/${row.slug}.json`,
+        requiredForPublish: false,
+        staleAfterHours: 12,
+        status: row.status,
+        staleBehavior: "warn",
+      }),
+    ),
+  ].sort((a, b) => a.id.localeCompare(b.id));
+  const blockingSources = sources.filter(
+    (source) => source.stale_behavior === "block",
+  );
+  const missingBlockingSources = blockingSources.filter(
+    (source) => source.status === "missing",
+  );
+  const warningSources = sources.filter(
+    (source) => source.stale_behavior === "warn",
+  );
   return {
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: timestamp,
     summary: {
       adapter_count: adapterRows.length,
+      adapter_snapshot_as_of: adapterSnapshotAsOf,
+      blocking_source_count: blockingSources.length,
+      candidate_discovery_as_of: candidateDiscoveryAsOf,
       health_surface_count: health.latest.surfaces.length,
+      health_probe_as_of: healthProbeAsOf,
+      missing_blocking_source_count: missingBlockingSources.length,
       native_snapshot_captured_at: native.captured_at,
+      native_data_as_of: native.captured_at,
       openapi_surface_count:
         schemaDrift.openapi_surface_count ||
         schemaDrift.summary?.surface_count ||
         0,
-      verification_generated_at: verificationArtifact.generated_at || null,
-    },
-    sources: [
-      freshnessSource(
-        "native-subnets",
-        native.captured_at,
-        "registry/native/finney-subnets.json",
-      ),
-      freshnessSource(
-        "candidate-verification",
-        verificationArtifact.generated_at || null,
-        "registry/verification/latest.json",
-      ),
-      freshnessSource(
-        "surface-health",
-        health.latest.generated_at,
-        "public/metagraph/health/latest.json",
-      ),
-      freshnessSource(
-        "schema-drift",
-        schemaDrift.generated_at,
-        "public/metagraph/schema-drift.json",
-      ),
-      ...adapterRows.map((row) =>
-        freshnessSource(
-          `adapter:${row.slug}`,
-          row.generated_at,
-          `registry/adapters/latest/${row.slug}.json`,
-          row.status,
+      publish_ready_without_age_check: missingBlockingSources.length === 0,
+      schema_snapshot_as_of: schemaSnapshotAsOf,
+      stale_window_warnings: sources
+        .filter((source) => source.status === "missing")
+        .map(
+          (source) =>
+            `${source.id} has no observed timestamp; ${source.stale_behavior === "block" ? "production publish should block" : "review before relying on this lane"}.`,
         ),
-      ),
-    ].sort((a, b) => a.id.localeCompare(b.id)),
+      verification_as_of: verificationAsOf,
+      verification_generated_at: verificationArtifact.generated_at || null,
+      warning_source_count: warningSources.length,
+    },
+    sources,
   };
 }
 
-function freshnessSource(id, timestamp, pathValue, status = "captured") {
+function freshnessSource({
+  asOf,
+  id,
+  lane,
+  notes = "",
+  pathValue,
+  requiredForPublish,
+  staleAfterHours,
+  staleBehavior = requiredForPublish ? "block" : "warn",
+  status = null,
+  timestampField = null,
+}) {
+  const timestamp = asOf || null;
   return {
+    as_of: timestamp,
     id,
+    lane,
+    notes,
     path: pathValue,
-    status,
+    required_for_publish: requiredForPublish,
+    stale_after_hours: staleAfterHours,
+    stale_behavior: staleBehavior,
+    status: status || (timestamp ? "captured" : "missing"),
     timestamp,
-    stale_after_hours: id === "native-subnets" ? 24 : 12,
+    timestamp_field: timestampField,
   };
+}
+
+function nonPlaceholderTimestamp(value) {
+  if (!value || value === "1970-01-01T00:00:00.000Z") {
+    return null;
+  }
+  return value;
+}
+
+function latestTimestamp(values) {
+  const parsed = values
+    .map(nonPlaceholderTimestamp)
+    .filter(Boolean)
+    .map((value) => {
+      const time = Date.parse(value);
+      return Number.isFinite(time) ? { time, value } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.time - a.time);
+  return parsed[0]?.value || null;
 }
 
 function buildSourceHealthArtifact({

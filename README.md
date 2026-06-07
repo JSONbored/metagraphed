@@ -139,6 +139,8 @@ Worker API routes expose stable envelopes over the same canonical artifacts:
 - `/api/v1`
 - `/api/v1/subnets`
 - `/api/v1/subnets/{netuid}`
+- `/api/v1/profiles`
+- `/api/v1/subnets/{netuid}/profile`
 - `/api/v1/surfaces`
 - `/api/v1/subnets/{netuid}/surfaces`
 - `/api/v1/endpoints`
@@ -151,6 +153,9 @@ Worker API routes expose stable envelopes over the same canonical artifacts:
 - `/api/v1/coverage`
 - `/api/v1/curation`
 - `/api/v1/gaps`
+- `/api/v1/review/gaps`
+- `/api/v1/review/profile-completeness`
+- `/api/v1/review/adapter-candidates`
 - `/api/v1/health`
 - `/api/v1/health/history/{date}`
 - `/api/v1/subnets/{netuid}/health`
@@ -162,6 +167,7 @@ Worker API routes expose stable envelopes over the same canonical artifacts:
 - `/api/v1/rpc/endpoints`
 - `/api/v1/rpc/pools`
 - `/api/v1/endpoint-pools`
+- `/api/v1/endpoint-incidents`
 - `/api/v1/schemas`
 - `/api/v1/adapters/{slug}`
 - `/api/v1/search`

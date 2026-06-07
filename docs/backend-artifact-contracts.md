@@ -46,7 +46,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/gaps.json`: missing public interface facets by subnet.
 - `/metagraph/verification/latest.json`: latest candidate verification results. R2-backed.
 - `/metagraph/verification/subnets/{netuid}.json`: latest candidate verification results for one subnet. R2-backed.
-- `/metagraph/freshness.json`: freshness and staleness metadata for generated backend data.
+- `/metagraph/freshness.json`: freshness and staleness metadata for generated backend data. It exposes `native_data_as_of`, `candidate_discovery_as_of`, `verification_as_of`, `health_probe_as_of`, `adapter_snapshot_as_of`, and stale-window requirements.
 - `/metagraph/source-health.json`: source/provider health summary.
 - `/metagraph/source-snapshots.json`: compact hashes and counts for canonical source inputs. R2-backed.
 - `/metagraph/evidence-ledger.json`: public evidence ledger for material registry claims.
@@ -142,6 +142,16 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run validate:workflows`: validate workflow hardening rules.
 - `npm run worker:deploy:dry-run`: validate Worker/Wrangler deployment shape without contacting Cloudflare.
 - `npm run sync:summary`: generate a registry-refresh PR summary from actual artifact diffs.
+
+Production publish validation can enforce operational freshness with:
+
+```bash
+METAGRAPH_REQUIRE_PROBE_HEALTH=1 METAGRAPH_REQUIRE_FRESHNESS=1 npm run validate
+```
+
+Those gates require fresh native subnet data, candidate discovery, candidate
+verification, probe-derived health, and adapter snapshots. Schema drift remains
+warning-only until more subnets expose machine-readable schemas.
 
 ## Cloudflare Runtime
 

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "example-contributor",
+    "submitted_by_url": "https://github.com/example-contributor"
+  },
+  "candidates": [
+    {
+      "schema_version": 1,
+      "id": "community-sn-0-subtensor-rpc-rpc-example-onfinality-io",
+      "netuid": 0,
+      "state": "schema-valid",
+      "name": "Example Bittensor RPC endpoint",
+      "kind": "subtensor-rpc",
+      "url": "https://rpc-example.onfinality.io",
+      "source_url": "https://onfinality.io/en/networks/bittensor-finney",
+      "source_urls": ["https://onfinality.io/en/networks/bittensor-finney"],
+      "source_type": "community-pr-intake",
+      "source_tier": "community-docs",
+      "confidence": "medium",
+      "provider": "onfinality",
+      "auth_required": false,
+      "public_safe": true,
+      "rate_limit_notes": "Public read-only RPC endpoint candidate. Base-layer RPC claims require maintainer/private-gate review before monitoring or pool eligibility.",
+      "review_notes": "Community-submitted endpoint resource candidate."
+    }
+  ]
+}

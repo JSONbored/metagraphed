@@ -361,6 +361,33 @@ test("public artifacts are internally consistent", () => {
     freshness.summary.native_snapshot_captured_at,
     native.captured_at,
   );
+  assert.equal(freshness.summary.native_data_as_of, native.captured_at);
+  assert.equal(
+    freshness.summary.blocking_source_count,
+    freshness.sources.filter((source) => source.stale_behavior === "block")
+      .length,
+  );
+  assert.equal(
+    freshness.summary.missing_blocking_source_count,
+    freshness.sources.filter(
+      (source) =>
+        source.stale_behavior === "block" && source.status === "missing",
+    ).length,
+  );
+  for (const source of freshness.sources) {
+    assert.equal(source.as_of, source.timestamp);
+    assert.equal(typeof source.required_for_publish, "boolean");
+    assert.equal(["block", "warn"].includes(source.stale_behavior), true);
+  }
+  assert.equal(
+    freshness.sources.some(
+      (source) =>
+        source.id === "surface-health" &&
+        source.lane === "health-probe" &&
+        source.stale_behavior === "block",
+    ),
+    true,
+  );
   assert.equal(sourceHealth.summary.provider_count > 0, true);
   assert.equal(
     sourceSnapshots.summary.source_count,

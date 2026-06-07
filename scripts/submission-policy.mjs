@@ -15,6 +15,7 @@ export const SUBMISSION_LABELS = {
   importApproved: "metagraphed-import-approved",
   interfaceSubmission: "interface-submission",
   endpointSubmission: "endpoint-submission",
+  profileCorrection: "profile-correction",
   providerSubmission: "provider-submission",
   statusReport: "status-report",
 };

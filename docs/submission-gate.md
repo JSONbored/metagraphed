@@ -24,6 +24,8 @@ the gate is harder to game.
 - `metagraphed-closed-by-gate`: the gate closed a hard failure.
 - `metagraphed-merged-by-gate`: the gate merged or imported a passing item.
 - `metagraphed-import-approved`: an issue submission can open an import PR.
+- `profile-correction`: the issue is about subnet profile/source metadata such
+  as official docs, websites, source repos, dashboards, or schema URLs.
 
 The stable marker comment is:
 
@@ -108,6 +110,8 @@ make any endpoint pool-eligible.
 The public gate accepts or routes:
 
 - subnet interface additions and corrections;
+- subnet profile/source corrections for official websites, docs, source repos,
+  dashboards, OpenAPI/schema URLs, SDKs, examples, and data artifacts;
 - endpoint resource submissions for `subtensor-rpc`, `subtensor-wss`,
   `archive`, `subnet-api`, `openapi`, `sse`, `data-artifact`, `dashboard`,
   `docs`, `website`, `source-repo`, `sdk`, and `example`;
@@ -123,6 +127,11 @@ Endpoint and status submissions can create candidates, reports, or re-probe
 work. They cannot directly set observed uptime, latency, status, health class,
 or pool eligibility; those values are generated only from Metagraphed probes and
 adapter checks.
+
+Profile/source corrections can improve `/api/v1/profiles`,
+`/api/v1/review/profile-completeness`, and related gap reports after review.
+They do not replace native chain identity, and they do not directly alter
+observed endpoint health.
 
 ## Private Gate Runtime
 
