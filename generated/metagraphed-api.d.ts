@@ -528,6 +528,8 @@ export interface components {
             path: string;
             /** @constant */
             public: true;
+            query_collection?: string | null;
+            query_filter_names?: string[];
             query_parameters: components["schemas"]["ApiQueryParameter"][];
         };
         ArtifactBase: {
@@ -1633,12 +1635,12 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                kind?: string;
+                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
-                state?: string;
+                state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -1914,10 +1916,10 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                coverage_level?: string;
+                coverage_level?: "native-only" | "manifested" | "probed";
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "coverage_level" | "curation_level" | "name" | "netuid";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -1991,7 +1993,7 @@ export interface operations {
                 q?: string;
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "claim" | "source_url" | "subject" | "verified_at";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -2131,11 +2133,11 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                coverage_level?: string;
-                curation_level?: string;
+                coverage_level?: "native-only" | "manifested" | "probed";
+                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "coverage_level" | "curation_level" | "gap_count" | "name" | "netuid";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -2207,10 +2209,10 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                status?: string;
+                status?: "ok" | "degraded" | "failed" | "unknown";
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "avg_latency_ms" | "degraded_count" | "failed_count" | "last_checked" | "last_ok" | "name" | "netuid" | "ok_count" | "status" | "surface_count" | "unknown_count";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -2282,11 +2284,13 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                status?: string;
-                classification?: string;
+                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                provider?: string;
+                status?: "ok" | "degraded" | "failed" | "unknown";
+                classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe";
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -2428,11 +2432,11 @@ export interface operations {
         parameters: {
             query?: {
                 id?: string;
-                kind?: string;
-                authority?: string;
+                kind?: "data-provider" | "docs-provider" | "infrastructure-provider" | "registry" | "subnet-team";
+                authority?: "community" | "official" | "provider-claimed" | "registry-observed";
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "authority" | "id" | "kind" | "name";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -2573,12 +2577,12 @@ export interface operations {
     rpcEndpoints: {
         parameters: {
             query?: {
-                kind?: string;
+                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
-                status?: string;
+                status?: "ok" | "degraded" | "failed" | "unknown";
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "kind" | "latency_ms" | "provider" | "status";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -2788,7 +2792,7 @@ export interface operations {
                 q?: string;
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "kind" | "netuid" | "slug" | "title";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -2930,7 +2934,7 @@ export interface operations {
                 q?: string;
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "id" | "kind" | "path" | "record_count";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -3002,13 +3006,13 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                coverage_level?: string;
-                curation_level?: string;
-                status?: string;
-                subnet_type?: string;
+                coverage_level?: "native-only" | "manifested" | "probed";
+                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                status?: "active" | "inactive";
+                subnet_type?: "root" | "application";
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -3149,12 +3153,12 @@ export interface operations {
     subnetCandidates: {
         parameters: {
             query?: {
-                kind?: string;
+                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
-                state?: string;
+                state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -3227,13 +3231,13 @@ export interface operations {
     subnetHealth: {
         parameters: {
             query?: {
-                kind?: string;
+                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
-                status?: string;
-                classification?: string;
+                status?: "ok" | "degraded" | "failed" | "unknown";
+                classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe";
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -3306,13 +3310,11 @@ export interface operations {
     subnetSurfaces: {
         parameters: {
             query?: {
-                kind?: string;
+                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
-                status?: string;
-                classification?: string;
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "id" | "kind" | "name" | "netuid" | "provider";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -3386,13 +3388,11 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                kind?: string;
+                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
-                status?: string;
-                classification?: string;
                 limit?: number;
                 cursor?: number;
-                sort?: string;
+                sort?: "id" | "kind" | "name" | "netuid" | "provider";
                 order?: "asc" | "desc";
             };
             header?: never;

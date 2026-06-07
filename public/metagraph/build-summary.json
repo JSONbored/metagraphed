@@ -7,7 +7,7 @@
   },
   "artifact_budgets": [],
   "artifact_count": 827,
-  "artifact_size_bytes": 24955142,
+  "artifact_size_bytes": 24974805,
   "artifacts": [
     {
       "path": "adapters/allways.json",
@@ -21,8 +21,8 @@
     },
     {
       "path": "api-index.json",
-      "sha256": "3fa792cc9906ccbd061eeea005d0339a034092c57bfb73926d172572d622ccfe",
-      "size_bytes": 30390
+      "sha256": "ce81b09287f75a7b60e99e9098c883e9c846925deb963df73ec189ea1a59f34d",
+      "size_bytes": 41196
     },
     {
       "path": "candidates.json",

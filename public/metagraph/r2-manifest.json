@@ -1,6 +1,6 @@
 {
   "artifact_count": 828,
-  "artifact_size_bytes": 25073436,
+  "artifact_size_bytes": 25096322,
   "artifacts": [
     {
       "content_type": "application/json",
@@ -23,8 +23,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/api-index.json",
       "latest_key": "latest/api-index.json",
       "path": "/metagraph/api-index.json",
-      "sha256": "3fa792cc9906ccbd061eeea005d0339a034092c57bfb73926d172572d622ccfe",
-      "size_bytes": 30390
+      "sha256": "ce81b09287f75a7b60e99e9098c883e9c846925deb963df73ec189ea1a59f34d",
+      "size_bytes": 41196
     },
     {
       "content_type": "application/json",
@@ -3223,8 +3223,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/openapi.json",
       "latest_key": "latest/openapi.json",
       "path": "/metagraph/openapi.json",
-      "sha256": "b6bc0f5c3fc6be29c601a1ef22ae9c01a56f128c125284ae402be1340604994c",
-      "size_bytes": 186805
+      "sha256": "3e5e1a38f47d654383733ccf1a61efc8c80f11a4a610069eeaa43ed73eeff869",
+      "size_bytes": 195662
     },
     {
       "content_type": "application/json",
@@ -5583,8 +5583,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/types.d.ts",
       "latest_key": "latest/types.d.ts",
       "path": "/metagraph/types.d.ts",
-      "sha256": "0ac1f01daaebee75cdb236663509298053f5cc1837725d8def48ba215cffe96d",
-      "size_bytes": 118294
+      "sha256": "27fc2d79343cf6a7b89752540e43041763e4a82bca9d43f83ba804533e75a27c",
+      "size_bytes": 121517
     },
     {
       "content_type": "application/json",

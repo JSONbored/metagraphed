@@ -567,6 +567,9 @@ describe("Worker runtime", () => {
       "https://metagraph.sh/api/v1/subnets?order=sideways",
       "https://metagraph.sh/api/v1/subnets?sort=unknown_field",
       "https://metagraph.sh/api/v1/subnets?netuid=not-a-number",
+      "https://metagraph.sh/api/v1/subnets?coverage_level=fake",
+      "https://metagraph.sh/api/v1/candidates?state=approved",
+      "https://metagraph.sh/api/v1/subnets/7/health?status=alive",
     ];
 
     for (const url of routes) {

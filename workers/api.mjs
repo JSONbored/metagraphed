@@ -1,4 +1,5 @@
 import {
+  API_QUERY_COLLECTIONS,
   API_ROUTES,
   CACHE_SECONDS,
   CONTRACT_VERSION,
@@ -31,55 +32,6 @@ const DENIED_RPC_PREFIXES = [
 ];
 const MAX_RPC_BODY_BYTES = 65536;
 const METAGRAPH_LATEST_KEY = "metagraph:latest";
-const SORT_FIELDS = {
-  candidates: [
-    "confidence",
-    "id",
-    "kind",
-    "name",
-    "netuid",
-    "provider",
-    "state",
-  ],
-  claims: ["claim", "source_url", "subject", "verified_at"],
-  curation: ["coverage_level", "curation_level", "name", "netuid"],
-  documents: ["kind", "netuid", "slug", "title"],
-  endpoints: ["kind", "latency_ms", "provider", "status"],
-  gaps: ["coverage_level", "curation_level", "gap_count", "name", "netuid"],
-  pools: ["eligible_count", "endpoint_count", "id", "kind"],
-  providers: ["authority", "id", "kind", "name"],
-  sources: ["id", "kind", "path", "record_count"],
-  subnets: [
-    "block",
-    "candidate_count",
-    "coverage_level",
-    "curation_level",
-    "mechanism_count",
-    "name",
-    "netuid",
-    "participant_count",
-    "probed_surface_count",
-    "status",
-    "subnet_type",
-    "surface_count",
-    "tempo",
-  ],
-  surfaces: [
-    "classification",
-    "id",
-    "kind",
-    "last_checked",
-    "last_ok",
-    "latency_ms",
-    "name",
-    "netuid",
-    "provider",
-    "status",
-    "status_code",
-    "surface_id",
-    "verified_at",
-  ],
-};
 
 export default {
   async fetch(request, env, ctx) {
@@ -138,7 +90,12 @@ async function handleApiRequest(request, env, url) {
     });
   }
 
-  const transformed = applyQueryFilters(artifact.data, url);
+  const transformed = applyQueryFilters(
+    artifact.data,
+    url,
+    matched.queryCollection,
+    matched.queryFilterNames,
+  );
   if (transformed.error) {
     return errorResponse("invalid_query", transformed.error.message, 400, {
       artifact_path: matched.artifactPath,
@@ -295,6 +252,8 @@ function matchRoute(pathname) {
       artifactPath: candidate.artifactPath(params),
       cache: candidate.cache,
       params,
+      queryCollection: candidate.query_collection,
+      queryFilterNames: candidate.query_filter_names,
     };
   }
   return null;
@@ -393,92 +352,24 @@ async function latestPointer(env) {
   }
 }
 
-function applyQueryFilters(data, url) {
+function applyQueryFilters(data, url, queryCollection, queryFilterNames = []) {
   const params = url.searchParams;
-  if (Array.isArray(data?.subnets)) {
-    return applyListTransform(data, params, "subnets", [
-      "netuid",
-      "coverage_level",
-      "curation_level",
-      "status",
-      "subnet_type",
-    ]);
+  const config = API_QUERY_COLLECTIONS[queryCollection];
+  if (!config) {
+    return { data, meta: {} };
   }
-  if (Array.isArray(data?.surfaces)) {
-    return applyListTransform(data, params, "surfaces", [
-      "netuid",
-      "kind",
-      "provider",
-      "status",
-      "classification",
-    ]);
+  if (!Array.isArray(data?.[config.data_key])) {
+    return { data, meta: {} };
   }
-  if (Array.isArray(data?.providers)) {
-    return applyListTransform(data, params, "providers", [
-      "id",
-      "kind",
-      "authority",
-    ]);
-  }
-  if (Array.isArray(data?.candidates)) {
-    return applyListTransform(data, params, "candidates", [
-      "netuid",
-      "kind",
-      "provider",
-      "state",
-    ]);
-  }
-  if (Array.isArray(data?.curation)) {
-    return applyListTransform(data, params, "curation", [
-      "netuid",
-      "coverage_level",
-    ]);
-  }
-  if (Array.isArray(data?.gaps)) {
-    return applyListTransform(data, params, "gaps", [
-      "netuid",
-      "coverage_level",
-      "curation_level",
-    ]);
-  }
-  if (Array.isArray(data?.claims)) {
-    return applyListTransform(
-      data,
-      params,
-      "claims",
-      [],
-      ["subject", "claim", "source_url", "support_summary"],
-    );
-  }
-  if (Array.isArray(data?.documents)) {
-    return applyListTransform(
-      data,
-      params,
-      "documents",
-      [],
-      ["title", "subtitle", "slug", "tokens"],
-    );
-  }
-  if (Array.isArray(data?.sources)) {
-    return applyListTransform(
-      data,
-      params,
-      "sources",
-      [],
-      ["id", "kind", "path"],
-    );
-  }
-  if (Array.isArray(data?.endpoints)) {
-    return applyListTransform(data, params, "endpoints", [
-      "kind",
-      "provider",
-      "status",
-    ]);
-  }
-  if (Array.isArray(data?.pools)) {
-    return applyListTransform(data, params, "pools", ["id", "kind"]);
-  }
-  return { data, meta: {} };
+  return applyListTransform(data, params, {
+    ...config,
+    filters: Object.fromEntries(
+      (queryFilterNames.length > 0
+        ? queryFilterNames
+        : Object.keys(config.filters)
+      ).map((name) => [name, config.filters[name]]),
+    ),
+  });
 }
 
 function filterRows(rows, params, keys) {
@@ -492,13 +383,15 @@ function filterRows(rows, params, keys) {
   );
 }
 
-function applyListTransform(data, params, key, filterKeys, searchKeys = []) {
-  const queryError = validateListQuery(params, key, filterKeys);
+function applyListTransform(data, params, config) {
+  const queryError = validateListQuery(params, config);
   if (queryError) {
     return { error: queryError };
   }
+  const key = config.data_key;
+  const filterKeys = Object.keys(config.filters);
   const filtered = filterRows(
-    searchRows(data[key], params, searchKeys),
+    searchRows(data[key], params, config.search_keys),
     params,
     filterKeys,
   );
@@ -578,7 +471,7 @@ function paginateRows(rows, params) {
   };
 }
 
-function validateListQuery(params, collection, filterKeys) {
+function validateListQuery(params, config) {
   const limit = params.get("limit");
   if (limit !== null && (integerParam(limit) === null || Number(limit) < 1)) {
     return {
@@ -610,21 +503,28 @@ function validateListQuery(params, collection, filterKeys) {
   }
 
   const sort = params.get("sort");
-  if (sort !== null && !(SORT_FIELDS[collection] || []).includes(sort)) {
+  if (sort !== null && !config.sort_fields.includes(sort)) {
     return {
       parameter: "sort",
-      message: `sort is not supported for ${collection}.`,
+      message: `sort is not supported for ${config.data_key}.`,
     };
   }
 
-  for (const key of filterKeys) {
-    if (key !== "netuid" || !params.has(key)) {
+  for (const [key, schema] of Object.entries(config.filters)) {
+    if (!params.has(key)) {
       continue;
     }
-    if (integerParam(params.get(key)) === null) {
+    const value = params.get(key);
+    if (schema.type === "integer" && integerParam(value) === null) {
       return {
         parameter: key,
         message: `${key} must be a non-negative integer.`,
+      };
+    }
+    if (schema.enum && !schema.enum.includes(value)) {
+      return {
+        parameter: key,
+        message: `${key} is not supported for this route.`,
       };
     }
   }

@@ -11,6 +11,204 @@ export const CACHE_SECONDS = {
   static: 600,
 };
 
+const QUERY_ENUMS = {
+  candidateState: [
+    "schema-invalid",
+    "schema-valid",
+    "maintainer-review",
+    "verified",
+    "stale",
+    "rejected",
+  ],
+  coverageLevel: ["native-only", "manifested", "probed"],
+  curationLevel: [
+    "native",
+    "candidate-discovered",
+    "machine-verified",
+    "maintainer-reviewed",
+    "adapter-backed",
+  ],
+  healthClassification: [
+    "auth-required",
+    "content-mismatch",
+    "dead",
+    "live",
+    "rate-limited",
+    "redirected",
+    "timeout",
+    "transient",
+    "unsupported",
+    "unsafe",
+  ],
+  healthStatus: ["ok", "degraded", "failed", "unknown"],
+  providerAuthority: [
+    "community",
+    "official",
+    "provider-claimed",
+    "registry-observed",
+  ],
+  providerKind: [
+    "data-provider",
+    "docs-provider",
+    "infrastructure-provider",
+    "registry",
+    "subnet-team",
+  ],
+  subnetStatus: ["active", "inactive"],
+  subnetType: ["root", "application"],
+  surfaceKind: [
+    "dashboard",
+    "data-artifact",
+    "docs",
+    "openapi",
+    "repo-registry",
+    "source-repo",
+    "sse",
+    "subnet-api",
+    "subtensor-rpc",
+    "subtensor-wss",
+    "website",
+  ],
+};
+
+const integerSchema = { type: "integer", minimum: 0 };
+const textSchema = { type: "string" };
+
+export const API_QUERY_COLLECTIONS = {
+  candidates: queryCollection("candidates", {
+    filters: {
+      netuid: integerSchema,
+      kind: enumSchema(QUERY_ENUMS.surfaceKind),
+      provider: textSchema,
+      state: enumSchema(QUERY_ENUMS.candidateState),
+    },
+    sort: ["confidence", "id", "kind", "name", "netuid", "provider", "state"],
+  }),
+  claims: queryCollection("claims", {
+    search: ["subject", "claim", "source_url", "support_summary"],
+    sort: ["claim", "source_url", "subject", "verified_at"],
+  }),
+  curation: queryCollection("curation", {
+    filters: {
+      netuid: integerSchema,
+      coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
+    },
+    sort: ["coverage_level", "curation_level", "name", "netuid"],
+  }),
+  "curated-surfaces": queryCollection("surfaces", {
+    filters: {
+      netuid: integerSchema,
+      kind: enumSchema(QUERY_ENUMS.surfaceKind),
+      provider: textSchema,
+    },
+    sort: ["id", "kind", "name", "netuid", "provider"],
+  }),
+  documents: queryCollection("documents", {
+    search: ["title", "subtitle", "slug", "tokens"],
+    sort: ["kind", "netuid", "slug", "title"],
+  }),
+  endpoints: queryCollection("endpoints", {
+    filters: {
+      kind: enumSchema(QUERY_ENUMS.surfaceKind),
+      provider: textSchema,
+      status: enumSchema(QUERY_ENUMS.healthStatus),
+    },
+    sort: ["kind", "latency_ms", "provider", "status"],
+  }),
+  gaps: queryCollection("gaps", {
+    filters: {
+      netuid: integerSchema,
+      coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
+      curation_level: enumSchema(QUERY_ENUMS.curationLevel),
+    },
+    sort: ["coverage_level", "curation_level", "gap_count", "name", "netuid"],
+  }),
+  "health-subnets": queryCollection("subnets", {
+    filters: {
+      netuid: integerSchema,
+      status: enumSchema(QUERY_ENUMS.healthStatus),
+    },
+    sort: [
+      "avg_latency_ms",
+      "degraded_count",
+      "failed_count",
+      "last_checked",
+      "last_ok",
+      "name",
+      "netuid",
+      "ok_count",
+      "status",
+      "surface_count",
+      "unknown_count",
+    ],
+  }),
+  "health-surfaces": queryCollection("surfaces", {
+    filters: {
+      netuid: integerSchema,
+      kind: enumSchema(QUERY_ENUMS.surfaceKind),
+      provider: textSchema,
+      status: enumSchema(QUERY_ENUMS.healthStatus),
+      classification: enumSchema(QUERY_ENUMS.healthClassification),
+    },
+    sort: [
+      "classification",
+      "kind",
+      "last_checked",
+      "last_ok",
+      "latency_ms",
+      "netuid",
+      "provider",
+      "status",
+      "status_code",
+      "surface_id",
+      "verified_at",
+    ],
+  }),
+  pools: queryCollection("pools", {
+    filters: {
+      id: textSchema,
+      kind: enumSchema(["rpc", "wss"]),
+    },
+    sort: ["eligible_count", "endpoint_count", "id", "kind"],
+  }),
+  providers: queryCollection("providers", {
+    filters: {
+      id: textSchema,
+      kind: enumSchema(QUERY_ENUMS.providerKind),
+      authority: enumSchema(QUERY_ENUMS.providerAuthority),
+    },
+    sort: ["authority", "id", "kind", "name"],
+  }),
+  sources: queryCollection("sources", {
+    search: ["id", "kind", "path"],
+    sort: ["id", "kind", "path", "record_count"],
+  }),
+  subnets: queryCollection("subnets", {
+    filters: {
+      netuid: integerSchema,
+      coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
+      curation_level: enumSchema(QUERY_ENUMS.curationLevel),
+      status: enumSchema(QUERY_ENUMS.subnetStatus),
+      subnet_type: enumSchema(QUERY_ENUMS.subnetType),
+    },
+    sort: [
+      "block",
+      "candidate_count",
+      "coverage_level",
+      "curation_level",
+      "mechanism_count",
+      "name",
+      "netuid",
+      "participant_count",
+      "probed_surface_count",
+      "status",
+      "subnet_type",
+      "surface_count",
+      "tempo",
+    ],
+  }),
+};
+
 export const PUBLIC_ARTIFACTS = [
   artifact(
     "contracts",
@@ -272,13 +470,7 @@ export const API_ROUTES = [
     "List active Finney subnets.",
     "standard",
     ["subnets"],
-    listQuery(
-      "netuid",
-      "coverage_level",
-      "curation_level",
-      "status",
-      "subnet_type",
-    ),
+    listQuery("subnets"),
   ),
   route(
     "subnet-detail",
@@ -299,7 +491,7 @@ export const API_ROUTES = [
     "List curated public surfaces.",
     "standard",
     ["surfaces"],
-    listQuery("netuid", "kind", "provider", "status", "classification"),
+    listQuery("curated-surfaces"),
   ),
   route(
     "subnet-surfaces",
@@ -309,7 +501,7 @@ export const API_ROUTES = [
     "List curated public surfaces for one subnet.",
     "standard",
     ["surfaces", "subnets"],
-    listQuery("kind", "provider", "status", "classification"),
+    listQuery("curated-surfaces", { exclude: ["netuid"] }),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -320,7 +512,7 @@ export const API_ROUTES = [
     "List unpromoted candidate surfaces.",
     "standard",
     ["candidates"],
-    listQuery("netuid", "kind", "provider", "state"),
+    listQuery("candidates"),
   ),
   route(
     "subnet-candidates",
@@ -330,7 +522,7 @@ export const API_ROUTES = [
     "List unpromoted candidate surfaces for one subnet.",
     "standard",
     ["candidates", "subnets"],
-    listQuery("kind", "provider", "state"),
+    listQuery("candidates", { exclude: ["netuid"] }),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -341,7 +533,7 @@ export const API_ROUTES = [
     "List providers and sources.",
     "standard",
     ["providers"],
-    listQuery("id", "kind", "authority"),
+    listQuery("providers"),
   ),
   route(
     "provider-detail",
@@ -371,7 +563,7 @@ export const API_ROUTES = [
     "Fetch curation states by subnet.",
     "standard",
     ["registry"],
-    listQuery("netuid", "coverage_level"),
+    listQuery("curation"),
   ),
   route(
     "gaps",
@@ -381,7 +573,7 @@ export const API_ROUTES = [
     "Fetch interface gap report.",
     "standard",
     ["registry"],
-    listQuery("netuid", "coverage_level", "curation_level"),
+    listQuery("gaps"),
   ),
   route(
     "health",
@@ -391,7 +583,7 @@ export const API_ROUTES = [
     "Fetch global health summary.",
     "short",
     ["health"],
-    listQuery("netuid", "status"),
+    listQuery("health-subnets"),
   ),
   route(
     "health-history",
@@ -401,7 +593,7 @@ export const API_ROUTES = [
     "Fetch compact daily health history.",
     "short",
     ["health"],
-    listQuery("netuid", "status", "classification"),
+    listQuery("health-surfaces"),
     [
       {
         name: "date",
@@ -417,7 +609,7 @@ export const API_ROUTES = [
     "Fetch health detail for one subnet.",
     "short",
     ["health", "subnets"],
-    listQuery("kind", "provider", "status", "classification"),
+    listQuery("health-surfaces", { exclude: ["netuid"] }),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -446,7 +638,7 @@ export const API_ROUTES = [
     "Fetch public evidence ledger.",
     "standard",
     ["evidence"],
-    listQuery("q"),
+    listQuery("claims"),
   ),
   route(
     "changelog",
@@ -465,7 +657,7 @@ export const API_ROUTES = [
     "Fetch source input hashes and counts.",
     "standard",
     ["operations"],
-    listQuery("q"),
+    listQuery("sources"),
   ),
   route(
     "rpc-endpoints",
@@ -475,7 +667,7 @@ export const API_ROUTES = [
     "Fetch Bittensor RPC endpoint status.",
     "short",
     ["rpc"],
-    listQuery("kind", "provider", "status"),
+    listQuery("endpoints"),
   ),
   route(
     "rpc-pools",
@@ -514,7 +706,7 @@ export const API_ROUTES = [
     "Fetch compact search index.",
     "standard",
     ["search"],
-    listQuery("q"),
+    listQuery("documents"),
   ),
   route(
     "contracts",
@@ -600,6 +792,8 @@ export function buildApiIndexArtifact(generatedAt, contractsArtifact) {
       method: entry.method,
       path: entry.path,
       public: true,
+      query_collection: entry.query_collection,
+      query_filter_names: entry.query_filter_names,
       query_parameters: entry.query_parameters || [],
     })),
     artifact_contracts: contractsArtifact.artifacts.map((entry) => ({
@@ -796,6 +990,7 @@ function route(
   queryParameters = [],
   pathParameters = [],
 ) {
+  const querySpec = normalizeQueryParameters(queryParameters);
   return {
     id,
     method,
@@ -804,39 +999,73 @@ function route(
     description,
     cache,
     tags,
-    query_parameters: queryParameters,
+    query_collection: querySpec.collection,
+    query_filter_names: querySpec.filterNames,
+    query_parameters: querySpec.parameters,
     path_parameters: pathParameters,
   };
 }
 
-function query(...names) {
-  return names.map((name) => ({
-    name,
-    schema:
-      name === "netuid" ? { type: "integer", minimum: 0 } : { type: "string" },
-  }));
+function queryCollection(dataKey, options = {}) {
+  return {
+    data_key: dataKey,
+    filters: options.filters || {},
+    search_keys: options.search || [],
+    sort_fields: options.sort || [],
+  };
 }
 
-function listQuery(...names) {
-  return [
-    ...query(...names),
-    {
-      name: "limit",
-      schema: { type: "integer", minimum: 1, maximum: 1000 },
-    },
-    {
-      name: "cursor",
-      schema: { type: "integer", minimum: 0 },
-    },
-    {
-      name: "sort",
-      schema: { type: "string" },
-    },
-    {
-      name: "order",
-      schema: { enum: ["asc", "desc"] },
-    },
-  ];
+function enumSchema(values) {
+  return { type: "string", enum: values };
+}
+
+function listQuery(collection, options = {}) {
+  const config = API_QUERY_COLLECTIONS[collection];
+  if (!config) {
+    throw new Error(`Unknown API query collection: ${collection}`);
+  }
+
+  const excluded = new Set(options.exclude || []);
+  const filterParameters = Object.entries(config.filters)
+    .map(([name, schema]) => ({ name, schema }))
+    .filter((parameter) => !excluded.has(parameter.name));
+  const searchParameters =
+    config.search_keys.length > 0 ? [{ name: "q", schema: textSchema }] : [];
+  return {
+    collection,
+    filterNames: filterParameters.map((parameter) => parameter.name),
+    parameters: [
+      ...filterParameters,
+      ...searchParameters,
+      {
+        name: "limit",
+        schema: { type: "integer", minimum: 1, maximum: 1000 },
+      },
+      {
+        name: "cursor",
+        schema: { type: "integer", minimum: 0 },
+      },
+      {
+        name: "sort",
+        schema: { type: "string", enum: config.sort_fields },
+      },
+      {
+        name: "order",
+        schema: { enum: ["asc", "desc"] },
+      },
+    ],
+  };
+}
+
+function normalizeQueryParameters(queryParameters) {
+  if (Array.isArray(queryParameters)) {
+    return { collection: null, filterNames: [], parameters: queryParameters };
+  }
+  return {
+    collection: queryParameters.collection || null,
+    filterNames: queryParameters.filterNames || [],
+    parameters: queryParameters.parameters || [],
+  };
 }
 
 function schemaRefForArtifactPath(artifactPath) {

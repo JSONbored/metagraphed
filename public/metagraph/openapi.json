@@ -152,6 +152,18 @@
           "public": {
             "const": true
           },
+          "query_collection": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "query_filter_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "query_parameters": {
             "items": {
               "$ref": "#/components/schemas/ApiQueryParameter"
@@ -3928,6 +3940,19 @@
             "name": "kind",
             "required": false,
             "schema": {
+              "enum": [
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "openapi",
+                "repo-registry",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
               "type": "string"
             }
           },
@@ -3944,6 +3969,14 @@
             "name": "state",
             "required": false,
             "schema": {
+              "enum": [
+                "schema-invalid",
+                "schema-valid",
+                "maintainer-review",
+                "verified",
+                "stale",
+                "rejected"
+              ],
               "type": "string"
             }
           },
@@ -3971,6 +4004,15 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "confidence",
+                "id",
+                "kind",
+                "name",
+                "netuid",
+                "provider",
+                "state"
+              ],
               "type": "string"
             }
           },
@@ -4352,6 +4394,11 @@
             "name": "coverage_level",
             "required": false,
             "schema": {
+              "enum": [
+                "native-only",
+                "manifested",
+                "probed"
+              ],
               "type": "string"
             }
           },
@@ -4379,6 +4426,12 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "coverage_level",
+                "curation_level",
+                "name",
+                "netuid"
+              ],
               "type": "string"
             }
           },
@@ -4514,6 +4567,12 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "claim",
+                "source_url",
+                "subject",
+                "verified_at"
+              ],
               "type": "string"
             }
           },
@@ -4719,6 +4778,11 @@
             "name": "coverage_level",
             "required": false,
             "schema": {
+              "enum": [
+                "native-only",
+                "manifested",
+                "probed"
+              ],
               "type": "string"
             }
           },
@@ -4727,6 +4791,13 @@
             "name": "curation_level",
             "required": false,
             "schema": {
+              "enum": [
+                "native",
+                "candidate-discovered",
+                "machine-verified",
+                "maintainer-reviewed",
+                "adapter-backed"
+              ],
               "type": "string"
             }
           },
@@ -4754,6 +4825,13 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "coverage_level",
+                "curation_level",
+                "gap_count",
+                "name",
+                "netuid"
+              ],
               "type": "string"
             }
           },
@@ -4871,6 +4949,12 @@
             "name": "status",
             "required": false,
             "schema": {
+              "enum": [
+                "ok",
+                "degraded",
+                "failed",
+                "unknown"
+              ],
               "type": "string"
             }
           },
@@ -4898,6 +4982,19 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "avg_latency_ms",
+                "degraded_count",
+                "failed_count",
+                "last_checked",
+                "last_ok",
+                "name",
+                "netuid",
+                "ok_count",
+                "status",
+                "surface_count",
+                "unknown_count"
+              ],
               "type": "string"
             }
           },
@@ -5021,9 +5118,44 @@
           },
           {
             "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "openapi",
+                "repo-registry",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "status",
             "required": false,
             "schema": {
+              "enum": [
+                "ok",
+                "degraded",
+                "failed",
+                "unknown"
+              ],
               "type": "string"
             }
           },
@@ -5032,6 +5164,18 @@
             "name": "classification",
             "required": false,
             "schema": {
+              "enum": [
+                "auth-required",
+                "content-mismatch",
+                "dead",
+                "live",
+                "rate-limited",
+                "redirected",
+                "timeout",
+                "transient",
+                "unsupported",
+                "unsafe"
+              ],
               "type": "string"
             }
           },
@@ -5059,6 +5203,19 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "classification",
+                "kind",
+                "last_checked",
+                "last_ok",
+                "latency_ms",
+                "netuid",
+                "provider",
+                "status",
+                "status_code",
+                "surface_id",
+                "verified_at"
+              ],
               "type": "string"
             }
           },
@@ -5263,6 +5420,13 @@
             "name": "kind",
             "required": false,
             "schema": {
+              "enum": [
+                "data-provider",
+                "docs-provider",
+                "infrastructure-provider",
+                "registry",
+                "subnet-team"
+              ],
               "type": "string"
             }
           },
@@ -5271,6 +5435,12 @@
             "name": "authority",
             "required": false,
             "schema": {
+              "enum": [
+                "community",
+                "official",
+                "provider-claimed",
+                "registry-observed"
+              ],
               "type": "string"
             }
           },
@@ -5298,6 +5468,12 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "authority",
+                "id",
+                "kind",
+                "name"
+              ],
               "type": "string"
             }
           },
@@ -5504,6 +5680,19 @@
             "name": "kind",
             "required": false,
             "schema": {
+              "enum": [
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "openapi",
+                "repo-registry",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
               "type": "string"
             }
           },
@@ -5520,6 +5709,12 @@
             "name": "status",
             "required": false,
             "schema": {
+              "enum": [
+                "ok",
+                "degraded",
+                "failed",
+                "unknown"
+              ],
               "type": "string"
             }
           },
@@ -5547,6 +5742,12 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "kind",
+                "latency_ms",
+                "provider",
+                "status"
+              ],
               "type": "string"
             }
           },
@@ -5858,6 +6059,12 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "kind",
+                "netuid",
+                "slug",
+                "title"
+              ],
               "type": "string"
             }
           },
@@ -6081,6 +6288,12 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "id",
+                "kind",
+                "path",
+                "record_count"
+              ],
               "type": "string"
             }
           },
@@ -6198,6 +6411,11 @@
             "name": "coverage_level",
             "required": false,
             "schema": {
+              "enum": [
+                "native-only",
+                "manifested",
+                "probed"
+              ],
               "type": "string"
             }
           },
@@ -6206,6 +6424,13 @@
             "name": "curation_level",
             "required": false,
             "schema": {
+              "enum": [
+                "native",
+                "candidate-discovered",
+                "machine-verified",
+                "maintainer-reviewed",
+                "adapter-backed"
+              ],
               "type": "string"
             }
           },
@@ -6214,6 +6439,10 @@
             "name": "status",
             "required": false,
             "schema": {
+              "enum": [
+                "active",
+                "inactive"
+              ],
               "type": "string"
             }
           },
@@ -6222,6 +6451,10 @@
             "name": "subnet_type",
             "required": false,
             "schema": {
+              "enum": [
+                "root",
+                "application"
+              ],
               "type": "string"
             }
           },
@@ -6249,6 +6482,21 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "block",
+                "candidate_count",
+                "coverage_level",
+                "curation_level",
+                "mechanism_count",
+                "name",
+                "netuid",
+                "participant_count",
+                "probed_surface_count",
+                "status",
+                "subnet_type",
+                "surface_count",
+                "tempo"
+              ],
               "type": "string"
             }
           },
@@ -6464,6 +6712,19 @@
             "name": "kind",
             "required": false,
             "schema": {
+              "enum": [
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "openapi",
+                "repo-registry",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
               "type": "string"
             }
           },
@@ -6480,6 +6741,14 @@
             "name": "state",
             "required": false,
             "schema": {
+              "enum": [
+                "schema-invalid",
+                "schema-valid",
+                "maintainer-review",
+                "verified",
+                "stale",
+                "rejected"
+              ],
               "type": "string"
             }
           },
@@ -6507,6 +6776,15 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "confidence",
+                "id",
+                "kind",
+                "name",
+                "netuid",
+                "provider",
+                "state"
+              ],
               "type": "string"
             }
           },
@@ -6625,6 +6903,19 @@
             "name": "kind",
             "required": false,
             "schema": {
+              "enum": [
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "openapi",
+                "repo-registry",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
               "type": "string"
             }
           },
@@ -6641,6 +6932,12 @@
             "name": "status",
             "required": false,
             "schema": {
+              "enum": [
+                "ok",
+                "degraded",
+                "failed",
+                "unknown"
+              ],
               "type": "string"
             }
           },
@@ -6649,6 +6946,18 @@
             "name": "classification",
             "required": false,
             "schema": {
+              "enum": [
+                "auth-required",
+                "content-mismatch",
+                "dead",
+                "live",
+                "rate-limited",
+                "redirected",
+                "timeout",
+                "transient",
+                "unsupported",
+                "unsafe"
+              ],
               "type": "string"
             }
           },
@@ -6676,6 +6985,19 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "classification",
+                "kind",
+                "last_checked",
+                "last_ok",
+                "latency_ms",
+                "netuid",
+                "provider",
+                "status",
+                "status_code",
+                "surface_id",
+                "verified_at"
+              ],
               "type": "string"
             }
           },
@@ -6794,28 +7116,25 @@
             "name": "kind",
             "required": false,
             "schema": {
+              "enum": [
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "openapi",
+                "repo-registry",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
               "type": "string"
             }
           },
           {
             "in": "query",
             "name": "provider",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "classification",
             "required": false,
             "schema": {
               "type": "string"
@@ -6845,6 +7164,13 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "id",
+                "kind",
+                "name",
+                "netuid",
+                "provider"
+              ],
               "type": "string"
             }
           },
@@ -6963,28 +7289,25 @@
             "name": "kind",
             "required": false,
             "schema": {
+              "enum": [
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "openapi",
+                "repo-registry",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
               "type": "string"
             }
           },
           {
             "in": "query",
             "name": "provider",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "classification",
             "required": false,
             "schema": {
               "type": "string"
@@ -7014,6 +7337,13 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "enum": [
+                "id",
+                "kind",
+                "name",
+                "netuid",
+                "provider"
+              ],
               "type": "string"
             }
           },

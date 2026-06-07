@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   API_ROUTES,
+  API_QUERY_COLLECTIONS,
   CACHE_SECONDS,
   CONTRACT_VERSION,
   PUBLIC_ARTIFACTS,
@@ -93,6 +94,16 @@ describe("public contract registry", () => {
     assert.equal(contracts.type_definitions_url, "/metagraph/types.d.ts");
     assert.equal(apiIndex.openapi_url, "/api/v1/openapi.json");
     assert.equal(apiIndex.routes.length, API_ROUTES.length);
+    assert.equal(
+      apiIndex.routes.find((route) => route.id === "subnets").query_collection,
+      "subnets",
+    );
+    assert.equal(
+      apiIndex.routes
+        .find((route) => route.id === "subnet-surfaces")
+        .query_parameters.some((parameter) => parameter.name === "netuid"),
+      false,
+    );
     assert.equal(openapi.openapi, "3.1.0");
     assert.equal(openapi.info.version, CONTRACT_VERSION);
     assert.equal(Object.keys(openapi.paths).length, API_ROUTES.length);
@@ -101,6 +112,27 @@ describe("public contract registry", () => {
     assert.equal(Boolean(openapi.components.schemas.Surface), true);
     assert.equal(Boolean(openapi.components.schemas.CandidateSurface), true);
     assert.equal(openapi["x-metagraphed"].generated_at, generatedAt);
+
+    const subnetParameters = openapi.paths["/api/v1/subnets"].get.parameters;
+    assert.deepEqual(
+      subnetParameters.find((parameter) => parameter.name === "sort").schema
+        .enum,
+      API_QUERY_COLLECTIONS.subnets.sort_fields,
+    );
+    assert.deepEqual(
+      subnetParameters.find((parameter) => parameter.name === "coverage_level")
+        .schema.enum,
+      ["native-only", "manifested", "probed"],
+    );
+
+    const candidateParameters =
+      openapi.paths["/api/v1/candidates"].get.parameters;
+    assert.equal(
+      candidateParameters
+        .find((parameter) => parameter.name === "state")
+        .schema.enum.includes("schema-valid"),
+      true,
+    );
   });
 
   test("keeps public API route payloads on typed artifact schemas", async () => {

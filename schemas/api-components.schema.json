@@ -735,6 +735,11 @@
           "method": { "enum": ["GET"] },
           "path": { "type": "string", "pattern": "^/api/v1" },
           "public": { "const": true },
+          "query_collection": { "type": ["string", "null"] },
+          "query_filter_names": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
           "query_parameters": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/ApiQueryParameter" }
