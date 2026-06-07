@@ -4612,6 +4612,9 @@
               "high"
             ]
           },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
           "endpoint_count": {
             "minimum": 0,
             "type": "integer"
@@ -4732,6 +4735,7 @@
           "candidate_count",
           "completeness",
           "provenance",
+          "curation_level",
           "review_state",
           "confidence",
           "profile_level",

@@ -986,6 +986,7 @@ function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
       reviewed_at: subnet.curation.reviewed_at || null,
       source_urls: sourceUrls,
     },
+    curation_level: subnet.curation.level,
     review_state: subnet.curation.review_state,
     confidence,
     profile_level: completeness.profile_level,

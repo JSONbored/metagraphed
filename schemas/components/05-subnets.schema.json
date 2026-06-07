@@ -453,6 +453,7 @@
           "candidate_count",
           "completeness",
           "provenance",
+          "curation_level",
           "review_state",
           "confidence",
           "profile_level",
@@ -544,6 +545,9 @@
           },
           "provenance": {
             "$ref": "#/components/schemas/SubnetProfileProvenance"
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
           },
           "review_state": {
             "$ref": "#/components/schemas/ReviewState"

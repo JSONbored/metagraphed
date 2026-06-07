@@ -1757,6 +1757,7 @@ export interface components {
             completeness_score: number;
             /** @enum {unknown} */
             confidence: "low" | "medium" | "high";
+            curation_level: components["schemas"]["CurationLevel"];
             endpoint_count: number;
             interface_count?: number;
             missing_critical_count: number;

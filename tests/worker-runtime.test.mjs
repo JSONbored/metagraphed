@@ -851,6 +851,14 @@ describe("Worker runtime", () => {
           ),
       ],
       [
+        "https://metagraph.sh/api/v1/profiles?curation_level=adapter-backed",
+        (body) =>
+          body.data.profiles.length > 0 &&
+          body.data.profiles.every(
+            (row) => row.curation_level === "adapter-backed",
+          ),
+      ],
+      [
         "https://metagraph.sh/api/v1/evidence?q=allways",
         (body) => body.data.claims.length > 0,
       ],
