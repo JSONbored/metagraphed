@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-99",
   "summary": {
-    "avg_latency_ms": 224,
+    "avg_latency_ms": 243,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:15.867Z",
-    "last_ok": "2026-06-06T12:31:15.867Z",
+    "last_checked": "2026-06-07T05:10:18.283Z",
+    "last_ok": "2026-06-07T05:10:18.283Z",
     "name": "Leoma",
     "netuid": 99,
     "ok_count": 10,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:15.301Z",
-      "last_ok": "2026-06-06T12:31:15.301Z",
-      "latency_ms": 26,
+      "last_checked": "2026-06-07T05:10:17.518Z",
+      "last_ok": "2026-06-07T05:10:17.518Z",
+      "latency_ms": 30,
       "method_tested": "HEAD",
       "netuid": 99,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-99-github-readme-rendixnetwork-leoma-data-artifact-3",
       "uptime_sample_ratio": 1,
       "url": "https://huggingface.co/",
-      "verified_at": "2026-06-06T12:31:15.301Z"
+      "verified_at": "2026-06-07T05:10:17.518Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.309Z",
-      "last_ok": "2026-06-06T12:31:15.309Z",
-      "latency_ms": 30,
+      "last_checked": "2026-06-07T05:10:17.549Z",
+      "last_ok": "2026-06-07T05:10:17.549Z",
+      "latency_ms": 31,
       "method_tested": "HEAD",
       "netuid": 99,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-99-github-readme-rendixnetwork-leoma-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.learnbittensor.org/",
-      "verified_at": "2026-06-06T12:31:15.309Z"
+      "verified_at": "2026-06-07T05:10:17.549Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.526Z",
-      "last_ok": "2026-06-06T12:31:15.526Z",
-      "latency_ms": 236,
+      "last_checked": "2026-06-07T05:10:17.771Z",
+      "last_ok": "2026-06-07T05:10:17.771Z",
+      "latency_ms": 222,
       "method_tested": "HEAD",
       "netuid": 99,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-99-github-readme-rendixnetwork-leoma-docs-4",
       "uptime_sample_ratio": 1,
       "url": "https://docs.leoma.ai/storage",
-      "verified_at": "2026-06-06T12:31:15.526Z"
+      "verified_at": "2026-06-07T05:10:17.771Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.501Z",
-      "last_ok": "2026-06-06T12:31:15.501Z",
-      "latency_ms": 200,
+      "last_checked": "2026-06-07T05:10:17.882Z",
+      "last_ok": "2026-06-07T05:10:17.882Z",
+      "latency_ms": 231,
       "method_tested": "HEAD",
       "netuid": 99,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-99-github-readme-rendixnetwork-leoma-docs-5",
       "uptime_sample_ratio": 1,
       "url": "https://docs.leoma.ai/",
-      "verified_at": "2026-06-06T12:31:15.501Z"
+      "verified_at": "2026-06-07T05:10:17.882Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:15.449Z",
-      "last_ok": "2026-06-06T12:31:15.449Z",
-      "latency_ms": 140,
+      "last_checked": "2026-06-07T05:10:17.837Z",
+      "last_ok": "2026-06-07T05:10:17.837Z",
+      "latency_ms": 168,
       "method_tested": "HEAD",
       "netuid": 99,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-99-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/99",
-      "verified_at": "2026-06-06T12:31:15.449Z"
+      "verified_at": "2026-06-07T05:10:17.837Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:15.866Z",
-      "last_ok": "2026-06-06T12:31:15.866Z",
-      "latency_ms": 503,
+      "last_checked": "2026-06-07T05:10:18.184Z",
+      "last_ok": "2026-06-07T05:10:18.184Z",
+      "latency_ms": 477,
       "method_tested": "HEAD",
       "netuid": 99,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-99-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/RendixNetwork/leoma",
-      "verified_at": "2026-06-06T12:31:15.866Z"
+      "verified_at": "2026-06-07T05:10:18.184Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:15.559Z",
-      "last_ok": "2026-06-06T12:31:15.559Z",
-      "latency_ms": 150,
+      "last_checked": "2026-06-07T05:10:17.878Z",
+      "last_ok": "2026-06-07T05:10:17.878Z",
+      "latency_ms": 163,
       "method_tested": "HEAD",
       "netuid": 99,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-99-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://leoma.ai/",
-      "verified_at": "2026-06-06T12:31:15.559Z"
+      "verified_at": "2026-06-07T05:10:17.878Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.814Z",
-      "last_ok": "2026-06-06T12:31:15.814Z",
-      "latency_ms": 383,
+      "last_checked": "2026-06-07T05:10:18.112Z",
+      "last_ok": "2026-06-07T05:10:18.112Z",
+      "latency_ms": 394,
       "method_tested": "HEAD",
       "netuid": 99,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-99-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/99",
-      "verified_at": "2026-06-06T12:31:15.814Z"
+      "verified_at": "2026-06-07T05:10:18.112Z"
     },
     {
       "auth_required": false,
@@ -227,9 +227,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:15.867Z",
-      "last_ok": "2026-06-06T12:31:15.867Z",
-      "latency_ms": 417,
+      "last_checked": "2026-06-07T05:10:18.283Z",
+      "last_ok": "2026-06-07T05:10:18.283Z",
+      "latency_ms": 549,
       "method_tested": "HEAD",
       "netuid": 99,
       "private_redirect_blocked": false,
@@ -243,7 +243,7 @@
       "surface_id": "sn-99-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/subnet99/neza",
-      "verified_at": "2026-06-06T12:31:15.867Z"
+      "verified_at": "2026-06-07T05:10:18.283Z"
     },
     {
       "auth_required": false,
@@ -252,9 +252,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:15.613Z",
-      "last_ok": "2026-06-06T12:31:15.613Z",
-      "latency_ms": 150,
+      "last_checked": "2026-06-07T05:10:17.933Z",
+      "last_ok": "2026-06-07T05:10:17.933Z",
+      "latency_ms": 167,
       "method_tested": "GET",
       "netuid": 99,
       "private_redirect_blocked": false,
@@ -268,7 +268,7 @@
       "surface_id": "sn-99-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://leoma.ai/swagger",
-      "verified_at": "2026-06-06T12:31:15.613Z"
+      "verified_at": "2026-06-07T05:10:17.933Z"
     }
   ]
 }

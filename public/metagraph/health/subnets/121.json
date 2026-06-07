@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-121",
   "summary": {
-    "avg_latency_ms": 296,
+    "avg_latency_ms": 353,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:18.075Z",
-    "last_ok": "2026-06-06T12:31:18.075Z",
+    "last_checked": "2026-06-07T05:10:20.866Z",
+    "last_ok": "2026-06-07T05:10:20.866Z",
     "name": "sundae_bar",
     "netuid": 121,
     "ok_count": 4,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:17.736Z",
-      "last_ok": "2026-06-06T12:31:17.736Z",
-      "latency_ms": 133,
+      "last_checked": "2026-06-07T05:10:20.365Z",
+      "last_ok": "2026-06-07T05:10:20.365Z",
+      "latency_ms": 139,
       "method_tested": "HEAD",
       "netuid": 121,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-121-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/121",
-      "verified_at": "2026-06-06T12:31:17.736Z"
+      "verified_at": "2026-06-07T05:10:20.365Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:18.075Z",
-      "last_ok": "2026-06-06T12:31:18.075Z",
-      "latency_ms": 462,
+      "last_checked": "2026-06-07T05:10:20.866Z",
+      "last_ok": "2026-06-07T05:10:20.866Z",
+      "latency_ms": 621,
       "method_tested": "HEAD",
       "netuid": 121,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-121-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/sundae-bar/bittensor-subnet",
-      "verified_at": "2026-06-06T12:31:18.075Z"
+      "verified_at": "2026-06-07T05:10:20.866Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:17.865Z",
-      "last_ok": "2026-06-06T12:31:17.865Z",
-      "latency_ms": 251,
+      "last_checked": "2026-06-07T05:10:20.461Z",
+      "last_ok": "2026-06-07T05:10:20.461Z",
+      "latency_ms": 211,
       "method_tested": "HEAD",
       "netuid": 121,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-121-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.sundaebar.ai/",
-      "verified_at": "2026-06-06T12:31:17.865Z"
+      "verified_at": "2026-06-07T05:10:20.461Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:18.011Z",
-      "last_ok": "2026-06-06T12:31:18.011Z",
-      "latency_ms": 336,
+      "last_checked": "2026-06-07T05:10:20.720Z",
+      "last_ok": "2026-06-07T05:10:20.720Z",
+      "latency_ms": 442,
       "method_tested": "HEAD",
       "netuid": 121,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-121-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/121",
-      "verified_at": "2026-06-06T12:31:18.011Z"
+      "verified_at": "2026-06-07T05:10:20.720Z"
     }
   ]
 }

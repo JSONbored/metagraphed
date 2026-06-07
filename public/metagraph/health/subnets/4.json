@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-4",
   "summary": {
-    "avg_latency_ms": 405,
+    "avg_latency_ms": 506,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:03.406Z",
-    "last_ok": "2026-06-06T12:31:03.406Z",
+    "last_checked": "2026-06-07T05:10:04.157Z",
+    "last_ok": "2026-06-07T05:10:04.157Z",
     "name": "Targon",
     "netuid": 4,
     "ok_count": 8,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:03.046Z",
-      "last_ok": "2026-06-06T12:31:03.046Z",
-      "latency_ms": 217,
+      "last_checked": "2026-06-07T05:10:03.758Z",
+      "last_ok": "2026-06-07T05:10:03.758Z",
+      "latency_ms": 366,
       "method_tested": "HEAD",
       "netuid": 4,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-4-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/4",
-      "verified_at": "2026-06-06T12:31:03.046Z"
+      "verified_at": "2026-06-07T05:10:03.758Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:03.367Z",
-      "last_ok": "2026-06-06T12:31:03.367Z",
-      "latency_ms": 525,
+      "last_checked": "2026-06-07T05:10:04.025Z",
+      "last_ok": "2026-06-07T05:10:04.025Z",
+      "latency_ms": 634,
       "method_tested": "HEAD",
       "netuid": 4,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-4-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/manifold-inc/targon",
-      "verified_at": "2026-06-06T12:31:03.367Z"
+      "verified_at": "2026-06-07T05:10:04.025Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:03.188Z",
-      "last_ok": "2026-06-06T12:31:03.188Z",
-      "latency_ms": 344,
+      "last_checked": "2026-06-07T05:10:03.750Z",
+      "last_ok": "2026-06-07T05:10:03.750Z",
+      "latency_ms": 310,
       "method_tested": "HEAD",
       "netuid": 4,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-4-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://targon.com/",
-      "verified_at": "2026-06-06T12:31:03.188Z"
+      "verified_at": "2026-06-07T05:10:03.750Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.406Z",
-      "last_ok": "2026-06-06T12:31:03.406Z",
-      "latency_ms": 550,
+      "last_checked": "2026-06-07T05:10:04.132Z",
+      "last_ok": "2026-06-07T05:10:04.132Z",
+      "latency_ms": 691,
       "method_tested": "HEAD",
       "netuid": 4,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-4-taopedia-article",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_4/index.mdx",
-      "verified_at": "2026-06-06T12:31:03.406Z"
+      "verified_at": "2026-06-07T05:10:04.132Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.381Z",
-      "last_ok": "2026-06-06T12:31:03.381Z",
-      "latency_ms": 509,
+      "last_checked": "2026-06-07T05:10:04.157Z",
+      "last_ok": "2026-06-07T05:10:04.157Z",
+      "latency_ms": 710,
       "method_tested": "HEAD",
       "netuid": 4,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-4-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/4",
-      "verified_at": "2026-06-06T12:31:03.381Z"
+      "verified_at": "2026-06-07T05:10:04.157Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.368Z",
-      "last_ok": "2026-06-06T12:31:03.368Z",
-      "latency_ms": 495,
+      "last_checked": "2026-06-07T05:10:04.026Z",
+      "last_ok": "2026-06-07T05:10:04.026Z",
+      "latency_ms": 544,
       "method_tested": "HEAD",
       "netuid": 4,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-4-tensorplex-hardware-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/manifold-inc/targon",
-      "verified_at": "2026-06-06T12:31:03.368Z"
+      "verified_at": "2026-06-07T05:10:04.026Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:03.253Z",
-      "last_ok": "2026-06-06T12:31:03.253Z",
-      "latency_ms": 361,
+      "last_checked": "2026-06-07T05:10:04.023Z",
+      "last_ok": "2026-06-07T05:10:04.023Z",
+      "latency_ms": 531,
       "method_tested": "HEAD",
       "netuid": 4,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-4-website-link-targon-com-dashboard-6",
       "uptime_sample_ratio": 1,
       "url": "https://targon.com/dashboard",
-      "verified_at": "2026-06-06T12:31:03.253Z"
+      "verified_at": "2026-06-07T05:10:04.023Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.161Z",
-      "last_ok": "2026-06-06T12:31:03.161Z",
-      "latency_ms": 239,
+      "last_checked": "2026-06-07T05:10:03.822Z",
+      "last_ok": "2026-06-07T05:10:03.822Z",
+      "latency_ms": 260,
       "method_tested": "HEAD",
       "netuid": 4,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-4-website-link-targon-com-docs-4",
       "uptime_sample_ratio": 1,
       "url": "https://docs.targon.com/",
-      "verified_at": "2026-06-06T12:31:03.161Z"
+      "verified_at": "2026-06-07T05:10:03.822Z"
     }
   ]
 }

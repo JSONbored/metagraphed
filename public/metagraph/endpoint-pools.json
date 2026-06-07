@@ -1,0 +1,215 @@
+{
+  "contract_version": "2026-06-06.1",
+  "disabled_proxy_contract": {
+    "allowed_methods": [
+      "chain_getHeader",
+      "chain_getBlockHash",
+      "system_health",
+      "rpc_methods"
+    ],
+    "denied_method_patterns": [
+      "author_",
+      "state_call",
+      "sudo_",
+      "payment_",
+      "contracts_"
+    ],
+    "enabled": false,
+    "feature_flag": "METAGRAPH_ENABLE_RPC_PROXY",
+    "rate_limit_required": true,
+    "waf_required": true
+  },
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "notes": [
+    "Endpoint pools are advisory only in v1.",
+    "Future proxy/load-balancer routes must block write and unsafe RPC methods by default.",
+    "Only Bittensor base-layer RPC/WSS endpoints are pool candidates in v1."
+  ],
+  "pools": [
+    {
+      "best_endpoint_id": "endpoint-onfinality-finney-rpc",
+      "eligible_count": 2,
+      "endpoint_count": 2,
+      "endpoints": [
+        {
+          "archive_support": true,
+          "id": "endpoint-onfinality-finney-rpc",
+          "kind": "subtensor-rpc",
+          "latency_ms": 882,
+          "latest_block": 8352547,
+          "layer": "bittensor-base",
+          "pool_eligible": true,
+          "provider": "onfinality",
+          "score": 106,
+          "status": "ok",
+          "url": "https://bittensor-finney.api.onfinality.io/public"
+        },
+        {
+          "archive_support": true,
+          "id": "endpoint-nodies-finney-rpc",
+          "kind": "subtensor-rpc",
+          "latency_ms": 1577,
+          "latest_block": 8352547,
+          "layer": "bittensor-base",
+          "pool_eligible": true,
+          "provider": "nodies",
+          "score": 99,
+          "status": "ok",
+          "url": "https://bittensor-public.nodies.app"
+        }
+      ],
+      "id": "finney-rpc",
+      "kind": "subtensor-rpc"
+    },
+    {
+      "best_endpoint_id": "endpoint-opentensor-finney-wss",
+      "eligible_count": 4,
+      "endpoint_count": 4,
+      "endpoints": [
+        {
+          "archive_support": true,
+          "id": "endpoint-opentensor-finney-wss",
+          "kind": "subtensor-wss",
+          "latency_ms": 599,
+          "latest_block": 8352547,
+          "layer": "bittensor-base",
+          "pool_eligible": true,
+          "provider": "opentensor",
+          "score": 109,
+          "status": "ok",
+          "url": "wss://entrypoint-finney.opentensor.ai:443"
+        },
+        {
+          "archive_support": true,
+          "id": "endpoint-opentensor-lite-wss",
+          "kind": "subtensor-wss",
+          "latency_ms": 610,
+          "latest_block": 8352547,
+          "layer": "bittensor-base",
+          "pool_eligible": true,
+          "provider": "opentensor",
+          "score": 109,
+          "status": "ok",
+          "url": "wss://lite.chain.opentensor.ai:443"
+        },
+        {
+          "archive_support": true,
+          "id": "endpoint-onfinality-finney-wss",
+          "kind": "subtensor-wss",
+          "latency_ms": 808,
+          "latest_block": 8352547,
+          "layer": "bittensor-base",
+          "pool_eligible": true,
+          "provider": "onfinality",
+          "score": 107,
+          "status": "ok",
+          "url": "wss://bittensor-finney.api.onfinality.io/public-ws"
+        },
+        {
+          "archive_support": true,
+          "id": "endpoint-opentensor-archive-wss",
+          "kind": "subtensor-wss",
+          "latency_ms": 1119,
+          "latest_block": 8352547,
+          "layer": "bittensor-base",
+          "pool_eligible": true,
+          "provider": "opentensor",
+          "score": 104,
+          "status": "ok",
+          "url": "wss://archive.chain.opentensor.ai:443"
+        }
+      ],
+      "id": "finney-wss",
+      "kind": "subtensor-wss"
+    },
+    {
+      "best_endpoint_id": "endpoint-opentensor-finney-wss",
+      "eligible_count": 6,
+      "endpoint_count": 6,
+      "endpoints": [
+        {
+          "archive_support": true,
+          "id": "endpoint-opentensor-finney-wss",
+          "kind": "subtensor-wss",
+          "latency_ms": 599,
+          "latest_block": 8352547,
+          "layer": "bittensor-base",
+          "pool_eligible": true,
+          "provider": "opentensor",
+          "score": 109,
+          "status": "ok",
+          "url": "wss://entrypoint-finney.opentensor.ai:443"
+        },
+        {
+          "archive_support": true,
+          "id": "endpoint-opentensor-lite-wss",
+          "kind": "subtensor-wss",
+          "latency_ms": 610,
+          "latest_block": 8352547,
+          "layer": "bittensor-base",
+          "pool_eligible": true,
+          "provider": "opentensor",
+          "score": 109,
+          "status": "ok",
+          "url": "wss://lite.chain.opentensor.ai:443"
+        },
+        {
+          "archive_support": true,
+          "id": "endpoint-onfinality-finney-wss",
+          "kind": "subtensor-wss",
+          "latency_ms": 808,
+          "latest_block": 8352547,
+          "layer": "bittensor-base",
+          "pool_eligible": true,
+          "provider": "onfinality",
+          "score": 107,
+          "status": "ok",
+          "url": "wss://bittensor-finney.api.onfinality.io/public-ws"
+        },
+        {
+          "archive_support": true,
+          "id": "endpoint-onfinality-finney-rpc",
+          "kind": "subtensor-rpc",
+          "latency_ms": 882,
+          "latest_block": 8352547,
+          "layer": "bittensor-base",
+          "pool_eligible": true,
+          "provider": "onfinality",
+          "score": 106,
+          "status": "ok",
+          "url": "https://bittensor-finney.api.onfinality.io/public"
+        },
+        {
+          "archive_support": true,
+          "id": "endpoint-opentensor-archive-wss",
+          "kind": "subtensor-wss",
+          "latency_ms": 1119,
+          "latest_block": 8352547,
+          "layer": "bittensor-base",
+          "pool_eligible": true,
+          "provider": "opentensor",
+          "score": 104,
+          "status": "ok",
+          "url": "wss://archive.chain.opentensor.ai:443"
+        },
+        {
+          "archive_support": true,
+          "id": "endpoint-nodies-finney-rpc",
+          "kind": "subtensor-rpc",
+          "latency_ms": 1577,
+          "latest_block": 8352547,
+          "layer": "bittensor-base",
+          "pool_eligible": true,
+          "provider": "nodies",
+          "score": 99,
+          "status": "ok",
+          "url": "https://bittensor-public.nodies.app"
+        }
+      ],
+      "id": "finney-archive",
+      "kind": "archive"
+    }
+  ],
+  "schema_version": 1,
+  "source": "endpoint-resource-probes"
+}

@@ -41,6 +41,7 @@ Metagraphed is chain-first:
 - every active Finney netuid gets a native chain entry from decoded Bittensor/Subtensor data;
 - root `netuid: 0` is included and labeled as root/system;
 - root `netuid: 0` carries Bittensor base-layer RPC/WSS endpoint surfaces;
+- generalized endpoint resources normalize base-layer RPC/WSS and subnet-app/API/docs/data surfaces without pretending every subnet has Cosmos-style RPC/API/gRPC/seed endpoints;
 - curated overlays add public interface metadata after machine verification or maintainer review;
 - third-party APIs are enrichment/candidate sources, not canonical existence sources.
 - generated candidates capture public-source leads, but only live/redirected public-safe candidates become promoted surfaces.
@@ -75,6 +76,7 @@ Generated public artifacts live under `public/metagraph`:
 - `/metagraph/contracts.json`
 - `/metagraph/providers.json`
 - `/metagraph/providers/{slug}.json`
+- `/metagraph/providers/{slug}/endpoints.json`
 - `/metagraph/api-index.json`
 - `/metagraph/openapi.json`
 - `/metagraph/types.d.ts`
@@ -83,6 +85,8 @@ Generated public artifacts live under `public/metagraph`:
 - `/metagraph/subnets/{netuid}.json`
 - `/metagraph/surfaces.json`
 - `/metagraph/surfaces/{netuid}.json`
+- `/metagraph/endpoints.json`
+- `/metagraph/endpoints/{netuid}.json`
 - `/metagraph/candidates.json`
 - `/metagraph/candidates/{netuid}.json`
 - `/metagraph/review-queue.json`
@@ -103,6 +107,7 @@ Generated public artifacts live under `public/metagraph`:
 - `/metagraph/health/badges/{netuid}.json`
 - `/metagraph/rpc-endpoints.json`
 - `/metagraph/rpc/pools.json`
+- `/metagraph/endpoint-pools.json`
 - `/metagraph/schema-drift.json`
 - `/metagraph/schemas/index.json`
 - `/metagraph/adapters/{slug}.json`
@@ -122,10 +127,13 @@ Worker API routes expose stable envelopes over the same canonical artifacts:
 - `/api/v1/subnets/{netuid}`
 - `/api/v1/surfaces`
 - `/api/v1/subnets/{netuid}/surfaces`
+- `/api/v1/endpoints`
+- `/api/v1/subnets/{netuid}/endpoints`
 - `/api/v1/candidates`
 - `/api/v1/subnets/{netuid}/candidates`
 - `/api/v1/providers`
 - `/api/v1/providers/{slug}`
+- `/api/v1/providers/{slug}/endpoints`
 - `/api/v1/coverage`
 - `/api/v1/curation`
 - `/api/v1/gaps`
@@ -139,6 +147,7 @@ Worker API routes expose stable envelopes over the same canonical artifacts:
 - `/api/v1/source-snapshots`
 - `/api/v1/rpc/endpoints`
 - `/api/v1/rpc/pools`
+- `/api/v1/endpoint-pools`
 - `/api/v1/schemas`
 - `/api/v1/adapters/{slug}`
 - `/api/v1/search`

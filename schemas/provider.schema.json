@@ -41,8 +41,23 @@
       "type": "string",
       "format": "uri"
     },
+    "github_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "team_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "contact_url": {
+      "type": "string",
+      "format": "uri"
+    },
     "authority": {
       "enum": ["official", "provider-claimed", "community", "registry-observed"]
+    },
+    "public_notes": {
+      "type": "string"
     },
     "notes": {
       "type": "string"

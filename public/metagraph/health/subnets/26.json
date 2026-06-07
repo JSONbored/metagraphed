@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-26",
   "summary": {
-    "avg_latency_ms": 244,
+    "avg_latency_ms": 356,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:06.986Z",
-    "last_ok": "2026-06-06T12:31:06.986Z",
+    "last_checked": "2026-06-07T05:10:08.163Z",
+    "last_ok": "2026-06-07T05:10:08.163Z",
     "name": "Perturb",
     "netuid": 26,
     "ok_count": 6,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "subnet-api",
-      "last_checked": "2026-06-06T12:31:06.554Z",
-      "last_ok": "2026-06-06T12:31:06.554Z",
-      "latency_ms": 142,
+      "last_checked": "2026-06-07T05:10:07.768Z",
+      "last_ok": "2026-06-07T05:10:07.768Z",
+      "latency_ms": 217,
       "method_tested": "GET",
       "netuid": 26,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-26-github-readme-0xsigurd-perturb-subnet-api-1",
       "uptime_sample_ratio": 1,
       "url": "https://api.pexels.com/v1/search",
-      "verified_at": "2026-06-06T12:31:06.554Z"
+      "verified_at": "2026-06-07T05:10:07.768Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:06.616Z",
-      "last_ok": "2026-06-06T12:31:06.616Z",
-      "latency_ms": 132,
+      "last_checked": "2026-06-07T05:10:08.041Z",
+      "last_ok": "2026-06-07T05:10:08.041Z",
+      "latency_ms": 466,
       "method_tested": "HEAD",
       "netuid": 26,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-26-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/26",
-      "verified_at": "2026-06-06T12:31:06.616Z"
+      "verified_at": "2026-06-07T05:10:08.041Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:06.986Z",
-      "last_ok": "2026-06-06T12:31:06.986Z",
-      "latency_ms": 500,
+      "last_checked": "2026-06-07T05:10:08.163Z",
+      "last_ok": "2026-06-07T05:10:08.163Z",
+      "latency_ms": 588,
       "method_tested": "HEAD",
       "netuid": 26,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-26-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/0xsigurd/Perturb",
-      "verified_at": "2026-06-06T12:31:06.986Z"
+      "verified_at": "2026-06-07T05:10:08.163Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:06.700Z",
-      "last_ok": "2026-06-06T12:31:06.700Z",
-      "latency_ms": 208,
+      "last_checked": "2026-06-07T05:10:07.799Z",
+      "last_ok": "2026-06-07T05:10:07.799Z",
+      "latency_ms": 201,
       "method_tested": "HEAD",
       "netuid": 26,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-26-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.perturbai.io/",
-      "verified_at": "2026-06-06T12:31:06.700Z"
+      "verified_at": "2026-06-07T05:10:07.799Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:06.818Z",
-      "last_ok": "2026-06-06T12:31:06.818Z",
-      "latency_ms": 305,
+      "last_checked": "2026-06-07T05:10:08.083Z",
+      "last_ok": "2026-06-07T05:10:08.083Z",
+      "latency_ms": 477,
       "method_tested": "HEAD",
       "netuid": 26,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-26-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/26",
-      "verified_at": "2026-06-06T12:31:06.818Z"
+      "verified_at": "2026-06-07T05:10:08.083Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:06.703Z",
-      "last_ok": "2026-06-06T12:31:06.703Z",
-      "latency_ms": 176,
+      "last_checked": "2026-06-07T05:10:07.809Z",
+      "last_ok": "2026-06-07T05:10:07.809Z",
+      "latency_ms": 184,
       "method_tested": "HEAD",
       "netuid": 26,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-26-website-link-www-perturbai-io-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://www.perturbai.io/whitepaper",
-      "verified_at": "2026-06-06T12:31:06.703Z"
+      "verified_at": "2026-06-07T05:10:07.809Z"
     }
   ]
 }

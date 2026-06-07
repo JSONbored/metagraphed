@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-78",
   "summary": {
-    "avg_latency_ms": 283,
+    "avg_latency_ms": 356,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:12.832Z",
-    "last_ok": "2026-06-06T12:31:12.832Z",
+    "last_checked": "2026-06-07T05:10:14.767Z",
+    "last_ok": "2026-06-07T05:10:14.767Z",
     "name": "Vocence",
     "netuid": 78,
     "ok_count": 8,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:12.361Z",
-      "last_ok": "2026-06-06T12:31:12.361Z",
-      "latency_ms": 211,
+      "last_checked": "2026-06-07T05:10:14.061Z",
+      "last_ok": "2026-06-07T05:10:14.061Z",
+      "latency_ms": 195,
       "method_tested": "HEAD",
       "netuid": 78,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-78-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/78",
-      "verified_at": "2026-06-06T12:31:12.361Z"
+      "verified_at": "2026-06-07T05:10:14.061Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:12.658Z",
-      "last_ok": "2026-06-06T12:31:12.658Z",
-      "latency_ms": 428,
+      "last_checked": "2026-06-07T05:10:14.554Z",
+      "last_ok": "2026-06-07T05:10:14.554Z",
+      "latency_ms": 612,
       "method_tested": "HEAD",
       "netuid": 78,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-78-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/vocence-78/vocence",
-      "verified_at": "2026-06-06T12:31:12.658Z"
+      "verified_at": "2026-06-07T05:10:14.554Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:12.422Z",
-      "last_ok": "2026-06-06T12:31:12.422Z",
-      "latency_ms": 133,
+      "last_checked": "2026-06-07T05:10:14.127Z",
+      "last_ok": "2026-06-07T05:10:14.127Z",
+      "latency_ms": 138,
       "method_tested": "HEAD",
       "netuid": 78,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-78-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.vocence.ai/",
-      "verified_at": "2026-06-06T12:31:12.422Z"
+      "verified_at": "2026-06-07T05:10:14.127Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.582Z",
-      "last_ok": "2026-06-06T12:31:12.582Z",
-      "latency_ms": 278,
+      "last_checked": "2026-06-07T05:10:14.401Z",
+      "last_ok": "2026-06-07T05:10:14.401Z",
+      "latency_ms": 411,
       "method_tested": "HEAD",
       "netuid": 78,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-78-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/78",
-      "verified_at": "2026-06-06T12:31:12.582Z"
+      "verified_at": "2026-06-07T05:10:14.401Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:12.832Z",
-      "last_ok": "2026-06-06T12:31:12.832Z",
-      "latency_ms": 527,
+      "last_checked": "2026-06-07T05:10:14.603Z",
+      "last_ok": "2026-06-07T05:10:14.603Z",
+      "latency_ms": 542,
       "method_tested": "HEAD",
       "netuid": 78,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-78-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/Loosh-ai",
-      "verified_at": "2026-06-06T12:31:12.832Z"
+      "verified_at": "2026-06-07T05:10:14.603Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:12.762Z",
-      "last_ok": "2026-06-06T12:31:12.762Z",
-      "latency_ms": 415,
+      "last_checked": "2026-06-07T05:10:14.767Z",
+      "last_ok": "2026-06-07T05:10:14.767Z",
+      "latency_ms": 674,
       "method_tested": "HEAD",
       "netuid": 78,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-78-tensorplex-source-repo-2",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/Loosh-ai/loosh-public-documentation",
-      "verified_at": "2026-06-06T12:31:12.762Z"
+      "verified_at": "2026-06-07T05:10:14.767Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.485Z",
-      "last_ok": "2026-06-06T12:31:12.485Z",
-      "latency_ms": 136,
+      "last_checked": "2026-06-07T05:10:14.229Z",
+      "last_ok": "2026-06-07T05:10:14.229Z",
+      "latency_ms": 132,
       "method_tested": "HEAD",
       "netuid": 78,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-78-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://www.vocence.ai/docs",
-      "verified_at": "2026-06-06T12:31:12.485Z"
+      "verified_at": "2026-06-07T05:10:14.229Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:12.497Z",
-      "last_ok": "2026-06-06T12:31:12.497Z",
-      "latency_ms": 136,
+      "last_checked": "2026-06-07T05:10:14.260Z",
+      "last_ok": "2026-06-07T05:10:14.260Z",
+      "latency_ms": 141,
       "method_tested": "GET",
       "netuid": 78,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-78-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://www.vocence.ai/swagger",
-      "verified_at": "2026-06-06T12:31:12.497Z"
+      "verified_at": "2026-06-07T05:10:14.260Z"
     }
   ]
 }

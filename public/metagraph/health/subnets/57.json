@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-57",
   "summary": {
-    "avg_latency_ms": 327,
+    "avg_latency_ms": 415,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:10.170Z",
-    "last_ok": "2026-06-06T12:31:10.170Z",
+    "last_checked": "2026-06-07T05:10:11.799Z",
+    "last_ok": "2026-06-07T05:10:11.799Z",
     "name": "gaia",
     "netuid": 57,
     "ok_count": 3,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:09.788Z",
-      "last_ok": "2026-06-06T12:31:09.788Z",
-      "latency_ms": 143,
+      "last_checked": "2026-06-07T05:10:11.277Z",
+      "last_ok": "2026-06-07T05:10:11.277Z",
+      "latency_ms": 179,
       "method_tested": "HEAD",
       "netuid": 57,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-57-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/57",
-      "verified_at": "2026-06-06T12:31:09.788Z"
+      "verified_at": "2026-06-07T05:10:11.277Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:10.006Z",
-      "last_ok": "2026-06-06T12:31:10.006Z",
-      "latency_ms": 358,
+      "last_checked": "2026-06-07T05:10:11.723Z",
+      "last_ok": "2026-06-07T05:10:11.723Z",
+      "latency_ms": 514,
       "method_tested": "HEAD",
       "netuid": 57,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-57-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/57",
-      "verified_at": "2026-06-06T12:31:10.006Z"
+      "verified_at": "2026-06-07T05:10:11.723Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:10.170Z",
-      "last_ok": "2026-06-06T12:31:10.170Z",
-      "latency_ms": 480,
+      "last_checked": "2026-06-07T05:10:11.799Z",
+      "last_ok": "2026-06-07T05:10:11.799Z",
+      "latency_ms": 553,
       "method_tested": "HEAD",
       "netuid": 57,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-57-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/sparket-ai/sparket-ai",
-      "verified_at": "2026-06-06T12:31:10.170Z"
+      "verified_at": "2026-06-07T05:10:11.799Z"
     }
   ]
 }

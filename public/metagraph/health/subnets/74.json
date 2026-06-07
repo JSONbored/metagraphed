@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "gittensor",
   "summary": {
-    "avg_latency_ms": 303,
+    "avg_latency_ms": 343,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:12.347Z",
-    "last_ok": "2026-06-06T12:31:12.347Z",
+    "last_checked": "2026-06-07T05:10:14.195Z",
+    "last_ok": "2026-06-07T05:10:14.195Z",
     "name": "Gittensor",
     "netuid": 74,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.119Z",
-      "last_ok": "2026-06-06T12:31:12.119Z",
-      "latency_ms": 322,
+      "last_checked": "2026-06-07T05:10:13.752Z",
+      "last_ok": "2026-06-07T05:10:13.752Z",
+      "latency_ms": 283,
       "method_tested": "GET",
       "netuid": 74,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "gittensor-docs",
       "uptime_sample_ratio": 1,
       "url": "https://docs.gittensor.io/",
-      "verified_at": "2026-06-06T12:31:12.119Z"
+      "verified_at": "2026-06-07T05:10:13.752Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.150Z",
-      "last_ok": "2026-06-06T12:31:12.150Z",
-      "latency_ms": 333,
+      "last_checked": "2026-06-07T05:10:13.837Z",
+      "last_ok": "2026-06-07T05:10:13.837Z",
+      "latency_ms": 362,
       "method_tested": "GET",
       "netuid": 74,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "gittensor-hyperparameters-docs",
       "uptime_sample_ratio": 1,
       "url": "https://docs.gittensor.io/repository-hyperparameters",
-      "verified_at": "2026-06-06T12:31:12.150Z"
+      "verified_at": "2026-06-07T05:10:13.837Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:12.060Z",
-      "last_ok": "2026-06-06T12:31:12.060Z",
-      "latency_ms": 227,
+      "last_checked": "2026-06-07T05:10:13.678Z",
+      "last_ok": "2026-06-07T05:10:13.678Z",
+      "latency_ms": 195,
       "method_tested": "GET",
       "netuid": 74,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "gittensor-master-repositories",
       "uptime_sample_ratio": 1,
       "url": "https://raw.githubusercontent.com/entrius/gittensor/main/gittensor/validator/weights/master_repositories.json",
-      "verified_at": "2026-06-06T12:31:12.060Z"
+      "verified_at": "2026-06-07T05:10:13.678Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.123Z",
-      "last_ok": "2026-06-06T12:31:12.123Z",
-      "latency_ms": 287,
+      "last_checked": "2026-06-07T05:10:13.811Z",
+      "last_ok": "2026-06-07T05:10:13.811Z",
+      "latency_ms": 290,
       "method_tested": "GET",
       "netuid": 74,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "gittensor-registration-docs",
       "uptime_sample_ratio": 1,
       "url": "https://docs.gittensor.io/register-repository.html",
-      "verified_at": "2026-06-06T12:31:12.123Z"
+      "verified_at": "2026-06-07T05:10:13.811Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "repo-registry",
-      "last_checked": "2026-06-06T12:31:12.110Z",
-      "last_ok": "2026-06-06T12:31:12.110Z",
-      "latency_ms": 268,
+      "last_checked": "2026-06-07T05:10:13.866Z",
+      "last_ok": "2026-06-07T05:10:13.866Z",
+      "latency_ms": 316,
       "method_tested": "GET",
       "netuid": 74,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "gittensor-repositories-registry",
       "uptime_sample_ratio": 1,
       "url": "https://gittensor.io/repositories",
-      "verified_at": "2026-06-06T12:31:12.110Z"
+      "verified_at": "2026-06-07T05:10:13.866Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:12.347Z",
-      "last_ok": "2026-06-06T12:31:12.347Z",
-      "latency_ms": 473,
+      "last_checked": "2026-06-07T05:10:14.195Z",
+      "last_ok": "2026-06-07T05:10:14.195Z",
+      "latency_ms": 643,
       "method_tested": "HEAD",
       "netuid": 74,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "gittensor-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/entrius/gittensor",
-      "verified_at": "2026-06-06T12:31:12.347Z"
+      "verified_at": "2026-06-07T05:10:14.195Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:12.112Z",
-      "last_ok": "2026-06-06T12:31:12.112Z",
-      "latency_ms": 213,
+      "last_checked": "2026-06-07T05:10:13.865Z",
+      "last_ok": "2026-06-07T05:10:13.865Z",
+      "latency_ms": 313,
       "method_tested": "HEAD",
       "netuid": 74,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "gittensor-website",
       "uptime_sample_ratio": 1,
       "url": "https://gittensor.io/",
-      "verified_at": "2026-06-06T12:31:12.112Z"
+      "verified_at": "2026-06-07T05:10:13.865Z"
     }
   ]
 }

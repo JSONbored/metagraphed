@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-96",
   "summary": {
-    "avg_latency_ms": 499,
+    "avg_latency_ms": 593,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:15.590Z",
-    "last_ok": "2026-06-06T12:31:15.590Z",
+    "last_checked": "2026-06-07T05:10:18.438Z",
+    "last_ok": "2026-06-07T05:10:18.438Z",
     "name": "Verathos",
     "netuid": 96,
     "ok_count": 9,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.512Z",
-      "last_ok": "2026-06-06T12:31:15.512Z",
-      "latency_ms": 600,
+      "last_checked": "2026-06-07T05:10:18.438Z",
+      "last_ok": "2026-06-07T05:10:18.438Z",
+      "latency_ms": 570,
       "method_tested": "GET",
       "netuid": 96,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-96-github-readme-verathos-ai-verathos-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://verathos.ai/docs",
-      "verified_at": "2026-06-06T12:31:15.512Z"
+      "verified_at": "2026-06-07T05:10:18.438Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.514Z",
-      "last_ok": "2026-06-06T12:31:15.514Z",
-      "latency_ms": 595,
+      "last_checked": "2026-06-07T05:10:18.433Z",
+      "last_ok": "2026-06-07T05:10:18.433Z",
+      "latency_ms": 565,
       "method_tested": "GET",
       "netuid": 96,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-96-github-readme-verathos-ai-verathos-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://verathos.ai/docs?page=setup",
-      "verified_at": "2026-06-06T12:31:15.514Z"
+      "verified_at": "2026-06-07T05:10:18.433Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:14.530Z",
-      "last_ok": "2026-06-06T12:31:14.530Z",
-      "latency_ms": 152,
+      "last_checked": "2026-06-07T05:10:16.613Z",
+      "last_ok": "2026-06-07T05:10:16.613Z",
+      "latency_ms": 249,
       "method_tested": "HEAD",
       "netuid": 96,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-96-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/96",
-      "verified_at": "2026-06-06T12:31:14.530Z"
+      "verified_at": "2026-06-07T05:10:16.613Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:14.966Z",
-      "last_ok": "2026-06-06T12:31:14.966Z",
-      "latency_ms": 578,
+      "last_checked": "2026-06-07T05:10:17.126Z",
+      "last_ok": "2026-06-07T05:10:17.126Z",
+      "latency_ms": 710,
       "method_tested": "HEAD",
       "netuid": 96,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-96-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/verathos-ai/verathos",
-      "verified_at": "2026-06-06T12:31:14.966Z"
+      "verified_at": "2026-06-07T05:10:17.126Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:15.590Z",
-      "last_ok": "2026-06-06T12:31:15.590Z",
-      "latency_ms": 576,
+      "last_checked": "2026-06-07T05:10:17.826Z",
+      "last_ok": "2026-06-07T05:10:17.826Z",
+      "latency_ms": 582,
       "method_tested": "GET",
       "netuid": 96,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-96-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://verathos.ai/",
-      "verified_at": "2026-06-06T12:31:15.590Z"
+      "verified_at": "2026-06-07T05:10:17.826Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:14.733Z",
-      "last_ok": "2026-06-06T12:31:14.733Z",
-      "latency_ms": 289,
+      "last_checked": "2026-06-07T05:10:17.034Z",
+      "last_ok": "2026-06-07T05:10:17.034Z",
+      "latency_ms": 509,
       "method_tested": "HEAD",
       "netuid": 96,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-96-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/96",
-      "verified_at": "2026-06-06T12:31:14.733Z"
+      "verified_at": "2026-06-07T05:10:17.034Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:15.068Z",
-      "last_ok": "2026-06-06T12:31:15.068Z",
-      "latency_ms": 538,
+      "last_checked": "2026-06-07T05:10:17.324Z",
+      "last_ok": "2026-06-07T05:10:17.324Z",
+      "latency_ms": 754,
       "method_tested": "HEAD",
       "netuid": 96,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-96-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/FLock-io/FLock-subnet",
-      "verified_at": "2026-06-06T12:31:15.068Z"
+      "verified_at": "2026-06-07T05:10:17.324Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:15.154Z",
-      "last_ok": "2026-06-06T12:31:15.154Z",
-      "latency_ms": 581,
+      "last_checked": "2026-06-07T05:10:17.246Z",
+      "last_ok": "2026-06-07T05:10:17.246Z",
+      "latency_ms": 648,
       "method_tested": "GET",
       "netuid": 96,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-96-website-common-openapi-json",
       "uptime_sample_ratio": 1,
       "url": "https://verathos.ai/openapi.json",
-      "verified_at": "2026-06-06T12:31:15.154Z"
+      "verified_at": "2026-06-07T05:10:17.246Z"
     },
     {
       "auth_required": false,
@@ -227,9 +227,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:15.177Z",
-      "last_ok": "2026-06-06T12:31:15.177Z",
-      "latency_ms": 581,
+      "last_checked": "2026-06-07T05:10:17.362Z",
+      "last_ok": "2026-06-07T05:10:17.362Z",
+      "latency_ms": 749,
       "method_tested": "GET",
       "netuid": 96,
       "private_redirect_blocked": false,
@@ -243,7 +243,7 @@
       "surface_id": "sn-96-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://verathos.ai/swagger",
-      "verified_at": "2026-06-06T12:31:15.177Z"
+      "verified_at": "2026-06-07T05:10:17.362Z"
     }
   ]
 }

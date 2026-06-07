@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-128",
   "summary": {
-    "avg_latency_ms": 303,
+    "avg_latency_ms": 486,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:18.746Z",
-    "last_ok": "2026-06-06T12:31:18.746Z",
+    "last_checked": "2026-06-07T05:10:21.896Z",
+    "last_ok": "2026-06-07T05:10:21.896Z",
     "name": "ByteLeap",
     "netuid": 128,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:18.403Z",
-      "last_ok": "2026-06-06T12:31:18.403Z",
-      "latency_ms": 129,
+      "last_checked": "2026-06-07T05:10:21.217Z",
+      "last_ok": "2026-06-07T05:10:21.217Z",
+      "latency_ms": 147,
       "method_tested": "HEAD",
       "netuid": 128,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-128-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/128",
-      "verified_at": "2026-06-06T12:31:18.403Z"
+      "verified_at": "2026-06-07T05:10:21.217Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:18.646Z",
-      "last_ok": "2026-06-06T12:31:18.646Z",
-      "latency_ms": 361,
+      "last_checked": "2026-06-07T05:10:21.566Z",
+      "last_ok": "2026-06-07T05:10:21.566Z",
+      "latency_ms": 486,
       "method_tested": "HEAD",
       "netuid": 128,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-128-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/byteleapai/byteleap-Miner",
-      "verified_at": "2026-06-06T12:31:18.646Z"
+      "verified_at": "2026-06-07T05:10:21.566Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:18.613Z",
-      "last_ok": "2026-06-06T12:31:18.613Z",
-      "latency_ms": 306,
+      "last_checked": "2026-06-07T05:10:21.745Z",
+      "last_ok": "2026-06-07T05:10:21.745Z",
+      "latency_ms": 633,
       "method_tested": "HEAD",
       "netuid": 128,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-128-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://byteleap.ai/",
-      "verified_at": "2026-06-06T12:31:18.613Z"
+      "verified_at": "2026-06-07T05:10:21.745Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:18.730Z",
-      "last_ok": "2026-06-06T12:31:18.730Z",
-      "latency_ms": 379,
+      "last_checked": "2026-06-07T05:10:21.619Z",
+      "last_ok": "2026-06-07T05:10:21.619Z",
+      "latency_ms": 412,
       "method_tested": "HEAD",
       "netuid": 128,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-128-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/128",
-      "verified_at": "2026-06-06T12:31:18.730Z"
+      "verified_at": "2026-06-07T05:10:21.619Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:18.746Z",
-      "last_ok": "2026-06-06T12:31:18.746Z",
-      "latency_ms": 372,
+      "last_checked": "2026-06-07T05:10:21.653Z",
+      "last_ok": "2026-06-07T05:10:21.653Z",
+      "latency_ms": 436,
       "method_tested": "HEAD",
       "netuid": 128,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-128-tensorplex-source-repo-2",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/byteleapai/byteleap-Validator",
-      "verified_at": "2026-06-06T12:31:18.746Z"
+      "verified_at": "2026-06-07T05:10:21.653Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:18.698Z",
-      "last_ok": "2026-06-06T12:31:18.698Z",
-      "latency_ms": 295,
+      "last_checked": "2026-06-07T05:10:21.896Z",
+      "last_ok": "2026-06-07T05:10:21.896Z",
+      "latency_ms": 671,
       "method_tested": "HEAD",
       "netuid": 128,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-128-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://byteleap.ai/docs",
-      "verified_at": "2026-06-06T12:31:18.698Z"
+      "verified_at": "2026-06-07T05:10:21.896Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:18.725Z",
-      "last_ok": "2026-06-06T12:31:18.725Z",
-      "latency_ms": 279,
+      "last_checked": "2026-06-07T05:10:21.865Z",
+      "last_ok": "2026-06-07T05:10:21.865Z",
+      "latency_ms": 615,
       "method_tested": "GET",
       "netuid": 128,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-128-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://byteleap.ai/swagger",
-      "verified_at": "2026-06-06T12:31:18.725Z"
+      "verified_at": "2026-06-07T05:10:21.865Z"
     }
   ]
 }

@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-62",
   "summary": {
-    "avg_latency_ms": 443,
+    "avg_latency_ms": 290,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:11.221Z",
-    "last_ok": "2026-06-06T12:31:11.221Z",
+    "last_checked": "2026-06-07T05:10:12.347Z",
+    "last_ok": "2026-06-07T05:10:12.347Z",
     "name": "Ridges",
     "netuid": 62,
     "ok_count": 3,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:10.473Z",
-      "last_ok": "2026-06-06T12:31:10.473Z",
-      "latency_ms": 168,
+      "last_checked": "2026-06-07T05:10:12.097Z",
+      "last_ok": "2026-06-07T05:10:12.097Z",
+      "latency_ms": 176,
       "method_tested": "HEAD",
       "netuid": 62,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-62-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/62",
-      "verified_at": "2026-06-06T12:31:10.473Z"
+      "verified_at": "2026-06-07T05:10:12.097Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:11.221Z",
-      "last_ok": "2026-06-06T12:31:11.221Z",
-      "latency_ms": 873,
+      "last_checked": "2026-06-07T05:10:12.347Z",
+      "last_ok": "2026-06-07T05:10:12.347Z",
+      "latency_ms": 367,
       "method_tested": "HEAD",
       "netuid": 62,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-62-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/ridgesai/ridges",
-      "verified_at": "2026-06-06T12:31:11.221Z"
+      "verified_at": "2026-06-07T05:10:12.347Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:10.654Z",
-      "last_ok": "2026-06-06T12:31:10.654Z",
-      "latency_ms": 288,
+      "last_checked": "2026-06-07T05:10:12.310Z",
+      "last_ok": "2026-06-07T05:10:12.310Z",
+      "latency_ms": 328,
       "method_tested": "HEAD",
       "netuid": 62,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-62-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/62",
-      "verified_at": "2026-06-06T12:31:10.654Z"
+      "verified_at": "2026-06-07T05:10:12.310Z"
     }
   ]
 }

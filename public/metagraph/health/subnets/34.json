@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-34",
   "summary": {
-    "avg_latency_ms": 283,
+    "avg_latency_ms": 274,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:07.525Z",
-    "last_ok": "2026-06-06T12:31:07.525Z",
+    "last_checked": "2026-06-07T05:10:08.883Z",
+    "last_ok": "2026-06-07T05:10:08.883Z",
     "name": "BitMind",
     "netuid": 34,
     "ok_count": 4,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:07.237Z",
-      "last_ok": "2026-06-06T12:31:07.237Z",
-      "latency_ms": 136,
+      "last_checked": "2026-06-07T05:10:08.550Z",
+      "last_ok": "2026-06-07T05:10:08.550Z",
+      "latency_ms": 150,
       "method_tested": "HEAD",
       "netuid": 34,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-34-github-readme-bitmind-ai-bitmind-subnet-data-artifact-2",
       "uptime_sample_ratio": 1,
       "url": "https://huggingface.co/gasstation",
-      "verified_at": "2026-06-06T12:31:07.237Z"
+      "verified_at": "2026-06-07T05:10:08.550Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:07.312Z",
-      "last_ok": "2026-06-06T12:31:07.312Z",
-      "latency_ms": 195,
+      "last_checked": "2026-06-07T05:10:08.593Z",
+      "last_ok": "2026-06-07T05:10:08.593Z",
+      "latency_ms": 159,
       "method_tested": "HEAD",
       "netuid": 34,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-34-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/34",
-      "verified_at": "2026-06-06T12:31:07.312Z"
+      "verified_at": "2026-06-07T05:10:08.593Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:07.525Z",
-      "last_ok": "2026-06-06T12:31:07.525Z",
-      "latency_ms": 408,
+      "last_checked": "2026-06-07T05:10:08.843Z",
+      "last_ok": "2026-06-07T05:10:08.843Z",
+      "latency_ms": 381,
       "method_tested": "HEAD",
       "netuid": 34,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-34-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/BitMind-AI/bitmind-subnet",
-      "verified_at": "2026-06-06T12:31:07.525Z"
+      "verified_at": "2026-06-07T05:10:08.843Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:07.511Z",
-      "last_ok": "2026-06-06T12:31:07.511Z",
-      "latency_ms": 393,
+      "last_checked": "2026-06-07T05:10:08.883Z",
+      "last_ok": "2026-06-07T05:10:08.883Z",
+      "latency_ms": 407,
       "method_tested": "HEAD",
       "netuid": 34,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-34-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/34",
-      "verified_at": "2026-06-06T12:31:07.511Z"
+      "verified_at": "2026-06-07T05:10:08.883Z"
     }
   ]
 }

@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-48",
   "summary": {
-    "avg_latency_ms": 307,
+    "avg_latency_ms": 319,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:09.103Z",
-    "last_ok": "2026-06-06T12:31:09.103Z",
+    "last_checked": "2026-06-07T05:10:10.435Z",
+    "last_ok": "2026-06-07T05:10:10.435Z",
     "name": "Quantum Compute",
     "netuid": 48,
     "ok_count": 4,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:08.771Z",
-      "last_ok": "2026-06-06T12:31:08.771Z",
-      "latency_ms": 137,
+      "last_checked": "2026-06-07T05:10:10.089Z",
+      "last_ok": "2026-06-07T05:10:10.089Z",
+      "latency_ms": 151,
       "method_tested": "HEAD",
       "netuid": 48,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-48-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/48",
-      "verified_at": "2026-06-06T12:31:08.771Z"
+      "verified_at": "2026-06-07T05:10:10.089Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:09.103Z",
-      "last_ok": "2026-06-06T12:31:09.103Z",
-      "latency_ms": 441,
+      "last_checked": "2026-06-07T05:10:10.435Z",
+      "last_ok": "2026-06-07T05:10:10.435Z",
+      "latency_ms": 412,
       "method_tested": "HEAD",
       "netuid": 48,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-48-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/qbittensor-labs/quantum-compute",
-      "verified_at": "2026-06-06T12:31:09.103Z"
+      "verified_at": "2026-06-07T05:10:10.435Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:08.993Z",
-      "last_ok": "2026-06-06T12:31:08.993Z",
-      "latency_ms": 325,
+      "last_checked": "2026-06-07T05:10:10.380Z",
+      "last_ok": "2026-06-07T05:10:10.380Z",
+      "latency_ms": 347,
       "method_tested": "HEAD",
       "netuid": 48,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-48-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.qbittensorlabs.com/",
-      "verified_at": "2026-06-06T12:31:08.993Z"
+      "verified_at": "2026-06-07T05:10:10.380Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.018Z",
-      "last_ok": "2026-06-06T12:31:09.018Z",
-      "latency_ms": 324,
+      "last_checked": "2026-06-07T05:10:10.428Z",
+      "last_ok": "2026-06-07T05:10:10.428Z",
+      "latency_ms": 366,
       "method_tested": "HEAD",
       "netuid": 48,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-48-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/48",
-      "verified_at": "2026-06-06T12:31:09.018Z"
+      "verified_at": "2026-06-07T05:10:10.428Z"
     }
   ]
 }

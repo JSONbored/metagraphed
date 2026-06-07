@@ -28,11 +28,14 @@ export const DIRECT_CANDIDATE_PATTERN =
   /^registry\/candidates\/community\/[a-z0-9][a-z0-9-]*\.json$/;
 
 export const SUPPORTED_INTERFACE_KINDS = new Set([
+  "archive",
   "website",
   "source-repo",
   "subnet-api",
   "openapi",
   "sse",
+  "sdk",
+  "example",
   "dashboard",
   "repo-registry",
   "docs",
@@ -77,7 +80,9 @@ export function buildIssueIntakeReport({
     errors.push("netuid must be an active Finney netuid");
   }
 
-  const kind = normalizeKind(fields["interface kind"] || fields.kind);
+  const kind = normalizeKind(
+    fields["interface kind"] || fields["endpoint kind"] || fields.kind,
+  );
   if (!kind) {
     errors.push("interface kind is missing or unsupported");
   }
@@ -95,7 +100,10 @@ export function buildIssueIntakeReport({
   }
 
   const provider = slugify(
-    fields["provider or team"] || fields.provider || "community",
+    fields["provider or team"] ||
+      fields["provider or operator slug"] ||
+      fields.provider ||
+      "community",
   );
   if (provider && !providerIds.has(provider)) {
     errors.push(`provider ${provider} is not registered in registry/providers`);
@@ -111,13 +119,16 @@ export function buildIssueIntakeReport({
   if (auth.manualReason) {
     manual_reasons.push(auth.manualReason);
   }
-  if (kind && ["subtensor-rpc", "subtensor-wss"].includes(kind)) {
-    manual_reasons.push("base-layer RPC/WSS endpoint claims require review");
+  if (kind && ["archive", "subtensor-rpc", "subtensor-wss"].includes(kind)) {
+    manual_reasons.push(
+      "base-layer RPC/WSS/archive endpoint claims require review",
+    );
   }
 
   const unsafeText = unsafeTextReasons(
     [
       fields["rate limits or access notes"],
+      fields["public rate limits or access notes"],
       fields.evidence,
       fields["public url"],
       fields["source url"],
@@ -151,7 +162,10 @@ export function buildIssueIntakeReport({
           provider,
           auth_required: auth.value === true,
           public_safe: true,
-          rate_limit_notes: fields["rate limits or access notes"] || "",
+          rate_limit_notes:
+            fields["rate limits or access notes"] ||
+            fields["public rate limits or access notes"] ||
+            "",
           review_notes: [
             `Community-submitted candidate from issue ${issue?.number || "unknown"}.`,
             manual_reasons.length > 0
@@ -477,8 +491,10 @@ export function validateCandidateForSubmission({
   if (candidate.auth_required === true) {
     manual_reasons.push("authenticated interfaces require review");
   }
-  if (["subtensor-rpc", "subtensor-wss"].includes(candidate.kind)) {
-    manual_reasons.push("base-layer RPC/WSS endpoint claims require review");
+  if (["archive", "subtensor-rpc", "subtensor-wss"].includes(candidate.kind)) {
+    manual_reasons.push(
+      "base-layer RPC/WSS/archive endpoint claims require review",
+    );
   }
   if (candidate.source_tier === "native-chain") {
     errors.push({

@@ -5,6 +5,10 @@ labels:
   - status-report
   - metagraphed-under-review
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Status reports trigger review or re-probes. They do not directly change uptime, latency, pool eligibility, or endpoint health; observed health is generated only by Metagraphed probes and adapters.
   - type: input
     id: netuid
     attributes:

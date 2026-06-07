@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-14",
   "summary": {
-    "avg_latency_ms": 249,
+    "avg_latency_ms": 276,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:05.149Z",
-    "last_ok": "2026-06-06T12:31:05.149Z",
+    "last_checked": "2026-06-07T05:10:06.135Z",
+    "last_ok": "2026-06-07T05:10:06.135Z",
     "name": "Cacheon",
     "netuid": 14,
     "ok_count": 10,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:04.540Z",
-      "last_ok": "2026-06-06T12:31:04.540Z",
-      "latency_ms": 175,
+      "last_checked": "2026-06-07T05:10:05.446Z",
+      "last_ok": "2026-06-07T05:10:05.446Z",
+      "latency_ms": 152,
       "method_tested": "HEAD",
       "netuid": 14,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-14-github-readme-latent-to-cacheon-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://cacheon.ai/docs",
-      "verified_at": "2026-06-06T12:31:04.540Z"
+      "verified_at": "2026-06-07T05:10:05.446Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:04.604Z",
-      "last_ok": "2026-06-06T12:31:04.604Z",
-      "latency_ms": 158,
+      "last_checked": "2026-06-07T05:10:05.479Z",
+      "last_ok": "2026-06-07T05:10:05.479Z",
+      "latency_ms": 153,
       "method_tested": "HEAD",
       "netuid": 14,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-14-github-readme-latent-to-cacheon-docs-10",
       "uptime_sample_ratio": 1,
       "url": "https://cacheon.ai/docs/evaluation/prompts",
-      "verified_at": "2026-06-06T12:31:04.604Z"
+      "verified_at": "2026-06-07T05:10:05.479Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:04.600Z",
-      "last_ok": "2026-06-06T12:31:04.600Z",
-      "latency_ms": 142,
+      "last_checked": "2026-06-07T05:10:05.680Z",
+      "last_ok": "2026-06-07T05:10:05.680Z",
+      "latency_ms": 336,
       "method_tested": "HEAD",
       "netuid": 14,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-14-github-readme-latent-to-cacheon-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://cacheon.ai/docs/evaluation/scoring",
-      "verified_at": "2026-06-06T12:31:04.600Z"
+      "verified_at": "2026-06-07T05:10:05.680Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:04.589Z",
-      "last_ok": "2026-06-06T12:31:04.589Z",
-      "latency_ms": 128,
+      "last_checked": "2026-06-07T05:10:05.502Z",
+      "last_ok": "2026-06-07T05:10:05.502Z",
+      "latency_ms": 156,
       "method_tested": "HEAD",
       "netuid": 14,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-14-github-readme-latent-to-cacheon-docs-3",
       "uptime_sample_ratio": 1,
       "url": "https://cacheon.ai/docs/miners/overview",
-      "verified_at": "2026-06-06T12:31:04.589Z"
+      "verified_at": "2026-06-07T05:10:05.502Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:04.781Z",
-      "last_ok": "2026-06-06T12:31:04.781Z",
-      "latency_ms": 316,
+      "last_checked": "2026-06-07T05:10:05.687Z",
+      "last_ok": "2026-06-07T05:10:05.687Z",
+      "latency_ms": 328,
       "method_tested": "HEAD",
       "netuid": 14,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-14-github-readme-latent-to-taohash-dashboard-5",
       "uptime_sample_ratio": 1,
       "url": "https://taohash.com/leaderboard",
-      "verified_at": "2026-06-06T12:31:04.781Z"
+      "verified_at": "2026-06-07T05:10:05.687Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:04.629Z",
-      "last_ok": "2026-06-06T12:31:04.629Z",
-      "latency_ms": 158,
+      "last_checked": "2026-06-07T05:10:05.536Z",
+      "last_ok": "2026-06-07T05:10:05.536Z",
+      "latency_ms": 169,
       "method_tested": "HEAD",
       "netuid": 14,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-14-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/14",
-      "verified_at": "2026-06-06T12:31:04.629Z"
+      "verified_at": "2026-06-07T05:10:05.536Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:05.149Z",
-      "last_ok": "2026-06-06T12:31:05.149Z",
-      "latency_ms": 675,
+      "last_checked": "2026-06-07T05:10:05.958Z",
+      "last_ok": "2026-06-07T05:10:05.958Z",
+      "latency_ms": 580,
       "method_tested": "HEAD",
       "netuid": 14,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-14-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/latent-to/cacheon",
-      "verified_at": "2026-06-06T12:31:05.149Z"
+      "verified_at": "2026-06-07T05:10:05.958Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:04.624Z",
-      "last_ok": "2026-06-06T12:31:04.624Z",
-      "latency_ms": 134,
+      "last_checked": "2026-06-07T05:10:05.628Z",
+      "last_ok": "2026-06-07T05:10:05.628Z",
+      "latency_ms": 182,
       "method_tested": "HEAD",
       "netuid": 14,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-14-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://cacheon.ai/",
-      "verified_at": "2026-06-06T12:31:04.624Z"
+      "verified_at": "2026-06-07T05:10:05.628Z"
     },
     {
       "auth_required": false,
@@ -227,9 +227,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:05.100Z",
-      "last_ok": "2026-06-06T12:31:05.100Z",
-      "latency_ms": 560,
+      "last_checked": "2026-06-07T05:10:06.135Z",
+      "last_ok": "2026-06-07T05:10:06.135Z",
+      "latency_ms": 656,
       "method_tested": "HEAD",
       "netuid": 14,
       "private_redirect_blocked": false,
@@ -243,7 +243,7 @@
       "surface_id": "sn-14-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/latent-to/taohash",
-      "verified_at": "2026-06-06T12:31:05.100Z"
+      "verified_at": "2026-06-07T05:10:06.135Z"
     },
     {
       "auth_required": false,
@@ -252,9 +252,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:04.631Z",
-      "last_ok": "2026-06-06T12:31:04.631Z",
-      "latency_ms": 42,
+      "last_checked": "2026-06-07T05:10:05.536Z",
+      "last_ok": "2026-06-07T05:10:05.536Z",
+      "latency_ms": 51,
       "method_tested": "HEAD",
       "netuid": 14,
       "private_redirect_blocked": false,
@@ -268,7 +268,7 @@
       "surface_id": "sn-14-website-link-cacheon-ai-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://cacheon.ai/dashboard",
-      "verified_at": "2026-06-06T12:31:04.631Z"
+      "verified_at": "2026-06-07T05:10:05.536Z"
     }
   ]
 }

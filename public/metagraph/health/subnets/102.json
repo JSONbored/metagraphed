@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-102",
   "summary": {
-    "avg_latency_ms": 218,
+    "avg_latency_ms": 222,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:16.006Z",
-    "last_ok": "2026-06-06T12:31:16.006Z",
+    "last_checked": "2026-06-07T05:10:18.446Z",
+    "last_ok": "2026-06-07T05:10:18.446Z",
     "name": "ConnitoAI",
     "netuid": 102,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:15.699Z",
-      "last_ok": "2026-06-06T12:31:15.699Z",
-      "latency_ms": 141,
+      "last_checked": "2026-06-07T05:10:18.136Z",
+      "last_ok": "2026-06-07T05:10:18.136Z",
+      "latency_ms": 182,
       "method_tested": "HEAD",
       "netuid": 102,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-102-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/102",
-      "verified_at": "2026-06-06T12:31:15.699Z"
+      "verified_at": "2026-06-07T05:10:18.136Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:16.006Z",
-      "last_ok": "2026-06-06T12:31:16.006Z",
-      "latency_ms": 447,
+      "last_checked": "2026-06-07T05:10:18.446Z",
+      "last_ok": "2026-06-07T05:10:18.446Z",
+      "latency_ms": 481,
       "method_tested": "HEAD",
       "netuid": 102,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-102-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/Connito-AI/Connito",
-      "verified_at": "2026-06-06T12:31:16.006Z"
+      "verified_at": "2026-06-07T05:10:18.446Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:15.742Z",
-      "last_ok": "2026-06-06T12:31:15.742Z",
-      "latency_ms": 152,
+      "last_checked": "2026-06-07T05:10:18.240Z",
+      "last_ok": "2026-06-07T05:10:18.240Z",
+      "latency_ms": 146,
       "method_tested": "HEAD",
       "netuid": 102,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-102-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://connito.ai/",
-      "verified_at": "2026-06-06T12:31:15.742Z"
+      "verified_at": "2026-06-07T05:10:18.240Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.986Z",
-      "last_ok": "2026-06-06T12:31:15.986Z",
-      "latency_ms": 372,
+      "last_checked": "2026-06-07T05:10:18.425Z",
+      "last_ok": "2026-06-07T05:10:18.425Z",
+      "latency_ms": 313,
       "method_tested": "HEAD",
       "netuid": 102,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-102-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/102",
-      "verified_at": "2026-06-06T12:31:15.986Z"
+      "verified_at": "2026-06-07T05:10:18.425Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.815Z",
-      "last_ok": "2026-06-06T12:31:15.815Z",
-      "latency_ms": 161,
+      "last_checked": "2026-06-07T05:10:18.306Z",
+      "last_ok": "2026-06-07T05:10:18.306Z",
+      "latency_ms": 170,
       "method_tested": "HEAD",
       "netuid": 102,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-102-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://connito.ai/docs",
-      "verified_at": "2026-06-06T12:31:15.815Z"
+      "verified_at": "2026-06-07T05:10:18.306Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.823Z",
-      "last_ok": "2026-06-06T12:31:15.823Z",
-      "latency_ms": 124,
+      "last_checked": "2026-06-07T05:10:18.317Z",
+      "last_ok": "2026-06-07T05:10:18.317Z",
+      "latency_ms": 136,
       "method_tested": "HEAD",
       "netuid": 102,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-102-website-link-connito-ai-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://connito.ai/docs/miner/prerequisites",
-      "verified_at": "2026-06-06T12:31:15.823Z"
+      "verified_at": "2026-06-07T05:10:18.317Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.849Z",
-      "last_ok": "2026-06-06T12:31:15.849Z",
-      "latency_ms": 128,
+      "last_checked": "2026-06-07T05:10:18.307Z",
+      "last_ok": "2026-06-07T05:10:18.307Z",
+      "latency_ms": 123,
       "method_tested": "HEAD",
       "netuid": 102,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-102-website-link-connito-ai-docs-3",
       "uptime_sample_ratio": 1,
       "url": "https://connito.ai/whitepaper",
-      "verified_at": "2026-06-06T12:31:15.849Z"
+      "verified_at": "2026-06-07T05:10:18.307Z"
     }
   ]
 }

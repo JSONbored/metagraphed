@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-35",
   "summary": {
-    "avg_latency_ms": 284,
+    "avg_latency_ms": 312,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:07.686Z",
-    "last_ok": "2026-06-06T12:31:07.686Z",
+    "last_checked": "2026-06-07T05:10:09.073Z",
+    "last_ok": "2026-06-07T05:10:09.073Z",
     "name": "OxMarkets",
     "netuid": 35,
     "ok_count": 6,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:07.164Z",
-      "last_ok": "2026-06-06T12:31:07.164Z",
-      "latency_ms": 36,
+      "last_checked": "2026-06-07T05:10:08.522Z",
+      "last_ok": "2026-06-07T05:10:08.522Z",
+      "latency_ms": 45,
       "method_tested": "HEAD",
       "netuid": 35,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-35-github-readme-general-tao-ventures-cartha-cli-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.learnbittensor.org/keys/working-with-keys",
-      "verified_at": "2026-06-06T12:31:07.164Z"
+      "verified_at": "2026-06-07T05:10:08.522Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:07.380Z",
-      "last_ok": "2026-06-06T12:31:07.380Z",
-      "latency_ms": 216,
+      "last_checked": "2026-06-07T05:10:08.693Z",
+      "last_ok": "2026-06-07T05:10:08.693Z",
+      "latency_ms": 215,
       "method_tested": "HEAD",
       "netuid": 35,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-35-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/35",
-      "verified_at": "2026-06-06T12:31:07.380Z"
+      "verified_at": "2026-06-07T05:10:08.693Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:07.686Z",
-      "last_ok": "2026-06-06T12:31:07.686Z",
-      "latency_ms": 474,
+      "last_checked": "2026-06-07T05:10:08.973Z",
+      "last_ok": "2026-06-07T05:10:08.973Z",
+      "latency_ms": 465,
       "method_tested": "HEAD",
       "netuid": 35,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-35-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/General-Tao-Ventures/cartha-validator",
-      "verified_at": "2026-06-06T12:31:07.686Z"
+      "verified_at": "2026-06-07T05:10:08.973Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:07.528Z",
-      "last_ok": "2026-06-06T12:31:07.528Z",
-      "latency_ms": 300,
+      "last_checked": "2026-06-07T05:10:08.794Z",
+      "last_ok": "2026-06-07T05:10:08.794Z",
+      "latency_ms": 269,
       "method_tested": "HEAD",
       "netuid": 35,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-35-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.0xmarkets.io/",
-      "verified_at": "2026-06-06T12:31:07.528Z"
+      "verified_at": "2026-06-07T05:10:08.794Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:07.537Z",
-      "last_ok": "2026-06-06T12:31:07.537Z",
-      "latency_ms": 300,
+      "last_checked": "2026-06-07T05:10:08.863Z",
+      "last_ok": "2026-06-07T05:10:08.863Z",
+      "latency_ms": 337,
       "method_tested": "HEAD",
       "netuid": 35,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-35-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/35",
-      "verified_at": "2026-06-06T12:31:07.537Z"
+      "verified_at": "2026-06-07T05:10:08.863Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:07.618Z",
-      "last_ok": "2026-06-06T12:31:07.618Z",
-      "latency_ms": 378,
+      "last_checked": "2026-06-07T05:10:09.073Z",
+      "last_ok": "2026-06-07T05:10:09.073Z",
+      "latency_ms": 539,
       "method_tested": "HEAD",
       "netuid": 35,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-35-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/General-Tao-Ventures/cartha-cli",
-      "verified_at": "2026-06-06T12:31:07.618Z"
+      "verified_at": "2026-06-07T05:10:09.073Z"
     }
   ]
 }

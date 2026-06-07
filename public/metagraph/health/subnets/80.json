@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-80",
   "summary": {
-    "avg_latency_ms": 277,
+    "avg_latency_ms": 307,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:13.055Z",
-    "last_ok": "2026-06-06T12:31:13.055Z",
+    "last_checked": "2026-06-07T05:10:15.077Z",
+    "last_ok": "2026-06-07T05:10:15.077Z",
     "name": "dogelayer",
     "netuid": 80,
     "ok_count": 9,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.509Z",
-      "last_ok": "2026-06-06T12:31:12.509Z",
-      "latency_ms": 38,
+      "last_checked": "2026-06-07T05:10:14.312Z",
+      "last_ok": "2026-06-07T05:10:14.312Z",
+      "latency_ms": 34,
       "method_tested": "HEAD",
       "netuid": 80,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.learnbittensor.org/learn/introduction",
-      "verified_at": "2026-06-06T12:31:12.509Z"
+      "verified_at": "2026-06-07T05:10:14.312Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.520Z",
-      "last_ok": "2026-06-06T12:31:12.520Z",
-      "latency_ms": 35,
+      "last_checked": "2026-06-07T05:10:14.337Z",
+      "last_ok": "2026-06-07T05:10:14.337Z",
+      "latency_ms": 38,
       "method_tested": "HEAD",
       "netuid": 80,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://docs.learnbittensor.org/miners",
-      "verified_at": "2026-06-06T12:31:12.520Z"
+      "verified_at": "2026-06-07T05:10:14.337Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.661Z",
-      "last_ok": "2026-06-06T12:31:12.661Z",
-      "latency_ms": 163,
+      "last_checked": "2026-06-07T05:10:14.373Z",
+      "last_ok": "2026-06-07T05:10:14.373Z",
+      "latency_ms": 61,
       "method_tested": "HEAD",
       "netuid": 80,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-4",
       "uptime_sample_ratio": 1,
       "url": "https://docs.learnbittensor.org/getting-started/wallets",
-      "verified_at": "2026-06-06T12:31:12.661Z"
+      "verified_at": "2026-06-07T05:10:14.373Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.544Z",
-      "last_ok": "2026-06-06T12:31:12.544Z",
-      "latency_ms": 36,
+      "last_checked": "2026-06-07T05:10:14.361Z",
+      "last_ok": "2026-06-07T05:10:14.361Z",
+      "latency_ms": 41,
       "method_tested": "HEAD",
       "netuid": 80,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-80-github-readme-dogelayer-ai-dogelayer-docs-7",
       "uptime_sample_ratio": 1,
       "url": "https://docs.learnbittensor.org/",
-      "verified_at": "2026-06-06T12:31:12.544Z"
+      "verified_at": "2026-06-07T05:10:14.361Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:12.780Z",
-      "last_ok": "2026-06-06T12:31:12.780Z",
-      "latency_ms": 260,
+      "last_checked": "2026-06-07T05:10:14.493Z",
+      "last_ok": "2026-06-07T05:10:14.493Z",
+      "latency_ms": 156,
       "method_tested": "HEAD",
       "netuid": 80,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-80-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/80",
-      "verified_at": "2026-06-06T12:31:12.780Z"
+      "verified_at": "2026-06-07T05:10:14.493Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:13.048Z",
-      "last_ok": "2026-06-06T12:31:13.048Z",
-      "latency_ms": 503,
+      "last_checked": "2026-06-07T05:10:14.865Z",
+      "last_ok": "2026-06-07T05:10:14.865Z",
+      "latency_ms": 524,
       "method_tested": "HEAD",
       "netuid": 80,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-80-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/dogelayer-ai/dogelayer",
-      "verified_at": "2026-06-06T12:31:13.048Z"
+      "verified_at": "2026-06-07T05:10:14.865Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:13.049Z",
-      "last_ok": "2026-06-06T12:31:13.049Z",
-      "latency_ms": 504,
+      "last_checked": "2026-06-07T05:10:15.014Z",
+      "last_ok": "2026-06-07T05:10:15.014Z",
+      "latency_ms": 662,
       "method_tested": "HEAD",
       "netuid": 80,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-80-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://dogelayer.ai/",
-      "verified_at": "2026-06-06T12:31:13.049Z"
+      "verified_at": "2026-06-07T05:10:15.014Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:13.055Z",
-      "last_ok": "2026-06-06T12:31:13.055Z",
-      "latency_ms": 484,
+      "last_checked": "2026-06-07T05:10:14.878Z",
+      "last_ok": "2026-06-07T05:10:14.878Z",
+      "latency_ms": 525,
       "method_tested": "GET",
       "netuid": 80,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-80-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://dogelayer.ai/swagger",
-      "verified_at": "2026-06-06T12:31:13.055Z"
+      "verified_at": "2026-06-07T05:10:14.878Z"
     },
     {
       "auth_required": false,
@@ -227,9 +227,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:13.053Z",
-      "last_ok": "2026-06-06T12:31:13.053Z",
-      "latency_ms": 471,
+      "last_checked": "2026-06-07T05:10:15.077Z",
+      "last_ok": "2026-06-07T05:10:15.077Z",
+      "latency_ms": 718,
       "method_tested": "HEAD",
       "netuid": 80,
       "private_redirect_blocked": false,
@@ -243,7 +243,7 @@
       "surface_id": "sn-80-website-link-dogelayer-ai-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://dogelayer.ai/en/dashboard",
-      "verified_at": "2026-06-06T12:31:13.053Z"
+      "verified_at": "2026-06-07T05:10:15.077Z"
     }
   ]
 }

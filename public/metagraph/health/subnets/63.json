@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-63",
   "summary": {
-    "avg_latency_ms": 263,
+    "avg_latency_ms": 254,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:10.849Z",
-    "last_ok": "2026-06-06T12:31:10.849Z",
+    "last_checked": "2026-06-07T05:10:12.522Z",
+    "last_ok": "2026-06-07T05:10:12.522Z",
     "name": "Enigma",
     "netuid": 63,
     "ok_count": 5,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:10.593Z",
-      "last_ok": "2026-06-06T12:31:10.593Z",
-      "latency_ms": 192,
+      "last_checked": "2026-06-07T05:10:12.185Z",
+      "last_ok": "2026-06-07T05:10:12.185Z",
+      "latency_ms": 199,
       "method_tested": "HEAD",
       "netuid": 63,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-63-github-readme-qbittensor-labs-enigma-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://taostats.io/subnets/63",
-      "verified_at": "2026-06-06T12:31:10.593Z"
+      "verified_at": "2026-06-07T05:10:12.185Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:10.640Z",
-      "last_ok": "2026-06-06T12:31:10.640Z",
-      "latency_ms": 238,
+      "last_checked": "2026-06-07T05:10:12.177Z",
+      "last_ok": "2026-06-07T05:10:12.177Z",
+      "latency_ms": 162,
       "method_tested": "HEAD",
       "netuid": 63,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-63-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/63",
-      "verified_at": "2026-06-06T12:31:10.640Z"
+      "verified_at": "2026-06-07T05:10:12.177Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:10.849Z",
-      "last_ok": "2026-06-06T12:31:10.849Z",
-      "latency_ms": 441,
+      "last_checked": "2026-06-07T05:10:12.522Z",
+      "last_ok": "2026-06-07T05:10:12.522Z",
+      "latency_ms": 428,
       "method_tested": "HEAD",
       "netuid": 63,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-63-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/qbittensor-labs/enigma",
-      "verified_at": "2026-06-06T12:31:10.849Z"
+      "verified_at": "2026-06-07T05:10:12.522Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:10.561Z",
-      "last_ok": "2026-06-06T12:31:10.561Z",
-      "latency_ms": 89,
+      "last_checked": "2026-06-07T05:10:12.186Z",
+      "last_ok": "2026-06-07T05:10:12.186Z",
+      "latency_ms": 90,
       "method_tested": "HEAD",
       "netuid": 63,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-63-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.qbittensorlabs.com/",
-      "verified_at": "2026-06-06T12:31:10.561Z"
+      "verified_at": "2026-06-07T05:10:12.186Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:10.830Z",
-      "last_ok": "2026-06-06T12:31:10.830Z",
-      "latency_ms": 357,
+      "last_checked": "2026-06-07T05:10:12.501Z",
+      "last_ok": "2026-06-07T05:10:12.501Z",
+      "latency_ms": 392,
       "method_tested": "HEAD",
       "netuid": 63,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-63-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/63",
-      "verified_at": "2026-06-06T12:31:10.830Z"
+      "verified_at": "2026-06-07T05:10:12.501Z"
     }
   ]
 }

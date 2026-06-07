@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-44",
   "summary": {
-    "avg_latency_ms": 468,
+    "avg_latency_ms": 549,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:08.762Z",
-    "last_ok": "2026-06-06T12:31:08.762Z",
+    "last_checked": "2026-06-07T05:10:10.162Z",
+    "last_ok": "2026-06-07T05:10:10.162Z",
     "name": "Score",
     "netuid": 44,
     "ok_count": 5,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:08.355Z",
-      "last_ok": "2026-06-06T12:31:08.355Z",
-      "latency_ms": 358,
+      "last_checked": "2026-06-07T05:10:09.469Z",
+      "last_ok": "2026-06-07T05:10:09.469Z",
+      "latency_ms": 191,
       "method_tested": "HEAD",
       "netuid": 44,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-44-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/44",
-      "verified_at": "2026-06-06T12:31:08.355Z"
+      "verified_at": "2026-06-07T05:10:09.469Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:08.430Z",
-      "last_ok": "2026-06-06T12:31:08.430Z",
-      "latency_ms": 399,
+      "last_checked": "2026-06-07T05:10:09.863Z",
+      "last_ok": "2026-06-07T05:10:09.863Z",
+      "latency_ms": 584,
       "method_tested": "HEAD",
       "netuid": 44,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-44-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/score-technologies/turbovision",
-      "verified_at": "2026-06-06T12:31:08.430Z"
+      "verified_at": "2026-06-07T05:10:09.863Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:08.609Z",
-      "last_ok": "2026-06-06T12:31:08.609Z",
-      "latency_ms": 553,
+      "last_checked": "2026-06-07T05:10:09.869Z",
+      "last_ok": "2026-06-07T05:10:09.869Z",
+      "latency_ms": 548,
       "method_tested": "HEAD",
       "netuid": 44,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-44-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.wearescore.com/",
-      "verified_at": "2026-06-06T12:31:08.609Z"
+      "verified_at": "2026-06-07T05:10:09.869Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:08.387Z",
-      "last_ok": "2026-06-06T12:31:08.387Z",
-      "latency_ms": 329,
+      "last_checked": "2026-06-07T05:10:09.931Z",
+      "last_ok": "2026-06-07T05:10:09.931Z",
+      "latency_ms": 608,
       "method_tested": "HEAD",
       "netuid": 44,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-44-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/44",
-      "verified_at": "2026-06-06T12:31:08.387Z"
+      "verified_at": "2026-06-07T05:10:09.931Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:08.762Z",
-      "last_ok": "2026-06-06T12:31:08.762Z",
-      "latency_ms": 702,
+      "last_checked": "2026-06-07T05:10:10.162Z",
+      "last_ok": "2026-06-07T05:10:10.162Z",
+      "latency_ms": 813,
       "method_tested": "HEAD",
       "netuid": 44,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-44-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/score-technologies/score-vision",
-      "verified_at": "2026-06-06T12:31:08.762Z"
+      "verified_at": "2026-06-07T05:10:10.162Z"
     }
   ]
 }

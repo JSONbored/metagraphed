@@ -63,7 +63,7 @@ METAGRAPH_ALLOW_R2_DOWNLOAD=1 npm run r2:download
 Rollback is pointer-first:
 
 - point KV `metagraph:latest` at a known-good R2 run prefix;
-- verify `/api/v1/build`, `/api/v1/contracts`, `/api/v1/health`, and `/api/v1/rpc/pools`;
+- verify `/api/v1/build`, `/api/v1/contracts`, `/api/v1/health`, `/api/v1/endpoint-pools`, and `/api/v1/rpc/pools`;
 - disable `METAGRAPH_ENABLE_RPC_PROXY` immediately if proxy behavior is suspect.
 
 ## Known Non-Blocking Drift

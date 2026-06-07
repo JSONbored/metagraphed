@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
+  buildEndpointResourceArtifact,
   buildEndpointPoolArtifact,
   buildTimestamp,
   buildRpcEndpointArtifact,
@@ -146,6 +147,13 @@ const rpcEndpoints = buildRpcEndpointArtifact({
   contractVersion,
   source: "artifact-build",
 });
+const endpointResources = buildEndpointResourceArtifact({
+  surfaces,
+  healthSurfaces: healthArtifacts.latest.surfaces,
+  generatedAt,
+  contractVersion,
+  source: "artifact-build",
+});
 const curationReview = buildCurationReview(
   mergedSubnets,
   surfaces,
@@ -264,11 +272,15 @@ await fs.rm(path.join(outputRoot, "providers"), {
   force: true,
 });
 for (const provider of providers) {
+  const providerEndpoints = endpointResources.endpoints.filter(
+    (endpoint) => endpoint.provider === provider.id,
+  );
   await writeJson(path.join(outputRoot, `providers/${provider.id}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: generatedAt,
     provider,
+    endpoint_summary: endpointSummary(providerEndpoints),
   });
 }
 
@@ -287,12 +299,16 @@ for (const subnet of mergedSubnets) {
   const subnetSurfaces = surfaces.filter(
     (surface) => surface.netuid === subnet.netuid,
   );
+  const subnetEndpoints = endpointResources.endpoints.filter(
+    (endpoint) => endpoint.netuid === subnet.netuid,
+  );
   await writeJson(path.join(outputRoot, `subnets/${subnet.netuid}.json`), {
     schema_version: 1,
     generated_at: generatedAt,
     subnet,
     candidate_surfaces: subnetCandidates,
     candidates: subnetCandidates,
+    endpoints: subnetEndpoints,
     gaps: subnet.gaps,
     surfaces: subnetSurfaces,
     verified_surfaces: subnetSurfaces,
@@ -427,6 +443,47 @@ await writeJson(
   healthArtifacts.summary,
 );
 await writeJson(path.join(outputRoot, "rpc-endpoints.json"), rpcEndpoints);
+await writeJson(path.join(outputRoot, "endpoints.json"), endpointResources);
+await fs.rm(path.join(outputRoot, "endpoints"), {
+  recursive: true,
+  force: true,
+});
+for (const subnet of mergedSubnets) {
+  const subnetEndpoints = endpointResources.endpoints.filter(
+    (endpoint) => endpoint.netuid === subnet.netuid,
+  );
+  await writeJson(path.join(outputRoot, `endpoints/${subnet.netuid}.json`), {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    netuid: subnet.netuid,
+    slug: subnet.slug,
+    name: subnet.name,
+    summary: endpointSummary(subnetEndpoints),
+    endpoints: subnetEndpoints,
+  });
+}
+for (const provider of providers) {
+  const providerEndpoints = endpointResources.endpoints.filter(
+    (endpoint) => endpoint.provider === provider.id,
+  );
+  await writeJson(
+    path.join(outputRoot, `providers/${provider.id}/endpoints.json`),
+    {
+      schema_version: 1,
+      contract_version: contractVersion,
+      generated_at: generatedAt,
+      provider: {
+        id: provider.id,
+        name: provider.name,
+        kind: provider.kind,
+        authority: provider.authority,
+      },
+      summary: endpointSummary(providerEndpoints),
+      endpoints: providerEndpoints,
+    },
+  );
+}
 for (const [netuid, subnetHealth] of healthArtifacts.subnets) {
   await writeJson(
     path.join(outputRoot, `health/subnets/${netuid}.json`),
@@ -462,6 +519,7 @@ await writeJson(
   path.join(outputRoot, "source-health.json"),
   buildSourceHealthArtifact({
     candidates,
+    endpointResources,
     providers,
     rpcEndpoints,
     verification,
@@ -482,6 +540,14 @@ await writeJson(
     generatedAt,
     contractVersion,
     rpcArtifact: rpcEndpoints,
+  }),
+);
+await writeJson(
+  path.join(outputRoot, "endpoint-pools.json"),
+  buildEndpointPoolArtifact({
+    generatedAt,
+    contractVersion,
+    endpointArtifact: endpointResources,
   }),
 );
 await writeJson(
@@ -580,6 +646,7 @@ await writeJson(path.join(outputRoot, "build-summary.json"), {
     ),
   candidate_count: candidates.length,
   coverage,
+  endpoint_count: endpointResources.endpoints.length,
   provider_count: providers.length,
   subnet_count: mergedSubnets.length,
   surface_count: surfaces.length,
@@ -724,6 +791,21 @@ function countBy(items, keyOrFn) {
       }, {}),
     ).sort(([a], [b]) => a.localeCompare(b)),
   );
+}
+
+function endpointSummary(endpoints) {
+  return {
+    endpoint_count: endpoints.length,
+    monitored_count: endpoints.filter(
+      (endpoint) => endpoint.monitoring_status === "monitored",
+    ).length,
+    pool_eligible_count: endpoints.filter((endpoint) => endpoint.pool_eligible)
+      .length,
+    by_kind: countBy(endpoints, "kind"),
+    by_layer: countBy(endpoints, "layer"),
+    by_publication_state: countBy(endpoints, "publication_state"),
+    by_status: countBy(endpoints, "status"),
+  };
 }
 
 function groupByNetuid(items) {
@@ -1137,6 +1219,7 @@ function freshnessSource(id, timestamp, pathValue, status = "captured") {
 
 function buildSourceHealthArtifact({
   candidates: candidateRows,
+  endpointResources: endpointArtifact,
   providers: providerRows,
   rpcEndpoints: rpcArtifact,
   verification: verificationArtifact,
@@ -1175,12 +1258,16 @@ function buildSourceHealthArtifact({
       const rpcCount = (rpcArtifact.endpoints || []).filter(
         (endpoint) => endpoint.provider === provider.id,
       ).length;
+      const endpointCount = (endpointArtifact.endpoints || []).filter(
+        (endpoint) => endpoint.provider === provider.id,
+      ).length;
       return {
         id: provider.id,
         name: provider.name,
         kind: provider.kind,
         authority: provider.authority,
         candidate_count: candidatesByProvider[provider.id] || 0,
+        endpoint_count: endpointCount,
         verification_result_count: verificationSummary.result_count,
         classifications: verificationSummary.classifications,
         rpc_endpoint_count: rpcCount,
@@ -1197,6 +1284,7 @@ function buildSourceHealthArtifact({
     summary: {
       provider_count: providers.length,
       candidate_count: candidateRows.length,
+      endpoint_count: endpointArtifact.endpoints?.length || 0,
       verification_result_count: verificationResults.length,
       rpc_endpoint_count: rpcArtifact.endpoints?.length || 0,
       status_counts: countBy(providers, "status"),

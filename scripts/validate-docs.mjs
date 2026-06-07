@@ -26,8 +26,13 @@ for (const route of API_ROUTES) {
 
 for (const requiredReadmeText of [
   "/api/v1/openapi.json",
+  "/api/v1/endpoints",
+  "/api/v1/subnets/{netuid}/endpoints",
+  "/api/v1/providers/{slug}/endpoints",
   "/api/v1/health/history/{date}",
   "/api/v1/subnets/{netuid}/surfaces",
+  "/metagraph/endpoints.json",
+  "/metagraph/endpoint-pools.json",
   "/metagraph/health/history/{date}.json",
   "/metagraph/types.d.ts",
 ]) {

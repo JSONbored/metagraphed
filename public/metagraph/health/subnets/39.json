@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-39",
   "summary": {
-    "avg_latency_ms": 341,
+    "avg_latency_ms": 477,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:08.362Z",
-    "last_ok": "2026-06-06T12:31:08.362Z",
+    "last_checked": "2026-06-07T05:10:09.852Z",
+    "last_ok": "2026-06-07T05:10:09.852Z",
     "name": "deprecated",
     "netuid": 39,
     "ok_count": 3,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:07.880Z",
-      "last_ok": "2026-06-06T12:31:07.880Z",
-      "latency_ms": 139,
+      "last_checked": "2026-06-07T05:10:09.073Z",
+      "last_ok": "2026-06-07T05:10:09.073Z",
+      "latency_ms": 136,
       "method_tested": "HEAD",
       "netuid": 39,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-39-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/39",
-      "verified_at": "2026-06-06T12:31:07.880Z"
+      "verified_at": "2026-06-07T05:10:09.073Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:08.031Z",
-      "last_ok": "2026-06-06T12:31:08.031Z",
-      "latency_ms": 290,
+      "last_checked": "2026-06-07T05:10:09.358Z",
+      "last_ok": "2026-06-07T05:10:09.358Z",
+      "latency_ms": 417,
       "method_tested": "HEAD",
       "netuid": 39,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-39-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/39",
-      "verified_at": "2026-06-06T12:31:08.031Z"
+      "verified_at": "2026-06-07T05:10:09.358Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:08.362Z",
-      "last_ok": "2026-06-06T12:31:08.362Z",
-      "latency_ms": 593,
+      "last_checked": "2026-06-07T05:10:09.852Z",
+      "last_ok": "2026-06-07T05:10:09.852Z",
+      "latency_ms": 878,
       "method_tested": "HEAD",
       "netuid": 39,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-39-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tplr-ai/basilica",
-      "verified_at": "2026-06-06T12:31:08.362Z"
+      "verified_at": "2026-06-07T05:10:09.852Z"
     }
   ]
 }

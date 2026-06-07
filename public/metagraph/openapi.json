@@ -973,6 +973,301 @@
         ],
         "type": "object"
       },
+      "EndpointLayer": {
+        "enum": [
+          "bittensor-base",
+          "subnet-app",
+          "data-provider",
+          "docs-provider"
+        ]
+      },
+      "EndpointMonitoringPolicy": {
+        "additionalProperties": true,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "expect": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "timeout_ms": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "enabled",
+          "method",
+          "expect",
+          "source"
+        ],
+        "type": "object"
+      },
+      "EndpointPoolsArtifact": {
+        "$ref": "#/components/schemas/RpcPoolsArtifact"
+      },
+      "EndpointPublicationState": {
+        "enum": [
+          "candidate",
+          "verified",
+          "monitored",
+          "pool-eligible",
+          "disabled",
+          "rejected"
+        ]
+      },
+      "EndpointResource": {
+        "additionalProperties": true,
+        "properties": {
+          "archive_support": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "auth_required": {
+            "type": "boolean"
+          },
+          "authority": {
+            "$ref": "#/components/schemas/Authority"
+          },
+          "chain": {
+            "const": "bittensor"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "last_checked": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latency_ms": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "latest_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "layer": {
+            "$ref": "#/components/schemas/EndpointLayer"
+          },
+          "method_support": {
+            "oneOf": [
+              {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "method_tested": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "monitoring_policy": {
+            "$ref": "#/components/schemas/EndpointMonitoringPolicy"
+          },
+          "monitoring_status": {
+            "enum": [
+              "monitored",
+              "not_monitored"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "network": {
+            "const": "finney"
+          },
+          "operator": {
+            "type": "string"
+          },
+          "pool_eligible": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "public_safe": {
+            "type": "boolean"
+          },
+          "publication_state": {
+            "$ref": "#/components/schemas/EndpointPublicationState"
+          },
+          "rate_limit_notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rpc_method_count": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "score": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "source_urls": {
+            "items": {
+              "format": "uri",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "subnet_name": {
+            "type": "string"
+          },
+          "subnet_slug": {
+            "type": "string"
+          },
+          "surface_id": {
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "surface_id",
+          "netuid",
+          "layer",
+          "kind",
+          "url",
+          "provider",
+          "operator",
+          "auth_required",
+          "public_safe",
+          "monitoring_policy",
+          "monitoring_status",
+          "publication_state",
+          "pool_eligible",
+          "status",
+          "score"
+        ],
+        "type": "object"
+      },
+      "EndpointsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "endpoints": {
+                "items": {
+                  "$ref": "#/components/schemas/EndpointResource"
+                },
+                "type": "array"
+              },
+              "summary": {
+                "$ref": "#/components/schemas/EndpointSummary"
+              }
+            },
+            "required": [
+              "summary",
+              "endpoints"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "EndpointSummary": {
+        "additionalProperties": true,
+        "properties": {
+          "by_kind": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_layer": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_provider": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_publication_state": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_status": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "endpoint_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "monitored_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pool_eligible_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "endpoint_count",
+          "monitored_count",
+          "pool_eligible_count"
+        ],
+        "type": "object"
+      },
       "ErrorEnvelope": {
         "additionalProperties": false,
         "properties": {
@@ -1830,7 +2125,15 @@
           "authority": {
             "$ref": "#/components/schemas/Authority"
           },
+          "contact_url": {
+            "format": "uri",
+            "type": "string"
+          },
           "docs_url": {
+            "format": "uri",
+            "type": "string"
+          },
+          "github_url": {
             "format": "uri",
             "type": "string"
           },
@@ -1848,8 +2151,15 @@
           "notes": {
             "type": "string"
           },
+          "public_notes": {
+            "type": "string"
+          },
           "schema_version": {
             "const": 1
+          },
+          "team_url": {
+            "format": "uri",
+            "type": "string"
           },
           "website_url": {
             "format": "uri",
@@ -1880,6 +2190,37 @@
             },
             "required": [
               "provider"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ProviderEndpointsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "endpoints": {
+                "items": {
+                  "$ref": "#/components/schemas/EndpointResource"
+                },
+                "type": "array"
+              },
+              "provider": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "summary": {
+                "$ref": "#/components/schemas/EndpointSummary"
+              }
+            },
+            "required": [
+              "provider",
+              "summary",
+              "endpoints"
             ],
             "type": "object"
           }
@@ -2930,6 +3271,10 @@
                     "minimum": 0,
                     "type": "integer"
                   },
+                  "endpoint_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
                   "provider_count": {
                     "minimum": 0,
                     "type": "integer"
@@ -2948,6 +3293,7 @@
                 },
                 "required": [
                   "candidate_count",
+                  "endpoint_count",
                   "provider_count",
                   "rpc_endpoint_count",
                   "status_counts",
@@ -2978,6 +3324,10 @@
           "classifications": {
             "$ref": "#/components/schemas/CountMap"
           },
+          "endpoint_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "id": {
             "type": "string"
           },
@@ -3003,6 +3353,7 @@
           "authority",
           "candidate_count",
           "classifications",
+          "endpoint_count",
           "id",
           "kind",
           "name",
@@ -3181,6 +3532,12 @@
                 },
                 "type": "array"
               },
+              "endpoints": {
+                "items": {
+                  "$ref": "#/components/schemas/EndpointResource"
+                },
+                "type": "array"
+              },
               "gaps": {
                 "$ref": "#/components/schemas/Gaps"
               },
@@ -3205,6 +3562,43 @@
               "surfaces",
               "candidate_surfaces",
               "gaps"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "SubnetEndpointsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "endpoints": {
+                "items": {
+                  "$ref": "#/components/schemas/EndpointResource"
+                },
+                "type": "array"
+              },
+              "name": {
+                "type": "string"
+              },
+              "netuid": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "summary": {
+                "$ref": "#/components/schemas/EndpointSummary"
+              }
+            },
+            "required": [
+              "netuid",
+              "summary",
+              "endpoints"
             ],
             "type": "object"
           }
@@ -3498,11 +3892,14 @@
       },
       "SurfaceKind": {
         "enum": [
+          "archive",
           "subtensor-rpc",
           "subtensor-wss",
           "subnet-api",
           "openapi",
           "sse",
+          "sdk",
+          "example",
           "website",
           "source-repo",
           "dashboard",
@@ -3941,11 +4338,14 @@
             "required": false,
             "schema": {
               "enum": [
+                "archive",
                 "dashboard",
                 "data-artifact",
                 "docs",
+                "example",
                 "openapi",
                 "repo-registry",
+                "sdk",
                 "source-repo",
                 "sse",
                 "subnet-api",
@@ -4528,6 +4928,396 @@
         "summary": "Fetch curation states by subnet.",
         "tags": [
           "registry"
+        ]
+      }
+    },
+    "/api/v1/endpoint-pools": {
+      "get": {
+        "operationId": "endpointPools",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "subtensor-rpc",
+                "subtensor-wss",
+                "archive"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "eligible_count",
+                "endpoint_count",
+                "id",
+                "kind"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/EndpointPoolsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch generalized endpoint pool scores.",
+        "tags": [
+          "endpoints"
+        ]
+      }
+    },
+    "/api/v1/endpoints": {
+      "get": {
+        "operationId": "endpoints",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "layer",
+            "required": false,
+            "schema": {
+              "enum": [
+                "bittensor-base",
+                "data-provider",
+                "docs-provider",
+                "subnet-app"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pool_eligible",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "publication_state",
+            "required": false,
+            "schema": {
+              "enum": [
+                "candidate",
+                "verified",
+                "monitored",
+                "pool-eligible",
+                "disabled",
+                "rejected"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ok",
+                "degraded",
+                "failed",
+                "unknown"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "kind",
+                "last_checked",
+                "latency_ms",
+                "layer",
+                "netuid",
+                "pool_eligible",
+                "provider",
+                "publication_state",
+                "score",
+                "status"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/EndpointsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "List generalized endpoint resources and monitored public surfaces.",
+        "tags": [
+          "endpoints"
         ]
       }
     },
@@ -5122,11 +5912,14 @@
             "required": false,
             "schema": {
               "enum": [
+                "archive",
                 "dashboard",
                 "data-artifact",
                 "docs",
+                "example",
                 "openapi",
                 "repo-registry",
+                "sdk",
                 "source-repo",
                 "sse",
                 "subnet-api",
@@ -5671,21 +6464,33 @@
         ]
       }
     },
-    "/api/v1/rpc/endpoints": {
+    "/api/v1/providers/{slug}/endpoints": {
       "get": {
-        "operationId": "rpcEndpoints",
+        "operationId": "providerEndpoints",
         "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9-]+$",
+              "type": "string"
+            }
+          },
           {
             "in": "query",
             "name": "kind",
             "required": false,
             "schema": {
               "enum": [
+                "archive",
                 "dashboard",
                 "data-artifact",
                 "docs",
+                "example",
                 "openapi",
                 "repo-registry",
+                "sdk",
                 "source-repo",
                 "sse",
                 "subnet-api",
@@ -5698,9 +6503,52 @@
           },
           {
             "in": "query",
-            "name": "provider",
+            "name": "layer",
             "required": false,
             "schema": {
+              "enum": [
+                "bittensor-base",
+                "data-provider",
+                "docs-provider",
+                "subnet-app"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pool_eligible",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "publication_state",
+            "required": false,
+            "schema": {
+              "enum": [
+                "candidate",
+                "verified",
+                "monitored",
+                "pool-eligible",
+                "disabled",
+                "rejected"
+              ],
               "type": "string"
             }
           },
@@ -5744,8 +6592,251 @@
             "schema": {
               "enum": [
                 "kind",
+                "last_checked",
                 "latency_ms",
+                "layer",
+                "netuid",
+                "pool_eligible",
                 "provider",
+                "publication_state",
+                "score",
+                "status"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ProviderEndpointsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "List endpoint resources for one provider or operator.",
+        "tags": [
+          "providers",
+          "endpoints"
+        ]
+      }
+    },
+    "/api/v1/rpc/endpoints": {
+      "get": {
+        "operationId": "rpcEndpoints",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "layer",
+            "required": false,
+            "schema": {
+              "enum": [
+                "bittensor-base",
+                "data-provider",
+                "docs-provider",
+                "subnet-app"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pool_eligible",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "publication_state",
+            "required": false,
+            "schema": {
+              "enum": [
+                "candidate",
+                "verified",
+                "monitored",
+                "pool-eligible",
+                "disabled",
+                "rejected"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ok",
+                "degraded",
+                "failed",
+                "unknown"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "kind",
+                "last_checked",
+                "latency_ms",
+                "layer",
+                "netuid",
+                "pool_eligible",
+                "provider",
+                "publication_state",
+                "score",
                 "status"
               ],
               "type": "string"
@@ -6713,11 +7804,14 @@
             "required": false,
             "schema": {
               "enum": [
+                "archive",
                 "dashboard",
                 "data-artifact",
                 "docs",
+                "example",
                 "openapi",
                 "repo-registry",
+                "sdk",
                 "source-repo",
                 "sse",
                 "subnet-api",
@@ -6885,6 +7979,243 @@
         ]
       }
     },
+    "/api/v1/subnets/{netuid}/endpoints": {
+      "get": {
+        "operationId": "subnetEndpoints",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "layer",
+            "required": false,
+            "schema": {
+              "enum": [
+                "bittensor-base",
+                "data-provider",
+                "docs-provider",
+                "subnet-app"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pool_eligible",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "publication_state",
+            "required": false,
+            "schema": {
+              "enum": [
+                "candidate",
+                "verified",
+                "monitored",
+                "pool-eligible",
+                "disabled",
+                "rejected"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ok",
+                "degraded",
+                "failed",
+                "unknown"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "kind",
+                "last_checked",
+                "latency_ms",
+                "layer",
+                "netuid",
+                "pool_eligible",
+                "provider",
+                "publication_state",
+                "score",
+                "status"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetEndpointsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "List generalized endpoint resources for one subnet.",
+        "tags": [
+          "endpoints",
+          "subnets"
+        ]
+      }
+    },
     "/api/v1/subnets/{netuid}/health": {
       "get": {
         "operationId": "subnetHealth",
@@ -6904,11 +8235,14 @@
             "required": false,
             "schema": {
               "enum": [
+                "archive",
                 "dashboard",
                 "data-artifact",
                 "docs",
+                "example",
                 "openapi",
                 "repo-registry",
+                "sdk",
                 "source-repo",
                 "sse",
                 "subnet-api",
@@ -7117,11 +8451,14 @@
             "required": false,
             "schema": {
               "enum": [
+                "archive",
                 "dashboard",
                 "data-artifact",
                 "docs",
+                "example",
                 "openapi",
                 "repo-registry",
+                "sdk",
                 "source-repo",
                 "sse",
                 "subnet-api",
@@ -7290,11 +8627,14 @@
             "required": false,
             "schema": {
               "enum": [
+                "archive",
                 "dashboard",
                 "data-artifact",
                 "docs",
+                "example",
                 "openapi",
                 "repo-registry",
+                "sdk",
                 "source-repo",
                 "sse",
                 "subnet-api",

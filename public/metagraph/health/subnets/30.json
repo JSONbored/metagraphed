@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-30",
   "summary": {
-    "avg_latency_ms": 558,
+    "avg_latency_ms": 332,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:07.596Z",
-    "last_ok": "2026-06-06T12:31:07.596Z",
+    "last_checked": "2026-06-07T05:10:08.509Z",
+    "last_ok": "2026-06-07T05:10:08.509Z",
     "name": "Endure Network",
     "netuid": 30,
     "ok_count": 4,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:06.895Z",
-      "last_ok": "2026-06-06T12:31:06.895Z",
-      "latency_ms": 192,
+      "last_checked": "2026-06-07T05:10:08.154Z",
+      "last_ok": "2026-06-07T05:10:08.154Z",
+      "latency_ms": 233,
       "method_tested": "HEAD",
       "netuid": 30,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-30-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/30",
-      "verified_at": "2026-06-06T12:31:06.895Z"
+      "verified_at": "2026-06-07T05:10:08.154Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:07.579Z",
-      "last_ok": "2026-06-06T12:31:07.579Z",
-      "latency_ms": 853,
+      "last_checked": "2026-06-07T05:10:08.215Z",
+      "last_ok": "2026-06-07T05:10:08.215Z",
+      "latency_ms": 273,
       "method_tested": "HEAD",
       "netuid": 30,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-30-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://endure.network/",
-      "verified_at": "2026-06-06T12:31:07.579Z"
+      "verified_at": "2026-06-07T05:10:08.215Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:07.117Z",
-      "last_ok": "2026-06-06T12:31:07.117Z",
-      "latency_ms": 356,
+      "last_checked": "2026-06-07T05:10:08.509Z",
+      "last_ok": "2026-06-07T05:10:08.509Z",
+      "latency_ms": 513,
       "method_tested": "HEAD",
       "netuid": 30,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-30-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/30",
-      "verified_at": "2026-06-06T12:31:07.117Z"
+      "verified_at": "2026-06-07T05:10:08.509Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:07.596Z",
-      "last_ok": "2026-06-06T12:31:07.596Z",
-      "latency_ms": 831,
+      "last_checked": "2026-06-07T05:10:08.308Z",
+      "last_ok": "2026-06-07T05:10:08.308Z",
+      "latency_ms": 307,
       "method_tested": "HEAD",
       "netuid": 30,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-30-website-link-endure-network-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.endure.network/",
-      "verified_at": "2026-06-06T12:31:07.596Z"
+      "verified_at": "2026-06-07T05:10:08.308Z"
     }
   ]
 }

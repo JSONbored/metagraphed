@@ -14,12 +14,15 @@ Expected backend routes:
 - `/metagraph/subnets.json`
 - `/metagraph/subnets/{netuid}.json`
 - `/metagraph/surfaces.json`
+- `/metagraph/endpoints.json`
+- `/metagraph/endpoints/{netuid}.json`
 - `/metagraph/candidates.json`
 - `/metagraph/coverage.json`
 - `/metagraph/curation.json`
 - `/metagraph/gaps.json`
 - `/metagraph/rpc-endpoints.json`
 - `/metagraph/rpc/pools.json`
+- `/metagraph/endpoint-pools.json`
 - `/metagraph/search.json`
 - `/metagraph/freshness.json`
 - `/metagraph/source-health.json`
@@ -42,8 +45,11 @@ Expected Worker API routes:
 - `/api/v1/subnets`
 - `/api/v1/subnets/{netuid}`
 - `/api/v1/surfaces`
+- `/api/v1/endpoints`
+- `/api/v1/subnets/{netuid}/endpoints`
 - `/api/v1/candidates`
 - `/api/v1/providers`
+- `/api/v1/providers/{slug}/endpoints`
 - `/api/v1/coverage`
 - `/api/v1/curation`
 - `/api/v1/gaps`
@@ -55,6 +61,7 @@ Expected Worker API routes:
 - `/api/v1/source-snapshots`
 - `/api/v1/rpc/endpoints`
 - `/api/v1/rpc/pools`
+- `/api/v1/endpoint-pools`
 - `/api/v1/schemas`
 - `/api/v1/adapters/{slug}`
 - `/api/v1/search`

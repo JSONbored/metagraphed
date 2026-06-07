@@ -62,6 +62,26 @@ const checks = [
       ),
   ],
   [
+    "/api/v1/endpoints?layer=bittensor-base&limit=2",
+    (body) =>
+      assert.equal(
+        body.data.endpoints.every(
+          (endpoint) => endpoint.layer === "bittensor-base",
+        ),
+        true,
+      ),
+  ],
+  [
+    "/api/v1/subnets/7/endpoints?kind=subnet-api",
+    (body) =>
+      assert.equal(
+        body.data.endpoints.every(
+          (endpoint) => endpoint.netuid === 7 && endpoint.kind === "subnet-api",
+        ),
+        true,
+      ),
+  ],
+  [
     "/api/v1/subnets/7/candidates?limit=2",
     (body) =>
       assert.equal(
@@ -104,6 +124,16 @@ const checks = [
   [
     "/api/v1/providers/allways",
     (body) => assert.equal(body.data.provider.id, "allways"),
+  ],
+  [
+    "/api/v1/providers/allways/endpoints",
+    (body) =>
+      assert.equal(
+        body.data.endpoints.every(
+          (endpoint) => endpoint.provider === "allways",
+        ),
+        true,
+      ),
   ],
   [
     "/api/v1/coverage",
@@ -161,6 +191,10 @@ const checks = [
   ],
   [
     "/api/v1/rpc/pools",
+    (body) => assert.equal(Array.isArray(body.data.pools), true),
+  ],
+  [
+    "/api/v1/endpoint-pools",
     (body) => assert.equal(Array.isArray(body.data.pools), true),
   ],
   [

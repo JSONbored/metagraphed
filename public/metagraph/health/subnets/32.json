@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-32",
   "summary": {
-    "avg_latency_ms": 372,
+    "avg_latency_ms": 395,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:07.470Z",
-    "last_ok": "2026-06-06T12:31:07.470Z",
+    "last_checked": "2026-06-07T05:10:08.797Z",
+    "last_ok": "2026-06-07T05:10:08.797Z",
     "name": "ItsAI",
     "netuid": 32,
     "ok_count": 5,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:06.932Z",
-      "last_ok": "2026-06-06T12:31:06.932Z",
-      "latency_ms": 120,
+      "last_checked": "2026-06-07T05:10:08.169Z",
+      "last_ok": "2026-06-07T05:10:08.169Z",
+      "latency_ms": 103,
       "method_tested": "HEAD",
       "netuid": 32,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-32-github-readme-it-s-ai-llm-detection-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://arxiv.org/abs/2405.07940",
-      "verified_at": "2026-06-06T12:31:06.932Z"
+      "verified_at": "2026-06-07T05:10:08.169Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:07.020Z",
-      "last_ok": "2026-06-06T12:31:07.020Z",
-      "latency_ms": 203,
+      "last_checked": "2026-06-07T05:10:08.307Z",
+      "last_ok": "2026-06-07T05:10:08.307Z",
+      "latency_ms": 224,
       "method_tested": "HEAD",
       "netuid": 32,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-32-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/32",
-      "verified_at": "2026-06-06T12:31:07.020Z"
+      "verified_at": "2026-06-07T05:10:08.307Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:07.384Z",
-      "last_ok": "2026-06-06T12:31:07.384Z",
-      "latency_ms": 545,
+      "last_checked": "2026-06-07T05:10:08.797Z",
+      "last_ok": "2026-06-07T05:10:08.797Z",
+      "latency_ms": 643,
       "method_tested": "HEAD",
       "netuid": 32,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-32-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/It-s-AI/llm-detection",
-      "verified_at": "2026-06-06T12:31:07.384Z"
+      "verified_at": "2026-06-07T05:10:08.797Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:07.470Z",
-      "last_ok": "2026-06-06T12:31:07.470Z",
-      "latency_ms": 615,
+      "last_checked": "2026-06-07T05:10:08.787Z",
+      "last_ok": "2026-06-07T05:10:08.787Z",
+      "latency_ms": 623,
       "method_tested": "HEAD",
       "netuid": 32,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-32-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://its-ai.org/en",
-      "verified_at": "2026-06-06T12:31:07.470Z"
+      "verified_at": "2026-06-07T05:10:08.787Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:07.240Z",
-      "last_ok": "2026-06-06T12:31:07.240Z",
-      "latency_ms": 379,
+      "last_checked": "2026-06-07T05:10:08.550Z",
+      "last_ok": "2026-06-07T05:10:08.550Z",
+      "latency_ms": 380,
       "method_tested": "HEAD",
       "netuid": 32,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-32-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/32",
-      "verified_at": "2026-06-06T12:31:07.240Z"
+      "verified_at": "2026-06-07T05:10:08.550Z"
     }
   ]
 }

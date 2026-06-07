@@ -1,0 +1,113 @@
+{
+  "contract_version": "2026-06-06.1",
+  "endpoints": [
+    {
+      "archive_support": null,
+      "auth_required": false,
+      "authority": "registry-observed",
+      "chain": "bittensor",
+      "classification": "live",
+      "error": null,
+      "id": "endpoint-sn-90-tensorplex-docs",
+      "kind": "docs",
+      "last_checked": "2026-06-07T05:10:15.946Z",
+      "latency_ms": 451,
+      "latest_block": null,
+      "layer": "docs-provider",
+      "method_support": null,
+      "method_tested": "HEAD",
+      "monitoring_policy": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "source": "surface-probe-config",
+        "timeout_ms": 10000
+      },
+      "monitoring_status": "monitored",
+      "netuid": 90,
+      "network": "finney",
+      "operator": "tensorplex-subnet-docs",
+      "pool_eligible": false,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "publication_state": "monitored",
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "rpc_method_count": null,
+      "score": 65,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/90/subnet.json"
+      ],
+      "status": "ok",
+      "subnet_name": "ogham",
+      "subnet_slug": "sn-90",
+      "surface_id": "sn-90-tensorplex-docs",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/90"
+    },
+    {
+      "archive_support": null,
+      "auth_required": false,
+      "authority": "registry-observed",
+      "chain": "bittensor",
+      "classification": "live",
+      "error": null,
+      "id": "endpoint-sn-90-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "last_checked": "2026-06-07T05:10:15.597Z",
+      "latency_ms": 147,
+      "latest_block": null,
+      "layer": "subnet-app",
+      "method_support": null,
+      "method_tested": "HEAD",
+      "monitoring_policy": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "source": "surface-probe-config",
+        "timeout_ms": 10000
+      },
+      "monitoring_status": "monitored",
+      "netuid": 90,
+      "network": "finney",
+      "operator": "taomarketcap",
+      "pool_eligible": false,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "publication_state": "monitored",
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "rpc_method_count": null,
+      "score": 69,
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/90"
+      ],
+      "status": "ok",
+      "subnet_name": "ogham",
+      "subnet_slug": "sn-90",
+      "surface_id": "sn-90-taomarketcap-dashboard",
+      "url": "https://taomarketcap.com/subnets/90"
+    }
+  ],
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "ogham",
+  "netuid": 90,
+  "schema_version": 1,
+  "slug": "sn-90",
+  "summary": {
+    "by_kind": {
+      "dashboard": 1,
+      "docs": 1
+    },
+    "by_layer": {
+      "docs-provider": 1,
+      "subnet-app": 1
+    },
+    "by_publication_state": {
+      "monitored": 2
+    },
+    "by_status": {
+      "ok": 2
+    },
+    "endpoint_count": 2,
+    "monitored_count": 2,
+    "pool_eligible_count": 0
+  }
+}

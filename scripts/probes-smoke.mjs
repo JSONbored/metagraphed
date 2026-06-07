@@ -1,12 +1,14 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
+  buildEndpointResourceArtifact,
   buildEndpointPoolArtifact,
   buildRpcEndpointArtifact,
   buildTimestamp,
   flattenSurfaces,
   isJsonContentType,
   isUnsafeUrl,
+  loadProviders,
   loadSubnets,
   repoRoot,
   writeJson,
@@ -14,7 +16,9 @@ import {
 
 const contractVersion = "2026-06-06.1";
 const subnets = await loadSubnets();
-const surfaces = flattenSurfaces(subnets).filter(
+const providers = await loadProviders();
+const allSurfaces = flattenSurfaces(subnets);
+const surfaces = allSurfaces.filter(
   (surface) => surface.probe?.enabled && surface.public_safe,
 );
 const startedAt = Date.now();
@@ -653,7 +657,14 @@ const artifact = buildHealthArtifacts(results, {
 
 if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
   const rpcEndpointArtifact = buildRpcEndpointArtifact({
-    surfaces,
+    surfaces: allSurfaces,
+    healthSurfaces: artifact.latest.surfaces,
+    generatedAt: buildTimestamp(),
+    contractVersion,
+    source: "live-smoke-probe",
+  });
+  const endpointResourceArtifact = buildEndpointResourceArtifact({
+    surfaces: allSurfaces,
     healthSurfaces: artifact.latest.surfaces,
     generatedAt: buildTimestamp(),
     contractVersion,
@@ -669,6 +680,10 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
     rpcEndpointArtifact,
   );
   await writeJson(
+    path.join(outputRoot, "endpoints.json"),
+    endpointResourceArtifact,
+  );
+  await writeJson(
     path.join(outputRoot, "rpc/pools.json"),
     buildEndpointPoolArtifact({
       generatedAt: buildTimestamp(),
@@ -676,6 +691,54 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
       rpcArtifact: rpcEndpointArtifact,
     }),
   );
+  await writeJson(
+    path.join(outputRoot, "endpoint-pools.json"),
+    buildEndpointPoolArtifact({
+      generatedAt: buildTimestamp(),
+      contractVersion,
+      endpointArtifact: endpointResourceArtifact,
+    }),
+  );
+  await fs.rm(path.join(outputRoot, "endpoints"), {
+    recursive: true,
+    force: true,
+  });
+  for (const subnet of subnets) {
+    const subnetEndpoints = endpointResourceArtifact.endpoints.filter(
+      (endpoint) => endpoint.netuid === subnet.netuid,
+    );
+    await writeJson(path.join(outputRoot, `endpoints/${subnet.netuid}.json`), {
+      schema_version: 1,
+      contract_version: contractVersion,
+      generated_at: buildTimestamp(),
+      netuid: subnet.netuid,
+      slug: subnet.slug,
+      name: subnet.name,
+      summary: summarizeEndpoints(subnetEndpoints),
+      endpoints: subnetEndpoints,
+    });
+  }
+  for (const provider of providers) {
+    const providerEndpoints = endpointResourceArtifact.endpoints.filter(
+      (endpoint) => endpoint.provider === provider.id,
+    );
+    await writeJson(
+      path.join(outputRoot, `providers/${provider.id}/endpoints.json`),
+      {
+        schema_version: 1,
+        contract_version: contractVersion,
+        generated_at: buildTimestamp(),
+        provider: {
+          id: provider.id,
+          name: provider.name,
+          kind: provider.kind,
+          authority: provider.authority,
+        },
+        summary: summarizeEndpoints(providerEndpoints),
+        endpoints: providerEndpoints,
+      },
+    );
+  }
   const day = artifact.latest.probe_finished_at.slice(0, 10);
   await writeJson(
     path.join(outputRoot, `health/history/${day}.json`),
@@ -793,6 +856,21 @@ function buildHealthArtifacts(surfaceHealth, options) {
     },
     subnets: subnetArtifacts,
     badges: badgeArtifacts,
+  };
+}
+
+function summarizeEndpoints(endpoints) {
+  return {
+    endpoint_count: endpoints.length,
+    monitored_count: endpoints.filter(
+      (endpoint) => endpoint.monitoring_status === "monitored",
+    ).length,
+    pool_eligible_count: endpoints.filter((endpoint) => endpoint.pool_eligible)
+      .length,
+    by_kind: countBy(endpoints, "kind"),
+    by_layer: countBy(endpoints, "layer"),
+    by_publication_state: countBy(endpoints, "publication_state"),
+    by_status: countBy(endpoints, "status"),
   };
 }
 

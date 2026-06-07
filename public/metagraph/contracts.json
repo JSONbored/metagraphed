@@ -27,6 +27,14 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Endpoint resources for one provider or operator.",
+      "id": "provider-endpoints",
+      "path": "/metagraph/providers/{slug}/endpoints.json",
+      "schema_ref": "#/components/schemas/ProviderEndpointsArtifact"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Clean API route index for metagraph.sh consumers.",
       "id": "api-index",
       "path": "/metagraph/api-index.json",
@@ -87,6 +95,22 @@
       "id": "surfaces-subnet",
       "path": "/metagraph/surfaces/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetSurfacesArtifact"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Generalized endpoint/resource registry derived from curated surfaces and probe observations.",
+      "id": "endpoints",
+      "path": "/metagraph/endpoints.json",
+      "schema_ref": "#/components/schemas/EndpointsArtifact"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Generalized endpoint/resource registry for one subnet.",
+      "id": "endpoints-subnet",
+      "path": "/metagraph/endpoints/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetEndpointsArtifact"
     },
     {
       "content_type": "application/json",
@@ -247,6 +271,14 @@
       "id": "rpc-pools",
       "path": "/metagraph/rpc/pools.json",
       "schema_ref": "#/components/schemas/RpcPoolsArtifact"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Generalized endpoint pool scoring for future read-only routing.",
+      "id": "endpoint-pools",
+      "path": "/metagraph/endpoint-pools.json",
+      "schema_ref": "#/components/schemas/EndpointPoolsArtifact"
     },
     {
       "content_type": "application/json",

@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-24",
   "summary": {
-    "avg_latency_ms": 317,
+    "avg_latency_ms": 356,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:06.786Z",
-    "last_ok": "2026-06-06T12:31:06.786Z",
+    "last_checked": "2026-06-07T05:10:08.066Z",
+    "last_ok": "2026-06-07T05:10:08.066Z",
     "name": "Quasar",
     "netuid": 24,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:06.412Z",
-      "last_ok": "2026-06-06T12:31:06.412Z",
-      "latency_ms": 264,
+      "last_checked": "2026-06-07T05:10:07.522Z",
+      "last_ok": "2026-06-07T05:10:07.522Z",
+      "latency_ms": 263,
       "method_tested": "HEAD",
       "netuid": 24,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-1",
       "uptime_sample_ratio": 1,
       "url": "https://huggingface.co/silx-ai/Quasar-3B-A1B-Preview",
-      "verified_at": "2026-06-06T12:31:06.412Z"
+      "verified_at": "2026-06-07T05:10:07.522Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:06.585Z",
-      "last_ok": "2026-06-06T12:31:06.585Z",
-      "latency_ms": 433,
+      "last_checked": "2026-06-07T05:10:07.746Z",
+      "last_ok": "2026-06-07T05:10:07.746Z",
+      "latency_ms": 448,
       "method_tested": "HEAD",
       "netuid": 24,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-2",
       "uptime_sample_ratio": 1,
       "url": "https://huggingface.co/Qwen/Qwen3.5-4B",
-      "verified_at": "2026-06-06T12:31:06.585Z"
+      "verified_at": "2026-06-07T05:10:07.746Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:06.328Z",
-      "last_ok": "2026-06-06T12:31:06.328Z",
-      "latency_ms": 146,
+      "last_checked": "2026-06-07T05:10:07.575Z",
+      "last_ok": "2026-06-07T05:10:07.575Z",
+      "latency_ms": 256,
       "method_tested": "HEAD",
       "netuid": 24,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-24-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/24",
-      "verified_at": "2026-06-06T12:31:06.328Z"
+      "verified_at": "2026-06-07T05:10:07.575Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:06.786Z",
-      "last_ok": "2026-06-06T12:31:06.786Z",
-      "latency_ms": 559,
+      "last_checked": "2026-06-07T05:10:08.066Z",
+      "last_ok": "2026-06-07T05:10:08.066Z",
+      "latency_ms": 729,
       "method_tested": "HEAD",
       "netuid": 24,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-24-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/SILX-LABS/QUASAR-SUBNET",
-      "verified_at": "2026-06-06T12:31:06.786Z"
+      "verified_at": "2026-06-07T05:10:08.066Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:06.528Z",
-      "last_ok": "2026-06-06T12:31:06.528Z",
-      "latency_ms": 297,
+      "last_checked": "2026-06-07T05:10:07.606Z",
+      "last_ok": "2026-06-07T05:10:07.606Z",
+      "latency_ms": 232,
       "method_tested": "HEAD",
       "netuid": 24,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-24-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://silxinc.com/",
-      "verified_at": "2026-06-06T12:31:06.528Z"
+      "verified_at": "2026-06-07T05:10:07.606Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:06.594Z",
-      "last_ok": "2026-06-06T12:31:06.594Z",
-      "latency_ms": 320,
+      "last_checked": "2026-06-07T05:10:07.749Z",
+      "last_ok": "2026-06-07T05:10:07.749Z",
+      "latency_ms": 358,
       "method_tested": "HEAD",
       "netuid": 24,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-24-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/24",
-      "verified_at": "2026-06-06T12:31:06.594Z"
+      "verified_at": "2026-06-07T05:10:07.749Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:06.513Z",
-      "last_ok": "2026-06-06T12:31:06.513Z",
-      "latency_ms": 197,
+      "last_checked": "2026-06-07T05:10:07.598Z",
+      "last_ok": "2026-06-07T05:10:07.598Z",
+      "latency_ms": 207,
       "method_tested": "HEAD",
       "netuid": 24,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-24-website-link-silxinc-com-data-artifact-3",
       "uptime_sample_ratio": 1,
       "url": "https://silxinc.com/blog/silx-ai-partners-with-adaption-labs",
-      "verified_at": "2026-06-06T12:31:06.513Z"
+      "verified_at": "2026-06-07T05:10:07.598Z"
     }
   ]
 }

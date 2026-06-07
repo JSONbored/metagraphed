@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-51",
   "summary": {
-    "avg_latency_ms": 491,
+    "avg_latency_ms": 703,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:10.631Z",
-    "last_ok": "2026-06-06T12:31:10.631Z",
+    "last_checked": "2026-06-07T05:10:12.718Z",
+    "last_ok": "2026-06-07T05:10:12.718Z",
     "name": "lium.io",
     "netuid": 51,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.310Z",
-      "last_ok": "2026-06-06T12:31:09.310Z",
-      "latency_ms": 360,
+      "last_checked": "2026-06-07T05:10:10.783Z",
+      "last_ok": "2026-06-07T05:10:10.783Z",
+      "latency_ms": 458,
       "method_tested": "HEAD",
       "netuid": 51,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-51-github-readme-datura-ai-lium-io-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.lium.io/bittensor-subnet/overview",
-      "verified_at": "2026-06-06T12:31:09.310Z"
+      "verified_at": "2026-06-07T05:10:10.783Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:09.125Z",
-      "last_ok": "2026-06-06T12:31:09.125Z",
-      "latency_ms": 144,
+      "last_checked": "2026-06-07T05:10:10.475Z",
+      "last_ok": "2026-06-07T05:10:10.475Z",
+      "latency_ms": 148,
       "method_tested": "HEAD",
       "netuid": 51,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-51-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/51",
-      "verified_at": "2026-06-06T12:31:09.125Z"
+      "verified_at": "2026-06-07T05:10:10.475Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:09.374Z",
-      "last_ok": "2026-06-06T12:31:09.374Z",
-      "latency_ms": 382,
+      "last_checked": "2026-06-07T05:10:11.085Z",
+      "last_ok": "2026-06-07T05:10:11.085Z",
+      "latency_ms": 706,
       "method_tested": "HEAD",
       "netuid": 51,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-51-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/Datura-ai/lium-io",
-      "verified_at": "2026-06-06T12:31:09.374Z"
+      "verified_at": "2026-06-07T05:10:11.085Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:10.631Z",
-      "last_ok": "2026-06-06T12:31:10.631Z",
-      "latency_ms": 1626,
+      "last_checked": "2026-06-07T05:10:12.718Z",
+      "last_ok": "2026-06-07T05:10:12.718Z",
+      "latency_ms": 2337,
       "method_tested": "HEAD",
       "netuid": 51,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-51-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://lium.io/",
-      "verified_at": "2026-06-06T12:31:10.631Z"
+      "verified_at": "2026-06-07T05:10:12.718Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.358Z",
-      "last_ok": "2026-06-06T12:31:09.358Z",
-      "latency_ms": 340,
+      "last_checked": "2026-06-07T05:10:10.966Z",
+      "last_ok": "2026-06-07T05:10:10.966Z",
+      "latency_ms": 538,
       "method_tested": "HEAD",
       "netuid": 51,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-51-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/51",
-      "verified_at": "2026-06-06T12:31:09.358Z"
+      "verified_at": "2026-06-07T05:10:10.966Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "subnet-api",
-      "last_checked": "2026-06-06T12:31:09.451Z",
-      "last_ok": "2026-06-06T12:31:09.451Z",
-      "latency_ms": 366,
+      "last_checked": "2026-06-07T05:10:10.903Z",
+      "last_ok": "2026-06-07T05:10:10.903Z",
+      "latency_ms": 467,
       "method_tested": "GET",
       "netuid": 51,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-51-website-common-api",
       "uptime_sample_ratio": 1,
       "url": "https://lium.io/api",
-      "verified_at": "2026-06-06T12:31:09.451Z"
+      "verified_at": "2026-06-07T05:10:10.903Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.305Z",
-      "last_ok": "2026-06-06T12:31:09.305Z",
-      "latency_ms": 218,
+      "last_checked": "2026-06-07T05:10:10.706Z",
+      "last_ok": "2026-06-07T05:10:10.706Z",
+      "latency_ms": 268,
       "method_tested": "HEAD",
       "netuid": 51,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-51-website-link-lium-io-docs-8",
       "uptime_sample_ratio": 1,
       "url": "https://docs.lium.io/",
-      "verified_at": "2026-06-06T12:31:09.305Z"
+      "verified_at": "2026-06-07T05:10:10.706Z"
     }
   ]
 }

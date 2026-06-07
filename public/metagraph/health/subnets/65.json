@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-65",
   "summary": {
-    "avg_latency_ms": 211,
+    "avg_latency_ms": 237,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:11.351Z",
-    "last_ok": "2026-06-06T12:31:11.351Z",
+    "last_checked": "2026-06-07T05:10:13.074Z",
+    "last_ok": "2026-06-07T05:10:13.074Z",
     "name": "TAO Private Network",
     "netuid": 65,
     "ok_count": 9,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:10.928Z",
-      "last_ok": "2026-06-06T12:31:10.928Z",
-      "latency_ms": 202,
+      "last_checked": "2026-06-07T05:10:12.536Z",
+      "last_ok": "2026-06-07T05:10:12.536Z",
+      "latency_ms": 189,
       "method_tested": "HEAD",
       "netuid": 65,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-65-github-readme-taofu-labs-tpn-subnet-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://taostats.io/subnets/65/registration",
-      "verified_at": "2026-06-06T12:31:10.928Z"
+      "verified_at": "2026-06-07T05:10:12.536Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:10.859Z",
-      "last_ok": "2026-06-06T12:31:10.859Z",
-      "latency_ms": 127,
+      "last_checked": "2026-06-07T05:10:12.659Z",
+      "last_ok": "2026-06-07T05:10:12.659Z",
+      "latency_ms": 311,
       "method_tested": "HEAD",
       "netuid": 65,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-65-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/65",
-      "verified_at": "2026-06-06T12:31:10.859Z"
+      "verified_at": "2026-06-07T05:10:12.659Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:11.351Z",
-      "last_ok": "2026-06-06T12:31:11.351Z",
-      "latency_ms": 596,
+      "last_checked": "2026-06-07T05:10:12.953Z",
+      "last_ok": "2026-06-07T05:10:12.953Z",
+      "latency_ms": 604,
       "method_tested": "HEAD",
       "netuid": 65,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-65-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/taofu-labs/tpn-subnet",
-      "verified_at": "2026-06-06T12:31:11.351Z"
+      "verified_at": "2026-06-07T05:10:12.953Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:10.939Z",
-      "last_ok": "2026-06-06T12:31:10.939Z",
-      "latency_ms": 110,
+      "last_checked": "2026-06-07T05:10:12.493Z",
+      "last_ok": "2026-06-07T05:10:12.493Z",
+      "latency_ms": 95,
       "method_tested": "HEAD",
       "netuid": 65,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-65-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://tpn.taofu.xyz/",
-      "verified_at": "2026-06-06T12:31:10.939Z"
+      "verified_at": "2026-06-07T05:10:12.493Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:11.181Z",
-      "last_ok": "2026-06-06T12:31:11.181Z",
-      "latency_ms": 332,
+      "last_checked": "2026-06-07T05:10:13.074Z",
+      "last_ok": "2026-06-07T05:10:13.074Z",
+      "latency_ms": 657,
       "method_tested": "HEAD",
       "netuid": 65,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-65-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/65",
-      "verified_at": "2026-06-06T12:31:11.181Z"
+      "verified_at": "2026-06-07T05:10:13.074Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:10.969Z",
-      "last_ok": "2026-06-06T12:31:10.969Z",
-      "latency_ms": 117,
+      "last_checked": "2026-06-07T05:10:12.513Z",
+      "last_ok": "2026-06-07T05:10:12.513Z",
+      "latency_ms": 19,
       "method_tested": "HEAD",
       "netuid": 65,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-65-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://tpn.taofu.xyz/docs",
-      "verified_at": "2026-06-06T12:31:10.969Z"
+      "verified_at": "2026-06-07T05:10:12.513Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:10.973Z",
-      "last_ok": "2026-06-06T12:31:10.973Z",
-      "latency_ms": 114,
+      "last_checked": "2026-06-07T05:10:12.603Z",
+      "last_ok": "2026-06-07T05:10:12.603Z",
+      "latency_ms": 101,
       "method_tested": "GET",
       "netuid": 65,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-65-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://tpn.taofu.xyz/swagger",
-      "verified_at": "2026-06-06T12:31:10.973Z"
+      "verified_at": "2026-06-07T05:10:12.603Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:11.023Z",
-      "last_ok": "2026-06-06T12:31:11.023Z",
-      "latency_ms": 158,
+      "last_checked": "2026-06-07T05:10:12.558Z",
+      "last_ok": "2026-06-07T05:10:12.558Z",
+      "latency_ms": 46,
       "method_tested": "HEAD",
       "netuid": 65,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-65-website-link-tpn-taofu-xyz-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://tpn.taofu.xyz/docs/Examples/quickstart",
-      "verified_at": "2026-06-06T12:31:11.023Z"
+      "verified_at": "2026-06-07T05:10:12.558Z"
     },
     {
       "auth_required": false,
@@ -227,9 +227,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:11.068Z",
-      "last_ok": "2026-06-06T12:31:11.068Z",
-      "latency_ms": 146,
+      "last_checked": "2026-06-07T05:10:12.633Z",
+      "last_ok": "2026-06-07T05:10:12.633Z",
+      "latency_ms": 110,
       "method_tested": "HEAD",
       "netuid": 65,
       "private_redirect_blocked": false,
@@ -243,7 +243,7 @@
       "surface_id": "sn-65-website-link-tpn-taofu-xyz-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://tpn.taofu.xyz/docs/worker",
-      "verified_at": "2026-06-06T12:31:11.068Z"
+      "verified_at": "2026-06-07T05:10:12.633Z"
     }
   ]
 }

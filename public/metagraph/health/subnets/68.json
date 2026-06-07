@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-68",
   "summary": {
-    "avg_latency_ms": 277,
+    "avg_latency_ms": 313,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:11.787Z",
-    "last_ok": "2026-06-06T12:31:11.787Z",
+    "last_checked": "2026-06-07T05:10:13.403Z",
+    "last_ok": "2026-06-07T05:10:13.403Z",
     "name": "NOVA",
     "netuid": 68,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:11.321Z",
-      "last_ok": "2026-06-06T12:31:11.321Z",
-      "latency_ms": 143,
+      "last_checked": "2026-06-07T05:10:13.068Z",
+      "last_ok": "2026-06-07T05:10:13.068Z",
+      "latency_ms": 283,
       "method_tested": "HEAD",
       "netuid": 68,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-68-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/68",
-      "verified_at": "2026-06-06T12:31:11.321Z"
+      "verified_at": "2026-06-07T05:10:13.068Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:11.787Z",
-      "last_ok": "2026-06-06T12:31:11.787Z",
-      "latency_ms": 606,
+      "last_checked": "2026-06-07T05:10:13.403Z",
+      "last_ok": "2026-06-07T05:10:13.403Z",
+      "latency_ms": 599,
       "method_tested": "HEAD",
       "netuid": 68,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-68-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/metanova-labs/nova",
-      "verified_at": "2026-06-06T12:31:11.787Z"
+      "verified_at": "2026-06-07T05:10:13.403Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:11.445Z",
-      "last_ok": "2026-06-06T12:31:11.445Z",
-      "latency_ms": 245,
+      "last_checked": "2026-06-07T05:10:13.065Z",
+      "last_ok": "2026-06-07T05:10:13.065Z",
+      "latency_ms": 242,
       "method_tested": "HEAD",
       "netuid": 68,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-68-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.metanova-labs.ai/",
-      "verified_at": "2026-06-06T12:31:11.445Z"
+      "verified_at": "2026-06-07T05:10:13.065Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:11.497Z",
-      "last_ok": "2026-06-06T12:31:11.497Z",
-      "latency_ms": 276,
+      "last_checked": "2026-06-07T05:10:13.282Z",
+      "last_ok": "2026-06-07T05:10:13.282Z",
+      "latency_ms": 425,
       "method_tested": "HEAD",
       "netuid": 68,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-68-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/68",
-      "verified_at": "2026-06-06T12:31:11.497Z"
+      "verified_at": "2026-06-07T05:10:13.282Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:11.493Z",
-      "last_ok": "2026-06-06T12:31:11.493Z",
-      "latency_ms": 233,
+      "last_checked": "2026-06-07T05:10:13.101Z",
+      "last_ok": "2026-06-07T05:10:13.101Z",
+      "latency_ms": 222,
       "method_tested": "HEAD",
       "netuid": 68,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-68-website-link-www-metanova-labs-ai-dashboard-5",
       "uptime_sample_ratio": 1,
       "url": "https://www.metanova-labs.ai/dashboard",
-      "verified_at": "2026-06-06T12:31:11.493Z"
+      "verified_at": "2026-06-07T05:10:13.101Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:11.492Z",
-      "last_ok": "2026-06-06T12:31:11.492Z",
-      "latency_ms": 228,
+      "last_checked": "2026-06-07T05:10:13.134Z",
+      "last_ok": "2026-06-07T05:10:13.134Z",
+      "latency_ms": 208,
       "method_tested": "HEAD",
       "netuid": 68,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-68-website-link-www-metanova-labs-ai-data-artifact-4",
       "uptime_sample_ratio": 1,
       "url": "https://www.metanova-labs.ai/models",
-      "verified_at": "2026-06-06T12:31:11.492Z"
+      "verified_at": "2026-06-07T05:10:13.134Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:11.484Z",
-      "last_ok": "2026-06-06T12:31:11.484Z",
-      "latency_ms": 210,
+      "last_checked": "2026-06-07T05:10:13.145Z",
+      "last_ok": "2026-06-07T05:10:13.145Z",
+      "latency_ms": 215,
       "method_tested": "HEAD",
       "netuid": 68,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-68-website-link-www-metanova-labs-ai-docs-3",
       "uptime_sample_ratio": 1,
       "url": "https://www.metanova-labs.ai/whitepapers",
-      "verified_at": "2026-06-06T12:31:11.484Z"
+      "verified_at": "2026-06-07T05:10:13.145Z"
     }
   ]
 }

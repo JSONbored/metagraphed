@@ -2,12 +2,12 @@
   "adapter_count": 2,
   "artifact_budget_summary": {
     "fail_count": 0,
-    "ok_count": 827,
+    "ok_count": 973,
     "warn_count": 0
   },
   "artifact_budgets": [],
-  "artifact_count": 827,
-  "artifact_size_bytes": 24974805,
+  "artifact_count": 973,
+  "artifact_size_bytes": 29529178,
   "artifacts": [
     {
       "path": "adapters/allways.json",
@@ -21,8 +21,8 @@
     },
     {
       "path": "api-index.json",
-      "sha256": "ce81b09287f75a7b60e99e9098c883e9c846925deb963df73ec189ea1a59f34d",
-      "size_bytes": 41196
+      "sha256": "eee9caf7ce192ee138c226bbca7eb96e7ec4d0f1a6a43d5998aa1cf40e09899a",
+      "size_bytes": 54589
     },
     {
       "path": "candidates.json",
@@ -676,13 +676,13 @@
     },
     {
       "path": "changelog.json",
-      "sha256": "f8da75ee0cf8011ab30cb12ccdac3f838878e2511c05661244992afaf85741c6",
-      "size_bytes": 36620
+      "sha256": "b6b37120fa9365a0d1a18bab38e57fa134b3e921cf0467961abb45b3697d3bb6",
+      "size_bytes": 35978
     },
     {
       "path": "contracts.json",
-      "sha256": "1f0a82d98dbaf4f2e035d4b4829728d7bd2f58e0d7dc0a7c8a969889fab462ad",
-      "size_bytes": 12973
+      "sha256": "33e303bb1933f2c2ff12dd324ffde527b34f859c632bef171f85fe438bead75c",
+      "size_bytes": 14304
     },
     {
       "path": "coverage.json",
@@ -695,569 +695,569 @@
       "size_bytes": 147854
     },
     {
-      "path": "evidence-ledger.json",
-      "sha256": "bce4bf0574df81aa8827c95af9287a8bbce8b3f794eeb38a98a77f95917b6aac",
-      "size_bytes": 647493
+      "path": "endpoint-pools.json",
+      "sha256": "adb96918cc31f32db3087ce80415b65da6e120f2781a15db2bf5252ca09140df",
+      "size_bytes": 6506
     },
     {
-      "path": "freshness.json",
-      "sha256": "05ff8dcbf718fdde91699257c816a7127f7001546f7490d1328be023d0a0fd97",
-      "size_bytes": 1573
+      "path": "endpoints.json",
+      "sha256": "89590b2686d6324820c362b777e7db684f97144fe56db72792fc3260860c8f31",
+      "size_bytes": 1030587
     },
     {
-      "path": "gaps.json",
-      "sha256": "02a2b23487136903e961e6862c1664f7cacdab935349a079bc87ada251cfa390",
-      "size_bytes": 86035
+      "path": "endpoints/0.json",
+      "sha256": "ca1ca4716219840dd05051dedff63b8af9052ee8007393786ec1ab5b6828a4ef",
+      "size_bytes": 17152
     },
     {
-      "path": "health/badges/0.json",
-      "sha256": "8c92d86dd1a8acb53c656b6fd65c6297f15d1b4d1e14ec0297174b2138781fad",
-      "size_bytes": 298
+      "path": "endpoints/1.json",
+      "sha256": "3a7544557499a298fb637f94affa35272dd75971d5baad865465f3d88300768e",
+      "size_bytes": 10313
     },
     {
-      "path": "health/badges/1.json",
-      "sha256": "d35fc3a58dba8dfd81d95bbfa4aca204250e6b6072f49a2e24ac38aee6705439",
-      "size_bytes": 289
+      "path": "endpoints/10.json",
+      "sha256": "3b06743a475b1f84f12d7a610ef0b4c1089b7f92b60cfa06ba7755e5979c0b3e",
+      "size_bytes": 6049
     },
     {
-      "path": "health/badges/10.json",
-      "sha256": "710c2e9917b910096270d066f5b159a3ff1c7bd0b01632453f7fc2d0fff3ba1e",
-      "size_bytes": 291
+      "path": "endpoints/100.json",
+      "sha256": "25b5e745fec7b343770e815c071eb058961c1c40fbccfea8bfdebb5b7a816a97",
+      "size_bytes": 10133
     },
     {
-      "path": "health/badges/100.json",
-      "sha256": "d59d1e049d021ac0c0005f4e255b118c41dfa08efadcd13ecd77da10b814cd8a",
-      "size_bytes": 293
+      "path": "endpoints/101.json",
+      "sha256": "6359e7e24fcdb44dfceead745a96b204375019ade1ed8b4d760da94bca4ec436",
+      "size_bytes": 3256
     },
     {
-      "path": "health/badges/101.json",
-      "sha256": "172ca2da90f53b82793769785a4a5c458a38103d07f40c3448ba8844409e4eb7",
-      "size_bytes": 293
+      "path": "endpoints/102.json",
+      "sha256": "c6b9a44489b2e3c0586120a4592682609c596597c9928c69fc2414b1f9511642",
+      "size_bytes": 9953
     },
     {
-      "path": "health/badges/102.json",
-      "sha256": "7f0cf11b5a79905a1426caf1bb5a92afd46eec6c668b7ce262c2dbfce1371a2b",
-      "size_bytes": 293
+      "path": "endpoints/103.json",
+      "sha256": "4f3d9bb536fb2e0357f82b67fde0fa53b94141e294eb63df1c6568c047b16222",
+      "size_bytes": 9963
     },
     {
-      "path": "health/badges/103.json",
-      "sha256": "c1a3456b255bfdccce525433895babbaef913b8548a8f15ec5f496c869a8e529",
-      "size_bytes": 293
+      "path": "endpoints/104.json",
+      "sha256": "aa1e6a4bb55bf0f1a4cfa616ef70ffc9f97dde1d2079fe8703d2ea30f3cb282d",
+      "size_bytes": 3316
     },
     {
-      "path": "health/badges/104.json",
-      "sha256": "f6fe40daac5ee18354a3c06c32edfc3868ca54a8cefccc072645f340d5dc34bf",
-      "size_bytes": 293
+      "path": "endpoints/105.json",
+      "sha256": "62b0e649d295efb18c09134e215cc355d922407e74f230ca947231fa5e69719d",
+      "size_bytes": 8580
     },
     {
-      "path": "health/badges/105.json",
-      "sha256": "c9a9bf6dc1450118c15280d0754ec68f1451196f25298c84271f6481339bcccf",
-      "size_bytes": 293
+      "path": "endpoints/106.json",
+      "sha256": "6906e83fdbff5bad7745d8c80d6ae71f7fa887f5d4bb7eacc401634f6ee8d683",
+      "size_bytes": 7267
     },
     {
-      "path": "health/badges/106.json",
-      "sha256": "70bfac1f3418cc64b514902aee0f7d8639b2aa938b558a3c18fbea088c19cca0",
-      "size_bytes": 293
+      "path": "endpoints/107.json",
+      "sha256": "ff57cf8f34b8f4ab39517ef0958e2ee24fa9877c79dbd6dad961c723ed471f6f",
+      "size_bytes": 15622
     },
     {
-      "path": "health/badges/107.json",
-      "sha256": "be23ee14d5129a57801258f72c201b4f44ede1a9ee687e5550292b19c3bed0d5",
-      "size_bytes": 295
+      "path": "endpoints/108.json",
+      "sha256": "02cdc9ddf5ae5a6ff4da6d7b48e93340f5b2de97414872e212f87f7136298054",
+      "size_bytes": 6095
     },
     {
-      "path": "health/badges/108.json",
-      "sha256": "b25e4629cf01dee6ee339104bbc2b3c351bb4ab71be36a653589985e5478c9ab",
-      "size_bytes": 293
+      "path": "endpoints/109.json",
+      "sha256": "587d529f22c669df75850665e7389e977f57d952eb634be8455c42b5db7ec8a8",
+      "size_bytes": 4651
     },
     {
-      "path": "health/badges/109.json",
-      "sha256": "d11d8610786c452fea807d8c0b0ff8ddeba5fd34e39e6c4af10f6f32be06cf76",
-      "size_bytes": 293
+      "path": "endpoints/11.json",
+      "sha256": "33cb2b6999c45a19c569b01dcacf8ac30def0650c3f41a8a9dd32b393119741d",
+      "size_bytes": 8709
     },
     {
-      "path": "health/badges/11.json",
-      "sha256": "55b6446908699406591614afd87b15b84c550d31044f7574a8ef1a918ac2b625",
-      "size_bytes": 291
+      "path": "endpoints/110.json",
+      "sha256": "e5bc6a0f7527daa0374ea04faf8d2795570a2f55aa3ce2db15780c0efaa77405",
+      "size_bytes": 10416
     },
     {
-      "path": "health/badges/110.json",
-      "sha256": "5f27d35d749a302a2a2bc4c1c70cf4cb8bdca5255e330ff2ef525ff22eb8d713",
-      "size_bytes": 293
+      "path": "endpoints/111.json",
+      "sha256": "3cec4e418b28b0f6c4cb59584f6ccb5d1f7db1d58247a895dab738c773fe1150",
+      "size_bytes": 4747
     },
     {
-      "path": "health/badges/111.json",
-      "sha256": "d5df12b6b0329d953776f0f28e999c4d8e227413078d08e854e60b75e98258bc",
-      "size_bytes": 293
+      "path": "endpoints/112.json",
+      "sha256": "8b0bb82fa7f6b2c9d1ec632aae637a35fed484841e17061e48d85fdfc3e121ec",
+      "size_bytes": 7514
     },
     {
-      "path": "health/badges/112.json",
-      "sha256": "59ffd219d0cee375442afa1a0abfdd8bfa838c277186f0277873bcdb6ee34258",
-      "size_bytes": 293
+      "path": "endpoints/113.json",
+      "sha256": "02fd309780bcae1988ac34b549378f0e275b1a07cebc633bd7bc3315239ce8b1",
+      "size_bytes": 10085
     },
     {
-      "path": "health/badges/113.json",
-      "sha256": "99822ee5424d39698edfd5b654b07897992033af96ebc9dac230cab21a8deed8",
-      "size_bytes": 293
+      "path": "endpoints/114.json",
+      "sha256": "a9780f890ca4fb394962f3c4dd988130691f50c9c1333def618f76426d45e70a",
+      "size_bytes": 10088
     },
     {
-      "path": "health/badges/114.json",
-      "sha256": "54c323728a23813b55da4121545ca47f4df6f43c0b528932fe4c44eaac0fbc21",
-      "size_bytes": 293
+      "path": "endpoints/115.json",
+      "sha256": "f683cbc9a8c39d7dc99307190933ccc809504ac3aa0b72b7e120283fe733ebff",
+      "size_bytes": 4658
     },
     {
-      "path": "health/badges/115.json",
-      "sha256": "32208ba8c830994559848f9fa07bd1cef80073a55df8dab3d0b6b0cc2337626f",
-      "size_bytes": 293
+      "path": "endpoints/116.json",
+      "sha256": "73c09f6c1853ed9a9f12acafa3d6d34d68f9605268beb30ea06636a98d68db23",
+      "size_bytes": 3274
     },
     {
-      "path": "health/badges/116.json",
-      "sha256": "508482409d3436a3243b3377d6d7e083a687550d133085882bf9b15c505a565d",
-      "size_bytes": 293
+      "path": "endpoints/117.json",
+      "sha256": "8ee8464978428d50b1257ed28a7d7630f72bfee4c54f50ef396d31940dc4ed30",
+      "size_bytes": 6075
     },
     {
-      "path": "health/badges/117.json",
-      "sha256": "8a98e1e92384e0ed4c685b225691046a782d1a3af7fff1f67d6307c58ac903fa",
-      "size_bytes": 293
+      "path": "endpoints/118.json",
+      "sha256": "5cfd681292526c5f8e683bb12b1c70e533c337a08acf7e2fb6aeb3ec88602371",
+      "size_bytes": 11483
     },
     {
-      "path": "health/badges/118.json",
-      "sha256": "5766c030de77040b654067757f95feba1d060ef13195cdd0556035eed4f88b26",
-      "size_bytes": 293
+      "path": "endpoints/119.json",
+      "sha256": "2c86db377ecb94c9bdd39d0c45420af2456e3b7e6890be11fb6c63fbc87c1c42",
+      "size_bytes": 3265
     },
     {
-      "path": "health/badges/119.json",
-      "sha256": "97e07f66b91b53bb45822ba406ccb06d2114d3ec9123e99fdeb608bf5530d776",
-      "size_bytes": 293
+      "path": "endpoints/12.json",
+      "sha256": "c8d60ae1ba04a3c7836bedf5fff5a8dc93acd439d2fd4486982950e35e4948f3",
+      "size_bytes": 6198
     },
     {
-      "path": "health/badges/12.json",
-      "sha256": "216dedbe9966b19192e8f348c2dc0f843665ae741c4220589ab892e68f901182",
-      "size_bytes": 291
+      "path": "endpoints/120.json",
+      "sha256": "60ca755572482ef6bf934050007855f31287559ba22b3e592115cc82be266e92",
+      "size_bytes": 7480
     },
     {
-      "path": "health/badges/120.json",
-      "sha256": "d22179bfe1b2598e860db76afbb242a466c3a949daa66a5bb2b8449e98374de4",
-      "size_bytes": 293
+      "path": "endpoints/121.json",
+      "sha256": "014d0f9013b5060ab124eb46c20bdf9c3c0709e7de2519b6fdb2797d7ad5ac49",
+      "size_bytes": 6018
     },
     {
-      "path": "health/badges/121.json",
-      "sha256": "30b65b5c8ea28b11125154164eceb59b61090fda81859befa405bbd559043d13",
-      "size_bytes": 293
+      "path": "endpoints/122.json",
+      "sha256": "7b3487bc33cb7a79ecd1d3f2b15b0e6f7e6d52848f6fb76630e279af47313a38",
+      "size_bytes": 4712
     },
     {
-      "path": "health/badges/122.json",
-      "sha256": "ac1cc3530fa62e72cb8990ac913082a451604b77b2f9ba27de0e19b1afb2f1bc",
-      "size_bytes": 293
+      "path": "endpoints/123.json",
+      "sha256": "3b735285e3b2f09d3d57b9229f24b39256e2744e24ba599fd97998ceda072c3e",
+      "size_bytes": 4731
     },
     {
-      "path": "health/badges/123.json",
-      "sha256": "9c9fe635f234f8b2c839ce4bdebd91e8868459ed918a261f400ee115361c68e6",
-      "size_bytes": 293
+      "path": "endpoints/124.json",
+      "sha256": "e2417792bc501e233aba6a2a429ac4377f3d6e878b403fdad8a14a59af1bf520",
+      "size_bytes": 10108
     },
     {
-      "path": "health/badges/124.json",
-      "sha256": "32eac3470cb4a1e7cef47ec272f65aa99408c643e4d642569304ececf0e2e2d8",
-      "size_bytes": 293
+      "path": "endpoints/125.json",
+      "sha256": "2770f5d45eb94c4ccaf2af6bb02baf5c3a9c997d276a536158dc37b0f690fbab",
+      "size_bytes": 3265
     },
     {
-      "path": "health/badges/125.json",
-      "sha256": "aa43b334edb1cfc708b554fbccd45d48ca8ddade8708b334935e58724c334cad",
-      "size_bytes": 293
+      "path": "endpoints/126.json",
+      "sha256": "4f903f5e54293ece0c27017218eed0b14896dec864aca7b799256237482b54a6",
+      "size_bytes": 7328
     },
     {
-      "path": "health/badges/126.json",
-      "sha256": "b4fcadf6ac37a1226b8361dea88d47551642af66aff50a0557aba43829ed383b",
-      "size_bytes": 293
+      "path": "endpoints/127.json",
+      "sha256": "9a2aecb9da2b2aec7b2a03c497bedc6ffc2890c5439f162404e2118ef0035fbb",
+      "size_bytes": 7435
     },
     {
-      "path": "health/badges/127.json",
-      "sha256": "b9c43d8e1d7e899e565100471fa283a2154f62387ef7aa8ac72333dae15c73e1",
-      "size_bytes": 293
+      "path": "endpoints/128.json",
+      "sha256": "f87cae831f7799f05877fad939fbcbfa70a59a74a79910756a2a6bb5403ae1e1",
+      "size_bytes": 10117
     },
     {
-      "path": "health/badges/128.json",
-      "sha256": "f556831e1dd766e0f1c6ea45f73afe84531aedf5d0a80c4b76ef8469ee2549e3",
-      "size_bytes": 293
+      "path": "endpoints/13.json",
+      "sha256": "4d72e422051bf48b60354f7d8630d7d879bc4d218a943cdde5ab19ccf97d5238",
+      "size_bytes": 10605
     },
     {
-      "path": "health/badges/13.json",
-      "sha256": "d797826c61e7c6e3e37561c5bc78c75ea611e9570cb74b88af892d15f7174b15",
-      "size_bytes": 291
+      "path": "endpoints/14.json",
+      "sha256": "a6cf50f0d5646ebcfbcd947f94d285d65d29cdbb89a2f967779c195e624226f3",
+      "size_bytes": 14257
     },
     {
-      "path": "health/badges/14.json",
-      "sha256": "10d45494e98b68b7f16cb820a775f7195d0489526ed9bc4b806afe204e551691",
-      "size_bytes": 293
+      "path": "endpoints/15.json",
+      "sha256": "706eec866ed2f2e3380d55d9314fbf5894da9442ff25b13d90e4d994a935fad9",
+      "size_bytes": 12793
     },
     {
-      "path": "health/badges/15.json",
-      "sha256": "105590d6efed84ed7c77a377eadee4a495dbfab09c0051c1a672d84070d947e6",
-      "size_bytes": 291
+      "path": "endpoints/16.json",
+      "sha256": "4f47e62283a970c61be8ebe78f53f8d9dca35412b197493ec58821dcd50aa823",
+      "size_bytes": 8559
     },
     {
-      "path": "health/badges/16.json",
-      "sha256": "6365f03719a1862e6d71a3e0b7245df99d7b43e5df3e17a6c54a8cd49d7369ad",
-      "size_bytes": 291
+      "path": "endpoints/17.json",
+      "sha256": "38e4d01d1df2178b8346e25e561f5cdec4ee277ffd9da4a4e5bf28d307bd5de9",
+      "size_bytes": 8821
     },
     {
-      "path": "health/badges/17.json",
-      "sha256": "f4f4c0f3897b81cc2612cbf3f9d4a39030e17b491caf7541c9bee8bd6b9185fa",
-      "size_bytes": 291
+      "path": "endpoints/18.json",
+      "sha256": "ca8d0c06dc117d291203e67778f53d5ccd13747fc807b434140e135a6e8937eb",
+      "size_bytes": 8749
     },
     {
-      "path": "health/badges/18.json",
-      "sha256": "0ff2eb6fac333a281ee796c1a479f69603d0c430b206976b20b4c498f892a240",
-      "size_bytes": 291
+      "path": "endpoints/19.json",
+      "sha256": "e538f8e7e5aa839d4421778cb316f63f3e3aea33223ff4a2a72a7cf92732b09f",
+      "size_bytes": 10153
     },
     {
-      "path": "health/badges/19.json",
-      "sha256": "3586a21fbec8d10aedb44773879de4dcd518ca1aeb94e626bf87e48eba44cab4",
-      "size_bytes": 291
+      "path": "endpoints/2.json",
+      "sha256": "c0e7f8defc75ce4380b1d533add2870a53bda99550cdd2ab78891c0ab61630ac",
+      "size_bytes": 14475
     },
     {
-      "path": "health/badges/2.json",
-      "sha256": "46249ca41568c8cae247fb3c37f1a4027c5cea0e83ff73af995505bd76ee1354",
-      "size_bytes": 291
+      "path": "endpoints/20.json",
+      "sha256": "00c3a33d63834a9a94ee35e758ce5f0014bab4b143ee5de227e512cc40c676e2",
+      "size_bytes": 4619
     },
     {
-      "path": "health/badges/20.json",
-      "sha256": "c7fc6584a8c896dc317781a48fb22cbc4c26e4a8bd9894858f0e76dc16166035",
-      "size_bytes": 291
+      "path": "endpoints/21.json",
+      "sha256": "0527f8baff9fabc6144c6d0263ec2d3d72b55dceac5cb99ab97d37ae328ec811",
+      "size_bytes": 4592
     },
     {
-      "path": "health/badges/21.json",
-      "sha256": "8d28fdb29567ec2dfaf6a72037bf9152672654b0a79745ac5953faf666f8e473",
-      "size_bytes": 291
+      "path": "endpoints/22.json",
+      "sha256": "d3f6d043ceea823a844ea180bca501b82caa46f674077401ae47aa99d9ad9438",
+      "size_bytes": 10007
     },
     {
-      "path": "health/badges/22.json",
-      "sha256": "40de26127fca0cdfed7487da86c6b29469c3167b0ec26dde9a13f09826e59056",
-      "size_bytes": 291
+      "path": "endpoints/23.json",
+      "sha256": "50928d965aa0af31bb8507b8fd8ed947a8237f61ff33b822367232afe1b235d2",
+      "size_bytes": 15819
     },
     {
-      "path": "health/badges/23.json",
-      "sha256": "66673b03f31bf4a9452b3fbf2d747ca80fe07243508918530aef9d1a6c932054",
-      "size_bytes": 293
+      "path": "endpoints/24.json",
+      "sha256": "6003a1c0edad539def568d0da1642f61fed24d5a0fbd387605674656b3dacaf3",
+      "size_bytes": 10336
     },
     {
-      "path": "health/badges/24.json",
-      "sha256": "a55ebd3d16e2d33c0b38a0e8522c5abe0aefa7f1eb27ceb3109f9bd67489c77b",
-      "size_bytes": 291
+      "path": "endpoints/25.json",
+      "sha256": "92d2c217c54a614c33db98fa60150e748313f8533067546895959a4cdec50242",
+      "size_bytes": 10176
     },
     {
-      "path": "health/badges/25.json",
-      "sha256": "caf4a79ebb01ad4cfe0d3b36bde93f95459d6151a1a479276fdc707f2d132d18",
-      "size_bytes": 291
+      "path": "endpoints/26.json",
+      "sha256": "002d28554c063c669a920e9bfc0e3eb8efb4111cfc7cd85fc70fe375ac5e6011",
+      "size_bytes": 8711
     },
     {
-      "path": "health/badges/26.json",
-      "sha256": "027ac43608dfa24fd3b1402c2ae3948de921bf4c2982a508b0e35452f4e71269",
-      "size_bytes": 291
+      "path": "endpoints/27.json",
+      "sha256": "ecd3a691fa5367e26388ab0573e6145347a6633994a665aafe16ecff7fb189b7",
+      "size_bytes": 3251
     },
     {
-      "path": "health/badges/27.json",
-      "sha256": "2034d9a44284c990689d28f4f200c06d9fbe53415f417bc70fc74e37477e5a4c",
-      "size_bytes": 291
+      "path": "endpoints/28.json",
+      "sha256": "aa2066edb427593b232b5ef01fb90e48b6ec9b8aa10532abc297cffcb9b2c186",
+      "size_bytes": 3239
     },
     {
-      "path": "health/badges/28.json",
-      "sha256": "746982183f012e3c5ebf23b762bb7cb00f35199cb6cbdeac17d76764fd5d3239",
-      "size_bytes": 291
+      "path": "endpoints/29.json",
+      "sha256": "63b753d94a1a966b6dafc85f94019dd99ab1444364c3eaf43c6f75df607676af",
+      "size_bytes": 9029
     },
     {
-      "path": "health/badges/29.json",
-      "sha256": "4465a397020585b338fbd63971f3ff79f2ca7de6a3877007496cec5826ab8bb3",
-      "size_bytes": 291
+      "path": "endpoints/3.json",
+      "sha256": "df8cc7e3454506ac371f06e1c612abaa616c30712c76e207a5dc0f6d540f2dfc",
+      "size_bytes": 4669
     },
     {
-      "path": "health/badges/3.json",
-      "sha256": "4e0721a016685e00b1b559a11d30fd4f1bbf9ba7478f2e87705a8d93233884cc",
-      "size_bytes": 289
+      "path": "endpoints/30.json",
+      "sha256": "73060178746831278bf1cee9e8304888f4434d6c375e8803b7655a88774036a5",
+      "size_bytes": 5957
     },
     {
-      "path": "health/badges/30.json",
-      "sha256": "50b2543488399511fc81a42e14fcbe5d66fe4f54a266f0e40198e176fbad6a21",
-      "size_bytes": 291
+      "path": "endpoints/31.json",
+      "sha256": "cd153846a26467be9248c4346940e2592194db5896045581143c4ff49468be2b",
+      "size_bytes": 3251
     },
     {
-      "path": "health/badges/31.json",
-      "sha256": "e0a8132335417ab5ade85a6a76038e2234df6193fdb85a48b37176b62b89bde1",
-      "size_bytes": 291
+      "path": "endpoints/32.json",
+      "sha256": "bf9e49ef6f67ecd32bd66e0f6b08a03766d2e9d39decc9a6d3188ea66e45b07e",
+      "size_bytes": 7428
     },
     {
-      "path": "health/badges/32.json",
-      "sha256": "900932282d56b06c6792aba2ed17b352bfa7d87e97bfa10412df2d9d1b34b338",
-      "size_bytes": 291
+      "path": "endpoints/33.json",
+      "sha256": "a75ca9a85fa88f92cd04f68f2a6e638707c0816cccc8580a3f6d991597f465db",
+      "size_bytes": 13941
     },
     {
-      "path": "health/badges/33.json",
-      "sha256": "b864a8f881c8aa035386987985a0af71833270d07dfce58fffc6bf22086fdf30",
-      "size_bytes": 298
+      "path": "endpoints/34.json",
+      "sha256": "752cbcc39a7049a8f1c417d80530561e3c5a0b4eeaf08d980e0175632d01c1ab",
+      "size_bytes": 6196
     },
     {
-      "path": "health/badges/34.json",
-      "sha256": "94d1bab7b50dc08e711f173e7d8998a161b5be622996a463caadf7b3b169fd66",
-      "size_bytes": 291
+      "path": "endpoints/35.json",
+      "sha256": "67c812a6b4a19eeb8a5f0e6077955a95ef7cea5e91d973b477cbcf2b50fcdc56",
+      "size_bytes": 8865
     },
     {
-      "path": "health/badges/35.json",
-      "sha256": "5b0c29812ee58e661ca7f5712a73253a2c5291f08d2c212c34d055dd521ca277",
-      "size_bytes": 291
+      "path": "endpoints/36.json",
+      "sha256": "73e10c3d5b73539c038706d7e2590b8e6d6b45e8ad83209043991cdd0671c58f",
+      "size_bytes": 8562
     },
     {
-      "path": "health/badges/36.json",
-      "sha256": "5b8c125ec3402ae938462e94a7f94ec1d00c9b73c6ea86fca334eb3bdd66f0de",
-      "size_bytes": 291
+      "path": "endpoints/37.json",
+      "sha256": "a2e3a3093a515f53fbc1b248f1478e7ebb96dec4cf075b0895d5aa3d0e9ac155",
+      "size_bytes": 10304
     },
     {
-      "path": "health/badges/37.json",
-      "sha256": "0e05b25fb6f620a29cb974d5c3f390ff62cd7df658adecc47fcf8fdf415e9ac3",
-      "size_bytes": 291
+      "path": "endpoints/38.json",
+      "sha256": "23cb0ccf1d5bd0384f5ef25a9827dad1bffc6fa66364d6291315f7517358fcc9",
+      "size_bytes": 8733
     },
     {
-      "path": "health/badges/38.json",
-      "sha256": "6b284e50bda22d685e0477b5ce766b731bcf0723806ce097aa0fc7e785d7bc7a",
-      "size_bytes": 291
+      "path": "endpoints/39.json",
+      "sha256": "0f4ffc78a8acc09b3deab967aae23c6e5bedcaf7677c2020857532635864ec9b",
+      "size_bytes": 4689
     },
     {
-      "path": "health/badges/39.json",
-      "sha256": "4108f9a1b1effbe813e52f6d8ca1a0b97581fcd5819f19c9cae229161b0f7367",
-      "size_bytes": 291
+      "path": "endpoints/4.json",
+      "sha256": "a2dfdd471401878f7bf3912dca4c241491c6bbbfd2421ce58a8365ccfb5b1559",
+      "size_bytes": 11462
     },
     {
-      "path": "health/badges/4.json",
-      "sha256": "a9d1cfce43332fd2f0f7b9c419e575f67058b4750ce830b18ea5e7b24447667e",
-      "size_bytes": 289
+      "path": "endpoints/40.json",
+      "sha256": "52a7e5054841d725b5dcdeee93c3385874cceb4a000e949b764d393fe11064a0",
+      "size_bytes": 3257
     },
     {
-      "path": "health/badges/40.json",
-      "sha256": "e5e12199d20242daf86b950da90fc42f9c56059ac2f30b458eafb4f72f57dc3a",
-      "size_bytes": 291
+      "path": "endpoints/41.json",
+      "sha256": "68fe842b38ee06dda80f4e706407bea562e53481420fb97ebdcd4969249f20b8",
+      "size_bytes": 11430
     },
     {
-      "path": "health/badges/41.json",
-      "sha256": "66bff485ea98654d06051d954552d71e02bcf9169482b10ff0f8e0469ff0c18d",
-      "size_bytes": 291
+      "path": "endpoints/42.json",
+      "sha256": "4375cc92eaa1f984079056937f891a25b15f08ba5f620062ee55ee7955f4f74a",
+      "size_bytes": 3260
     },
     {
-      "path": "health/badges/42.json",
-      "sha256": "a598f27c8312f0e790b32bcaf7e518547573b864b579d8d605bc03814fde2142",
-      "size_bytes": 291
+      "path": "endpoints/43.json",
+      "sha256": "49b5bd1bf0f0cb14e39e0b9109a39048c4038acb6cf60d28c24142ea25bdf494",
+      "size_bytes": 4726
     },
     {
-      "path": "health/badges/43.json",
-      "sha256": "b8cb68105cd580980106d94c26da4130f794e1acebd0584e94aacae74745e9a4",
-      "size_bytes": 291
+      "path": "endpoints/44.json",
+      "sha256": "0b503d45a57f694b0e377290936caf57ae92bcf9f667a65d8c4886fd30161f0a",
+      "size_bytes": 7380
     },
     {
-      "path": "health/badges/44.json",
-      "sha256": "a81c2561187ebe997aa5f754997089d2992182bd529dedf0c28fd26c72b0016a",
-      "size_bytes": 291
+      "path": "endpoints/45.json",
+      "sha256": "bcf87ec7fd34aeb849186a8a3050cce140ca7472b625280e61b167f159ef388d",
+      "size_bytes": 10067
     },
     {
-      "path": "health/badges/45.json",
-      "sha256": "cb247e32d5aa414c1e414cc71f8709eebf237fea5cd1d1457687708fb40bc573",
-      "size_bytes": 291
+      "path": "endpoints/46.json",
+      "sha256": "4fcf5ae3ffeb799ae03f6bb8cf7dea25325d0d8d7df27cc400e8db6f2e325d8a",
+      "size_bytes": 15540
     },
     {
-      "path": "health/badges/46.json",
-      "sha256": "74ad1765a0460013a7c0a33fa5a02c0ccf297b6e83ce89c91e8e31edf9e84955",
-      "size_bytes": 293
+      "path": "endpoints/47.json",
+      "sha256": "738ffa96e942787b73a23dbd18c5ec8c8a36f2ea6e6826798dd5172c1db7e87f",
+      "size_bytes": 8926
     },
     {
-      "path": "health/badges/47.json",
-      "sha256": "4b8bc9924e3c0c817947e041442e477dcd7dea68ef6a787ab81aef2a822b5ceb",
-      "size_bytes": 291
+      "path": "endpoints/48.json",
+      "sha256": "2ab0d8fbc35671edcf692e9f64b98f8bb9e557e16aff025d9b5e21dcabc14a49",
+      "size_bytes": 6029
     },
     {
-      "path": "health/badges/48.json",
-      "sha256": "5bdcb8b3d118e1a69ae3316b639ee3b5751c4557be4d4c12d645d5c1b778cd45",
-      "size_bytes": 291
+      "path": "endpoints/49.json",
+      "sha256": "8b8f36518b2d6a55caa6429f26f797ac40e77675d4974cde9417980020892157",
+      "size_bytes": 6051
     },
     {
-      "path": "health/badges/49.json",
-      "sha256": "c4c59b0531c5fde4b01bd16c76a9989a9799dac7f2cb5479814e25be6fe0eea8",
-      "size_bytes": 291
+      "path": "endpoints/5.json",
+      "sha256": "a5bb8cfcf09aaa58156e52fa54c6b67b5fa1721b09729e1db3e2443ef9167621",
+      "size_bytes": 10237
     },
     {
-      "path": "health/badges/5.json",
-      "sha256": "efad64f114fd9f072b47ff7b883dd83c34a2e659f55d62a484fb9fa27ddbc59a",
-      "size_bytes": 289
+      "path": "endpoints/50.json",
+      "sha256": "6932abbc970d2bf01c2b32eb244282d9bd72ee0ac7a1f68d757f2d222d4f4dd7",
+      "size_bytes": 8662
     },
     {
-      "path": "health/badges/50.json",
-      "sha256": "34ed04329816cce8c031a0bf9a5a2a2855619433ab3e82dcafc6987451157401",
-      "size_bytes": 291
+      "path": "endpoints/51.json",
+      "sha256": "082679097324de577ea77328baabaeeba9ffe3646a031a6e5faa2011a41a10dc",
+      "size_bytes": 10046
     },
     {
-      "path": "health/badges/51.json",
-      "sha256": "65086a8834ad5673174bcfd64e976e6a26bb43f7754a5a604a9aa10ee46f48c4",
-      "size_bytes": 291
+      "path": "endpoints/52.json",
+      "sha256": "efa2a0832f418b73a32f546eeb3aedd59ee4d9be600cbad0decc68a60fdbb61d",
+      "size_bytes": 11796
     },
     {
-      "path": "health/badges/52.json",
-      "sha256": "43c017c724161814631c5e2e95856feb65279cbd14b2a1f540323ef91816d91e",
-      "size_bytes": 291
+      "path": "endpoints/53.json",
+      "sha256": "00daf1999dcb5974ac16733a9abadf667e9ee2f520a5b12c99e0add65b39cf5b",
+      "size_bytes": 3284
     },
     {
-      "path": "health/badges/53.json",
-      "sha256": "a24e70cc30184ef10f84b4f179c7751b49b2f8140e3b857cd9104ad8aae3ef0d",
-      "size_bytes": 291
+      "path": "endpoints/54.json",
+      "sha256": "fa2d4d6cc8f15df7473250347997ab2db43ff107bb944941b3b129ba11717f40",
+      "size_bytes": 7500
     },
     {
-      "path": "health/badges/54.json",
-      "sha256": "6c97bdb670718f2ddf3fa24037edf8a44eb7aa5cae9874d83a171a9c5c8c1952",
-      "size_bytes": 291
+      "path": "endpoints/55.json",
+      "sha256": "7473ad7df876e247dc266d783cd79473a0500ef8322213f66379d02f6128f8ad",
+      "size_bytes": 6052
     },
     {
-      "path": "health/badges/55.json",
-      "sha256": "63d30db57a047fa5da91c9fe45a817f66acaeb9d64af41885dfe433b1b9be23f",
-      "size_bytes": 291
+      "path": "endpoints/56.json",
+      "sha256": "d62a57332fc3058e8173594bca3f63bfa1a34ad4949b75a58aaab9b13767647f",
+      "size_bytes": 11444
     },
     {
-      "path": "health/badges/56.json",
-      "sha256": "275927a88f0c913d4edeec27cf06fead70202f4f890cf36c46251b5c86cadcb4",
-      "size_bytes": 291
+      "path": "endpoints/57.json",
+      "sha256": "d8e7f081a2eec4191eaef09f6487848b8ef23ea4f53ac984ee0efc7467d27dc9",
+      "size_bytes": 4664
     },
     {
-      "path": "health/badges/57.json",
-      "sha256": "af4c792f66fa8d25547a0e73b8f5fccef74d4843b017984fa18e8c58cdf00199",
-      "size_bytes": 291
+      "path": "endpoints/58.json",
+      "sha256": "add690bba02a7a958e4faac53878e253b3ebd13f263e8194d3d74fcc1c8f0022",
+      "size_bytes": 10366
     },
     {
-      "path": "health/badges/58.json",
-      "sha256": "0d32f109a91f4b2dbeae6c3c9e4f35c1333e542073a18e585dd9c29e42f1e84a",
-      "size_bytes": 291
+      "path": "endpoints/59.json",
+      "sha256": "0c22c633e25edf9e0b7ce9b181f06fea7c578e2e64bbfdd313673f8b4e0db34c",
+      "size_bytes": 8821
     },
     {
-      "path": "health/badges/59.json",
-      "sha256": "338cf3bda0c5443eb5fc763c4aa580a036b888716bf82ddd5a0e55463fe7e742",
-      "size_bytes": 291
+      "path": "endpoints/6.json",
+      "sha256": "fcb6342a1bd5f704c7797ae20c830dbe81ec668d169e8b8bc431224654a61ffa",
+      "size_bytes": 10321
     },
     {
-      "path": "health/badges/6.json",
-      "sha256": "7a5c4fa5ba5f0dfa6ec3421481a308e02d2f6ab1169994442d4b71be4a545fbb",
-      "size_bytes": 289
+      "path": "endpoints/60.json",
+      "sha256": "fc358b2c0825334bf85471ea59f84702e6e470338d57e7c6cbff881a25aa4dcb",
+      "size_bytes": 14185
     },
     {
-      "path": "health/badges/60.json",
-      "sha256": "074b21ab7ad34e9981dd9d404388bc66fa836ce29481e325abe2d8473acc5090",
-      "size_bytes": 293
+      "path": "endpoints/61.json",
+      "sha256": "0133bbe78a2270412d6caa9f4192bdc94ca4e4bd09632f194720d0a6f38fa6e8",
+      "size_bytes": 8911
     },
     {
-      "path": "health/badges/61.json",
-      "sha256": "6af6f7b5c1e126acd3870ad49968da351e6a0f696deed33eedff76d5bc53b748",
-      "size_bytes": 291
+      "path": "endpoints/62.json",
+      "sha256": "6063b85bc43fddea84b9bb180e46170db8001f3a32ea05ce52303fcbb94e70a3",
+      "size_bytes": 4707
     },
     {
-      "path": "health/badges/62.json",
-      "sha256": "051ae70bd09a63ef76ea2c1c88707be1c6f7c124b0d86580d40ab9991507e0cf",
-      "size_bytes": 291
+      "path": "endpoints/63.json",
+      "sha256": "01f0912896cc076ef9b1127912c63bd1cebab5d12e5fbde725300075a4862a31",
+      "size_bytes": 7369
     },
     {
-      "path": "health/badges/63.json",
-      "sha256": "ac17a3b1e8571381865e7ddf342d44cfbd857f062569ba6ac54bc9aabff191b8",
-      "size_bytes": 291
+      "path": "endpoints/64.json",
+      "sha256": "eed4943048b59744045a7871764a2069c7eaddf1611acb9e139ce03c0d1e0b4a",
+      "size_bytes": 15668
     },
     {
-      "path": "health/badges/64.json",
-      "sha256": "6d0308e1b420c7468d4c44236742a4b18f9366810253b143ca6f227be23b7b8f",
-      "size_bytes": 293
+      "path": "endpoints/65.json",
+      "sha256": "6e5db9b7331b0ce8c15cad4fcd2cd056bb45e5c6527005eced81db4bdcaab9e7",
+      "size_bytes": 12875
     },
     {
-      "path": "health/badges/65.json",
-      "sha256": "664ca9e29a0b4f3adf1e9f8eebf984af544c44b22847d915a0b9de40e2403f6e",
-      "size_bytes": 291
+      "path": "endpoints/66.json",
+      "sha256": "a99e8aed32e80d732bb06f85bfba43e4826f831bb9f2491e416373e2dab239a2",
+      "size_bytes": 12716
     },
     {
-      "path": "health/badges/66.json",
-      "sha256": "8cf66b1948a69438753c3eb78dfb4522939e2729bd9bdccad80ab5bc890bd97c",
-      "size_bytes": 291
+      "path": "endpoints/67.json",
+      "sha256": "c4ee6fa4f66277e146be771123e8321d21bf4e1dcec8af91ce828d7c4b0ac849",
+      "size_bytes": 8717
     },
     {
-      "path": "health/badges/67.json",
-      "sha256": "b14b05ad5e13de0bd244cc8a66b48acd86d17be770f3ee990f53c71b15cc673f",
-      "size_bytes": 291
+      "path": "endpoints/68.json",
+      "sha256": "b17dc069c3f8eb7d8ccdaa3973759aa5b96fe71dca0bb57700eba2a2420afd57",
+      "size_bytes": 10190
     },
     {
-      "path": "health/badges/68.json",
-      "sha256": "475bcd66611715180ac0ca44731eeccb5ca28e76da7e30b8058b8eb61103fd7b",
-      "size_bytes": 291
+      "path": "endpoints/69.json",
+      "sha256": "3f84a7310aac8b4d31baadf4726070c62f11bd1c157e975a66f7fba9c88fede5",
+      "size_bytes": 3242
     },
     {
-      "path": "health/badges/69.json",
-      "sha256": "e7424b61dd3681f0e168ef01cc9392d22f203a14759db31bb08e3e8748c71a9c",
-      "size_bytes": 291
+      "path": "endpoints/7.json",
+      "sha256": "bd4abfc586854c32b2412d672d4214b1d13d0fd927a92a6caaaa04c86f0f6857",
+      "size_bytes": 18193
     },
     {
-      "path": "health/badges/7.json",
-      "sha256": "89a7832f141253abd51e8c1afd5e0d75ebca0c2da181733454d03a4742f01517",
-      "size_bytes": 291
+      "path": "endpoints/70.json",
+      "sha256": "44263780315aabbb8b7385db1b21087b2759f3ef746ecfab19fd2838c73e890b",
+      "size_bytes": 8681
     },
     {
-      "path": "health/badges/70.json",
-      "sha256": "0602fbc8a0d9a99b6d3962f897d69de5ccb0bcfb8fda9e5fa56003a544c57d8a",
-      "size_bytes": 291
+      "path": "endpoints/71.json",
+      "sha256": "cc0e050845e5805ff8fc89ccfd9e02f4dedf5d180b71eee46389ab4e7f745657",
+      "size_bytes": 8669
     },
     {
-      "path": "health/badges/71.json",
-      "sha256": "9c890a21c3698ecf6083ce6df9c02c5dd22aa6bad1967704dba908454ed0ac03",
-      "size_bytes": 291
+      "path": "endpoints/72.json",
+      "sha256": "e76a6cd7d4af764a545e83e1307aa8261f96f731444685c44beda8ade60e0571",
+      "size_bytes": 9062
     },
     {
-      "path": "health/badges/72.json",
-      "sha256": "c54a2c8a1b9d078613f98634309815cf3b8aa650153213d9edd5b3f357467964",
-      "size_bytes": 291
+      "path": "endpoints/73.json",
+      "sha256": "f396d58eccff6ecadd144a132797a1f80b446196ec59659fb88a13edfd3d883a",
+      "size_bytes": 3251
     },
     {
-      "path": "health/badges/73.json",
-      "sha256": "ca3b6aeca879a29c6c4d73ff4692912238355d7cc671d56afd29988fb80fa8d1",
-      "size_bytes": 291
+      "path": "endpoints/74.json",
+      "sha256": "fc22b3e1dc8c81e459a59fa1a09e17ef27637299df55a808962871e59e0bbb1e",
+      "size_bytes": 9159
     },
     {
-      "path": "health/badges/74.json",
-      "sha256": "61e111f8a4f4a6461a0c9971c6b1b6ee15eebcd982dd7bc9d0e6d8757480336b",
-      "size_bytes": 291
+      "path": "endpoints/75.json",
+      "sha256": "33d949486f3a6519ef121e785386d0c8fa2b09fef0572dc79e1b94046b5f935b",
+      "size_bytes": 10185
     },
     {
-      "path": "health/badges/75.json",
-      "sha256": "82a20d2b7259d495790762173af7a96f56e859122f09bf5045d62295a8a6f635",
-      "size_bytes": 291
+      "path": "endpoints/76.json",
+      "sha256": "f32f72db79211bdce2b6c84e90175853a33658787841bb265833d0c6ba7f004f",
+      "size_bytes": 3260
     },
     {
-      "path": "health/badges/76.json",
-      "sha256": "6605a7b3159023a82e48c98b9cb675e01c80ebbfc667f54ae89f8179c24f0084",
-      "size_bytes": 291
+      "path": "endpoints/77.json",
+      "sha256": "76151d652ac662c25e07d26589dec0434935d5953048e58d61bb1aa03e6aa4ca",
+      "size_bytes": 8658
     },
     {
-      "path": "health/badges/77.json",
-      "sha256": "bdce207c68fddd30784ccfa4afe0ffbb189f42954b2081b340bb4c8193a43249",
-      "size_bytes": 291
+      "path": "endpoints/78.json",
+      "sha256": "53ad3403205aa6b8d0407627570a6f8594584366daa9d425e95c92012e235a0f",
+      "size_bytes": 11382
     },
     {
-      "path": "health/badges/78.json",
-      "sha256": "be7946655b4ad4fb0d7f856e96aaa1cbfec19e3dfca9b55eddb474de4f3f836f",
-      "size_bytes": 291
+      "path": "endpoints/79.json",
+      "sha256": "a0896150e985dbbaa755e5ac4aa0e7c1f891830602cda5f4b2284cb5d9c0c2b7",
+      "size_bytes": 7382
     },
     {
-      "path": "health/badges/79.json",
-      "sha256": "c0ef0ed5079130ec866e8fb864a1b27b792e5dd00c859bc1a1e72c4fb5dd09b7",
-      "size_bytes": 291
+      "path": "endpoints/8.json",
+      "sha256": "cecd885429b1d697388799de9a3414c58adc978a0918deef6cff2b616ad75b88",
+      "size_bytes": 11582
     },
     {
-      "path": "health/badges/8.json",
-      "sha256": "15b36be18e8bcfb6afc2f57fe9e387731fdb6d6393fd749da90ef60e0ec15d5e",
-      "size_bytes": 289
+      "path": "endpoints/80.json",
+      "sha256": "fa1366bb85431128589dce97a9d6600b676279adc26b213416fed520348d0e09",
+      "size_bytes": 12847
     },
     {
-      "path": "health/badges/80.json",
-      "sha256": "4df84f895c6d44018d875f46d4dfb42fde613e679e66e7d74d25bd1e1fcf5898",
-      "size_bytes": 291
+      "path": "endpoints/81.json",
+      "sha256": "43f0dd1f063f8e1d281f3813e3bc4bb4635579ae2f4999d4f1a1eebb5e3546e1",
+      "size_bytes": 4686
     },
     {
-      "path": "health/badges/81.json",
-      "sha256": "318742f4fcfdde62c0353777e9a27f5b286df825427a8ff6b3fe8dba72b5140f",
-      "size_bytes": 291
+      "path": "endpoints/82.json",
+      "sha256": "71c932ce86b3f4e11cae8da81c6e79e7d23412c448f99dadfdf88ab9c48625c1",
+      "size_bytes": 10201
     }
   ],
   "candidate_count": 1634,
@@ -1297,6 +1297,7 @@
     },
     "surface_count": 754
   },
+  "endpoint_count": 754,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "provider_count": 14,
   "public_contract": {

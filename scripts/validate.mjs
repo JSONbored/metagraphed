@@ -29,11 +29,14 @@ const authorities = new Set([
 const subnetStatuses = new Set(["active", "inactive", "unknown"]);
 
 const surfaceKinds = new Set([
+  "archive",
   "subtensor-rpc",
   "subtensor-wss",
   "subnet-api",
   "openapi",
   "sse",
+  "sdk",
+  "example",
   "website",
   "source-repo",
   "dashboard",
@@ -115,11 +118,11 @@ function validateProvider(provider) {
     isValidUrl(provider.website_url),
     `${provider.id}: website_url must be a URL`,
   );
-  if (provider.docs_url !== undefined) {
-    assert(
-      isValidUrl(provider.docs_url),
-      `${provider.id}: docs_url must be a URL`,
-    );
+  for (const key of ["docs_url", "github_url", "team_url", "contact_url"]) {
+    if (provider[key] === undefined) {
+      continue;
+    }
+    assert(isValidUrl(provider[key]), `${provider.id}: ${key} must be a URL`);
   }
   assert(
     authorities.has(provider.authority),

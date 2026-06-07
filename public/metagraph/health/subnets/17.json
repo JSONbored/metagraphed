@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-17",
   "summary": {
-    "avg_latency_ms": 391,
+    "avg_latency_ms": 499,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:05.584Z",
-    "last_ok": "2026-06-06T12:31:05.584Z",
+    "last_checked": "2026-06-07T05:10:06.936Z",
+    "last_ok": "2026-06-07T05:10:06.936Z",
     "name": "404—GEN",
     "netuid": 17,
     "ok_count": 6,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:05.584Z",
-      "last_ok": "2026-06-06T12:31:05.584Z",
-      "latency_ms": 667,
+      "last_checked": "2026-06-07T05:10:06.535Z",
+      "last_ok": "2026-06-07T05:10:06.535Z",
+      "latency_ms": 686,
       "method_tested": "HEAD",
       "netuid": 17,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-17-github-readme-404-repo-three-gen-subnet-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://dashboard.404.xyz/d/main/404-gen",
-      "verified_at": "2026-06-06T12:31:05.584Z"
+      "verified_at": "2026-06-07T05:10:06.535Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:05.078Z",
-      "last_ok": "2026-06-06T12:31:05.078Z",
-      "latency_ms": 149,
+      "last_checked": "2026-06-07T05:10:06.181Z",
+      "last_ok": "2026-06-07T05:10:06.181Z",
+      "latency_ms": 292,
       "method_tested": "HEAD",
       "netuid": 17,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-17-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/17",
-      "verified_at": "2026-06-06T12:31:05.078Z"
+      "verified_at": "2026-06-07T05:10:06.181Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:05.455Z",
-      "last_ok": "2026-06-06T12:31:05.455Z",
-      "latency_ms": 511,
+      "last_checked": "2026-06-07T05:10:06.547Z",
+      "last_ok": "2026-06-07T05:10:06.547Z",
+      "latency_ms": 650,
       "method_tested": "HEAD",
       "netuid": 17,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-17-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/404-Repo/404-gen-subnet",
-      "verified_at": "2026-06-06T12:31:05.455Z"
+      "verified_at": "2026-06-07T05:10:06.547Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:05.141Z",
-      "last_ok": "2026-06-06T12:31:05.141Z",
-      "latency_ms": 155,
+      "last_checked": "2026-06-07T05:10:06.086Z",
+      "last_ok": "2026-06-07T05:10:06.086Z",
+      "latency_ms": 128,
       "method_tested": "HEAD",
       "netuid": 17,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-17-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.404.xyz/",
-      "verified_at": "2026-06-06T12:31:05.141Z"
+      "verified_at": "2026-06-07T05:10:06.086Z"
     },
     {
       "auth_required": false,
@@ -127,8 +127,8 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:05.422Z",
-      "last_ok": "2026-06-06T12:31:05.422Z",
+      "last_checked": "2026-06-07T05:10:06.458Z",
+      "last_ok": "2026-06-07T05:10:06.458Z",
       "latency_ms": 389,
       "method_tested": "HEAD",
       "netuid": 17,
@@ -143,7 +143,7 @@
       "surface_id": "sn-17-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/17",
-      "verified_at": "2026-06-06T12:31:05.422Z"
+      "verified_at": "2026-06-07T05:10:06.458Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:05.555Z",
-      "last_ok": "2026-06-06T12:31:05.555Z",
-      "latency_ms": 477,
+      "last_checked": "2026-06-07T05:10:06.936Z",
+      "last_ok": "2026-06-07T05:10:06.936Z",
+      "latency_ms": 850,
       "method_tested": "HEAD",
       "netuid": 17,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-17-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/404-Repo/three-gen-subnet",
-      "verified_at": "2026-06-06T12:31:05.555Z"
+      "verified_at": "2026-06-07T05:10:06.936Z"
     }
   ]
 }

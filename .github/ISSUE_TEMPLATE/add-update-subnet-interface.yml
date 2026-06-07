@@ -29,11 +29,14 @@ body:
     attributes:
       label: Interface kind
       options:
+        - archive
         - website
         - source-repo
         - subnet-api
         - openapi
         - sse
+        - sdk
+        - example
         - dashboard
         - repo-registry
         - docs

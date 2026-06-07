@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-98",
   "summary": {
-    "avg_latency_ms": 309,
+    "avg_latency_ms": 320,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:15.558Z",
-    "last_ok": "2026-06-06T12:31:15.558Z",
+    "last_checked": "2026-06-07T05:10:17.955Z",
+    "last_ok": "2026-06-07T05:10:17.955Z",
     "name": "ForeverMoney",
     "netuid": 98,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:15.274Z",
-      "last_ok": "2026-06-06T12:31:15.274Z",
-      "latency_ms": 234,
+      "last_checked": "2026-06-07T05:10:17.388Z",
+      "last_ok": "2026-06-07T05:10:17.388Z",
+      "latency_ms": 132,
       "method_tested": "HEAD",
       "netuid": 98,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-98-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/98",
-      "verified_at": "2026-06-06T12:31:15.274Z"
+      "verified_at": "2026-06-07T05:10:17.388Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:15.558Z",
-      "last_ok": "2026-06-06T12:31:15.558Z",
-      "latency_ms": 489,
+      "last_checked": "2026-06-07T05:10:17.955Z",
+      "last_ok": "2026-06-07T05:10:17.955Z",
+      "latency_ms": 642,
       "method_tested": "HEAD",
       "netuid": 98,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-98-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/SN98-ForeverMoney/forever-money",
-      "verified_at": "2026-06-06T12:31:15.558Z"
+      "verified_at": "2026-06-07T05:10:17.955Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:15.290Z",
-      "last_ok": "2026-06-06T12:31:15.290Z",
-      "latency_ms": 205,
+      "last_checked": "2026-06-07T05:10:17.488Z",
+      "last_ok": "2026-06-07T05:10:17.488Z",
+      "latency_ms": 164,
       "method_tested": "HEAD",
       "netuid": 98,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-98-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://forevermoney.ai/",
-      "verified_at": "2026-06-06T12:31:15.290Z"
+      "verified_at": "2026-06-07T05:10:17.488Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.475Z",
-      "last_ok": "2026-06-06T12:31:15.475Z",
-      "latency_ms": 353,
+      "last_checked": "2026-06-07T05:10:17.707Z",
+      "last_ok": "2026-06-07T05:10:17.707Z",
+      "latency_ms": 365,
       "method_tested": "HEAD",
       "netuid": 98,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-98-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/98",
-      "verified_at": "2026-06-06T12:31:15.475Z"
+      "verified_at": "2026-06-07T05:10:17.707Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:15.431Z",
-      "last_ok": "2026-06-06T12:31:15.431Z",
-      "latency_ms": 277,
+      "last_checked": "2026-06-07T05:10:17.718Z",
+      "last_ok": "2026-06-07T05:10:17.718Z",
+      "latency_ms": 355,
       "method_tested": "HEAD",
       "netuid": 98,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-98-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/orgs/SN98-ForeverMoney/repositories",
-      "verified_at": "2026-06-06T12:31:15.431Z"
+      "verified_at": "2026-06-07T05:10:17.718Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:15.525Z",
-      "last_ok": "2026-06-06T12:31:15.525Z",
-      "latency_ms": 349,
+      "last_checked": "2026-06-07T05:10:17.734Z",
+      "last_ok": "2026-06-07T05:10:17.734Z",
+      "latency_ms": 345,
       "method_tested": "HEAD",
       "netuid": 98,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-98-website-link-forevermoney-ai-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://dashboard.forevermoney.ai/",
-      "verified_at": "2026-06-06T12:31:15.525Z"
+      "verified_at": "2026-06-07T05:10:17.734Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.511Z",
-      "last_ok": "2026-06-06T12:31:15.511Z",
-      "latency_ms": 259,
+      "last_checked": "2026-06-07T05:10:17.715Z",
+      "last_ok": "2026-06-07T05:10:17.715Z",
+      "latency_ms": 240,
       "method_tested": "HEAD",
       "netuid": 98,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-98-website-link-forevermoney-ai-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://docs.forevermoney.ai/",
-      "verified_at": "2026-06-06T12:31:15.511Z"
+      "verified_at": "2026-06-07T05:10:17.715Z"
     }
   ]
 }

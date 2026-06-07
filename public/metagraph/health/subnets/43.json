@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-43",
   "summary": {
-    "avg_latency_ms": 315,
+    "avg_latency_ms": 444,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:08.385Z",
-    "last_ok": "2026-06-06T12:31:08.385Z",
+    "last_checked": "2026-06-07T05:10:09.938Z",
+    "last_ok": "2026-06-07T05:10:09.938Z",
     "name": "Graphite",
     "netuid": 43,
     "ok_count": 3,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:08.161Z",
-      "last_ok": "2026-06-06T12:31:08.161Z",
-      "latency_ms": 220,
+      "last_checked": "2026-06-07T05:10:09.409Z",
+      "last_ok": "2026-06-07T05:10:09.409Z",
+      "latency_ms": 182,
       "method_tested": "HEAD",
       "netuid": 43,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-43-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/43",
-      "verified_at": "2026-06-06T12:31:08.161Z"
+      "verified_at": "2026-06-07T05:10:09.409Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:08.385Z",
-      "last_ok": "2026-06-06T12:31:08.385Z",
-      "latency_ms": 433,
+      "last_checked": "2026-06-07T05:10:09.938Z",
+      "last_ok": "2026-06-07T05:10:09.938Z",
+      "latency_ms": 711,
       "method_tested": "HEAD",
       "netuid": 43,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-43-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/GraphiteAI/Graphite-Subnet",
-      "verified_at": "2026-06-06T12:31:08.385Z"
+      "verified_at": "2026-06-07T05:10:09.938Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:08.288Z",
-      "last_ok": "2026-06-06T12:31:08.288Z",
-      "latency_ms": 292,
+      "last_checked": "2026-06-07T05:10:09.690Z",
+      "last_ok": "2026-06-07T05:10:09.690Z",
+      "latency_ms": 439,
       "method_tested": "HEAD",
       "netuid": 43,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-43-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/43",
-      "verified_at": "2026-06-06T12:31:08.288Z"
+      "verified_at": "2026-06-07T05:10:09.690Z"
     }
   ]
 }

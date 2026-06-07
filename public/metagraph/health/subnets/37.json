@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-37",
   "summary": {
-    "avg_latency_ms": 314,
+    "avg_latency_ms": 318,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:08.070Z",
-    "last_ok": "2026-06-06T12:31:08.070Z",
+    "last_checked": "2026-06-07T05:10:09.484Z",
+    "last_ok": "2026-06-07T05:10:09.484Z",
     "name": "Aurelius",
     "netuid": 37,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:07.551Z",
-      "last_ok": "2026-06-06T12:31:07.551Z",
-      "latency_ms": 81,
+      "last_checked": "2026-06-07T05:10:08.843Z",
+      "last_ok": "2026-06-07T05:10:08.843Z",
+      "latency_ms": 114,
       "method_tested": "HEAD",
       "netuid": 37,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.bittensor.com/",
-      "verified_at": "2026-06-06T12:31:07.551Z"
+      "verified_at": "2026-06-07T05:10:08.843Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "subnet-api",
-      "last_checked": "2026-06-06T12:31:07.876Z",
-      "last_ok": "2026-06-06T12:31:07.876Z",
-      "latency_ms": 366,
+      "last_checked": "2026-06-07T05:10:09.101Z",
+      "last_ok": "2026-06-07T05:10:09.101Z",
+      "latency_ms": 359,
       "method_tested": "GET",
       "netuid": 37,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-37-github-readme-aurelius-protocol-aurelius-protocol-subnet-api-5",
       "uptime_sample_ratio": 1,
       "url": "https://new-collector-api-production.up.railway.app/health",
-      "verified_at": "2026-06-06T12:31:07.876Z"
+      "verified_at": "2026-06-07T05:10:09.101Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:07.828Z",
-      "last_ok": "2026-06-06T12:31:07.828Z",
-      "latency_ms": 303,
+      "last_checked": "2026-06-07T05:10:08.941Z",
+      "last_ok": "2026-06-07T05:10:08.941Z",
+      "latency_ms": 155,
       "method_tested": "HEAD",
       "netuid": 37,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-37-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/37",
-      "verified_at": "2026-06-06T12:31:07.828Z"
+      "verified_at": "2026-06-07T05:10:08.941Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:08.070Z",
-      "last_ok": "2026-06-06T12:31:08.070Z",
-      "latency_ms": 542,
+      "last_checked": "2026-06-07T05:10:09.484Z",
+      "last_ok": "2026-06-07T05:10:09.484Z",
+      "latency_ms": 691,
       "method_tested": "HEAD",
       "netuid": 37,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-37-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
-      "verified_at": "2026-06-06T12:31:08.070Z"
+      "verified_at": "2026-06-07T05:10:09.484Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:07.740Z",
-      "last_ok": "2026-06-06T12:31:07.740Z",
-      "latency_ms": 203,
+      "last_checked": "2026-06-07T05:10:08.915Z",
+      "last_ok": "2026-06-07T05:10:08.915Z",
+      "latency_ms": 118,
       "method_tested": "HEAD",
       "netuid": 37,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-37-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://aureliusaligned.ai/",
-      "verified_at": "2026-06-06T12:31:07.740Z"
+      "verified_at": "2026-06-07T05:10:08.915Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:07.893Z",
-      "last_ok": "2026-06-06T12:31:07.893Z",
-      "latency_ms": 342,
+      "last_checked": "2026-06-07T05:10:09.227Z",
+      "last_ok": "2026-06-07T05:10:09.227Z",
+      "latency_ms": 384,
       "method_tested": "HEAD",
       "netuid": 37,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-37-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/37",
-      "verified_at": "2026-06-06T12:31:07.893Z"
+      "verified_at": "2026-06-07T05:10:09.227Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:07.942Z",
-      "last_ok": "2026-06-06T12:31:07.942Z",
-      "latency_ms": 363,
+      "last_checked": "2026-06-07T05:10:09.251Z",
+      "last_ok": "2026-06-07T05:10:09.251Z",
+      "latency_ms": 408,
       "method_tested": "HEAD",
       "netuid": 37,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-37-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/Aurelius-Protocol",
-      "verified_at": "2026-06-06T12:31:07.942Z"
+      "verified_at": "2026-06-07T05:10:09.251Z"
     }
   ]
 }

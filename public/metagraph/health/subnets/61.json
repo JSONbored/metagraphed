@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-61",
   "summary": {
-    "avg_latency_ms": 360,
+    "avg_latency_ms": 402,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:10.755Z",
-    "last_ok": "2026-06-06T12:31:10.755Z",
+    "last_checked": "2026-06-07T05:10:12.398Z",
+    "last_ok": "2026-06-07T05:10:12.398Z",
     "name": "RedTeam",
     "netuid": 61,
     "ok_count": 6,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:10.755Z",
-      "last_ok": "2026-06-06T12:31:10.755Z",
-      "latency_ms": 574,
+      "last_checked": "2026-06-07T05:10:12.316Z",
+      "last_ok": "2026-06-07T05:10:12.316Z",
+      "latency_ms": 538,
       "method_tested": "HEAD",
       "netuid": 61,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-61-github-readme-redteamsubnet-redteam-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://dashboard.theredteam.io/",
-      "verified_at": "2026-06-06T12:31:10.755Z"
+      "verified_at": "2026-06-07T05:10:12.316Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:10.408Z",
-      "last_ok": "2026-06-06T12:31:10.408Z",
-      "latency_ms": 211,
+      "last_checked": "2026-06-07T05:10:11.982Z",
+      "last_ok": "2026-06-07T05:10:11.982Z",
+      "latency_ms": 191,
       "method_tested": "HEAD",
       "netuid": 61,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-61-github-readme-redteamsubnet-redteam-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://docs.theredteam.io/",
-      "verified_at": "2026-06-06T12:31:10.408Z"
+      "verified_at": "2026-06-07T05:10:11.982Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:10.348Z",
-      "last_ok": "2026-06-06T12:31:10.348Z",
-      "latency_ms": 143,
+      "last_checked": "2026-06-07T05:10:12.189Z",
+      "last_ok": "2026-06-07T05:10:12.189Z",
+      "latency_ms": 397,
       "method_tested": "HEAD",
       "netuid": 61,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-61-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/61",
-      "verified_at": "2026-06-06T12:31:10.348Z"
+      "verified_at": "2026-06-07T05:10:12.189Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:10.733Z",
-      "last_ok": "2026-06-06T12:31:10.733Z",
-      "latency_ms": 524,
+      "last_checked": "2026-06-07T05:10:12.398Z",
+      "last_ok": "2026-06-07T05:10:12.398Z",
+      "latency_ms": 599,
       "method_tested": "HEAD",
       "netuid": 61,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-61-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/RedTeamSubnet/RedTeam",
-      "verified_at": "2026-06-06T12:31:10.733Z"
+      "verified_at": "2026-06-07T05:10:12.398Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:10.609Z",
-      "last_ok": "2026-06-06T12:31:10.609Z",
-      "latency_ms": 356,
+      "last_checked": "2026-06-07T05:10:12.214Z",
+      "last_ok": "2026-06-07T05:10:12.214Z",
+      "latency_ms": 355,
       "method_tested": "HEAD",
       "netuid": 61,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-61-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.theredteam.io/",
-      "verified_at": "2026-06-06T12:31:10.609Z"
+      "verified_at": "2026-06-07T05:10:12.214Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:10.650Z",
-      "last_ok": "2026-06-06T12:31:10.650Z",
-      "latency_ms": 350,
+      "last_checked": "2026-06-07T05:10:12.198Z",
+      "last_ok": "2026-06-07T05:10:12.198Z",
+      "latency_ms": 333,
       "method_tested": "HEAD",
       "netuid": 61,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-61-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/61",
-      "verified_at": "2026-06-06T12:31:10.650Z"
+      "verified_at": "2026-06-07T05:10:12.198Z"
     }
   ]
 }

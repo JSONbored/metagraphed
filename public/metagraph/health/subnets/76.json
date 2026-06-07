@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-76",
   "summary": {
-    "avg_latency_ms": 281,
+    "avg_latency_ms": 282,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:12.411Z",
-    "last_ok": "2026-06-06T12:31:12.411Z",
+    "last_checked": "2026-06-07T05:10:14.174Z",
+    "last_ok": "2026-06-07T05:10:14.174Z",
     "name": "Byzantium",
     "netuid": 76,
     "ok_count": 2,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:12.349Z",
-      "last_ok": "2026-06-06T12:31:12.349Z",
-      "latency_ms": 258,
+      "last_checked": "2026-06-07T05:10:13.942Z",
+      "last_ok": "2026-06-07T05:10:13.942Z",
+      "latency_ms": 190,
       "method_tested": "HEAD",
       "netuid": 76,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-76-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/76",
-      "verified_at": "2026-06-06T12:31:12.349Z"
+      "verified_at": "2026-06-07T05:10:13.942Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.411Z",
-      "last_ok": "2026-06-06T12:31:12.411Z",
-      "latency_ms": 304,
+      "last_checked": "2026-06-07T05:10:14.174Z",
+      "last_ok": "2026-06-07T05:10:14.174Z",
+      "latency_ms": 374,
       "method_tested": "HEAD",
       "netuid": 76,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-76-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/76",
-      "verified_at": "2026-06-06T12:31:12.411Z"
+      "verified_at": "2026-06-07T05:10:14.174Z"
     }
   ]
 }

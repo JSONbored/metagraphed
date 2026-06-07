@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-3",
   "summary": {
-    "avg_latency_ms": 404,
+    "avg_latency_ms": 542,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:03.430Z",
-    "last_ok": "2026-06-06T12:31:03.430Z",
+    "last_checked": "2026-06-07T05:10:04.365Z",
+    "last_ok": "2026-06-07T05:10:04.365Z",
     "name": "deprecated",
     "netuid": 3,
     "ok_count": 3,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:03.053Z",
-      "last_ok": "2026-06-06T12:31:03.053Z",
-      "latency_ms": 249,
+      "last_checked": "2026-06-07T05:10:03.561Z",
+      "last_ok": "2026-06-07T05:10:03.561Z",
+      "latency_ms": 236,
       "method_tested": "HEAD",
       "netuid": 3,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-3-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/3",
-      "verified_at": "2026-06-06T12:31:03.053Z"
+      "verified_at": "2026-06-07T05:10:03.561Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.160Z",
-      "last_ok": "2026-06-06T12:31:03.160Z",
-      "latency_ms": 349,
+      "last_checked": "2026-06-07T05:10:03.788Z",
+      "last_ok": "2026-06-07T05:10:03.788Z",
+      "latency_ms": 414,
       "method_tested": "HEAD",
       "netuid": 3,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-3-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/3",
-      "verified_at": "2026-06-06T12:31:03.160Z"
+      "verified_at": "2026-06-07T05:10:03.788Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:03.430Z",
-      "last_ok": "2026-06-06T12:31:03.430Z",
-      "latency_ms": 615,
+      "last_checked": "2026-06-07T05:10:04.365Z",
+      "last_ok": "2026-06-07T05:10:04.365Z",
+      "latency_ms": 975,
       "method_tested": "HEAD",
       "netuid": 3,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-3-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tplr-ai/templar",
-      "verified_at": "2026-06-06T12:31:03.430Z"
+      "verified_at": "2026-06-07T05:10:04.365Z"
     }
   ]
 }

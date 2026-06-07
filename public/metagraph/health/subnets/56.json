@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-56",
   "summary": {
-    "avg_latency_ms": 337,
+    "avg_latency_ms": 386,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:10.053Z",
-    "last_ok": "2026-06-06T12:31:10.053Z",
+    "last_checked": "2026-06-07T05:10:11.462Z",
+    "last_ok": "2026-06-07T05:10:11.462Z",
     "name": "Gradients",
     "netuid": 56,
     "ok_count": 8,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:09.632Z",
-      "last_ok": "2026-06-06T12:31:09.632Z",
-      "latency_ms": 139,
+      "last_checked": "2026-06-07T05:10:11.082Z",
+      "last_ok": "2026-06-07T05:10:11.082Z",
+      "latency_ms": 175,
       "method_tested": "HEAD",
       "netuid": 56,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-56-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/56",
-      "verified_at": "2026-06-06T12:31:09.632Z"
+      "verified_at": "2026-06-07T05:10:11.082Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:10.053Z",
-      "last_ok": "2026-06-06T12:31:10.053Z",
-      "latency_ms": 544,
+      "last_checked": "2026-06-07T05:10:11.419Z",
+      "last_ok": "2026-06-07T05:10:11.419Z",
+      "latency_ms": 506,
       "method_tested": "HEAD",
       "netuid": 56,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-56-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/gradients-ai/G.O.D",
-      "verified_at": "2026-06-06T12:31:10.053Z"
+      "verified_at": "2026-06-07T05:10:11.419Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:09.760Z",
-      "last_ok": "2026-06-06T12:31:09.760Z",
-      "latency_ms": 239,
+      "last_checked": "2026-06-07T05:10:11.246Z",
+      "last_ok": "2026-06-07T05:10:11.246Z",
+      "latency_ms": 320,
       "method_tested": "HEAD",
       "netuid": 56,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-56-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.gradients.io/",
-      "verified_at": "2026-06-06T12:31:09.760Z"
+      "verified_at": "2026-06-07T05:10:11.246Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.875Z",
-      "last_ok": "2026-06-06T12:31:09.875Z",
-      "latency_ms": 338,
+      "last_checked": "2026-06-07T05:10:11.397Z",
+      "last_ok": "2026-06-07T05:10:11.397Z",
+      "latency_ms": 467,
       "method_tested": "HEAD",
       "netuid": 56,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-56-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/56",
-      "verified_at": "2026-06-06T12:31:09.875Z"
+      "verified_at": "2026-06-07T05:10:11.397Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:10.051Z",
-      "last_ok": "2026-06-06T12:31:10.051Z",
-      "latency_ms": 506,
+      "last_checked": "2026-06-07T05:10:11.413Z",
+      "last_ok": "2026-06-07T05:10:11.413Z",
+      "latency_ms": 472,
       "method_tested": "HEAD",
       "netuid": 56,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-56-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/rayonlabs/G.O.D",
-      "verified_at": "2026-06-06T12:31:10.051Z"
+      "verified_at": "2026-06-07T05:10:11.413Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.954Z",
-      "last_ok": "2026-06-06T12:31:09.954Z",
-      "latency_ms": 358,
+      "last_checked": "2026-06-07T05:10:11.431Z",
+      "last_ok": "2026-06-07T05:10:11.431Z",
+      "latency_ms": 466,
       "method_tested": "HEAD",
       "netuid": 56,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-56-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://www.gradients.io/docs",
-      "verified_at": "2026-06-06T12:31:09.954Z"
+      "verified_at": "2026-06-07T05:10:11.431Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:09.987Z",
-      "last_ok": "2026-06-06T12:31:09.987Z",
-      "latency_ms": 361,
+      "last_checked": "2026-06-07T05:10:11.462Z",
+      "last_ok": "2026-06-07T05:10:11.462Z",
+      "latency_ms": 380,
       "method_tested": "GET",
       "netuid": 56,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-56-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://www.gradients.io/swagger",
-      "verified_at": "2026-06-06T12:31:09.987Z"
+      "verified_at": "2026-06-07T05:10:11.462Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:09.839Z",
-      "last_ok": "2026-06-06T12:31:09.839Z",
-      "latency_ms": 207,
+      "last_checked": "2026-06-07T05:10:11.386Z",
+      "last_ok": "2026-06-07T05:10:11.386Z",
+      "latency_ms": 301,
       "method_tested": "HEAD",
       "netuid": 56,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-56-website-link-www-gradients-io-data-artifact-9",
       "uptime_sample_ratio": 1,
       "url": "https://www.gradients.io/app/my-models",
-      "verified_at": "2026-06-06T12:31:09.839Z"
+      "verified_at": "2026-06-07T05:10:11.386Z"
     }
   ]
 }

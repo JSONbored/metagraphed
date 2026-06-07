@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-1",
   "summary": {
-    "avg_latency_ms": 469,
+    "avg_latency_ms": 541,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:02.814Z",
-    "last_ok": "2026-06-06T12:31:02.814Z",
+    "last_checked": "2026-06-07T05:10:03.492Z",
+    "last_ok": "2026-06-07T05:10:03.492Z",
     "name": "Apex",
     "netuid": 1,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:02.620Z",
-      "last_ok": "2026-06-06T12:31:02.620Z",
-      "latency_ms": 535,
+      "last_checked": "2026-06-07T05:10:03.167Z",
+      "last_ok": "2026-06-07T05:10:03.167Z",
+      "latency_ms": 598,
       "method_tested": "HEAD",
       "netuid": 1,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-1-github-readme-macrocosm-os-apex-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.macrocosmos.ai/subnets/subnet-1-apex",
-      "verified_at": "2026-06-06T12:31:02.620Z"
+      "verified_at": "2026-06-07T05:10:03.167Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:02.572Z",
-      "last_ok": "2026-06-06T12:31:02.572Z",
-      "latency_ms": 487,
+      "last_checked": "2026-06-07T05:10:03.161Z",
+      "last_ok": "2026-06-07T05:10:03.161Z",
+      "latency_ms": 592,
       "method_tested": "HEAD",
       "netuid": 1,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-1-github-readme-macrocosm-os-apex-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://docs.macrocosmos.ai/subnets/new-subnet-1-apex/subnet-1-base-miner-setup",
-      "verified_at": "2026-06-06T12:31:02.572Z"
+      "verified_at": "2026-06-07T05:10:03.161Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:02.573Z",
-      "last_ok": "2026-06-06T12:31:02.573Z",
-      "latency_ms": 487,
+      "last_checked": "2026-06-07T05:10:03.186Z",
+      "last_ok": "2026-06-07T05:10:03.186Z",
+      "latency_ms": 617,
       "method_tested": "HEAD",
       "netuid": 1,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-1-github-readme-macrocosm-os-apex-docs-3",
       "uptime_sample_ratio": 1,
       "url": "https://docs.macrocosmos.ai/subnets/new-subnet-1-apex/subnet-1-base-miner-setup/apex-cli",
-      "verified_at": "2026-06-06T12:31:02.573Z"
+      "verified_at": "2026-06-07T05:10:03.186Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:02.624Z",
-      "last_ok": "2026-06-06T12:31:02.624Z",
-      "latency_ms": 539,
+      "last_checked": "2026-06-07T05:10:03.208Z",
+      "last_ok": "2026-06-07T05:10:03.208Z",
+      "latency_ms": 640,
       "method_tested": "HEAD",
       "netuid": 1,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-1-github-readme-macrocosm-os-apex-docs-4",
       "uptime_sample_ratio": 1,
       "url": "https://docs.macrocosmos.ai/subnets/new-subnet-1-apex/incentive-mechanism",
-      "verified_at": "2026-06-06T12:31:02.624Z"
+      "verified_at": "2026-06-07T05:10:03.208Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:02.570Z",
-      "last_ok": "2026-06-06T12:31:02.570Z",
-      "latency_ms": 324,
+      "last_checked": "2026-06-07T05:10:03.086Z",
+      "last_ok": "2026-06-07T05:10:03.086Z",
+      "latency_ms": 342,
       "method_tested": "HEAD",
       "netuid": 1,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-1-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/1",
-      "verified_at": "2026-06-06T12:31:02.570Z"
+      "verified_at": "2026-06-07T05:10:03.086Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:02.814Z",
-      "last_ok": "2026-06-06T12:31:02.814Z",
-      "latency_ms": 560,
+      "last_checked": "2026-06-07T05:10:03.492Z",
+      "last_ok": "2026-06-07T05:10:03.492Z",
+      "latency_ms": 744,
       "method_tested": "HEAD",
       "netuid": 1,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-1-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/macrocosm-os/apex",
-      "verified_at": "2026-06-06T12:31:02.814Z"
+      "verified_at": "2026-06-07T05:10:03.492Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:02.668Z",
-      "last_ok": "2026-06-06T12:31:02.668Z",
-      "latency_ms": 348,
+      "last_checked": "2026-06-07T05:10:03.018Z",
+      "last_ok": "2026-06-07T05:10:03.018Z",
+      "latency_ms": 253,
       "method_tested": "HEAD",
       "netuid": 1,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-1-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://apex.macrocosmos.ai/",
-      "verified_at": "2026-06-06T12:31:02.668Z"
+      "verified_at": "2026-06-07T05:10:03.018Z"
     }
   ]
 }

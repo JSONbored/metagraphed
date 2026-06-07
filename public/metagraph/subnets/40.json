@@ -131,6 +131,92 @@
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/40"
     }
   ],
+  "endpoints": [
+    {
+      "archive_support": null,
+      "auth_required": false,
+      "authority": "registry-observed",
+      "chain": "bittensor",
+      "classification": "unknown",
+      "error": null,
+      "id": "endpoint-sn-40-tensorplex-docs",
+      "kind": "docs",
+      "last_checked": null,
+      "latency_ms": null,
+      "latest_block": null,
+      "layer": "docs-provider",
+      "method_support": null,
+      "method_tested": "HEAD",
+      "monitoring_policy": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "source": "surface-probe-config",
+        "timeout_ms": 10000
+      },
+      "monitoring_status": "monitored",
+      "netuid": 40,
+      "network": "finney",
+      "operator": "tensorplex-subnet-docs",
+      "pool_eligible": false,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "publication_state": "monitored",
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "rpc_method_count": null,
+      "score": 0,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json"
+      ],
+      "status": "unknown",
+      "subnet_name": "Chunking",
+      "subnet_slug": "sn-40",
+      "surface_id": "sn-40-tensorplex-docs",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/40"
+    },
+    {
+      "archive_support": null,
+      "auth_required": false,
+      "authority": "registry-observed",
+      "chain": "bittensor",
+      "classification": "unknown",
+      "error": null,
+      "id": "endpoint-sn-40-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "last_checked": null,
+      "latency_ms": null,
+      "latest_block": null,
+      "layer": "subnet-app",
+      "method_support": null,
+      "method_tested": "HEAD",
+      "monitoring_policy": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "source": "surface-probe-config",
+        "timeout_ms": 10000
+      },
+      "monitoring_status": "monitored",
+      "netuid": 40,
+      "network": "finney",
+      "operator": "taomarketcap",
+      "pool_eligible": false,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "publication_state": "monitored",
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "rpc_method_count": null,
+      "score": 0,
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/40"
+      ],
+      "status": "unknown",
+      "subnet_name": "Chunking",
+      "subnet_slug": "sn-40",
+      "surface_id": "sn-40-taomarketcap-dashboard",
+      "url": "https://taomarketcap.com/subnets/40"
+    }
+  ],
   "gaps": {
     "gap_notes": [
       "No verified source repository yet.",

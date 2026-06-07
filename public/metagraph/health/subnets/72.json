@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-72",
   "summary": {
-    "avg_latency_ms": 243,
+    "avg_latency_ms": 287,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:12.127Z",
-    "last_ok": "2026-06-06T12:31:12.127Z",
+    "last_checked": "2026-06-07T05:10:13.863Z",
+    "last_ok": "2026-06-07T05:10:13.863Z",
     "name": "StreetVision by NATIX",
     "netuid": 72,
     "ok_count": 6,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:11.704Z",
-      "last_ok": "2026-06-06T12:31:11.704Z",
-      "latency_ms": 112,
+      "last_checked": "2026-06-07T05:10:13.405Z",
+      "last_ok": "2026-06-07T05:10:13.405Z",
+      "latency_ms": 122,
       "method_tested": "HEAD",
       "netuid": 72,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-72-github-readme-natixnetwork-streetvision-subnet-data-artifact-1",
       "uptime_sample_ratio": 1,
       "url": "https://huggingface.co/natix-network-org",
-      "verified_at": "2026-06-06T12:31:11.704Z"
+      "verified_at": "2026-06-07T05:10:13.405Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:11.786Z",
-      "last_ok": "2026-06-06T12:31:11.786Z",
-      "latency_ms": 139,
+      "last_checked": "2026-06-07T05:10:13.417Z",
+      "last_ok": "2026-06-07T05:10:13.417Z",
+      "latency_ms": 124,
       "method_tested": "HEAD",
       "netuid": 72,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-72-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/72",
-      "verified_at": "2026-06-06T12:31:11.786Z"
+      "verified_at": "2026-06-07T05:10:13.417Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:12.127Z",
-      "last_ok": "2026-06-06T12:31:12.127Z",
-      "latency_ms": 456,
+      "last_checked": "2026-06-07T05:10:13.738Z",
+      "last_ok": "2026-06-07T05:10:13.738Z",
+      "latency_ms": 412,
       "method_tested": "HEAD",
       "netuid": 72,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-72-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/natixnetwork/streetvision-subnet",
-      "verified_at": "2026-06-06T12:31:12.127Z"
+      "verified_at": "2026-06-07T05:10:13.738Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:11.873Z",
-      "last_ok": "2026-06-06T12:31:11.873Z",
-      "latency_ms": 169,
+      "last_checked": "2026-06-07T05:10:13.553Z",
+      "last_ok": "2026-06-07T05:10:13.553Z",
+      "latency_ms": 164,
       "method_tested": "HEAD",
       "netuid": 72,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-72-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.natix.network/?utm_source=bittensor",
-      "verified_at": "2026-06-06T12:31:11.873Z"
+      "verified_at": "2026-06-07T05:10:13.553Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.107Z",
-      "last_ok": "2026-06-06T12:31:12.107Z",
-      "latency_ms": 368,
+      "last_checked": "2026-06-07T05:10:13.846Z",
+      "last_ok": "2026-06-07T05:10:13.846Z",
+      "latency_ms": 444,
       "method_tested": "HEAD",
       "netuid": 72,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-72-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/72",
-      "verified_at": "2026-06-06T12:31:12.107Z"
+      "verified_at": "2026-06-07T05:10:13.846Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.001Z",
-      "last_ok": "2026-06-06T12:31:12.001Z",
-      "latency_ms": 215,
+      "last_checked": "2026-06-07T05:10:13.863Z",
+      "last_ok": "2026-06-07T05:10:13.863Z",
+      "latency_ms": 458,
       "method_tested": "HEAD",
       "netuid": 72,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-72-website-link-www-natix-network-docs-10",
       "uptime_sample_ratio": 1,
       "url": "https://docs.natix.network/whitepaper",
-      "verified_at": "2026-06-06T12:31:12.001Z"
+      "verified_at": "2026-06-07T05:10:13.863Z"
     }
   ]
 }

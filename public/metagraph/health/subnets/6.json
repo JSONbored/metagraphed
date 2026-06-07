@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-6",
   "summary": {
-    "avg_latency_ms": 314,
+    "avg_latency_ms": 408,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:03.762Z",
-    "last_ok": "2026-06-06T12:31:03.762Z",
+    "last_checked": "2026-06-07T05:10:04.726Z",
+    "last_ok": "2026-06-07T05:10:04.726Z",
     "name": "Numinous",
     "netuid": 6,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:03.517Z",
-      "last_ok": "2026-06-06T12:31:03.517Z",
-      "latency_ms": 280,
+      "last_checked": "2026-06-07T05:10:04.314Z",
+      "last_ok": "2026-06-07T05:10:04.314Z",
+      "latency_ms": 366,
       "method_tested": "HEAD",
       "netuid": 6,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-6-github-readme-numinouslabs-numinous-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://app.hex.tech/1644b22a-abe5-4113-9d5f-3ad05e4a8de7/app/Numinous-031erYRYSssIrH3W3KcyHg/latest",
-      "verified_at": "2026-06-06T12:31:03.517Z"
+      "verified_at": "2026-06-07T05:10:04.314Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:03.576Z",
-      "last_ok": "2026-06-06T12:31:03.576Z",
-      "latency_ms": 333,
+      "last_checked": "2026-06-07T05:10:04.434Z",
+      "last_ok": "2026-06-07T05:10:04.434Z",
+      "latency_ms": 444,
       "method_tested": "HEAD",
       "netuid": 6,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-6-github-readme-numinouslabs-numinous-dashboard-2",
       "uptime_sample_ratio": 1,
       "url": "https://taostats.io/subnets/6/chart",
-      "verified_at": "2026-06-06T12:31:03.576Z"
+      "verified_at": "2026-06-07T05:10:04.434Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:03.384Z",
-      "last_ok": "2026-06-06T12:31:03.384Z",
-      "latency_ms": 131,
+      "last_checked": "2026-06-07T05:10:04.258Z",
+      "last_ok": "2026-06-07T05:10:04.258Z",
+      "latency_ms": 236,
       "method_tested": "HEAD",
       "netuid": 6,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-6-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/6",
-      "verified_at": "2026-06-06T12:31:03.384Z"
+      "verified_at": "2026-06-07T05:10:04.258Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:03.762Z",
-      "last_ok": "2026-06-06T12:31:03.762Z",
-      "latency_ms": 472,
+      "last_checked": "2026-06-07T05:10:04.726Z",
+      "last_ok": "2026-06-07T05:10:04.726Z",
+      "latency_ms": 701,
       "method_tested": "HEAD",
       "netuid": 6,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-6-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/numinouslabs/numinous",
-      "verified_at": "2026-06-06T12:31:03.762Z"
+      "verified_at": "2026-06-07T05:10:04.726Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:03.502Z",
-      "last_ok": "2026-06-06T12:31:03.502Z",
-      "latency_ms": 206,
+      "last_checked": "2026-06-07T05:10:04.246Z",
+      "last_ok": "2026-06-07T05:10:04.246Z",
+      "latency_ms": 220,
       "method_tested": "HEAD",
       "netuid": 6,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-6-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://numinouslabs.io/",
-      "verified_at": "2026-06-06T12:31:03.502Z"
+      "verified_at": "2026-06-07T05:10:04.246Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.745Z",
-      "last_ok": "2026-06-06T12:31:03.745Z",
-      "latency_ms": 447,
+      "last_checked": "2026-06-07T05:10:04.449Z",
+      "last_ok": "2026-06-07T05:10:04.449Z",
+      "latency_ms": 415,
       "method_tested": "HEAD",
       "netuid": 6,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-6-taopedia-article",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
-      "verified_at": "2026-06-06T12:31:03.745Z"
+      "verified_at": "2026-06-07T05:10:04.449Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.655Z",
-      "last_ok": "2026-06-06T12:31:03.655Z",
-      "latency_ms": 329,
+      "last_checked": "2026-06-07T05:10:04.554Z",
+      "last_ok": "2026-06-07T05:10:04.554Z",
+      "latency_ms": 476,
       "method_tested": "HEAD",
       "netuid": 6,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-6-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/6",
-      "verified_at": "2026-06-06T12:31:03.655Z"
+      "verified_at": "2026-06-07T05:10:04.554Z"
     }
   ]
 }

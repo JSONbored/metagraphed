@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-55",
   "summary": {
-    "avg_latency_ms": 326,
+    "avg_latency_ms": 520,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:10.056Z",
-    "last_ok": "2026-06-06T12:31:10.056Z",
+    "last_checked": "2026-06-07T05:10:11.727Z",
+    "last_ok": "2026-06-07T05:10:11.727Z",
     "name": "NIOME",
     "netuid": 55,
     "ok_count": 4,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:09.596Z",
-      "last_ok": "2026-06-06T12:31:09.596Z",
-      "latency_ms": 148,
+      "last_checked": "2026-06-07T05:10:10.941Z",
+      "last_ok": "2026-06-07T05:10:10.941Z",
+      "latency_ms": 158,
       "method_tested": "HEAD",
       "netuid": 55,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-55-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/55",
-      "verified_at": "2026-06-06T12:31:09.596Z"
+      "verified_at": "2026-06-07T05:10:10.941Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:10.056Z",
-      "last_ok": "2026-06-06T12:31:10.056Z",
-      "latency_ms": 604,
+      "last_checked": "2026-06-07T05:10:11.590Z",
+      "last_ok": "2026-06-07T05:10:11.590Z",
+      "latency_ms": 717,
       "method_tested": "HEAD",
       "netuid": 55,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-55-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/genomesio/subnet-niome",
-      "verified_at": "2026-06-06T12:31:10.056Z"
+      "verified_at": "2026-06-07T05:10:11.590Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:09.648Z",
-      "last_ok": "2026-06-06T12:31:09.648Z",
-      "latency_ms": 192,
+      "last_checked": "2026-06-07T05:10:11.727Z",
+      "last_ok": "2026-06-07T05:10:11.727Z",
+      "latency_ms": 828,
       "method_tested": "HEAD",
       "netuid": 55,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-55-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://niome.genomes.io/",
-      "verified_at": "2026-06-06T12:31:09.648Z"
+      "verified_at": "2026-06-07T05:10:11.727Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.853Z",
-      "last_ok": "2026-06-06T12:31:09.853Z",
-      "latency_ms": 360,
+      "last_checked": "2026-06-07T05:10:11.278Z",
+      "last_ok": "2026-06-07T05:10:11.278Z",
+      "latency_ms": 375,
       "method_tested": "HEAD",
       "netuid": 55,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-55-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/55",
-      "verified_at": "2026-06-06T12:31:09.853Z"
+      "verified_at": "2026-06-07T05:10:11.278Z"
     }
   ]
 }

@@ -18,6 +18,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/contracts.json`: current public artifact contract version and artifact map.
 - `/metagraph/providers.json`: provider/source registry.
 - `/metagraph/providers/{slug}.json`: per-provider detail payload.
+- `/metagraph/providers/{slug}/endpoints.json`: endpoint resources for one provider or operator.
 - `/metagraph/api-index.json`: Worker API route map and response-envelope contract.
 - `/metagraph/openapi.json`: OpenAPI 3.1 contract for backend API consumers.
 - `/metagraph/types.d.ts`: generated TypeScript definitions for consumers.
@@ -26,6 +27,8 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/subnets/{netuid}.json`: per-subnet detail with native data, curated surfaces, candidates, curation, and gaps.
 - `/metagraph/surfaces.json`: curated public surfaces only.
 - `/metagraph/surfaces/{netuid}.json`: curated public surfaces for one subnet.
+- `/metagraph/endpoints.json`: generalized endpoint/resource registry derived from curated surfaces and probe observations.
+- `/metagraph/endpoints/{netuid}.json`: generalized endpoint/resource registry for one subnet.
 - `/metagraph/candidates.json`: unpromoted candidate surfaces from public discovery.
 - `/metagraph/candidates/{netuid}.json`: unpromoted candidate surfaces for one subnet.
 - `/metagraph/review-queue.json`: candidate surfaces queued for maintainer review.
@@ -46,6 +49,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/health/badges/{netuid}.json`: badge data for future metagraph.sh renderers.
 - `/metagraph/rpc-endpoints.json`: Bittensor base-layer RPC/WSS endpoint registry and probe status.
 - `/metagraph/rpc/pools.json`: endpoint pool scoring for future read-only routing.
+- `/metagraph/endpoint-pools.json`: generalized endpoint pool scoring for future read-only routing.
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
 - `/metagraph/adapters/{slug}.json`: adapter-backed public metrics snapshot.
@@ -63,10 +67,13 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/subnets/{netuid}`: fetch per-subnet detail.
 - `/api/v1/surfaces`: list curated public surfaces.
 - `/api/v1/subnets/{netuid}/surfaces`: list curated public surfaces for one subnet.
+- `/api/v1/endpoints`: list generalized endpoint resources and monitored public surfaces.
+- `/api/v1/subnets/{netuid}/endpoints`: list generalized endpoint resources for one subnet.
 - `/api/v1/candidates`: list unpromoted candidate surfaces.
 - `/api/v1/subnets/{netuid}/candidates`: list unpromoted candidate surfaces for one subnet.
 - `/api/v1/providers`: list providers and sources.
 - `/api/v1/providers/{slug}`: fetch per-provider detail.
+- `/api/v1/providers/{slug}/endpoints`: list endpoint resources for one provider or operator.
 - `/api/v1/coverage`: fetch registry coverage summary.
 - `/api/v1/curation`: fetch curation states by subnet.
 - `/api/v1/gaps`: fetch interface gap report.
@@ -80,6 +87,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/source-snapshots`: fetch source input hashes and counts.
 - `/api/v1/rpc/endpoints`: fetch Bittensor RPC endpoint status.
 - `/api/v1/rpc/pools`: fetch endpoint pool scores.
+- `/api/v1/endpoint-pools`: fetch generalized endpoint pool scores.
 - `/api/v1/schemas`: fetch captured schema index.
 - `/api/v1/adapters/{slug}`: fetch adapter-backed public metrics.
 - `/api/v1/search`: fetch compact search index.

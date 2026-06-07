@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-36",
   "summary": {
-    "avg_latency_ms": 359,
+    "avg_latency_ms": 291,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:07.848Z",
-    "last_ok": "2026-06-06T12:31:07.848Z",
+    "last_checked": "2026-06-07T05:10:09.051Z",
+    "last_ok": "2026-06-07T05:10:09.051Z",
     "name": "Eirel",
     "netuid": 36,
     "ok_count": 6,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:07.457Z",
-      "last_ok": "2026-06-06T12:31:07.457Z",
-      "latency_ms": 214,
+      "last_checked": "2026-06-07T05:10:08.742Z",
+      "last_ok": "2026-06-07T05:10:08.742Z",
+      "latency_ms": 199,
       "method_tested": "HEAD",
       "netuid": 36,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-36-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/36",
-      "verified_at": "2026-06-06T12:31:07.457Z"
+      "verified_at": "2026-06-07T05:10:08.742Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:07.681Z",
-      "last_ok": "2026-06-06T12:31:07.681Z",
-      "latency_ms": 393,
+      "last_checked": "2026-06-07T05:10:09.051Z",
+      "last_ok": "2026-06-07T05:10:09.051Z",
+      "latency_ms": 501,
       "method_tested": "HEAD",
       "netuid": 36,
       "private_redirect_blocked": false,
@@ -68,24 +68,24 @@
       "surface_id": "sn-36-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/RendixNetwork/eirel-ai",
-      "verified_at": "2026-06-06T12:31:07.681Z"
+      "verified_at": "2026-06-07T05:10:09.051Z"
     },
     {
       "auth_required": false,
-      "classification": "redirected",
+      "classification": "live",
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:07.784Z",
-      "last_ok": "2026-06-06T12:31:07.784Z",
-      "latency_ms": 472,
+      "last_checked": "2026-06-07T05:10:08.729Z",
+      "last_ok": "2026-06-07T05:10:08.729Z",
+      "latency_ms": 179,
       "method_tested": "HEAD",
       "netuid": 36,
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "public_safe": true,
-      "redirect_target": "https://www.eirel.ai/",
+      "redirect_target": null,
       "status": "ok",
       "status_code": 200,
       "subnet_name": "Eirel",
@@ -93,7 +93,7 @@
       "surface_id": "sn-36-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://eirel.ai/",
-      "verified_at": "2026-06-06T12:31:07.784Z"
+      "verified_at": "2026-06-07T05:10:08.729Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:07.769Z",
-      "last_ok": "2026-06-06T12:31:07.769Z",
-      "latency_ms": 389,
+      "last_checked": "2026-06-07T05:10:09.023Z",
+      "last_ok": "2026-06-07T05:10:09.023Z",
+      "latency_ms": 430,
       "method_tested": "HEAD",
       "netuid": 36,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-36-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/36",
-      "verified_at": "2026-06-06T12:31:07.769Z"
+      "verified_at": "2026-06-07T05:10:09.023Z"
     },
     {
       "auth_required": false,
@@ -127,15 +127,15 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:07.848Z",
-      "last_ok": "2026-06-06T12:31:07.848Z",
-      "latency_ms": 464,
+      "last_checked": "2026-06-07T05:10:08.922Z",
+      "last_ok": "2026-06-07T05:10:08.922Z",
+      "latency_ms": 248,
       "method_tested": "HEAD",
       "netuid": 36,
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "public_safe": true,
-      "redirect_target": "https://www.eirel.ai/docs/overview",
+      "redirect_target": "https://eirel.ai/docs/overview",
       "status": "ok",
       "status_code": 200,
       "subnet_name": "Eirel",
@@ -143,7 +143,7 @@
       "surface_id": "sn-36-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://eirel.ai/docs",
-      "verified_at": "2026-06-06T12:31:07.848Z"
+      "verified_at": "2026-06-07T05:10:08.922Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:07.681Z",
-      "last_ok": "2026-06-06T12:31:07.681Z",
-      "latency_ms": 224,
+      "last_checked": "2026-06-07T05:10:08.884Z",
+      "last_ok": "2026-06-07T05:10:08.884Z",
+      "latency_ms": 190,
       "method_tested": "HEAD",
       "netuid": 36,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-36-website-link-eirel-ai-dashboard-2",
       "uptime_sample_ratio": 1,
       "url": "https://leaderboard.eirel.ai/",
-      "verified_at": "2026-06-06T12:31:07.681Z"
+      "verified_at": "2026-06-07T05:10:08.884Z"
     }
   ]
 }

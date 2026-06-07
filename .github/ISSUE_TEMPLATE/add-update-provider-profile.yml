@@ -1,0 +1,75 @@
+name: Add or update provider profile
+description: Submit endpoint operator, subnet team, or data/docs provider metadata for review.
+title: "provider: "
+labels:
+  - provider-submission
+  - metagraphed-under-review
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Provider profiles identify who operates endpoints or maintains public resources. Profiles must be approved before submitted endpoints can become pool-eligible.
+  - type: input
+    id: provider_slug
+    attributes:
+      label: Provider slug
+      description: Lowercase slug for this provider/operator.
+      placeholder: example-operator
+    validations:
+      required: true
+  - type: input
+    id: provider_name
+    attributes:
+      label: Provider name
+      placeholder: Example Operator
+    validations:
+      required: true
+  - type: dropdown
+    id: provider_kind
+    attributes:
+      label: Provider kind
+      options:
+        - infrastructure-provider
+        - subnet-team
+        - data-provider
+        - docs-provider
+        - registry
+    validations:
+      required: true
+  - type: input
+    id: website_url
+    attributes:
+      label: Website URL
+      placeholder: https://example.com
+    validations:
+      required: true
+  - type: input
+    id: docs_url
+    attributes:
+      label: Docs URL
+      placeholder: https://docs.example.com
+  - type: input
+    id: github_url
+    attributes:
+      label: GitHub org or repo URL
+      placeholder: https://github.com/example
+  - type: input
+    id: contact_url
+    attributes:
+      label: Public contact URL
+      description: Public website, issue tracker, status page, or contact page. Do not submit email secrets or private channels.
+      placeholder: https://example.com/contact
+  - type: textarea
+    id: public_notes
+    attributes:
+      label: Public notes
+      description: Public-safe context about the operator, endpoint policies, or rate limits.
+  - type: checkboxes
+    id: public_safety
+    attributes:
+      label: Public-safety confirmation
+      options:
+        - label: This submission includes only public-safe provider metadata.
+          required: true
+        - label: I understand provider approval is required before endpoints can become pool-eligible.
+          required: true

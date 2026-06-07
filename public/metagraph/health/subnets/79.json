@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-79",
   "summary": {
-    "avg_latency_ms": 366,
+    "avg_latency_ms": 352,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:13.052Z",
-    "last_ok": "2026-06-06T12:31:13.052Z",
+    "last_checked": "2026-06-07T05:10:14.730Z",
+    "last_ok": "2026-06-07T05:10:14.730Z",
     "name": "MVTRX",
     "netuid": 79,
     "ok_count": 5,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:13.052Z",
-      "last_ok": "2026-06-06T12:31:13.052Z",
-      "latency_ms": 667,
+      "last_checked": "2026-06-07T05:10:14.730Z",
+      "last_ok": "2026-06-07T05:10:14.730Z",
+      "latency_ms": 603,
       "method_tested": "HEAD",
       "netuid": 79,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-79-github-readme-taos-im-sn-79-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://simulate.trading/taos-im-paper",
-      "verified_at": "2026-06-06T12:31:13.052Z"
+      "verified_at": "2026-06-07T05:10:14.730Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:12.570Z",
-      "last_ok": "2026-06-06T12:31:12.570Z",
-      "latency_ms": 176,
+      "last_checked": "2026-06-07T05:10:14.353Z",
+      "last_ok": "2026-06-07T05:10:14.353Z",
+      "latency_ms": 179,
       "method_tested": "HEAD",
       "netuid": 79,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-79-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/79",
-      "verified_at": "2026-06-06T12:31:12.570Z"
+      "verified_at": "2026-06-07T05:10:14.353Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:12.631Z",
-      "last_ok": "2026-06-06T12:31:12.631Z",
-      "latency_ms": 220,
+      "last_checked": "2026-06-07T05:10:14.359Z",
+      "last_ok": "2026-06-07T05:10:14.359Z",
+      "latency_ms": 164,
       "method_tested": "HEAD",
       "netuid": 79,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-79-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://taos.im/",
-      "verified_at": "2026-06-06T12:31:12.631Z"
+      "verified_at": "2026-06-07T05:10:14.359Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:12.742Z",
-      "last_ok": "2026-06-06T12:31:12.742Z",
-      "latency_ms": 321,
+      "last_checked": "2026-06-07T05:10:14.623Z",
+      "last_ok": "2026-06-07T05:10:14.623Z",
+      "latency_ms": 394,
       "method_tested": "HEAD",
       "netuid": 79,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-79-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/79",
-      "verified_at": "2026-06-06T12:31:12.742Z"
+      "verified_at": "2026-06-07T05:10:14.623Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:12.878Z",
-      "last_ok": "2026-06-06T12:31:12.878Z",
-      "latency_ms": 444,
+      "last_checked": "2026-06-07T05:10:14.679Z",
+      "last_ok": "2026-06-07T05:10:14.679Z",
+      "latency_ms": 419,
       "method_tested": "HEAD",
       "netuid": 79,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-79-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/taos-im/sn-79",
-      "verified_at": "2026-06-06T12:31:12.878Z"
+      "verified_at": "2026-06-07T05:10:14.679Z"
     }
   ]
 }

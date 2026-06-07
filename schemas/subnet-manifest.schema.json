@@ -103,11 +103,14 @@
         },
         "kind": {
           "enum": [
+            "archive",
             "subtensor-rpc",
             "subtensor-wss",
             "subnet-api",
             "openapi",
             "sse",
+            "sdk",
+            "example",
             "website",
             "source-repo",
             "dashboard",

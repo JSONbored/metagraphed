@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-122",
   "summary": {
-    "avg_latency_ms": 317,
+    "avg_latency_ms": 388,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:18.143Z",
-    "last_ok": "2026-06-06T12:31:18.143Z",
+    "last_checked": "2026-06-07T05:10:20.834Z",
+    "last_ok": "2026-06-07T05:10:20.834Z",
     "name": "gamma_small",
     "netuid": 122,
     "ok_count": 3,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:17.832Z",
-      "last_ok": "2026-06-06T12:31:17.832Z",
-      "latency_ms": 142,
+      "last_checked": "2026-06-07T05:10:20.417Z",
+      "last_ok": "2026-06-07T05:10:20.417Z",
+      "latency_ms": 137,
       "method_tested": "HEAD",
       "netuid": 122,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-122-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/122",
-      "verified_at": "2026-06-06T12:31:17.832Z"
+      "verified_at": "2026-06-07T05:10:20.417Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:18.054Z",
-      "last_ok": "2026-06-06T12:31:18.054Z",
-      "latency_ms": 362,
+      "last_checked": "2026-06-07T05:10:20.766Z",
+      "last_ok": "2026-06-07T05:10:20.766Z",
+      "latency_ms": 480,
       "method_tested": "HEAD",
       "netuid": 122,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-122-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/122",
-      "verified_at": "2026-06-06T12:31:18.054Z"
+      "verified_at": "2026-06-07T05:10:20.766Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:18.143Z",
-      "last_ok": "2026-06-06T12:31:18.143Z",
-      "latency_ms": 446,
+      "last_checked": "2026-06-07T05:10:20.834Z",
+      "last_ok": "2026-06-07T05:10:20.834Z",
+      "latency_ms": 547,
       "method_tested": "HEAD",
       "netuid": 122,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-122-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/bitrecs/bitrecs-subnet",
-      "verified_at": "2026-06-06T12:31:18.143Z"
+      "verified_at": "2026-06-07T05:10:20.834Z"
     }
   ]
 }

@@ -6,6 +6,8 @@ const files = {
   surfaces: "public/metagraph/surfaces.json",
   coverage: "public/metagraph/coverage.json",
   health: "public/metagraph/health/latest.json",
+  endpoints: "public/metagraph/endpoints.json",
+  endpointPools: "public/metagraph/endpoint-pools.json",
   rpc: "public/metagraph/rpc-endpoints.json",
   rpcPools: "public/metagraph/rpc/pools.json",
   changelog: "public/metagraph/changelog.json",
@@ -94,7 +96,13 @@ lines.push(
 );
 lines.push(`- RPC endpoints: ${formatCounts(current.rpc?.summary?.by_status)}`);
 lines.push(
+  `- endpoint resources: ${countLine(previous.endpoints?.summary?.endpoint_count, current.endpoints?.summary?.endpoint_count)}`,
+);
+lines.push(
   `- RPC archive-supported endpoints: ${current.rpc?.summary?.archive_supported_count ?? 0}`,
+);
+lines.push(
+  `- generalized endpoint pools: ${(current.endpointPools?.pools || []).map((pool) => `${pool.id}: ${pool.eligible_count}/${pool.endpoint_count}`).join(", ") || "none"}`,
 );
 lines.push(
   `- endpoint pools: ${(current.rpcPools?.pools || []).map((pool) => `${pool.id}: ${pool.eligible_count}/${pool.endpoint_count}`).join(", ") || "none"}`,

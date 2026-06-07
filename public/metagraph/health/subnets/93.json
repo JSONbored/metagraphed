@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-93",
   "summary": {
-    "avg_latency_ms": 537,
+    "avg_latency_ms": 551,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:14.925Z",
-    "last_ok": "2026-06-06T12:31:14.925Z",
+    "last_checked": "2026-06-07T05:10:16.791Z",
+    "last_ok": "2026-06-07T05:10:16.791Z",
     "name": "Bitcast",
     "netuid": 93,
     "ok_count": 8,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:14.325Z",
-      "last_ok": "2026-06-06T12:31:14.325Z",
-      "latency_ms": 519,
+      "last_checked": "2026-06-07T05:10:16.526Z",
+      "last_ok": "2026-06-07T05:10:16.526Z",
+      "latency_ms": 800,
       "method_tested": "HEAD",
       "netuid": 93,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-93-github-readme-bitcast-network-bitcast-dashboard-2",
       "uptime_sample_ratio": 1,
       "url": "https://dashboard.bitcast.network/",
-      "verified_at": "2026-06-06T12:31:14.325Z"
+      "verified_at": "2026-06-07T05:10:16.526Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:13.966Z",
-      "last_ok": "2026-06-06T12:31:13.966Z",
-      "latency_ms": 148,
+      "last_checked": "2026-06-07T05:10:15.893Z",
+      "last_ok": "2026-06-07T05:10:15.893Z",
+      "latency_ms": 132,
       "method_tested": "HEAD",
       "netuid": 93,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-93-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/93",
-      "verified_at": "2026-06-06T12:31:13.966Z"
+      "verified_at": "2026-06-07T05:10:15.893Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:14.444Z",
-      "last_ok": "2026-06-06T12:31:14.444Z",
-      "latency_ms": 535,
+      "last_checked": "2026-06-07T05:10:16.416Z",
+      "last_ok": "2026-06-07T05:10:16.416Z",
+      "latency_ms": 615,
       "method_tested": "HEAD",
       "netuid": 93,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-93-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/bitcast-network/bitcast",
-      "verified_at": "2026-06-06T12:31:14.444Z"
+      "verified_at": "2026-06-07T05:10:16.416Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:14.253Z",
-      "last_ok": "2026-06-06T12:31:14.253Z",
-      "latency_ms": 290,
+      "last_checked": "2026-06-07T05:10:16.081Z",
+      "last_ok": "2026-06-07T05:10:16.081Z",
+      "latency_ms": 280,
       "method_tested": "HEAD",
       "netuid": 93,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-93-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://stats.bitcast.network/",
-      "verified_at": "2026-06-06T12:31:14.253Z"
+      "verified_at": "2026-06-07T05:10:16.081Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:14.319Z",
-      "last_ok": "2026-06-06T12:31:14.319Z",
-      "latency_ms": 353,
+      "last_checked": "2026-06-07T05:10:16.199Z",
+      "last_ok": "2026-06-07T05:10:16.199Z",
+      "latency_ms": 372,
       "method_tested": "HEAD",
       "netuid": 93,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-93-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/93",
-      "verified_at": "2026-06-06T12:31:14.319Z"
+      "verified_at": "2026-06-07T05:10:16.199Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:14.901Z",
-      "last_ok": "2026-06-06T12:31:14.901Z",
-      "latency_ms": 914,
+      "last_checked": "2026-06-07T05:10:16.689Z",
+      "last_ok": "2026-06-07T05:10:16.689Z",
+      "latency_ms": 796,
       "method_tested": "HEAD",
       "netuid": 93,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-93-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://stats.bitcast.network/docs",
-      "verified_at": "2026-06-06T12:31:14.901Z"
+      "verified_at": "2026-06-07T05:10:16.689Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:14.925Z",
-      "last_ok": "2026-06-06T12:31:14.925Z",
-      "latency_ms": 919,
+      "last_checked": "2026-06-07T05:10:16.791Z",
+      "last_ok": "2026-06-07T05:10:16.791Z",
+      "latency_ms": 844,
       "method_tested": "GET",
       "netuid": 93,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-93-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://stats.bitcast.network/swagger",
-      "verified_at": "2026-06-06T12:31:14.925Z"
+      "verified_at": "2026-06-07T05:10:16.791Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:14.689Z",
-      "last_ok": "2026-06-06T12:31:14.689Z",
-      "latency_ms": 621,
+      "last_checked": "2026-06-07T05:10:16.518Z",
+      "last_ok": "2026-06-07T05:10:16.518Z",
+      "latency_ms": 566,
       "method_tested": "HEAD",
       "netuid": 93,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-93-website-link-stats-bitcast-network-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://stats.bitcast.network/bitcast",
-      "verified_at": "2026-06-06T12:31:14.689Z"
+      "verified_at": "2026-06-07T05:10:16.518Z"
     }
   ]
 }

@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-52",
   "summary": {
-    "avg_latency_ms": 348,
+    "avg_latency_ms": 371,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:09.758Z",
-    "last_ok": "2026-06-06T12:31:09.758Z",
+    "last_checked": "2026-06-07T05:10:11.405Z",
+    "last_ok": "2026-06-07T05:10:11.405Z",
     "name": "Dojo",
     "netuid": 52,
     "ok_count": 8,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.537Z",
-      "last_ok": "2026-06-06T12:31:09.537Z",
-      "latency_ms": 443,
+      "last_checked": "2026-06-07T05:10:10.739Z",
+      "last_ok": "2026-06-07T05:10:10.739Z",
+      "latency_ms": 281,
       "method_tested": "HEAD",
       "netuid": 52,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-52-github-readme-tensorplex-labs-dojo-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.tensorplex.ai/tensorplex-docs/tensorplex-dojo-bittensor-subnet/subnet-mechanism",
-      "verified_at": "2026-06-06T12:31:09.537Z"
+      "verified_at": "2026-06-07T05:10:10.739Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.493Z",
-      "last_ok": "2026-06-06T12:31:09.493Z",
-      "latency_ms": 395,
+      "last_checked": "2026-06-07T05:10:10.758Z",
+      "last_ok": "2026-06-07T05:10:10.758Z",
+      "latency_ms": 288,
       "method_tested": "HEAD",
       "netuid": 52,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-52-github-readme-tensorplex-labs-dojo-ui-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://nextjs.org/docs/basic-features/font-optimization",
-      "verified_at": "2026-06-06T12:31:09.493Z"
+      "verified_at": "2026-06-07T05:10:10.758Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.312Z",
-      "last_ok": "2026-06-06T12:31:09.312Z",
-      "latency_ms": 210,
+      "last_checked": "2026-06-07T05:10:10.722Z",
+      "last_ok": "2026-06-07T05:10:10.722Z",
+      "latency_ms": 247,
       "method_tested": "HEAD",
       "netuid": 52,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-52-github-readme-tensorplex-labs-dojo-ui-docs-3",
       "uptime_sample_ratio": 1,
       "url": "https://nextjs.org/docs",
-      "verified_at": "2026-06-06T12:31:09.312Z"
+      "verified_at": "2026-06-07T05:10:10.722Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.377Z",
-      "last_ok": "2026-06-06T12:31:09.377Z",
-      "latency_ms": 274,
+      "last_checked": "2026-06-07T05:10:10.759Z",
+      "last_ok": "2026-06-07T05:10:10.759Z",
+      "latency_ms": 264,
       "method_tested": "HEAD",
       "netuid": 52,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-52-github-readme-tensorplex-labs-dojo-ui-docs-4",
       "uptime_sample_ratio": 1,
       "url": "https://nextjs.org/docs/deployment",
-      "verified_at": "2026-06-06T12:31:09.377Z"
+      "verified_at": "2026-06-07T05:10:10.759Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:09.273Z",
-      "last_ok": "2026-06-06T12:31:09.273Z",
-      "latency_ms": 148,
+      "last_checked": "2026-06-07T05:10:10.670Z",
+      "last_ok": "2026-06-07T05:10:10.670Z",
+      "latency_ms": 156,
       "method_tested": "HEAD",
       "netuid": 52,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-52-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/52",
-      "verified_at": "2026-06-06T12:31:09.273Z"
+      "verified_at": "2026-06-07T05:10:10.670Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:09.508Z",
-      "last_ok": "2026-06-06T12:31:09.508Z",
-      "latency_ms": 347,
+      "last_checked": "2026-06-07T05:10:10.931Z",
+      "last_ok": "2026-06-07T05:10:10.931Z",
+      "latency_ms": 395,
       "method_tested": "HEAD",
       "netuid": 52,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-52-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/dojo",
-      "verified_at": "2026-06-06T12:31:09.508Z"
+      "verified_at": "2026-06-07T05:10:10.931Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:09.758Z",
-      "last_ok": "2026-06-06T12:31:09.758Z",
-      "latency_ms": 541,
+      "last_checked": "2026-06-07T05:10:11.309Z",
+      "last_ok": "2026-06-07T05:10:11.309Z",
+      "latency_ms": 639,
       "method_tested": "HEAD",
       "netuid": 52,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-52-tensorplex-source-repo-3",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/dojo-ui",
-      "verified_at": "2026-06-06T12:31:09.758Z"
+      "verified_at": "2026-06-07T05:10:11.309Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:09.690Z",
-      "last_ok": "2026-06-06T12:31:09.690Z",
-      "latency_ms": 428,
+      "last_checked": "2026-06-07T05:10:11.405Z",
+      "last_ok": "2026-06-07T05:10:11.405Z",
+      "latency_ms": 700,
       "method_tested": "HEAD",
       "netuid": 52,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-52-tensorplex-source-repo-4",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/dojo-worker-api",
-      "verified_at": "2026-06-06T12:31:09.690Z"
+      "verified_at": "2026-06-07T05:10:11.405Z"
     }
   ]
 }

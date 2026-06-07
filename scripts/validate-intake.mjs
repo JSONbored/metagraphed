@@ -11,6 +11,14 @@ const statusTemplate = await fs.readFile(
   path.join(templateRoot, "report-endpoint-status-issue.yml"),
   "utf8",
 );
+const endpointTemplate = await fs.readFile(
+  path.join(templateRoot, "add-update-endpoint-resource.yml"),
+  "utf8",
+);
+const providerTemplate = await fs.readFile(
+  path.join(templateRoot, "add-update-provider-profile.yml"),
+  "utf8",
+);
 const pullRequestTemplate = await fs.readFile(
   path.join(repoRoot, ".github/pull_request_template.md"),
   "utf8",
@@ -35,11 +43,14 @@ checkIncludes(interfaceTemplate.toLowerCase(), "interface template", [
 ]);
 
 for (const kind of [
+  "archive",
   "website",
   "source-repo",
   "subnet-api",
   "openapi",
   "sse",
+  "sdk",
+  "example",
   "dashboard",
   "repo-registry",
   "docs",
@@ -58,6 +69,39 @@ checkIncludes(statusTemplate, "status template", [
   "id: issue_type",
   "unsafe-or-private",
   "This report does not include secrets",
+  "observed health is generated only by Metagraphed probes",
+]);
+
+checkIncludes(endpointTemplate, "endpoint resource template", [
+  "endpoint-submission",
+  "metagraphed-under-review",
+  "id: netuid",
+  "id: layer",
+  "id: kind",
+  "id: url",
+  "id: source_url",
+  "id: provider",
+  "id: auth_required",
+  "subtensor-rpc",
+  "subtensor-wss",
+  "archive",
+  "subnet-api",
+  "openapi",
+  "sse",
+  "data-artifact",
+  "pool eligibility are probe-derived only",
+]);
+
+checkIncludes(providerTemplate, "provider profile template", [
+  "provider-submission",
+  "metagraphed-under-review",
+  "id: provider_slug",
+  "id: provider_name",
+  "id: provider_kind",
+  "id: website_url",
+  "id: github_url",
+  "id: contact_url",
+  "provider approval is required before endpoints can become pool-eligible",
 ]);
 
 checkIncludes(pullRequestTemplate, "pull request template", [

@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-9",
   "summary": {
-    "avg_latency_ms": 308,
+    "avg_latency_ms": 331,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:04.211Z",
-    "last_ok": "2026-06-06T12:31:04.211Z",
+    "last_checked": "2026-06-07T05:10:05.151Z",
+    "last_ok": "2026-06-07T05:10:05.151Z",
     "name": "iota",
     "netuid": 9,
     "ok_count": 9,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:04.126Z",
-      "last_ok": "2026-06-06T12:31:04.126Z",
-      "latency_ms": 382,
+      "last_checked": "2026-06-07T05:10:04.878Z",
+      "last_ok": "2026-06-07T05:10:04.878Z",
+      "latency_ms": 343,
       "method_tested": "HEAD",
       "netuid": 9,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-9-github-readme-macrocosm-os-iota-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://iota.macrocosmos.ai/dashboard/mainnet",
-      "verified_at": "2026-06-06T12:31:04.126Z"
+      "verified_at": "2026-06-07T05:10:04.878Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.949Z",
-      "last_ok": "2026-06-06T12:31:03.949Z",
-      "latency_ms": 203,
+      "last_checked": "2026-06-07T05:10:04.803Z",
+      "last_ok": "2026-06-07T05:10:04.803Z",
+      "latency_ms": 266,
       "method_tested": "HEAD",
       "netuid": 9,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-9-github-readme-macrocosm-os-iota-docs-4",
       "uptime_sample_ratio": 1,
       "url": "https://docs.astral.sh/uv",
-      "verified_at": "2026-06-06T12:31:03.949Z"
+      "verified_at": "2026-06-07T05:10:04.803Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:03.929Z",
-      "last_ok": "2026-06-06T12:31:03.929Z",
-      "latency_ms": 169,
+      "last_checked": "2026-06-07T05:10:04.710Z",
+      "last_ok": "2026-06-07T05:10:04.710Z",
+      "latency_ms": 156,
       "method_tested": "HEAD",
       "netuid": 9,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-9-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/9",
-      "verified_at": "2026-06-06T12:31:03.929Z"
+      "verified_at": "2026-06-07T05:10:04.710Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:04.157Z",
-      "last_ok": "2026-06-06T12:31:04.157Z",
-      "latency_ms": 395,
+      "last_checked": "2026-06-07T05:10:05.062Z",
+      "last_ok": "2026-06-07T05:10:05.062Z",
+      "latency_ms": 476,
       "method_tested": "HEAD",
       "netuid": 9,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-9-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/macrocosm-os/iota",
-      "verified_at": "2026-06-06T12:31:04.157Z"
+      "verified_at": "2026-06-07T05:10:05.062Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:04.069Z",
-      "last_ok": "2026-06-06T12:31:04.069Z",
-      "latency_ms": 281,
+      "last_checked": "2026-06-07T05:10:04.853Z",
+      "last_ok": "2026-06-07T05:10:04.853Z",
+      "latency_ms": 230,
       "method_tested": "HEAD",
       "netuid": 9,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-9-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://iota.macrocosmos.ai/",
-      "verified_at": "2026-06-06T12:31:04.069Z"
+      "verified_at": "2026-06-07T05:10:04.853Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:04.182Z",
-      "last_ok": "2026-06-06T12:31:04.182Z",
-      "latency_ms": 384,
+      "last_checked": "2026-06-07T05:10:05.082Z",
+      "last_ok": "2026-06-07T05:10:05.082Z",
+      "latency_ms": 410,
       "method_tested": "HEAD",
       "netuid": 9,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-9-taopedia-article",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_9/index.mdx",
-      "verified_at": "2026-06-06T12:31:04.182Z"
+      "verified_at": "2026-06-07T05:10:05.082Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:04.198Z",
-      "last_ok": "2026-06-06T12:31:04.198Z",
-      "latency_ms": 331,
+      "last_checked": "2026-06-07T05:10:05.151Z",
+      "last_ok": "2026-06-07T05:10:05.151Z",
+      "latency_ms": 449,
       "method_tested": "HEAD",
       "netuid": 9,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-9-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/9",
-      "verified_at": "2026-06-06T12:31:04.198Z"
+      "verified_at": "2026-06-07T05:10:05.151Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:04.211Z",
-      "last_ok": "2026-06-06T12:31:04.211Z",
-      "latency_ms": 317,
+      "last_checked": "2026-06-07T05:10:05.040Z",
+      "last_ok": "2026-06-07T05:10:05.040Z",
+      "latency_ms": 330,
       "method_tested": "HEAD",
       "netuid": 9,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-9-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://iota.macrocosmos.ai/docs",
-      "verified_at": "2026-06-06T12:31:04.211Z"
+      "verified_at": "2026-06-07T05:10:05.040Z"
     },
     {
       "auth_required": false,
@@ -227,9 +227,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:04.208Z",
-      "last_ok": "2026-06-06T12:31:04.208Z",
-      "latency_ms": 307,
+      "last_checked": "2026-06-07T05:10:05.042Z",
+      "last_ok": "2026-06-07T05:10:05.042Z",
+      "latency_ms": 315,
       "method_tested": "HEAD",
       "netuid": 9,
       "private_redirect_blocked": false,
@@ -243,7 +243,7 @@
       "surface_id": "sn-9-website-link-iota-macrocosmos-ai-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://iota.macrocosmos.ai/dashboard",
-      "verified_at": "2026-06-06T12:31:04.208Z"
+      "verified_at": "2026-06-07T05:10:05.042Z"
     }
   ]
 }

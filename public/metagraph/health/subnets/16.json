@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-16",
   "summary": {
-    "avg_latency_ms": 594,
+    "avg_latency_ms": 742,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:05.966Z",
-    "last_ok": "2026-06-06T12:31:05.966Z",
+    "last_checked": "2026-06-07T05:10:06.924Z",
+    "last_ok": "2026-06-07T05:10:06.924Z",
     "name": "BitAds",
     "netuid": 16,
     "ok_count": 6,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:04.944Z",
-      "last_ok": "2026-06-06T12:31:04.944Z",
-      "latency_ms": 163,
+      "last_checked": "2026-06-07T05:10:06.314Z",
+      "last_ok": "2026-06-07T05:10:06.314Z",
+      "latency_ms": 607,
       "method_tested": "HEAD",
       "netuid": 16,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-16-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/16",
-      "verified_at": "2026-06-06T12:31:04.944Z"
+      "verified_at": "2026-06-07T05:10:06.314Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:05.499Z",
-      "last_ok": "2026-06-06T12:31:05.499Z",
-      "latency_ms": 618,
+      "last_checked": "2026-06-07T05:10:06.389Z",
+      "last_ok": "2026-06-07T05:10:06.389Z",
+      "latency_ms": 668,
       "method_tested": "HEAD",
       "netuid": 16,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-16-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/FirstTensorLabs/BitAds",
-      "verified_at": "2026-06-06T12:31:05.499Z"
+      "verified_at": "2026-06-07T05:10:06.389Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:05.469Z",
-      "last_ok": "2026-06-06T12:31:05.469Z",
-      "latency_ms": 577,
+      "last_checked": "2026-06-07T05:10:06.457Z",
+      "last_ok": "2026-06-07T05:10:06.457Z",
+      "latency_ms": 650,
       "method_tested": "HEAD",
       "netuid": 16,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-16-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://bitads.ai/",
-      "verified_at": "2026-06-06T12:31:05.469Z"
+      "verified_at": "2026-06-07T05:10:06.457Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:05.298Z",
-      "last_ok": "2026-06-06T12:31:05.298Z",
-      "latency_ms": 397,
+      "last_checked": "2026-06-07T05:10:06.210Z",
+      "last_ok": "2026-06-07T05:10:06.210Z",
+      "latency_ms": 380,
       "method_tested": "HEAD",
       "netuid": 16,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-16-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/16",
-      "verified_at": "2026-06-06T12:31:05.298Z"
+      "verified_at": "2026-06-07T05:10:06.210Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:05.966Z",
-      "last_ok": "2026-06-06T12:31:05.966Z",
-      "latency_ms": 1064,
+      "last_checked": "2026-06-07T05:10:06.898Z",
+      "last_ok": "2026-06-07T05:10:06.898Z",
+      "latency_ms": 1065,
       "method_tested": "HEAD",
       "netuid": 16,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-16-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://bitads.ai/docs",
-      "verified_at": "2026-06-06T12:31:05.966Z"
+      "verified_at": "2026-06-07T05:10:06.898Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:05.648Z",
-      "last_ok": "2026-06-06T12:31:05.648Z",
-      "latency_ms": 742,
+      "last_checked": "2026-06-07T05:10:06.924Z",
+      "last_ok": "2026-06-07T05:10:06.924Z",
+      "latency_ms": 1082,
       "method_tested": "GET",
       "netuid": 16,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-16-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://bitads.ai/swagger",
-      "verified_at": "2026-06-06T12:31:05.648Z"
+      "verified_at": "2026-06-07T05:10:06.924Z"
     }
   ]
 }

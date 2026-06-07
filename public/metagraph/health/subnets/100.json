@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-100",
   "summary": {
-    "avg_latency_ms": 380,
+    "avg_latency_ms": 406,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:16.002Z",
-    "last_ok": "2026-06-06T12:31:16.002Z",
+    "last_checked": "2026-06-07T05:10:18.413Z",
+    "last_ok": "2026-06-07T05:10:18.413Z",
     "name": "Plaτform",
     "netuid": 100,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:15.654Z",
-      "last_ok": "2026-06-06T12:31:15.654Z",
-      "latency_ms": 180,
+      "last_checked": "2026-06-07T05:10:17.965Z",
+      "last_ok": "2026-06-07T05:10:17.965Z",
+      "latency_ms": 194,
       "method_tested": "HEAD",
       "netuid": 100,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-100-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/100",
-      "verified_at": "2026-06-06T12:31:15.654Z"
+      "verified_at": "2026-06-07T05:10:17.965Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:15.923Z",
-      "last_ok": "2026-06-06T12:31:15.923Z",
-      "latency_ms": 431,
+      "last_checked": "2026-06-07T05:10:18.410Z",
+      "last_ok": "2026-06-07T05:10:18.410Z",
+      "latency_ms": 628,
       "method_tested": "HEAD",
       "netuid": 100,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-100-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/PlatformNetwork/platform",
-      "verified_at": "2026-06-06T12:31:15.923Z"
+      "verified_at": "2026-06-07T05:10:18.410Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:15.905Z",
-      "last_ok": "2026-06-06T12:31:15.905Z",
-      "latency_ms": 410,
+      "last_checked": "2026-06-07T05:10:18.181Z",
+      "last_ok": "2026-06-07T05:10:18.181Z",
+      "latency_ms": 375,
       "method_tested": "HEAD",
       "netuid": 100,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-100-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://platform.network/",
-      "verified_at": "2026-06-06T12:31:15.905Z"
+      "verified_at": "2026-06-07T05:10:18.181Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.854Z",
-      "last_ok": "2026-06-06T12:31:15.854Z",
-      "latency_ms": 353,
+      "last_checked": "2026-06-07T05:10:18.218Z",
+      "last_ok": "2026-06-07T05:10:18.218Z",
+      "latency_ms": 392,
       "method_tested": "HEAD",
       "netuid": 100,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-100-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/100",
-      "verified_at": "2026-06-06T12:31:15.854Z"
+      "verified_at": "2026-06-07T05:10:18.218Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:15.922Z",
-      "last_ok": "2026-06-06T12:31:15.922Z",
-      "latency_ms": 411,
+      "last_checked": "2026-06-07T05:10:18.413Z",
+      "last_ok": "2026-06-07T05:10:18.413Z",
+      "latency_ms": 576,
       "method_tested": "HEAD",
       "netuid": 100,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-100-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/CortexLM/platform",
-      "verified_at": "2026-06-06T12:31:15.922Z"
+      "verified_at": "2026-06-07T05:10:18.413Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:16.002Z",
-      "last_ok": "2026-06-06T12:31:16.002Z",
-      "latency_ms": 489,
+      "last_checked": "2026-06-07T05:10:18.239Z",
+      "last_ok": "2026-06-07T05:10:18.239Z",
+      "latency_ms": 361,
       "method_tested": "HEAD",
       "netuid": 100,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-100-tensorplex-source-repo-2",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/PlatformNetwork",
-      "verified_at": "2026-06-06T12:31:16.002Z"
+      "verified_at": "2026-06-07T05:10:18.239Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.901Z",
-      "last_ok": "2026-06-06T12:31:15.901Z",
-      "latency_ms": 387,
+      "last_checked": "2026-06-07T05:10:18.198Z",
+      "last_ok": "2026-06-07T05:10:18.198Z",
+      "latency_ms": 317,
       "method_tested": "HEAD",
       "netuid": 100,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-100-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://platform.network/docs",
-      "verified_at": "2026-06-06T12:31:15.901Z"
+      "verified_at": "2026-06-07T05:10:18.198Z"
     }
   ]
 }

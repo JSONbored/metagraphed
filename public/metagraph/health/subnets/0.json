@@ -6,16 +6,16 @@
   "schema_version": 1,
   "slug": "root",
   "summary": {
-    "avg_latency_ms": 649,
-    "degraded_count": 1,
+    "avg_latency_ms": 765,
+    "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:03.296Z",
-    "last_ok": "2026-06-06T12:31:03.192Z",
+    "last_checked": "2026-06-07T05:10:04.142Z",
+    "last_ok": "2026-06-07T05:10:04.142Z",
     "name": "root",
     "netuid": 0,
-    "ok_count": 11,
+    "ok_count": 12,
     "slug": "root",
-    "status": "degraded",
+    "status": "ok",
     "surface_count": 12,
     "unknown_count": 0
   },
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:02.254Z",
-      "last_ok": "2026-06-06T12:31:02.254Z",
-      "latency_ms": 202,
+      "last_checked": "2026-06-07T05:10:02.748Z",
+      "last_ok": "2026-06-07T05:10:02.748Z",
+      "latency_ms": 213,
       "method_tested": "GET",
       "netuid": 0,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "bittensor-networks-docs",
       "uptime_sample_ratio": 1,
       "url": "https://docs.learnbittensor.org/concepts/bittensor-networks",
-      "verified_at": "2026-06-06T12:31:02.254Z"
+      "verified_at": "2026-06-07T05:10:02.748Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:02.246Z",
-      "last_ok": "2026-06-06T12:31:02.246Z",
-      "latency_ms": 164,
+      "last_checked": "2026-06-07T05:10:02.765Z",
+      "last_ok": "2026-06-07T05:10:02.765Z",
+      "latency_ms": 202,
       "method_tested": "GET",
       "netuid": 0,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "bittensor-subtensor-node-docs",
       "uptime_sample_ratio": 1,
       "url": "https://docs.learnbittensor.org/subtensor-nodes",
-      "verified_at": "2026-06-06T12:31:02.246Z"
+      "verified_at": "2026-06-07T05:10:02.765Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:02.735Z",
-      "last_ok": "2026-06-06T12:31:02.735Z",
-      "latency_ms": 654,
+      "last_checked": "2026-06-07T05:10:03.211Z",
+      "last_ok": "2026-06-07T05:10:03.211Z",
+      "latency_ms": 648,
       "method_tested": "HEAD",
       "netuid": 0,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "bittensor-subtensor-source",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/opentensor/subtensor",
-      "verified_at": "2026-06-06T12:31:02.735Z"
+      "verified_at": "2026-06-07T05:10:03.211Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:02.320Z",
-      "last_ok": "2026-06-06T12:31:02.320Z",
-      "latency_ms": 239,
+      "last_checked": "2026-06-07T05:10:02.744Z",
+      "last_ok": "2026-06-07T05:10:02.744Z",
+      "latency_ms": 180,
       "method_tested": "HEAD",
       "netuid": 0,
       "private_redirect_blocked": false,
@@ -118,84 +118,20 @@
       "surface_id": "bittensor-website",
       "uptime_sample_ratio": 1,
       "url": "https://bittensor.com",
-      "verified_at": "2026-06-06T12:31:02.320Z"
-    },
-    {
-      "archive_support": false,
-      "auth_required": false,
-      "classification": "transient",
-      "content_type": "application/json",
-      "error": null,
-      "error_class": null,
-      "kind": "subtensor-rpc",
-      "last_checked": "2026-06-06T12:31:03.296Z",
-      "last_ok": "2026-06-06T12:19:14.299Z",
-      "latency_ms": 1214,
-      "latest_block": null,
-      "method_results": {
-        "archive_probe": {
-          "code": null,
-          "error": null,
-          "ok": false,
-          "result_present": false,
-          "result_type": "undefined"
-        },
-        "chain_getHeader": {
-          "code": null,
-          "error": null,
-          "ok": false,
-          "result_present": false,
-          "result_type": "undefined"
-        },
-        "rpc_methods": {
-          "code": null,
-          "error": null,
-          "ok": false,
-          "result_present": false,
-          "result_type": "undefined"
-        },
-        "system_health": {
-          "code": null,
-          "error": null,
-          "ok": false,
-          "result_present": false,
-          "result_type": "undefined"
-        }
-      },
-      "method_tested": "JSON-RPC",
-      "methods_supported": {
-        "chain_getBlockHash": false,
-        "chain_getHeader": false,
-        "rpc_methods": false,
-        "system_health": false
-      },
-      "netuid": 0,
-      "private_redirect_blocked": false,
-      "provider": "nodies",
-      "public_safe": true,
-      "redirect_target": null,
-      "rpc_method_count": null,
-      "status": "degraded",
-      "status_code": 503,
-      "subnet_name": "root",
-      "subnet_slug": "root",
-      "surface_id": "nodies-finney-rpc",
-      "uptime_sample_ratio": 0.5,
-      "url": "https://bittensor-public.nodies.app",
-      "verified_at": "2026-06-06T12:31:03.296Z"
+      "verified_at": "2026-06-07T05:10:02.744Z"
     },
     {
       "archive_support": true,
       "auth_required": false,
       "classification": "live",
-      "content_type": "application/json",
+      "content_type": "application/json; charset=utf-8",
       "error": null,
       "error_class": null,
       "kind": "subtensor-rpc",
-      "last_checked": "2026-06-06T12:31:02.844Z",
-      "last_ok": "2026-06-06T12:31:02.844Z",
-      "latency_ms": 762,
-      "latest_block": 8347552,
+      "last_checked": "2026-06-07T05:10:04.142Z",
+      "last_ok": "2026-06-07T05:10:04.142Z",
+      "latency_ms": 1577,
+      "latest_block": 8352547,
       "method_results": {
         "archive_probe": {
           "code": null,
@@ -210,7 +146,76 @@
           "error": null,
           "ok": true,
           "raw_header": {
-            "number": "0x7f5fa0"
+            "number": "0x7f7323"
+          },
+          "result_present": true,
+          "result_type": "object"
+        },
+        "rpc_methods": {
+          "code": null,
+          "error": null,
+          "ok": true,
+          "result_present": true,
+          "result_type": "object",
+          "rpc_method_count": 196
+        },
+        "system_health": {
+          "code": null,
+          "error": null,
+          "ok": true,
+          "result_present": true,
+          "result_type": "object"
+        }
+      },
+      "method_tested": "JSON-RPC",
+      "methods_supported": {
+        "chain_getBlockHash": true,
+        "chain_getHeader": true,
+        "rpc_methods": true,
+        "system_health": true
+      },
+      "netuid": 0,
+      "private_redirect_blocked": false,
+      "provider": "nodies",
+      "public_safe": true,
+      "redirect_target": null,
+      "rpc_method_count": 196,
+      "status": "ok",
+      "status_code": 200,
+      "subnet_name": "root",
+      "subnet_slug": "root",
+      "surface_id": "nodies-finney-rpc",
+      "uptime_sample_ratio": 0.6667,
+      "url": "https://bittensor-public.nodies.app",
+      "verified_at": "2026-06-07T05:10:04.142Z"
+    },
+    {
+      "archive_support": true,
+      "auth_required": false,
+      "classification": "live",
+      "content_type": "application/json",
+      "error": null,
+      "error_class": null,
+      "kind": "subtensor-rpc",
+      "last_checked": "2026-06-07T05:10:03.447Z",
+      "last_ok": "2026-06-07T05:10:03.447Z",
+      "latency_ms": 882,
+      "latest_block": 8352547,
+      "method_results": {
+        "archive_probe": {
+          "code": null,
+          "error": null,
+          "ok": true,
+          "raw_hex_result_present": true,
+          "result_present": true,
+          "result_type": "string"
+        },
+        "chain_getHeader": {
+          "code": null,
+          "error": null,
+          "ok": true,
+          "raw_header": {
+            "number": "0x7f7323"
           },
           "result_present": true,
           "result_type": "object"
@@ -251,7 +256,7 @@
       "surface_id": "onfinality-finney-rpc",
       "uptime_sample_ratio": 1,
       "url": "https://bittensor-finney.api.onfinality.io/public",
-      "verified_at": "2026-06-06T12:31:02.844Z"
+      "verified_at": "2026-06-07T05:10:03.447Z"
     },
     {
       "archive_support": true,
@@ -261,10 +266,10 @@
       "error": null,
       "error_class": null,
       "kind": "subtensor-wss",
-      "last_checked": "2026-06-06T12:31:02.804Z",
-      "last_ok": "2026-06-06T12:31:02.804Z",
-      "latency_ms": 721,
-      "latest_block": 8347556,
+      "last_checked": "2026-06-07T05:10:03.374Z",
+      "last_ok": "2026-06-07T05:10:03.374Z",
+      "latency_ms": 808,
+      "latest_block": 8352547,
       "method_results": {
         "archive_probe": {
           "code": null,
@@ -279,7 +284,7 @@
           "error": null,
           "ok": true,
           "raw_header": {
-            "number": "0x7f5fa4"
+            "number": "0x7f7323"
           },
           "result_present": true,
           "result_type": "object"
@@ -320,7 +325,7 @@
       "surface_id": "onfinality-finney-wss",
       "uptime_sample_ratio": 1,
       "url": "wss://bittensor-finney.api.onfinality.io/public-ws",
-      "verified_at": "2026-06-06T12:31:02.804Z"
+      "verified_at": "2026-06-07T05:10:03.374Z"
     },
     {
       "archive_support": true,
@@ -330,10 +335,10 @@
       "error": null,
       "error_class": null,
       "kind": "subtensor-wss",
-      "last_checked": "2026-06-06T12:31:03.192Z",
-      "last_ok": "2026-06-06T12:31:03.192Z",
-      "latency_ms": 1108,
-      "latest_block": 8347557,
+      "last_checked": "2026-06-07T05:10:03.685Z",
+      "last_ok": "2026-06-07T05:10:03.685Z",
+      "latency_ms": 1119,
+      "latest_block": 8352547,
       "method_results": {
         "archive_probe": {
           "code": null,
@@ -348,7 +353,7 @@
           "error": null,
           "ok": true,
           "raw_header": {
-            "number": "0x7f5fa5"
+            "number": "0x7f7323"
           },
           "result_present": true,
           "result_type": "object"
@@ -389,7 +394,7 @@
       "surface_id": "opentensor-archive-wss",
       "uptime_sample_ratio": 1,
       "url": "wss://archive.chain.opentensor.ai:443",
-      "verified_at": "2026-06-06T12:31:03.192Z"
+      "verified_at": "2026-06-07T05:10:03.685Z"
     },
     {
       "archive_support": true,
@@ -399,10 +404,10 @@
       "error": null,
       "error_class": null,
       "kind": "subtensor-wss",
-      "last_checked": "2026-06-06T12:31:02.670Z",
-      "last_ok": "2026-06-06T12:31:02.670Z",
-      "latency_ms": 586,
-      "latest_block": 8347557,
+      "last_checked": "2026-06-07T05:10:03.166Z",
+      "last_ok": "2026-06-07T05:10:03.166Z",
+      "latency_ms": 599,
+      "latest_block": 8352547,
       "method_results": {
         "archive_probe": {
           "code": null,
@@ -417,7 +422,7 @@
           "error": null,
           "ok": true,
           "raw_header": {
-            "number": "0x7f5fa5"
+            "number": "0x7f7323"
           },
           "result_present": true,
           "result_type": "object"
@@ -458,7 +463,7 @@
       "surface_id": "opentensor-finney-wss",
       "uptime_sample_ratio": 1,
       "url": "wss://entrypoint-finney.opentensor.ai:443",
-      "verified_at": "2026-06-06T12:31:02.670Z"
+      "verified_at": "2026-06-07T05:10:03.166Z"
     },
     {
       "archive_support": true,
@@ -468,10 +473,10 @@
       "error": null,
       "error_class": null,
       "kind": "subtensor-wss",
-      "last_checked": "2026-06-06T12:31:02.662Z",
-      "last_ok": "2026-06-06T12:31:02.662Z",
-      "latency_ms": 578,
-      "latest_block": 8347557,
+      "last_checked": "2026-06-07T05:10:03.177Z",
+      "last_ok": "2026-06-07T05:10:03.177Z",
+      "latency_ms": 610,
+      "latest_block": 8352547,
       "method_results": {
         "archive_probe": {
           "code": null,
@@ -486,7 +491,7 @@
           "error": null,
           "ok": true,
           "raw_header": {
-            "number": "0x7f5fa5"
+            "number": "0x7f7323"
           },
           "result_present": true,
           "result_type": "object"
@@ -527,7 +532,7 @@
       "surface_id": "opentensor-lite-wss",
       "uptime_sample_ratio": 1,
       "url": "wss://lite.chain.opentensor.ai:443",
-      "verified_at": "2026-06-06T12:31:02.662Z"
+      "verified_at": "2026-06-07T05:10:03.177Z"
     },
     {
       "auth_required": false,
@@ -536,9 +541,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:02.892Z",
-      "last_ok": "2026-06-06T12:31:02.892Z",
-      "latency_ms": 807,
+      "last_checked": "2026-06-07T05:10:04.091Z",
+      "last_ok": "2026-06-07T05:10:04.091Z",
+      "latency_ms": 1523,
       "method_tested": "HEAD",
       "netuid": 0,
       "private_redirect_blocked": false,
@@ -552,7 +557,7 @@
       "surface_id": "sn-0-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/0",
-      "verified_at": "2026-06-06T12:31:02.892Z"
+      "verified_at": "2026-06-07T05:10:04.091Z"
     },
     {
       "auth_required": false,
@@ -561,9 +566,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:02.842Z",
-      "last_ok": "2026-06-06T12:31:02.842Z",
-      "latency_ms": 758,
+      "last_checked": "2026-06-07T05:10:03.391Z",
+      "last_ok": "2026-06-07T05:10:03.391Z",
+      "latency_ms": 823,
       "method_tested": "HEAD",
       "netuid": 0,
       "private_redirect_blocked": false,
@@ -577,7 +582,7 @@
       "surface_id": "sn-0-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/0",
-      "verified_at": "2026-06-06T12:31:02.842Z"
+      "verified_at": "2026-06-07T05:10:03.391Z"
     }
   ]
 }

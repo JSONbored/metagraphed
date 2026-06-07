@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-127",
   "summary": {
-    "avg_latency_ms": 321,
+    "avg_latency_ms": 520,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:18.626Z",
-    "last_ok": "2026-06-06T12:31:18.626Z",
+    "last_checked": "2026-06-07T05:10:21.941Z",
+    "last_ok": "2026-06-07T05:10:21.941Z",
     "name": "Astrid",
     "netuid": 127,
     "ok_count": 5,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "subnet-api",
-      "last_checked": "2026-06-06T12:31:18.446Z",
-      "last_ok": "2026-06-06T12:31:18.446Z",
-      "latency_ms": 303,
+      "last_checked": "2026-06-07T05:10:21.207Z",
+      "last_ok": "2026-06-07T05:10:21.207Z",
+      "latency_ms": 365,
       "method_tested": "GET",
       "netuid": 127,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-127-github-readme-astridintelligence-sn-127-subnet-api-1",
       "uptime_sample_ratio": 1,
       "url": "https://api.astrid.global/v1",
-      "verified_at": "2026-06-06T12:31:18.446Z"
+      "verified_at": "2026-06-07T05:10:21.207Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:18.285Z",
-      "last_ok": "2026-06-06T12:31:18.285Z",
-      "latency_ms": 140,
+      "last_checked": "2026-06-07T05:10:21.080Z",
+      "last_ok": "2026-06-07T05:10:21.080Z",
+      "latency_ms": 224,
       "method_tested": "HEAD",
       "netuid": 127,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-127-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/127",
-      "verified_at": "2026-06-06T12:31:18.285Z"
+      "verified_at": "2026-06-07T05:10:21.080Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:18.626Z",
-      "last_ok": "2026-06-06T12:31:18.626Z",
-      "latency_ms": 477,
+      "last_checked": "2026-06-07T05:10:21.490Z",
+      "last_ok": "2026-06-07T05:10:21.490Z",
+      "latency_ms": 624,
       "method_tested": "HEAD",
       "netuid": 127,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-127-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/astridintelligence/sn-127",
-      "verified_at": "2026-06-06T12:31:18.626Z"
+      "verified_at": "2026-06-07T05:10:21.490Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:18.593Z",
-      "last_ok": "2026-06-06T12:31:18.593Z",
-      "latency_ms": 375,
+      "last_checked": "2026-06-07T05:10:21.941Z",
+      "last_ok": "2026-06-07T05:10:21.941Z",
+      "latency_ms": 975,
       "method_tested": "HEAD",
       "netuid": 127,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-127-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.astrid.global/",
-      "verified_at": "2026-06-06T12:31:18.593Z"
+      "verified_at": "2026-06-07T05:10:21.941Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:18.551Z",
-      "last_ok": "2026-06-06T12:31:18.551Z",
-      "latency_ms": 309,
+      "last_checked": "2026-06-07T05:10:21.403Z",
+      "last_ok": "2026-06-07T05:10:21.403Z",
+      "latency_ms": 410,
       "method_tested": "HEAD",
       "netuid": 127,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-127-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/127",
-      "verified_at": "2026-06-06T12:31:18.551Z"
+      "verified_at": "2026-06-07T05:10:21.403Z"
     }
   ]
 }

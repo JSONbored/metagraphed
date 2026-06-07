@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-49",
   "summary": {
-    "avg_latency_ms": 328,
+    "avg_latency_ms": 357,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:09.262Z",
-    "last_ok": "2026-06-06T12:31:09.262Z",
+    "last_checked": "2026-06-07T05:10:10.783Z",
+    "last_ok": "2026-06-07T05:10:10.783Z",
     "name": "Nepher Robotics",
     "netuid": 49,
     "ok_count": 4,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.005Z",
-      "last_ok": "2026-06-06T12:31:09.005Z",
-      "latency_ms": 311,
+      "last_checked": "2026-06-07T05:10:10.379Z",
+      "last_ok": "2026-06-07T05:10:10.379Z",
+      "latency_ms": 290,
       "method_tested": "HEAD",
       "netuid": 49,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-49-github-readme-nepher-ai-nepher-subnet-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.nepher.ai/",
-      "verified_at": "2026-06-06T12:31:09.005Z"
+      "verified_at": "2026-06-07T05:10:10.379Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:08.878Z",
-      "last_ok": "2026-06-06T12:31:08.878Z",
-      "latency_ms": 154,
+      "last_checked": "2026-06-07T05:10:10.290Z",
+      "last_ok": "2026-06-07T05:10:10.290Z",
+      "latency_ms": 176,
       "method_tested": "HEAD",
       "netuid": 49,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-49-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/49",
-      "verified_at": "2026-06-06T12:31:08.878Z"
+      "verified_at": "2026-06-07T05:10:10.290Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:09.262Z",
-      "last_ok": "2026-06-06T12:31:09.262Z",
-      "latency_ms": 526,
+      "last_checked": "2026-06-07T05:10:10.783Z",
+      "last_ok": "2026-06-07T05:10:10.783Z",
+      "latency_ms": 653,
       "method_tested": "HEAD",
       "netuid": 49,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-49-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/nepher-ai/nepher-subnet",
-      "verified_at": "2026-06-06T12:31:09.262Z"
+      "verified_at": "2026-06-07T05:10:10.783Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.084Z",
-      "last_ok": "2026-06-06T12:31:09.084Z",
-      "latency_ms": 322,
+      "last_checked": "2026-06-07T05:10:10.470Z",
+      "last_ok": "2026-06-07T05:10:10.470Z",
+      "latency_ms": 308,
       "method_tested": "HEAD",
       "netuid": 49,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-49-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/49",
-      "verified_at": "2026-06-06T12:31:09.084Z"
+      "verified_at": "2026-06-07T05:10:10.470Z"
     }
   ]
 }

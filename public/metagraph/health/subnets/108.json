@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-108",
   "summary": {
-    "avg_latency_ms": 400,
+    "avg_latency_ms": 474,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:16.935Z",
-    "last_ok": "2026-06-06T12:31:16.935Z",
+    "last_checked": "2026-06-07T05:10:19.594Z",
+    "last_ok": "2026-06-07T05:10:19.594Z",
     "name": "TalkHead",
     "netuid": 108,
     "ok_count": 4,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:16.505Z",
-      "last_ok": "2026-06-06T12:31:16.505Z",
-      "latency_ms": 181,
+      "last_checked": "2026-06-07T05:10:19.022Z",
+      "last_ok": "2026-06-07T05:10:19.022Z",
+      "latency_ms": 158,
       "method_tested": "HEAD",
       "netuid": 108,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-108-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/108",
-      "verified_at": "2026-06-06T12:31:16.505Z"
+      "verified_at": "2026-06-07T05:10:19.022Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:16.842Z",
-      "last_ok": "2026-06-06T12:31:16.842Z",
-      "latency_ms": 497,
+      "last_checked": "2026-06-07T05:10:19.594Z",
+      "last_ok": "2026-06-07T05:10:19.594Z",
+      "latency_ms": 729,
       "method_tested": "HEAD",
       "netuid": 108,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-108-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/talkheadai/talkhead-subnet",
-      "verified_at": "2026-06-06T12:31:16.842Z"
+      "verified_at": "2026-06-07T05:10:19.594Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:16.935Z",
-      "last_ok": "2026-06-06T12:31:16.935Z",
-      "latency_ms": 586,
+      "last_checked": "2026-06-07T05:10:19.498Z",
+      "last_ok": "2026-06-07T05:10:19.498Z",
+      "latency_ms": 616,
       "method_tested": "HEAD",
       "netuid": 108,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-108-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.talkhead.ai/",
-      "verified_at": "2026-06-06T12:31:16.935Z"
+      "verified_at": "2026-06-07T05:10:19.498Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.811Z",
-      "last_ok": "2026-06-06T12:31:16.811Z",
-      "latency_ms": 336,
+      "last_checked": "2026-06-07T05:10:19.338Z",
+      "last_ok": "2026-06-07T05:10:19.338Z",
+      "latency_ms": 394,
       "method_tested": "HEAD",
       "netuid": 108,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-108-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/108",
-      "verified_at": "2026-06-06T12:31:16.811Z"
+      "verified_at": "2026-06-07T05:10:19.338Z"
     }
   ]
 }

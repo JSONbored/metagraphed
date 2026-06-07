@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-5",
   "summary": {
-    "avg_latency_ms": 345,
+    "avg_latency_ms": 379,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:03.797Z",
-    "last_ok": "2026-06-06T12:31:03.797Z",
+    "last_checked": "2026-06-07T05:10:04.443Z",
+    "last_ok": "2026-06-07T05:10:04.443Z",
     "name": "Hone",
     "netuid": 5,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:03.238Z",
-      "last_ok": "2026-06-06T12:31:03.238Z",
-      "latency_ms": 191,
+      "last_checked": "2026-06-07T05:10:04.034Z",
+      "last_ok": "2026-06-07T05:10:04.034Z",
+      "latency_ms": 349,
       "method_tested": "HEAD",
       "netuid": 5,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-5-github-readme-manifold-inc-hone-data-artifact-1",
       "uptime_sample_ratio": 1,
       "url": "https://arcprize.org/",
-      "verified_at": "2026-06-06T12:31:03.238Z"
+      "verified_at": "2026-06-07T05:10:04.034Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.152Z",
-      "last_ok": "2026-06-06T12:31:03.152Z",
-      "latency_ms": 99,
+      "last_checked": "2026-06-07T05:10:03.865Z",
+      "last_ok": "2026-06-07T05:10:03.865Z",
+      "latency_ms": 116,
       "method_tested": "HEAD",
       "netuid": 5,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-5-github-readme-manifold-inc-hone-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://docs.bittensor.com/",
-      "verified_at": "2026-06-06T12:31:03.152Z"
+      "verified_at": "2026-06-07T05:10:03.865Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:03.289Z",
-      "last_ok": "2026-06-06T12:31:03.289Z",
-      "latency_ms": 137,
+      "last_checked": "2026-06-07T05:10:04.078Z",
+      "last_ok": "2026-06-07T05:10:04.078Z",
+      "latency_ms": 320,
       "method_tested": "HEAD",
       "netuid": 5,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-5-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/5",
-      "verified_at": "2026-06-06T12:31:03.289Z"
+      "verified_at": "2026-06-07T05:10:04.078Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:03.760Z",
-      "last_ok": "2026-06-06T12:31:03.760Z",
-      "latency_ms": 599,
+      "last_checked": "2026-06-07T05:10:04.443Z",
+      "last_ok": "2026-06-07T05:10:04.443Z",
+      "latency_ms": 654,
       "method_tested": "HEAD",
       "netuid": 5,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-5-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/manifold-inc/hone",
-      "verified_at": "2026-06-06T12:31:03.760Z"
+      "verified_at": "2026-06-07T05:10:04.443Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:03.390Z",
-      "last_ok": "2026-06-06T12:31:03.390Z",
-      "latency_ms": 229,
+      "last_checked": "2026-06-07T05:10:04.158Z",
+      "last_ok": "2026-06-07T05:10:04.158Z",
+      "latency_ms": 336,
       "method_tested": "HEAD",
       "netuid": 5,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-5-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.hone.training/",
-      "verified_at": "2026-06-06T12:31:03.390Z"
+      "verified_at": "2026-06-07T05:10:04.158Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.797Z",
-      "last_ok": "2026-06-06T12:31:03.797Z",
-      "latency_ms": 609,
+      "last_checked": "2026-06-07T05:10:04.359Z",
+      "last_ok": "2026-06-07T05:10:04.359Z",
+      "latency_ms": 494,
       "method_tested": "HEAD",
       "netuid": 5,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-5-taopedia-article",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx",
-      "verified_at": "2026-06-06T12:31:03.797Z"
+      "verified_at": "2026-06-07T05:10:04.359Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.746Z",
-      "last_ok": "2026-06-06T12:31:03.746Z",
-      "latency_ms": 554,
+      "last_checked": "2026-06-07T05:10:04.325Z",
+      "last_ok": "2026-06-07T05:10:04.325Z",
+      "latency_ms": 385,
       "method_tested": "HEAD",
       "netuid": 5,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-5-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/5",
-      "verified_at": "2026-06-06T12:31:03.746Z"
+      "verified_at": "2026-06-07T05:10:04.325Z"
     }
   ]
 }

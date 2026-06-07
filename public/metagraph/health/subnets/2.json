@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-2",
   "summary": {
-    "avg_latency_ms": 334,
+    "avg_latency_ms": 397,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:03.326Z",
-    "last_ok": "2026-06-06T12:31:03.326Z",
+    "last_checked": "2026-06-07T05:10:03.990Z",
+    "last_ok": "2026-06-07T05:10:03.990Z",
     "name": "DSperse",
     "netuid": 2,
     "ok_count": 10,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:02.721Z",
-      "last_ok": "2026-06-06T12:31:02.721Z",
-      "latency_ms": 151,
+      "last_checked": "2026-06-07T05:10:03.190Z",
+      "last_ok": "2026-06-07T05:10:03.190Z",
+      "latency_ms": 172,
       "method_tested": "HEAD",
       "netuid": 2,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-2",
       "uptime_sample_ratio": 1,
       "url": "https://sn2-stats.inferencelabs.com/",
-      "verified_at": "2026-06-06T12:31:02.721Z"
+      "verified_at": "2026-06-07T05:10:03.190Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:02.829Z",
-      "last_ok": "2026-06-06T12:31:02.829Z",
-      "latency_ms": 257,
+      "last_checked": "2026-06-07T05:10:03.325Z",
+      "last_ok": "2026-06-07T05:10:03.325Z",
+      "latency_ms": 240,
       "method_tested": "HEAD",
       "netuid": 2,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-3",
       "uptime_sample_ratio": 1,
       "url": "https://wandb.ai/inferencelabs/subnet-2",
-      "verified_at": "2026-06-06T12:31:02.829Z"
+      "verified_at": "2026-06-07T05:10:03.325Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:02.872Z",
-      "last_ok": "2026-06-06T12:31:02.872Z",
-      "latency_ms": 300,
+      "last_checked": "2026-06-07T05:10:03.482Z",
+      "last_ok": "2026-06-07T05:10:03.482Z",
+      "latency_ms": 321,
       "method_tested": "HEAD",
       "netuid": 2,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-2-github-readme-inference-labs-inc-subnet-2-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://sn2-docs.inferencelabs.com/",
-      "verified_at": "2026-06-06T12:31:02.872Z"
+      "verified_at": "2026-06-07T05:10:03.482Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:02.921Z",
-      "last_ok": "2026-06-06T12:31:02.921Z",
-      "latency_ms": 301,
+      "last_checked": "2026-06-07T05:10:03.440Z",
+      "last_ok": "2026-06-07T05:10:03.440Z",
+      "latency_ms": 273,
       "method_tested": "HEAD",
       "netuid": 2,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-2-github-readme-inference-labs-inc-subnet-2-docs-4",
       "uptime_sample_ratio": 1,
       "url": "https://docs.bittensor.com/getting-started/installation",
-      "verified_at": "2026-06-06T12:31:02.921Z"
+      "verified_at": "2026-06-07T05:10:03.440Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:02.873Z",
-      "last_ok": "2026-06-06T12:31:02.873Z",
-      "latency_ms": 249,
+      "last_checked": "2026-06-07T05:10:03.441Z",
+      "last_ok": "2026-06-07T05:10:03.441Z",
+      "latency_ms": 274,
       "method_tested": "HEAD",
       "netuid": 2,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-2-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/2",
-      "verified_at": "2026-06-06T12:31:02.873Z"
+      "verified_at": "2026-06-07T05:10:03.441Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:03.298Z",
-      "last_ok": "2026-06-06T12:31:03.298Z",
-      "latency_ms": 635,
+      "last_checked": "2026-06-07T05:10:03.940Z",
+      "last_ok": "2026-06-07T05:10:03.940Z",
+      "latency_ms": 763,
       "method_tested": "HEAD",
       "netuid": 2,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-2-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/inference-labs-inc/subnet-2",
-      "verified_at": "2026-06-06T12:31:03.298Z"
+      "verified_at": "2026-06-07T05:10:03.940Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:02.811Z",
-      "last_ok": "2026-06-06T12:31:02.811Z",
-      "latency_ms": 143,
+      "last_checked": "2026-06-07T05:10:03.392Z",
+      "last_ok": "2026-06-07T05:10:03.392Z",
+      "latency_ms": 206,
       "method_tested": "HEAD",
       "netuid": 2,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-2-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://subnet2.inferencelabs.com/",
-      "verified_at": "2026-06-06T12:31:02.811Z"
+      "verified_at": "2026-06-07T05:10:03.392Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.242Z",
-      "last_ok": "2026-06-06T12:31:03.242Z",
-      "latency_ms": 573,
+      "last_checked": "2026-06-07T05:10:03.990Z",
+      "last_ok": "2026-06-07T05:10:03.990Z",
+      "latency_ms": 800,
       "method_tested": "HEAD",
       "netuid": 2,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-2-taopedia-article",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_2/index.mdx",
-      "verified_at": "2026-06-06T12:31:03.242Z"
+      "verified_at": "2026-06-07T05:10:03.990Z"
     },
     {
       "auth_required": false,
@@ -227,9 +227,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:03.326Z",
-      "last_ok": "2026-06-06T12:31:03.326Z",
-      "latency_ms": 606,
+      "last_checked": "2026-06-07T05:10:03.948Z",
+      "last_ok": "2026-06-07T05:10:03.948Z",
+      "latency_ms": 740,
       "method_tested": "HEAD",
       "netuid": 2,
       "private_redirect_blocked": false,
@@ -243,7 +243,7 @@
       "surface_id": "sn-2-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/2",
-      "verified_at": "2026-06-06T12:31:03.326Z"
+      "verified_at": "2026-06-07T05:10:03.948Z"
     },
     {
       "auth_required": false,
@@ -252,9 +252,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:02.857Z",
-      "last_ok": "2026-06-06T12:31:02.857Z",
-      "latency_ms": 121,
+      "last_checked": "2026-06-07T05:10:03.390Z",
+      "last_ok": "2026-06-07T05:10:03.390Z",
+      "latency_ms": 179,
       "method_tested": "GET",
       "netuid": 2,
       "private_redirect_blocked": false,
@@ -268,7 +268,7 @@
       "surface_id": "sn-2-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://subnet2.inferencelabs.com/swagger",
-      "verified_at": "2026-06-06T12:31:02.857Z"
+      "verified_at": "2026-06-07T05:10:03.390Z"
     }
   ]
 }

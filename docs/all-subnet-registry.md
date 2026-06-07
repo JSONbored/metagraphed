@@ -47,6 +47,18 @@ Overlays are canonical for:
 - Subtensor RPC/WSS endpoints on root/system;
 - read-only probe rules.
 
+Endpoint resources are generated from these curated surfaces. For Bittensor,
+that means:
+
+- root/system: Subtensor RPC/WSS/archive-capability endpoints;
+- subnet app layer: public APIs, OpenAPI, SSE, dashboards, SDKs, examples, and
+  data artifacts;
+- docs/data provider layer: docs, websites, repositories, and published data
+  files.
+
+Subnets are not treated as independent Cosmos-style chains, so Metagraphed does
+not invent RPC/API/gRPC/seed-node fields for every subnet.
+
 An overlay must reference a netuid that exists in the native snapshot unless it is explicitly marked pending.
 
 Curation levels:
@@ -91,6 +103,14 @@ Generated artifacts expose review state through:
 `public/metagraph/rpc-endpoints.json` lists Bittensor base-layer RPC/WSS endpoints and live probe metadata.
 
 `public/metagraph/rpc/pools.json` scores RPC/WSS endpoints for future read-only endpoint routing.
+
+`public/metagraph/endpoints.json` lists generalized endpoint resources derived from curated surfaces plus probe-derived health.
+
+`public/metagraph/endpoints/{netuid}.json` exposes endpoint resources for one subnet.
+
+`public/metagraph/providers/{slug}/endpoints.json` exposes endpoint resources for one provider/operator.
+
+`public/metagraph/endpoint-pools.json` scores monitored endpoint pools. In v1, only root/system RPC/WSS/archive-capable endpoints are candidates for future routing.
 
 `public/metagraph/coverage.json` summarizes chain coverage, curated overlays, native-only stubs, probed subnets, surfaces, and candidate counts.
 

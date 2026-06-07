@@ -20,6 +20,7 @@ The backend currently covers all active Finney netuids:
 - Allways SN7 and Gittensor SN74 are adapter-backed pilots.
 - Root netuid `0` is the home for Bittensor base-layer Subtensor RPC/WSS endpoints.
 - Health, badge, status, adapter, review, schema, RPC, search, freshness, evidence, and R2 manifest artifacts all live under `metagraph.sh/metagraph/*`.
+- Generalized endpoint resources and endpoint pools are generated under `metagraph.sh/metagraph/*` from curated surfaces and probe-derived observations.
 - Worker API routes under `metagraph.sh/api/v1/*` expose stable envelopes over those canonical artifacts.
 
 ## Product Layers
@@ -49,8 +50,11 @@ Declarative metadata for public interfaces:
 - source repositories;
 - docs;
 - JSON-RPC/WSS endpoints;
+- archive-capability signals for base-layer endpoints;
 - public data artifacts;
 - rate-limit and auth notes.
+
+This adapts the Cosmos Directory endpoint idea to Bittensor instead of copying it literally. Root/system carries Bittensor RPC/WSS/archive-capability endpoints. Subnet entries carry heterogeneous subnet-app resources such as APIs, OpenAPI, SSE, dashboards, SDKs, examples, docs, repos, and data artifacts.
 
 ### Health Metagraph Layer
 
@@ -101,3 +105,5 @@ Everything in the MVP should be public, read-only, and safe to probe.
 Community submissions and third-party discovery go into a candidate queue first.
 
 Schema-valid means the submission can be reviewed. It does not mean the interface is verified or published. Promotion into a curated overlay requires maintainer review of source support, public accessibility, auth/rate-limit labels, and probe safety.
+
+Endpoint/status reports can trigger review or re-probes, but they cannot directly set uptime, latency, health status, or pool eligibility. Those fields are generated only from scheduled probes and adapter checks.

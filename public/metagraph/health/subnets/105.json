@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-105",
   "summary": {
-    "avg_latency_ms": 258,
+    "avg_latency_ms": 308,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:16.275Z",
-    "last_ok": "2026-06-06T12:31:16.275Z",
+    "last_checked": "2026-06-07T05:10:18.791Z",
+    "last_ok": "2026-06-07T05:10:18.791Z",
     "name": "Beam",
     "netuid": 105,
     "ok_count": 6,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:15.992Z",
-      "last_ok": "2026-06-06T12:31:15.992Z",
-      "latency_ms": 126,
+      "last_checked": "2026-06-07T05:10:18.500Z",
+      "last_ok": "2026-06-07T05:10:18.500Z",
+      "latency_ms": 184,
       "method_tested": "HEAD",
       "netuid": 105,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-105-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/105",
-      "verified_at": "2026-06-06T12:31:15.992Z"
+      "verified_at": "2026-06-07T05:10:18.500Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:16.198Z",
-      "last_ok": "2026-06-06T12:31:16.198Z",
-      "latency_ms": 297,
+      "last_checked": "2026-06-07T05:10:18.678Z",
+      "last_ok": "2026-06-07T05:10:18.678Z",
+      "latency_ms": 317,
       "method_tested": "HEAD",
       "netuid": 105,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-105-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/orgs/Beam-Network/repositories",
-      "verified_at": "2026-06-06T12:31:16.198Z"
+      "verified_at": "2026-06-07T05:10:18.678Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:16.078Z",
-      "last_ok": "2026-06-06T12:31:16.078Z",
-      "latency_ms": 173,
+      "last_checked": "2026-06-07T05:10:18.669Z",
+      "last_ok": "2026-06-07T05:10:18.669Z",
+      "latency_ms": 259,
       "method_tested": "HEAD",
       "netuid": 105,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-105-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://b1m.ai/",
-      "verified_at": "2026-06-06T12:31:16.078Z"
+      "verified_at": "2026-06-07T05:10:18.669Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.275Z",
-      "last_ok": "2026-06-06T12:31:16.275Z",
-      "latency_ms": 352,
+      "last_checked": "2026-06-07T05:10:18.782Z",
+      "last_ok": "2026-06-07T05:10:18.782Z",
+      "latency_ms": 369,
       "method_tested": "HEAD",
       "netuid": 105,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-105-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/105",
-      "verified_at": "2026-06-06T12:31:16.275Z"
+      "verified_at": "2026-06-07T05:10:18.782Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.229Z",
-      "last_ok": "2026-06-06T12:31:16.229Z",
-      "latency_ms": 307,
+      "last_checked": "2026-06-07T05:10:18.785Z",
+      "last_ok": "2026-06-07T05:10:18.785Z",
+      "latency_ms": 360,
       "method_tested": "HEAD",
       "netuid": 105,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-105-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://b1m.ai/docs",
-      "verified_at": "2026-06-06T12:31:16.229Z"
+      "verified_at": "2026-06-07T05:10:18.785Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:16.254Z",
-      "last_ok": "2026-06-06T12:31:16.254Z",
-      "latency_ms": 293,
+      "last_checked": "2026-06-07T05:10:18.791Z",
+      "last_ok": "2026-06-07T05:10:18.791Z",
+      "latency_ms": 358,
       "method_tested": "GET",
       "netuid": 105,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-105-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://b1m.ai/swagger",
-      "verified_at": "2026-06-06T12:31:16.254Z"
+      "verified_at": "2026-06-07T05:10:18.791Z"
     }
   ]
 }

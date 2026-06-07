@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-29",
   "summary": {
-    "avg_latency_ms": 298,
+    "avg_latency_ms": 362,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:07.117Z",
-    "last_ok": "2026-06-06T12:31:07.117Z",
+    "last_checked": "2026-06-07T05:10:08.477Z",
+    "last_ok": "2026-06-07T05:10:08.477Z",
     "name": "Coldint",
     "netuid": 29,
     "ok_count": 6,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:06.812Z",
-      "last_ok": "2026-06-06T12:31:06.812Z",
-      "latency_ms": 196,
+      "last_checked": "2026-06-07T05:10:08.001Z",
+      "last_ok": "2026-06-07T05:10:08.001Z",
+      "latency_ms": 210,
       "method_tested": "HEAD",
       "netuid": 29,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-29-github-readme-coldint-coldint-validator-dashboard-3",
       "uptime_sample_ratio": 1,
       "url": "https://taostats.io/subnets/netuid-29",
-      "verified_at": "2026-06-06T12:31:06.812Z"
+      "verified_at": "2026-06-07T05:10:08.001Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:06.855Z",
-      "last_ok": "2026-06-06T12:31:06.855Z",
-      "latency_ms": 221,
+      "last_checked": "2026-06-07T05:10:08.054Z",
+      "last_ok": "2026-06-07T05:10:08.054Z",
+      "latency_ms": 254,
       "method_tested": "HEAD",
       "netuid": 29,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-29-github-readme-coldint-coldint-validator-data-artifact-2",
       "uptime_sample_ratio": 1,
       "url": "https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-score-2",
-      "verified_at": "2026-06-06T12:31:06.855Z"
+      "verified_at": "2026-06-07T05:10:08.054Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:06.839Z",
-      "last_ok": "2026-06-06T12:31:06.839Z",
-      "latency_ms": 196,
+      "last_checked": "2026-06-07T05:10:07.995Z",
+      "last_ok": "2026-06-07T05:10:07.995Z",
+      "latency_ms": 186,
       "method_tested": "HEAD",
       "netuid": 29,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-29-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/29",
-      "verified_at": "2026-06-06T12:31:06.839Z"
+      "verified_at": "2026-06-07T05:10:07.995Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:07.085Z",
-      "last_ok": "2026-06-06T12:31:07.085Z",
-      "latency_ms": 421,
+      "last_checked": "2026-06-07T05:10:08.396Z",
+      "last_ok": "2026-06-07T05:10:08.396Z",
+      "latency_ms": 542,
       "method_tested": "HEAD",
       "netuid": 29,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-29-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/coldint/coldint_validator",
-      "verified_at": "2026-06-06T12:31:07.085Z"
+      "verified_at": "2026-06-07T05:10:08.396Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:07.014Z",
-      "last_ok": "2026-06-06T12:31:07.014Z",
-      "latency_ms": 338,
+      "last_checked": "2026-06-07T05:10:08.314Z",
+      "last_ok": "2026-06-07T05:10:08.314Z",
+      "latency_ms": 412,
       "method_tested": "HEAD",
       "netuid": 29,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-29-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/29",
-      "verified_at": "2026-06-06T12:31:07.014Z"
+      "verified_at": "2026-06-07T05:10:08.314Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:07.117Z",
-      "last_ok": "2026-06-06T12:31:07.117Z",
-      "latency_ms": 417,
+      "last_checked": "2026-06-07T05:10:08.477Z",
+      "last_ok": "2026-06-07T05:10:08.477Z",
+      "latency_ms": 567,
       "method_tested": "HEAD",
       "netuid": 29,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-29-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/coldint/sn29",
-      "verified_at": "2026-06-06T12:31:07.117Z"
+      "verified_at": "2026-06-07T05:10:08.477Z"
     }
   ]
 }

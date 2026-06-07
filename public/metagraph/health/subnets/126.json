@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-126",
   "summary": {
-    "avg_latency_ms": 582,
+    "avg_latency_ms": 819,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:19.394Z",
-    "last_ok": "2026-06-06T12:31:19.394Z",
+    "last_checked": "2026-06-07T05:10:22.883Z",
+    "last_ok": "2026-06-07T05:10:22.883Z",
     "name": "Poker44",
     "netuid": 126,
     "ok_count": 5,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:18.149Z",
-      "last_ok": "2026-06-06T12:31:18.149Z",
-      "latency_ms": 135,
+      "last_checked": "2026-06-07T05:10:20.857Z",
+      "last_ok": "2026-06-07T05:10:20.857Z",
+      "latency_ms": 136,
       "method_tested": "HEAD",
       "netuid": 126,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-126-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/126",
-      "verified_at": "2026-06-06T12:31:18.149Z"
+      "verified_at": "2026-06-07T05:10:20.857Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:18.526Z",
-      "last_ok": "2026-06-06T12:31:18.526Z",
-      "latency_ms": 510,
+      "last_checked": "2026-06-07T05:10:21.590Z",
+      "last_ok": "2026-06-07T05:10:21.590Z",
+      "latency_ms": 824,
       "method_tested": "HEAD",
       "netuid": 126,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-126-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/Poker44/Poker44-subnet",
-      "verified_at": "2026-06-06T12:31:18.526Z"
+      "verified_at": "2026-06-07T05:10:21.590Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:18.652Z",
-      "last_ok": "2026-06-06T12:31:18.652Z",
-      "latency_ms": 598,
+      "last_checked": "2026-06-07T05:10:21.481Z",
+      "last_ok": "2026-06-07T05:10:21.481Z",
+      "latency_ms": 666,
       "method_tested": "HEAD",
       "netuid": 126,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-126-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://poker44.net/",
-      "verified_at": "2026-06-06T12:31:18.652Z"
+      "verified_at": "2026-06-07T05:10:21.481Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:18.474Z",
-      "last_ok": "2026-06-06T12:31:18.474Z",
-      "latency_ms": 399,
+      "last_checked": "2026-06-07T05:10:21.250Z",
+      "last_ok": "2026-06-07T05:10:21.250Z",
+      "latency_ms": 420,
       "method_tested": "HEAD",
       "netuid": 126,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-126-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/126",
-      "verified_at": "2026-06-06T12:31:18.474Z"
+      "verified_at": "2026-06-07T05:10:21.250Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:19.394Z",
-      "last_ok": "2026-06-06T12:31:19.394Z",
-      "latency_ms": 1270,
+      "last_checked": "2026-06-07T05:10:22.883Z",
+      "last_ok": "2026-06-07T05:10:22.883Z",
+      "latency_ms": 2048,
       "method_tested": "HEAD",
       "netuid": 126,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-126-website-link-poker44-net-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://poker44.net/dashboard",
-      "verified_at": "2026-06-06T12:31:19.394Z"
+      "verified_at": "2026-06-07T05:10:22.883Z"
     }
   ]
 }

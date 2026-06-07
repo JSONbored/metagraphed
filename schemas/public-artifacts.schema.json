@@ -24,6 +24,9 @@
     "surfaces": {
       "$ref": "#/$defs/surfacesArtifact"
     },
+    "endpoints": {
+      "$ref": "#/$defs/endpointsArtifact"
+    },
     "candidates": {
       "$ref": "#/$defs/genericArtifact"
     },
@@ -184,6 +187,24 @@
               "items": {
                 "$ref": "#/$defs/surface"
               }
+            }
+          }
+        }
+      ]
+    },
+    "endpointsArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["summary", "endpoints"],
+          "properties": {
+            "summary": {
+              "type": "object"
+            },
+            "endpoints": {
+              "type": "array"
             }
           }
         }

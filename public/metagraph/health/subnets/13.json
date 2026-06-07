@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-13",
   "summary": {
-    "avg_latency_ms": 544,
+    "avg_latency_ms": 563,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:05.836Z",
-    "last_ok": "2026-06-06T12:31:05.836Z",
+    "last_checked": "2026-06-07T05:10:06.527Z",
+    "last_ok": "2026-06-07T05:10:06.527Z",
     "name": "Data Universe",
     "netuid": 13,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:05.819Z",
-      "last_ok": "2026-06-06T12:31:05.819Z",
-      "latency_ms": 733,
+      "last_checked": "2026-06-07T05:10:06.514Z",
+      "last_ok": "2026-06-07T05:10:06.514Z",
+      "latency_ms": 632,
       "method_tested": "GET",
       "netuid": 13,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-13-github-readme-macrocosm-os-data-universe-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/a-guide-to-lawful-basis",
-      "verified_at": "2026-06-06T12:31:05.819Z"
+      "verified_at": "2026-06-07T05:10:06.514Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:05.836Z",
-      "last_ok": "2026-06-06T12:31:05.836Z",
-      "latency_ms": 749,
+      "last_checked": "2026-06-07T05:10:06.527Z",
+      "last_ok": "2026-06-07T05:10:06.527Z",
+      "latency_ms": 990,
       "method_tested": "GET",
       "netuid": 13,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-13-github-readme-macrocosm-os-data-universe-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/individual-rights",
-      "verified_at": "2026-06-06T12:31:05.836Z"
+      "verified_at": "2026-06-07T05:10:06.527Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:05.413Z",
-      "last_ok": "2026-06-06T12:31:05.413Z",
-      "latency_ms": 322,
+      "last_checked": "2026-06-07T05:10:06.163Z",
+      "last_ok": "2026-06-07T05:10:06.163Z",
+      "latency_ms": 621,
       "method_tested": "GET",
       "netuid": 13,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-13-github-readme-macrocosm-os-data-universe-docs-3",
       "uptime_sample_ratio": 1,
       "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/security/a-guide-to-data-security",
-      "verified_at": "2026-06-06T12:31:05.413Z"
+      "verified_at": "2026-06-07T05:10:06.163Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:05.109Z",
-      "last_ok": "2026-06-06T12:31:05.109Z",
-      "latency_ms": 898,
+      "last_checked": "2026-06-07T05:10:05.707Z",
+      "last_ok": "2026-06-07T05:10:05.707Z",
+      "latency_ms": 622,
       "method_tested": "HEAD",
       "netuid": 13,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-13-github-readme-macrocosm-os-data-universe-docs-4",
       "uptime_sample_ratio": 1,
       "url": "https://ico.org.uk/for-organisations/report-a-breach/personal-data-breach/personal-data-breaches-a-guide",
-      "verified_at": "2026-06-06T12:31:05.109Z"
+      "verified_at": "2026-06-07T05:10:05.707Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:04.365Z",
-      "last_ok": "2026-06-06T12:31:04.365Z",
-      "latency_ms": 141,
+      "last_checked": "2026-06-07T05:10:05.326Z",
+      "last_ok": "2026-06-07T05:10:05.326Z",
+      "latency_ms": 174,
       "method_tested": "HEAD",
       "netuid": 13,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-13-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/13",
-      "verified_at": "2026-06-06T12:31:04.365Z"
+      "verified_at": "2026-06-07T05:10:05.326Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:04.697Z",
-      "last_ok": "2026-06-06T12:31:04.697Z",
-      "latency_ms": 412,
+      "last_checked": "2026-06-07T05:10:05.705Z",
+      "last_ok": "2026-06-07T05:10:05.705Z",
+      "latency_ms": 472,
       "method_tested": "HEAD",
       "netuid": 13,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-13-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/macrocosm-os/data-universe",
-      "verified_at": "2026-06-06T12:31:04.697Z"
+      "verified_at": "2026-06-07T05:10:05.705Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:04.917Z",
-      "last_ok": "2026-06-06T12:31:04.917Z",
-      "latency_ms": 556,
+      "last_checked": "2026-06-07T05:10:05.721Z",
+      "last_ok": "2026-06-07T05:10:05.721Z",
+      "latency_ms": 430,
       "method_tested": "HEAD",
       "netuid": 13,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-13-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.macrocosmos.ai/gravity",
-      "verified_at": "2026-06-06T12:31:04.917Z"
+      "verified_at": "2026-06-07T05:10:05.721Z"
     }
   ]
 }

@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-59",
   "summary": {
-    "avg_latency_ms": 391,
+    "avg_latency_ms": 371,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:10.477Z",
-    "last_ok": "2026-06-06T12:31:10.477Z",
+    "last_checked": "2026-06-07T05:10:12.014Z",
+    "last_ok": "2026-06-07T05:10:12.014Z",
     "name": "Babelbit",
     "netuid": 59,
     "ok_count": 6,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "subnet-api",
-      "last_checked": "2026-06-06T12:31:10.477Z",
-      "last_ok": "2026-06-06T12:31:10.477Z",
-      "latency_ms": 601,
+      "last_checked": "2026-06-07T05:10:11.986Z",
+      "last_ok": "2026-06-07T05:10:11.986Z",
+      "latency_ms": 572,
       "method_tested": "GET",
       "netuid": 59,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-59-github-readme-babelbit-babelbit-subnet-subnet-api-1",
       "uptime_sample_ratio": 1,
       "url": "https://api.babelbit.ai/",
-      "verified_at": "2026-06-06T12:31:10.477Z"
+      "verified_at": "2026-06-07T05:10:11.986Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:10.077Z",
-      "last_ok": "2026-06-06T12:31:10.077Z",
-      "latency_ms": 140,
+      "last_checked": "2026-06-07T05:10:11.643Z",
+      "last_ok": "2026-06-07T05:10:11.643Z",
+      "latency_ms": 224,
       "method_tested": "HEAD",
       "netuid": 59,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-59-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/59",
-      "verified_at": "2026-06-06T12:31:10.077Z"
+      "verified_at": "2026-06-07T05:10:11.643Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:10.471Z",
-      "last_ok": "2026-06-06T12:31:10.471Z",
-      "latency_ms": 530,
+      "last_checked": "2026-06-07T05:10:11.865Z",
+      "last_ok": "2026-06-07T05:10:11.865Z",
+      "latency_ms": 434,
       "method_tested": "HEAD",
       "netuid": 59,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-59-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/babelbit/babelbit_subnet",
-      "verified_at": "2026-06-06T12:31:10.471Z"
+      "verified_at": "2026-06-07T05:10:11.865Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:10.253Z",
-      "last_ok": "2026-06-06T12:31:10.253Z",
-      "latency_ms": 304,
+      "last_checked": "2026-06-07T05:10:11.738Z",
+      "last_ok": "2026-06-07T05:10:11.738Z",
+      "latency_ms": 277,
       "method_tested": "HEAD",
       "netuid": 59,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-59-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://babelbit.ai/",
-      "verified_at": "2026-06-06T12:31:10.253Z"
+      "verified_at": "2026-06-07T05:10:11.738Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:10.304Z",
-      "last_ok": "2026-06-06T12:31:10.304Z",
-      "latency_ms": 350,
+      "last_checked": "2026-06-07T05:10:12.014Z",
+      "last_ok": "2026-06-07T05:10:12.014Z",
+      "latency_ms": 449,
       "method_tested": "HEAD",
       "netuid": 59,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-59-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/59",
-      "verified_at": "2026-06-06T12:31:10.304Z"
+      "verified_at": "2026-06-07T05:10:12.014Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:10.402Z",
-      "last_ok": "2026-06-06T12:31:10.402Z",
-      "latency_ms": 423,
+      "last_checked": "2026-06-07T05:10:11.858Z",
+      "last_ok": "2026-06-07T05:10:11.858Z",
+      "latency_ms": 272,
       "method_tested": "HEAD",
       "netuid": 59,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-59-website-link-babelbit-ai-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://babelbit.ai/main/dashboard",
-      "verified_at": "2026-06-06T12:31:10.402Z"
+      "verified_at": "2026-06-07T05:10:11.858Z"
     }
   ]
 }

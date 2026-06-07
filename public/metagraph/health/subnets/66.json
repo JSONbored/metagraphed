@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-66",
   "summary": {
-    "avg_latency_ms": 230,
+    "avg_latency_ms": 276,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:11.438Z",
-    "last_ok": "2026-06-06T12:31:11.438Z",
+    "last_checked": "2026-06-07T05:10:13.126Z",
+    "last_ok": "2026-06-07T05:10:13.126Z",
     "name": "ninja",
     "netuid": 66,
     "ok_count": 9,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "subnet-api",
-      "last_checked": "2026-06-06T12:31:11.312Z",
-      "last_ok": "2026-06-06T12:31:11.312Z",
-      "latency_ms": 383,
+      "last_checked": "2026-06-07T05:10:12.879Z",
+      "last_ok": "2026-06-07T05:10:12.879Z",
+      "latency_ms": 349,
       "method_tested": "GET",
       "netuid": 66,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-66-github-readme-unarbos-tau-subnet-api-2",
       "uptime_sample_ratio": 1,
       "url": "https://ninja66.ai/api/submissions",
-      "verified_at": "2026-06-06T12:31:11.312Z"
+      "verified_at": "2026-06-07T05:10:12.879Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:11.106Z",
-      "last_ok": "2026-06-06T12:31:11.106Z",
-      "latency_ms": 167,
+      "last_checked": "2026-06-07T05:10:12.785Z",
+      "last_ok": "2026-06-07T05:10:12.785Z",
+      "latency_ms": 252,
       "method_tested": "HEAD",
       "netuid": 66,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-66-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/66",
-      "verified_at": "2026-06-06T12:31:11.106Z"
+      "verified_at": "2026-06-07T05:10:12.785Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:11.438Z",
-      "last_ok": "2026-06-06T12:31:11.438Z",
-      "latency_ms": 491,
+      "last_checked": "2026-06-07T05:10:13.126Z",
+      "last_ok": "2026-06-07T05:10:13.126Z",
+      "latency_ms": 589,
       "method_tested": "HEAD",
       "netuid": 66,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-66-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/unarbos/tau",
-      "verified_at": "2026-06-06T12:31:11.438Z"
+      "verified_at": "2026-06-07T05:10:13.126Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:11.108Z",
-      "last_ok": "2026-06-06T12:31:11.108Z",
-      "latency_ms": 145,
+      "last_checked": "2026-06-07T05:10:12.709Z",
+      "last_ok": "2026-06-07T05:10:12.709Z",
+      "latency_ms": 167,
       "method_tested": "HEAD",
       "netuid": 66,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-66-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://ninja.arbos.life/",
-      "verified_at": "2026-06-06T12:31:11.108Z"
+      "verified_at": "2026-06-07T05:10:12.709Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:11.286Z",
-      "last_ok": "2026-06-06T12:31:11.286Z",
-      "latency_ms": 317,
+      "last_checked": "2026-06-07T05:10:12.930Z",
+      "last_ok": "2026-06-07T05:10:12.930Z",
+      "latency_ms": 372,
       "method_tested": "HEAD",
       "netuid": 66,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-66-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/66",
-      "verified_at": "2026-06-06T12:31:11.286Z"
+      "verified_at": "2026-06-07T05:10:12.930Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:11.107Z",
-      "last_ok": "2026-06-06T12:31:11.107Z",
-      "latency_ms": 134,
+      "last_checked": "2026-06-07T05:10:12.823Z",
+      "last_ok": "2026-06-07T05:10:12.823Z",
+      "latency_ms": 222,
       "method_tested": "HEAD",
       "netuid": 66,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-66-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://ninja.arbos.life/docs",
-      "verified_at": "2026-06-06T12:31:11.107Z"
+      "verified_at": "2026-06-07T05:10:12.823Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "subnet-api",
-      "last_checked": "2026-06-06T12:31:11.139Z",
-      "last_ok": "2026-06-06T12:31:11.139Z",
-      "latency_ms": 145,
+      "last_checked": "2026-06-07T05:10:12.763Z",
+      "last_ok": "2026-06-07T05:10:12.763Z",
+      "latency_ms": 160,
       "method_tested": "GET",
       "netuid": 66,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-66-website-common-health",
       "uptime_sample_ratio": 1,
       "url": "https://ninja.arbos.life/health",
-      "verified_at": "2026-06-06T12:31:11.139Z"
+      "verified_at": "2026-06-07T05:10:12.763Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:11.178Z",
-      "last_ok": "2026-06-06T12:31:11.178Z",
-      "latency_ms": 155,
+      "last_checked": "2026-06-07T05:10:12.803Z",
+      "last_ok": "2026-06-07T05:10:12.803Z",
+      "latency_ms": 171,
       "method_tested": "GET",
       "netuid": 66,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-66-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://ninja.arbos.life/swagger",
-      "verified_at": "2026-06-06T12:31:11.178Z"
+      "verified_at": "2026-06-07T05:10:12.803Z"
     },
     {
       "auth_required": false,
@@ -227,9 +227,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:11.200Z",
-      "last_ok": "2026-06-06T12:31:11.200Z",
-      "latency_ms": 131,
+      "last_checked": "2026-06-07T05:10:12.857Z",
+      "last_ok": "2026-06-07T05:10:12.857Z",
+      "latency_ms": 198,
       "method_tested": "HEAD",
       "netuid": 66,
       "private_redirect_blocked": false,
@@ -243,7 +243,7 @@
       "surface_id": "sn-66-website-link-ninja-arbos-life-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://ninja.arbos.life/dashboard-summary.json",
-      "verified_at": "2026-06-06T12:31:11.200Z"
+      "verified_at": "2026-06-07T05:10:12.857Z"
     }
   ]
 }

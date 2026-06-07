@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-113",
   "summary": {
-    "avg_latency_ms": 313,
+    "avg_latency_ms": 310,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:17.534Z",
-    "last_ok": "2026-06-06T12:31:17.534Z",
+    "last_checked": "2026-06-07T05:10:20.054Z",
+    "last_ok": "2026-06-07T05:10:20.054Z",
     "name": "TensorUSD",
     "netuid": 113,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:17.089Z",
-      "last_ok": "2026-06-06T12:31:17.089Z",
-      "latency_ms": 216,
+      "last_checked": "2026-06-07T05:10:19.596Z",
+      "last_ok": "2026-06-07T05:10:19.596Z",
+      "latency_ms": 184,
       "method_tested": "HEAD",
       "netuid": 113,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-113-github-readme-tensorusd-subnet-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.tensorusd.com/components/subnet",
-      "verified_at": "2026-06-06T12:31:17.089Z"
+      "verified_at": "2026-06-07T05:10:19.596Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.959Z",
-      "last_ok": "2026-06-06T12:31:16.959Z",
-      "latency_ms": 78,
+      "last_checked": "2026-06-07T05:10:19.490Z",
+      "last_ok": "2026-06-07T05:10:19.490Z",
+      "latency_ms": 57,
       "method_tested": "HEAD",
       "netuid": 113,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-113-github-readme-tensorusd-subnet-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://docs.astral.sh/uv",
-      "verified_at": "2026-06-06T12:31:16.959Z"
+      "verified_at": "2026-06-07T05:10:19.490Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:17.132Z",
-      "last_ok": "2026-06-06T12:31:17.132Z",
-      "latency_ms": 221,
+      "last_checked": "2026-06-07T05:10:19.614Z",
+      "last_ok": "2026-06-07T05:10:19.614Z",
+      "latency_ms": 160,
       "method_tested": "HEAD",
       "netuid": 113,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-113-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/113",
-      "verified_at": "2026-06-06T12:31:17.132Z"
+      "verified_at": "2026-06-07T05:10:19.614Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:17.534Z",
-      "last_ok": "2026-06-06T12:31:17.534Z",
-      "latency_ms": 608,
+      "last_checked": "2026-06-07T05:10:20.054Z",
+      "last_ok": "2026-06-07T05:10:20.054Z",
+      "latency_ms": 564,
       "method_tested": "HEAD",
       "netuid": 113,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-113-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/TensorUSD/subnet",
-      "verified_at": "2026-06-06T12:31:17.534Z"
+      "verified_at": "2026-06-07T05:10:20.054Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:17.514Z",
-      "last_ok": "2026-06-06T12:31:17.514Z",
-      "latency_ms": 580,
+      "last_checked": "2026-06-07T05:10:20.045Z",
+      "last_ok": "2026-06-07T05:10:20.045Z",
+      "latency_ms": 555,
       "method_tested": "HEAD",
       "netuid": 113,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-113-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://tensorusd.com/",
-      "verified_at": "2026-06-06T12:31:17.514Z"
+      "verified_at": "2026-06-07T05:10:20.045Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:17.237Z",
-      "last_ok": "2026-06-06T12:31:17.237Z",
-      "latency_ms": 290,
+      "last_checked": "2026-06-07T05:10:19.933Z",
+      "last_ok": "2026-06-07T05:10:19.933Z",
+      "latency_ms": 435,
       "method_tested": "HEAD",
       "netuid": 113,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-113-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/113",
-      "verified_at": "2026-06-06T12:31:17.237Z"
+      "verified_at": "2026-06-07T05:10:19.933Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:17.145Z",
-      "last_ok": "2026-06-06T12:31:17.145Z",
-      "latency_ms": 195,
+      "last_checked": "2026-06-07T05:10:19.737Z",
+      "last_ok": "2026-06-07T05:10:19.737Z",
+      "latency_ms": 218,
       "method_tested": "HEAD",
       "netuid": 113,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-113-website-link-tensorusd-com-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.tensorusd.com/",
-      "verified_at": "2026-06-06T12:31:17.145Z"
+      "verified_at": "2026-06-07T05:10:19.737Z"
     }
   ]
 }

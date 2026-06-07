@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-123",
   "summary": {
-    "avg_latency_ms": 344,
+    "avg_latency_ms": 391,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:18.242Z",
-    "last_ok": "2026-06-06T12:31:18.242Z",
+    "last_checked": "2026-06-07T05:10:20.992Z",
+    "last_ok": "2026-06-07T05:10:20.992Z",
     "name": "MANTIS",
     "netuid": 123,
     "ok_count": 3,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:17.893Z",
-      "last_ok": "2026-06-06T12:31:17.893Z",
-      "latency_ms": 158,
+      "last_checked": "2026-06-07T05:10:20.533Z",
+      "last_ok": "2026-06-07T05:10:20.533Z",
+      "latency_ms": 168,
       "method_tested": "HEAD",
       "netuid": 123,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-123-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/123",
-      "verified_at": "2026-06-06T12:31:17.893Z"
+      "verified_at": "2026-06-07T05:10:20.533Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:18.124Z",
-      "last_ok": "2026-06-06T12:31:18.124Z",
-      "latency_ms": 388,
+      "last_checked": "2026-06-07T05:10:20.992Z",
+      "last_ok": "2026-06-07T05:10:20.992Z",
+      "latency_ms": 593,
       "method_tested": "HEAD",
       "netuid": 123,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-123-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/Barbariandev/MANTIS",
-      "verified_at": "2026-06-06T12:31:18.124Z"
+      "verified_at": "2026-06-07T05:10:20.992Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:18.242Z",
-      "last_ok": "2026-06-06T12:31:18.242Z",
-      "latency_ms": 486,
+      "last_checked": "2026-06-07T05:10:20.830Z",
+      "last_ok": "2026-06-07T05:10:20.830Z",
+      "latency_ms": 413,
       "method_tested": "HEAD",
       "netuid": 123,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-123-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/123",
-      "verified_at": "2026-06-06T12:31:18.242Z"
+      "verified_at": "2026-06-07T05:10:20.830Z"
     }
   ]
 }

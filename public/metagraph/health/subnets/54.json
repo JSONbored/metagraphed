@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-54",
   "summary": {
-    "avg_latency_ms": 271,
+    "avg_latency_ms": 314,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:09.876Z",
-    "last_ok": "2026-06-06T12:31:09.876Z",
+    "last_checked": "2026-06-07T05:10:11.405Z",
+    "last_ok": "2026-06-07T05:10:11.405Z",
     "name": "Yanez MIID",
     "netuid": 54,
     "ok_count": 5,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:09.456Z",
-      "last_ok": "2026-06-06T12:31:09.456Z",
-      "latency_ms": 146,
+      "last_checked": "2026-06-07T05:10:10.913Z",
+      "last_ok": "2026-06-07T05:10:10.913Z",
+      "latency_ms": 174,
       "method_tested": "HEAD",
       "netuid": 54,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-54-github-readme-yanez-compliance-miid-subnet-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://tao-ui-dashboard.yanez.ai/",
-      "verified_at": "2026-06-06T12:31:09.456Z"
+      "verified_at": "2026-06-07T05:10:10.913Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:09.520Z",
-      "last_ok": "2026-06-06T12:31:09.520Z",
-      "latency_ms": 208,
+      "last_checked": "2026-06-07T05:10:10.899Z",
+      "last_ok": "2026-06-07T05:10:10.899Z",
+      "latency_ms": 153,
       "method_tested": "HEAD",
       "netuid": 54,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-54-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/54",
-      "verified_at": "2026-06-06T12:31:09.520Z"
+      "verified_at": "2026-06-07T05:10:10.899Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:09.876Z",
-      "last_ok": "2026-06-06T12:31:09.876Z",
-      "latency_ms": 518,
+      "last_checked": "2026-06-07T05:10:11.405Z",
+      "last_ok": "2026-06-07T05:10:11.405Z",
+      "latency_ms": 647,
       "method_tested": "HEAD",
       "netuid": 54,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-54-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/yanez-compliance/MIID-subnet",
-      "verified_at": "2026-06-06T12:31:09.876Z"
+      "verified_at": "2026-06-07T05:10:11.405Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:09.545Z",
-      "last_ok": "2026-06-06T12:31:09.545Z",
-      "latency_ms": 170,
+      "last_checked": "2026-06-07T05:10:10.927Z",
+      "last_ok": "2026-06-07T05:10:10.927Z",
+      "latency_ms": 168,
       "method_tested": "HEAD",
       "netuid": 54,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-54-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.yanez.ai/",
-      "verified_at": "2026-06-06T12:31:09.545Z"
+      "verified_at": "2026-06-07T05:10:10.927Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:09.690Z",
-      "last_ok": "2026-06-06T12:31:09.690Z",
-      "latency_ms": 314,
+      "last_checked": "2026-06-07T05:10:11.209Z",
+      "last_ok": "2026-06-07T05:10:11.209Z",
+      "latency_ms": 426,
       "method_tested": "HEAD",
       "netuid": 54,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-54-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/54",
-      "verified_at": "2026-06-06T12:31:09.690Z"
+      "verified_at": "2026-06-07T05:10:11.209Z"
     }
   ]
 }

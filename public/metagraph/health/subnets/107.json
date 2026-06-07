@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-107",
   "summary": {
-    "avg_latency_ms": 304,
+    "avg_latency_ms": 315,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:16.911Z",
-    "last_ok": "2026-06-06T12:31:16.911Z",
+    "last_checked": "2026-06-07T05:10:19.434Z",
+    "last_ok": "2026-06-07T05:10:19.434Z",
     "name": "Minos",
     "netuid": 107,
     "ok_count": 11,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "subnet-api",
-      "last_checked": "2026-06-06T12:31:16.310Z",
-      "last_ok": "2026-06-06T12:31:16.310Z",
-      "latency_ms": 233,
+      "last_checked": "2026-06-07T05:10:18.865Z",
+      "last_ok": "2026-06-07T05:10:18.865Z",
+      "latency_ms": 240,
       "method_tested": "GET",
       "netuid": 107,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-107-github-readme-minos-protocol-minos-subnet-subnet-api-1",
       "uptime_sample_ratio": 1,
       "url": "https://api.theminos.ai/",
-      "verified_at": "2026-06-06T12:31:16.310Z"
+      "verified_at": "2026-06-07T05:10:18.865Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "subnet-api",
-      "last_checked": "2026-06-06T12:31:16.314Z",
-      "last_ok": "2026-06-06T12:31:16.314Z",
-      "latency_ms": 226,
+      "last_checked": "2026-06-07T05:10:18.864Z",
+      "last_ok": "2026-06-07T05:10:18.864Z",
+      "latency_ms": 194,
       "method_tested": "GET",
       "netuid": 107,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-107-github-readme-minos-protocol-minos-subnet-subnet-api-3",
       "uptime_sample_ratio": 1,
       "url": "https://api.theminos.ai/health",
-      "verified_at": "2026-06-06T12:31:16.314Z"
+      "verified_at": "2026-06-07T05:10:18.864Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:16.349Z",
-      "last_ok": "2026-06-06T12:31:16.349Z",
-      "latency_ms": 216,
+      "last_checked": "2026-06-07T05:10:18.882Z",
+      "last_ok": "2026-06-07T05:10:18.882Z",
+      "latency_ms": 203,
       "method_tested": "HEAD",
       "netuid": 107,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-107-github-readme-tigerinvests-com-sn107-alpha-dashboard-1",
       "uptime_sample_ratio": 1,
       "url": "https://taostats.io/subnets/107/chart",
-      "verified_at": "2026-06-06T12:31:16.349Z"
+      "verified_at": "2026-06-07T05:10:18.882Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:16.345Z",
-      "last_ok": "2026-06-06T12:31:16.345Z",
-      "latency_ms": 151,
+      "last_checked": "2026-06-07T05:10:18.850Z",
+      "last_ok": "2026-06-07T05:10:18.850Z",
+      "latency_ms": 153,
       "method_tested": "HEAD",
       "netuid": 107,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-107-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/107",
-      "verified_at": "2026-06-06T12:31:16.345Z"
+      "verified_at": "2026-06-07T05:10:18.850Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:16.623Z",
-      "last_ok": "2026-06-06T12:31:16.623Z",
-      "latency_ms": 425,
+      "last_checked": "2026-06-07T05:10:19.218Z",
+      "last_ok": "2026-06-07T05:10:19.218Z",
+      "latency_ms": 516,
       "method_tested": "HEAD",
       "netuid": 107,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-107-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/minos-protocol/minos_subnet",
-      "verified_at": "2026-06-06T12:31:16.623Z"
+      "verified_at": "2026-06-07T05:10:19.218Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:16.486Z",
-      "last_ok": "2026-06-06T12:31:16.486Z",
-      "latency_ms": 256,
+      "last_checked": "2026-06-07T05:10:18.973Z",
+      "last_ok": "2026-06-07T05:10:18.973Z",
+      "latency_ms": 263,
       "method_tested": "HEAD",
       "netuid": 107,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-107-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://theminos.ai/",
-      "verified_at": "2026-06-06T12:31:16.486Z"
+      "verified_at": "2026-06-07T05:10:18.973Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.543Z",
-      "last_ok": "2026-06-06T12:31:16.543Z",
-      "latency_ms": 289,
+      "last_checked": "2026-06-07T05:10:19.117Z",
+      "last_ok": "2026-06-07T05:10:19.117Z",
+      "latency_ms": 360,
       "method_tested": "HEAD",
       "netuid": 107,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-107-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/107",
-      "verified_at": "2026-06-06T12:31:16.543Z"
+      "verified_at": "2026-06-07T05:10:19.117Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:16.911Z",
-      "last_ok": "2026-06-06T12:31:16.911Z",
-      "latency_ms": 636,
+      "last_checked": "2026-06-07T05:10:19.434Z",
+      "last_ok": "2026-06-07T05:10:19.434Z",
+      "latency_ms": 651,
       "method_tested": "HEAD",
       "netuid": 107,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-107-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tigerinvests-com/sn107-alpha",
-      "verified_at": "2026-06-06T12:31:16.911Z"
+      "verified_at": "2026-06-07T05:10:19.434Z"
     },
     {
       "auth_required": false,
@@ -227,9 +227,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.489Z",
-      "last_ok": "2026-06-06T12:31:16.489Z",
-      "latency_ms": 199,
+      "last_checked": "2026-06-07T05:10:18.970Z",
+      "last_ok": "2026-06-07T05:10:18.970Z",
+      "latency_ms": 185,
       "method_tested": "HEAD",
       "netuid": 107,
       "private_redirect_blocked": false,
@@ -243,7 +243,7 @@
       "surface_id": "sn-107-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://theminos.ai/docs",
-      "verified_at": "2026-06-06T12:31:16.489Z"
+      "verified_at": "2026-06-07T05:10:18.970Z"
     },
     {
       "auth_required": false,
@@ -252,9 +252,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.522Z",
-      "last_ok": "2026-06-06T12:31:16.522Z",
-      "latency_ms": 211,
+      "last_checked": "2026-06-07T05:10:19.026Z",
+      "last_ok": "2026-06-07T05:10:19.026Z",
+      "latency_ms": 234,
       "method_tested": "HEAD",
       "netuid": 107,
       "private_redirect_blocked": false,
@@ -268,7 +268,7 @@
       "surface_id": "sn-107-website-link-theminos-ai-docs-3",
       "uptime_sample_ratio": 1,
       "url": "https://theminos.ai/whitepaper",
-      "verified_at": "2026-06-06T12:31:16.522Z"
+      "verified_at": "2026-06-07T05:10:19.026Z"
     },
     {
       "auth_required": false,
@@ -277,9 +277,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.813Z",
-      "last_ok": "2026-06-06T12:31:16.813Z",
-      "latency_ms": 499,
+      "last_checked": "2026-06-07T05:10:19.314Z",
+      "last_ok": "2026-06-07T05:10:19.314Z",
+      "latency_ms": 464,
       "method_tested": "HEAD",
       "netuid": 107,
       "private_redirect_blocked": false,
@@ -293,7 +293,7 @@
       "surface_id": "sn-107-website-link-theminos-ai-docs-4",
       "uptime_sample_ratio": 1,
       "url": "https://docs.theminos.ai/",
-      "verified_at": "2026-06-06T12:31:16.813Z"
+      "verified_at": "2026-06-07T05:10:19.314Z"
     }
   ]
 }

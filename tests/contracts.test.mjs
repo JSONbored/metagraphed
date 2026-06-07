@@ -111,6 +111,8 @@ describe("public contract registry", () => {
     assert.equal(Boolean(openapi.components.schemas.ErrorEnvelope), true);
     assert.equal(Boolean(openapi.components.schemas.Surface), true);
     assert.equal(Boolean(openapi.components.schemas.CandidateSurface), true);
+    assert.equal(Boolean(openapi.components.schemas.EndpointResource), true);
+    assert.equal(Boolean(openapi.components.schemas.EndpointsArtifact), true);
     assert.equal(openapi["x-metagraphed"].generated_at, generatedAt);
 
     const subnetParameters = openapi.paths["/api/v1/subnets"].get.parameters;
@@ -131,6 +133,20 @@ describe("public contract registry", () => {
       candidateParameters
         .find((parameter) => parameter.name === "state")
         .schema.enum.includes("schema-valid"),
+      true,
+    );
+
+    const endpointParameters =
+      openapi.paths["/api/v1/endpoints"].get.parameters;
+    assert.deepEqual(
+      endpointParameters.find((parameter) => parameter.name === "layer").schema
+        .enum,
+      ["bittensor-base", "data-provider", "docs-provider", "subnet-app"],
+    );
+    assert.equal(
+      endpointParameters
+        .find((parameter) => parameter.name === "sort")
+        .schema.enum.includes("score"),
       true,
     );
   });

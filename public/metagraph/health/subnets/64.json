@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-64",
   "summary": {
-    "avg_latency_ms": 352,
+    "avg_latency_ms": 337,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:11.273Z",
-    "last_ok": "2026-06-06T12:31:11.273Z",
+    "last_checked": "2026-06-07T05:10:12.926Z",
+    "last_ok": "2026-06-07T05:10:12.926Z",
     "name": "Chutes",
     "netuid": 64,
     "ok_count": 11,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "subnet-api",
-      "last_checked": "2026-06-06T12:31:10.665Z",
-      "last_ok": "2026-06-06T12:31:10.665Z",
-      "latency_ms": 188,
+      "last_checked": "2026-06-07T05:10:12.348Z",
+      "last_ok": "2026-06-07T05:10:12.348Z",
+      "latency_ms": 171,
       "method_tested": "GET",
       "netuid": 64,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-64-github-readme-chutesai-chutes-subnet-api-1",
       "uptime_sample_ratio": 1,
       "url": "https://api.chutes.ai/pricing",
-      "verified_at": "2026-06-06T12:31:10.665Z"
+      "verified_at": "2026-06-07T05:10:12.348Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:10.865Z",
-      "last_ok": "2026-06-06T12:31:10.865Z",
-      "latency_ms": 339,
+      "last_checked": "2026-06-07T05:10:12.530Z",
+      "last_ok": "2026-06-07T05:10:12.530Z",
+      "latency_ms": 345,
       "method_tested": "HEAD",
       "netuid": 64,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-64-github-readme-rayonlabs-chutes-miner-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://kubernetes.io/docs/reference/kubectl",
-      "verified_at": "2026-06-06T12:31:10.865Z"
+      "verified_at": "2026-06-07T05:10:12.530Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:10.726Z",
-      "last_ok": "2026-06-06T12:31:10.726Z",
-      "latency_ms": 165,
+      "last_checked": "2026-06-07T05:10:12.348Z",
+      "last_ok": "2026-06-07T05:10:12.348Z",
+      "latency_ms": 162,
       "method_tested": "HEAD",
       "netuid": 64,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-64-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/64",
-      "verified_at": "2026-06-06T12:31:10.726Z"
+      "verified_at": "2026-06-07T05:10:12.348Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:11.146Z",
-      "last_ok": "2026-06-06T12:31:11.146Z",
-      "latency_ms": 554,
+      "last_checked": "2026-06-07T05:10:12.675Z",
+      "last_ok": "2026-06-07T05:10:12.675Z",
+      "latency_ms": 488,
       "method_tested": "HEAD",
       "netuid": 64,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-64-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/chutesai/chutes",
-      "verified_at": "2026-06-06T12:31:11.146Z"
+      "verified_at": "2026-06-07T05:10:12.675Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:10.948Z",
-      "last_ok": "2026-06-06T12:31:10.948Z",
-      "latency_ms": 339,
+      "last_checked": "2026-06-07T05:10:12.417Z",
+      "last_ok": "2026-06-07T05:10:12.417Z",
+      "latency_ms": 229,
       "method_tested": "HEAD",
       "netuid": 64,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-64-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://chutes.ai/",
-      "verified_at": "2026-06-06T12:31:10.948Z"
+      "verified_at": "2026-06-07T05:10:12.417Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:10.994Z",
-      "last_ok": "2026-06-06T12:31:10.994Z",
-      "latency_ms": 364,
+      "last_checked": "2026-06-07T05:10:12.532Z",
+      "last_ok": "2026-06-07T05:10:12.532Z",
+      "latency_ms": 334,
       "method_tested": "HEAD",
       "netuid": 64,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-64-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/64",
-      "verified_at": "2026-06-06T12:31:10.994Z"
+      "verified_at": "2026-06-07T05:10:12.532Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:11.273Z",
-      "last_ok": "2026-06-06T12:31:11.273Z",
-      "latency_ms": 642,
+      "last_checked": "2026-06-07T05:10:12.926Z",
+      "last_ok": "2026-06-07T05:10:12.926Z",
+      "latency_ms": 713,
       "method_tested": "HEAD",
       "netuid": 64,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-64-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/rayonlabs/chutes-miner",
-      "verified_at": "2026-06-06T12:31:11.273Z"
+      "verified_at": "2026-06-07T05:10:12.926Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:11.151Z",
-      "last_ok": "2026-06-06T12:31:11.151Z",
-      "latency_ms": 510,
+      "last_checked": "2026-06-07T05:10:12.662Z",
+      "last_ok": "2026-06-07T05:10:12.662Z",
+      "latency_ms": 432,
       "method_tested": "HEAD",
       "netuid": 64,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-64-tensorplex-source-repo-2",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/rayonlabs/chutes",
-      "verified_at": "2026-06-06T12:31:11.151Z"
+      "verified_at": "2026-06-07T05:10:12.662Z"
     },
     {
       "auth_required": false,
@@ -227,9 +227,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:10.852Z",
-      "last_ok": "2026-06-06T12:31:10.852Z",
-      "latency_ms": 202,
+      "last_checked": "2026-06-07T05:10:12.661Z",
+      "last_ok": "2026-06-07T05:10:12.661Z",
+      "latency_ms": 350,
       "method_tested": "HEAD",
       "netuid": 64,
       "private_redirect_blocked": false,
@@ -243,7 +243,7 @@
       "surface_id": "sn-64-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://chutes.ai/docs",
-      "verified_at": "2026-06-06T12:31:10.852Z"
+      "verified_at": "2026-06-07T05:10:12.661Z"
     },
     {
       "auth_required": false,
@@ -252,9 +252,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:10.963Z",
-      "last_ok": "2026-06-06T12:31:10.963Z",
-      "latency_ms": 309,
+      "last_checked": "2026-06-07T05:10:12.542Z",
+      "last_ok": "2026-06-07T05:10:12.542Z",
+      "latency_ms": 226,
       "method_tested": "HEAD",
       "netuid": 64,
       "private_redirect_blocked": false,
@@ -268,7 +268,7 @@
       "surface_id": "sn-64-website-link-chutes-ai-data-artifact-5",
       "uptime_sample_ratio": 1,
       "url": "https://chutes.ai/app?type=llm",
-      "verified_at": "2026-06-06T12:31:10.963Z"
+      "verified_at": "2026-06-07T05:10:12.542Z"
     },
     {
       "auth_required": false,
@@ -277,9 +277,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:10.923Z",
-      "last_ok": "2026-06-06T12:31:10.923Z",
-      "latency_ms": 257,
+      "last_checked": "2026-06-07T05:10:12.600Z",
+      "last_ok": "2026-06-07T05:10:12.600Z",
+      "latency_ms": 254,
       "method_tested": "HEAD",
       "netuid": 64,
       "private_redirect_blocked": false,
@@ -293,7 +293,7 @@
       "surface_id": "sn-64-website-link-chutes-ai-data-artifact-6",
       "uptime_sample_ratio": 1,
       "url": "https://chutes.ai/app?type=diffusion",
-      "verified_at": "2026-06-06T12:31:10.923Z"
+      "verified_at": "2026-06-07T05:10:12.600Z"
     }
   ]
 }

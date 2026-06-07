@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-84",
   "summary": {
-    "avg_latency_ms": 348,
+    "avg_latency_ms": 350,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:13.655Z",
-    "last_ok": "2026-06-06T12:31:13.655Z",
+    "last_checked": "2026-06-07T05:10:15.495Z",
+    "last_ok": "2026-06-07T05:10:15.495Z",
     "name": "ansuz",
     "netuid": 84,
     "ok_count": 5,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:13.026Z",
-      "last_ok": "2026-06-06T12:31:13.026Z",
-      "latency_ms": 36,
+      "last_checked": "2026-06-07T05:10:14.798Z",
+      "last_ok": "2026-06-07T05:10:14.798Z",
+      "latency_ms": 40,
       "method_tested": "HEAD",
       "netuid": 84,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-84-github-readme-tatsuproject-chipforge-sn84-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.learnbittensor.org/btcli",
-      "verified_at": "2026-06-06T12:31:13.026Z"
+      "verified_at": "2026-06-07T05:10:14.798Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:13.285Z",
-      "last_ok": "2026-06-06T12:31:13.285Z",
-      "latency_ms": 259,
+      "last_checked": "2026-06-07T05:10:14.921Z",
+      "last_ok": "2026-06-07T05:10:14.921Z",
+      "latency_ms": 154,
       "method_tested": "HEAD",
       "netuid": 84,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-84-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/84",
-      "verified_at": "2026-06-06T12:31:13.285Z"
+      "verified_at": "2026-06-07T05:10:14.921Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:13.439Z",
-      "last_ok": "2026-06-06T12:31:13.439Z",
-      "latency_ms": 391,
+      "last_checked": "2026-06-07T05:10:15.191Z",
+      "last_ok": "2026-06-07T05:10:15.191Z",
+      "latency_ms": 393,
       "method_tested": "HEAD",
       "netuid": 84,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-84-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/84",
-      "verified_at": "2026-06-06T12:31:13.439Z"
+      "verified_at": "2026-06-07T05:10:15.191Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:13.655Z",
-      "last_ok": "2026-06-06T12:31:13.655Z",
-      "latency_ms": 606,
+      "last_checked": "2026-06-07T05:10:15.411Z",
+      "last_ok": "2026-06-07T05:10:15.411Z",
+      "latency_ms": 546,
       "method_tested": "HEAD",
       "netuid": 84,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-84-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/TatsuProject/ChipForge_SN84",
-      "verified_at": "2026-06-06T12:31:13.655Z"
+      "verified_at": "2026-06-07T05:10:15.411Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:13.498Z",
-      "last_ok": "2026-06-06T12:31:13.498Z",
-      "latency_ms": 446,
+      "last_checked": "2026-06-07T05:10:15.495Z",
+      "last_ok": "2026-06-07T05:10:15.495Z",
+      "latency_ms": 617,
       "method_tested": "HEAD",
       "netuid": 84,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-84-tensorplex-source-repo-2",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/TatsuProject/chipforge_eda_server",
-      "verified_at": "2026-06-06T12:31:13.498Z"
+      "verified_at": "2026-06-07T05:10:15.495Z"
     }
   ]
 }

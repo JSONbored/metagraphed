@@ -1,5 +1,26 @@
 {
   "contract_version": "2026-06-06.1",
+  "endpoint_summary": {
+    "by_kind": {
+      "dashboard": 6,
+      "docs": 136,
+      "source-repo": 43,
+      "subnet-api": 3
+    },
+    "by_layer": {
+      "docs-provider": 179,
+      "subnet-app": 9
+    },
+    "by_publication_state": {
+      "monitored": 188
+    },
+    "by_status": {
+      "unknown": 188
+    },
+    "endpoint_count": 188,
+    "monitored_count": 188,
+    "pool_eligible_count": 0
+  },
   "generated_at": "1970-01-01T00:00:00.000Z",
   "provider": {
     "authority": "community",

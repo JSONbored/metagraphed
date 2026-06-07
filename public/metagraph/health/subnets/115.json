@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-115",
   "summary": {
-    "avg_latency_ms": 397,
+    "avg_latency_ms": 365,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:17.544Z",
-    "last_ok": "2026-06-06T12:31:17.544Z",
+    "last_checked": "2026-06-07T05:10:20.279Z",
+    "last_ok": "2026-06-07T05:10:20.279Z",
     "name": "HashiChain",
     "netuid": 115,
     "ok_count": 3,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:17.479Z",
-      "last_ok": "2026-06-06T12:31:17.479Z",
-      "latency_ms": 395,
+      "last_checked": "2026-06-07T05:10:19.849Z",
+      "last_ok": "2026-06-07T05:10:19.849Z",
+      "latency_ms": 150,
       "method_tested": "HEAD",
       "netuid": 115,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-115-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/115",
-      "verified_at": "2026-06-06T12:31:17.479Z"
+      "verified_at": "2026-06-07T05:10:19.849Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:17.544Z",
-      "last_ok": "2026-06-06T12:31:17.544Z",
-      "latency_ms": 455,
+      "last_checked": "2026-06-07T05:10:20.279Z",
+      "last_ok": "2026-06-07T05:10:20.279Z",
+      "latency_ms": 580,
       "method_tested": "HEAD",
       "netuid": 115,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-115-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/hashi115/hashichain",
-      "verified_at": "2026-06-06T12:31:17.544Z"
+      "verified_at": "2026-06-07T05:10:20.279Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:17.474Z",
-      "last_ok": "2026-06-06T12:31:17.474Z",
-      "latency_ms": 342,
+      "last_checked": "2026-06-07T05:10:20.102Z",
+      "last_ok": "2026-06-07T05:10:20.102Z",
+      "latency_ms": 365,
       "method_tested": "HEAD",
       "netuid": 115,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-115-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/115",
-      "verified_at": "2026-06-06T12:31:17.474Z"
+      "verified_at": "2026-06-07T05:10:20.102Z"
     }
   ]
 }

@@ -140,6 +140,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/endpoint-pools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch generalized endpoint pool scores. */
+        get: operations["endpointPools"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/endpoints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List generalized endpoint resources and monitored public surfaces. */
+        get: operations["endpoints"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/evidence": {
         parameters: {
             query?: never;
@@ -268,6 +302,23 @@ export interface paths {
         };
         /** Fetch per-provider detail. */
         get: operations["providerDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/providers/{slug}/endpoints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List endpoint resources for one provider or operator. */
+        get: operations["providerEndpoints"];
         put?: never;
         post?: never;
         delete?: never;
@@ -421,6 +472,23 @@ export interface paths {
         };
         /** List unpromoted candidate surfaces for one subnet. */
         get: operations["subnetCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/endpoints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List generalized endpoint resources for one subnet. */
+        get: operations["subnetEndpoints"];
         put?: never;
         post?: never;
         delete?: never;
@@ -725,6 +793,80 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @enum {unknown} */
+        EndpointLayer: "bittensor-base" | "subnet-app" | "data-provider" | "docs-provider";
+        EndpointMonitoringPolicy: {
+            enabled: boolean;
+            expect: string | null;
+            method: string | null;
+            source: string;
+            timeout_ms?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        EndpointPoolsArtifact: components["schemas"]["RpcPoolsArtifact"];
+        /** @enum {unknown} */
+        EndpointPublicationState: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
+        EndpointResource: {
+            archive_support?: boolean | null;
+            auth_required: boolean;
+            authority?: components["schemas"]["Authority"];
+            /** @constant */
+            chain?: "bittensor";
+            classification?: components["schemas"]["Classification"];
+            error?: string | null;
+            id: string;
+            kind: components["schemas"]["SurfaceKind"];
+            last_checked?: string | null;
+            latency_ms?: number | null;
+            latest_block?: number | null;
+            layer: components["schemas"]["EndpointLayer"];
+            method_support?: {
+                [key: string]: boolean;
+            } | string[] | null;
+            method_tested?: string | null;
+            monitoring_policy: components["schemas"]["EndpointMonitoringPolicy"];
+            /** @enum {unknown} */
+            monitoring_status: "monitored" | "not_monitored";
+            netuid: number;
+            /** @constant */
+            network?: "finney";
+            operator: string;
+            pool_eligible: boolean;
+            provider: string;
+            public_safe: boolean;
+            publication_state: components["schemas"]["EndpointPublicationState"];
+            rate_limit_notes?: string | null;
+            rpc_method_count?: number | null;
+            score: number;
+            source_urls?: string[];
+            status: components["schemas"]["HealthStatus"];
+            subnet_name?: string;
+            subnet_slug?: string;
+            surface_id: string;
+            /** Format: uri */
+            url: string;
+        } & {
+            [key: string]: unknown;
+        };
+        EndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
+            endpoints: components["schemas"]["EndpointResource"][];
+            summary: components["schemas"]["EndpointSummary"];
+        } & {
+            [key: string]: unknown;
+        });
+        EndpointSummary: {
+            by_kind?: components["schemas"]["CountMap"];
+            by_layer?: components["schemas"]["CountMap"];
+            by_provider?: components["schemas"]["CountMap"];
+            by_publication_state?: components["schemas"]["CountMap"];
+            by_status?: components["schemas"]["CountMap"];
+            endpoint_count: number;
+            monitored_count: number;
+            pool_eligible_count: number;
+        } & {
+            [key: string]: unknown;
+        };
         ErrorEnvelope: {
             data: null;
             error: {
@@ -950,13 +1092,20 @@ export interface components {
         Provider: {
             authority: components["schemas"]["Authority"];
             /** Format: uri */
+            contact_url?: string;
+            /** Format: uri */
             docs_url?: string;
+            /** Format: uri */
+            github_url?: string;
             id: string;
             kind: components["schemas"]["ProviderKind"];
             name: string;
             notes?: string;
+            public_notes?: string;
             /** @constant */
             schema_version: 1;
+            /** Format: uri */
+            team_url?: string;
             /** Format: uri */
             website_url: string;
         } & {
@@ -964,6 +1113,15 @@ export interface components {
         };
         ProviderArtifact: components["schemas"]["ArtifactBase"] & ({
             provider: components["schemas"]["Provider"];
+        } & {
+            [key: string]: unknown;
+        });
+        ProviderEndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
+            endpoints: components["schemas"]["EndpointResource"][];
+            provider: {
+                [key: string]: unknown;
+            };
+            summary: components["schemas"]["EndpointSummary"];
         } & {
             [key: string]: unknown;
         });
@@ -1225,6 +1383,7 @@ export interface components {
             source: "generated-provider-and-verification-summary";
             summary: {
                 candidate_count: number;
+                endpoint_count: number;
                 provider_count: number;
                 rpc_endpoint_count: number;
                 status_counts: components["schemas"]["CountMap"];
@@ -1237,6 +1396,7 @@ export interface components {
             authority: components["schemas"]["Authority"];
             candidate_count: number;
             classifications: components["schemas"]["CountMap"];
+            endpoint_count: number;
             id: string;
             kind: components["schemas"]["ProviderKind"];
             name: string;
@@ -1284,10 +1444,20 @@ export interface components {
         SubnetDetailArtifact: components["schemas"]["ArtifactBase"] & ({
             candidate_surfaces: components["schemas"]["CandidateSurface"][];
             candidates?: components["schemas"]["CandidateSurface"][];
+            endpoints?: components["schemas"]["EndpointResource"][];
             gaps: components["schemas"]["Gaps"];
             subnet: components["schemas"]["SubnetDetail"];
             surfaces: components["schemas"]["Surface"][];
             verified_surfaces?: components["schemas"]["Surface"][];
+        } & {
+            [key: string]: unknown;
+        });
+        SubnetEndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
+            endpoints: components["schemas"]["EndpointResource"][];
+            name?: string;
+            netuid: number;
+            slug?: string;
+            summary: components["schemas"]["EndpointSummary"];
         } & {
             [key: string]: unknown;
         });
@@ -1377,7 +1547,7 @@ export interface components {
             [key: string]: unknown;
         };
         /** @enum {unknown} */
-        SurfaceKind: "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
+        SurfaceKind: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
         SurfacesArtifact: components["schemas"]["ArtifactBase"] & ({
             surfaces: components["schemas"]["Surface"][];
         } & {
@@ -1635,7 +1805,7 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
                 limit?: number;
@@ -1987,6 +2157,161 @@ export interface operations {
             };
         };
     };
+    endpointPools: {
+        parameters: {
+            query?: {
+                id?: string;
+                kind?: "subtensor-rpc" | "subtensor-wss" | "archive";
+                limit?: number;
+                cursor?: number;
+                sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["EndpointPoolsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    endpoints: {
+        parameters: {
+            query?: {
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                netuid?: number;
+                pool_eligible?: "true" | "false";
+                provider?: string;
+                publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
+                status?: "ok" | "degraded" | "failed" | "unknown";
+                limit?: number;
+                cursor?: number;
+                sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["EndpointsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     evidence: {
         parameters: {
             query?: {
@@ -2284,7 +2609,7 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe";
@@ -2574,15 +2899,100 @@ export interface operations {
             };
         };
     };
-    rpcEndpoints: {
+    providerEndpoints: {
         parameters: {
             query?: {
-                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
-                provider?: string;
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                netuid?: number;
+                pool_eligible?: "true" | "false";
+                publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 limit?: number;
                 cursor?: number;
-                sort?: "kind" | "latency_ms" | "provider" | "status";
+                sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ProviderEndpointsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rpcEndpoints: {
+        parameters: {
+            query?: {
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                netuid?: number;
+                pool_eligible?: "true" | "false";
+                provider?: string;
+                publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
+                status?: "ok" | "degraded" | "failed" | "unknown";
+                limit?: number;
+                cursor?: number;
+                sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
                 order?: "asc" | "desc";
             };
             header?: never;
@@ -3153,7 +3563,7 @@ export interface operations {
     subnetCandidates: {
         parameters: {
             query?: {
-                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
                 limit?: number;
@@ -3228,10 +3638,91 @@ export interface operations {
             };
         };
     };
+    subnetEndpoints: {
+        parameters: {
+            query?: {
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                pool_eligible?: "true" | "false";
+                provider?: string;
+                publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
+                status?: "ok" | "degraded" | "failed" | "unknown";
+                limit?: number;
+                cursor?: number;
+                sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetEndpointsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetHealth: {
         parameters: {
             query?: {
-                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe";
@@ -3310,7 +3801,7 @@ export interface operations {
     subnetSurfaces: {
         parameters: {
             query?: {
-                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 limit?: number;
                 cursor?: number;
@@ -3388,7 +3879,7 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                kind?: "dashboard" | "data-artifact" | "docs" | "openapi" | "repo-registry" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 limit?: number;
                 cursor?: number;

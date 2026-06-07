@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-111",
   "summary": {
-    "avg_latency_ms": 288,
+    "avg_latency_ms": 395,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:17.190Z",
-    "last_ok": "2026-06-06T12:31:17.190Z",
+    "last_checked": "2026-06-07T05:10:19.822Z",
+    "last_ok": "2026-06-07T05:10:19.822Z",
     "name": "oneoneone",
     "netuid": 111,
     "ok_count": 3,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:16.881Z",
-      "last_ok": "2026-06-06T12:31:16.881Z",
-      "latency_ms": 143,
+      "last_checked": "2026-06-07T05:10:19.340Z",
+      "last_ok": "2026-06-07T05:10:19.340Z",
+      "latency_ms": 155,
       "method_tested": "HEAD",
       "netuid": 111,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-111-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/111",
-      "verified_at": "2026-06-06T12:31:16.881Z"
+      "verified_at": "2026-06-07T05:10:19.340Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:17.190Z",
-      "last_ok": "2026-06-06T12:31:17.190Z",
-      "latency_ms": 438,
+      "last_checked": "2026-06-07T05:10:19.822Z",
+      "last_ok": "2026-06-07T05:10:19.822Z",
+      "latency_ms": 604,
       "method_tested": "HEAD",
       "netuid": 111,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-111-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/oneoneone-io/subnet-111",
-      "verified_at": "2026-06-06T12:31:17.190Z"
+      "verified_at": "2026-06-07T05:10:19.822Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:17.078Z",
-      "last_ok": "2026-06-06T12:31:17.078Z",
-      "latency_ms": 284,
+      "last_checked": "2026-06-07T05:10:19.698Z",
+      "last_ok": "2026-06-07T05:10:19.698Z",
+      "latency_ms": 426,
       "method_tested": "HEAD",
       "netuid": 111,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-111-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/111",
-      "verified_at": "2026-06-06T12:31:17.078Z"
+      "verified_at": "2026-06-07T05:10:19.698Z"
     }
   ]
 }

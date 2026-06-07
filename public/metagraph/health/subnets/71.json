@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-71",
   "summary": {
-    "avg_latency_ms": 395,
+    "avg_latency_ms": 393,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:11.963Z",
-    "last_ok": "2026-06-06T12:31:11.963Z",
+    "last_checked": "2026-06-07T05:10:13.695Z",
+    "last_ok": "2026-06-07T05:10:13.695Z",
     "name": "Leadpoet",
     "netuid": 71,
     "ok_count": 6,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:11.592Z",
-      "last_ok": "2026-06-06T12:31:11.592Z",
-      "latency_ms": 127,
+      "last_checked": "2026-06-07T05:10:13.269Z",
+      "last_ok": "2026-06-07T05:10:13.269Z",
+      "latency_ms": 143,
       "method_tested": "HEAD",
       "netuid": 71,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-71-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/71",
-      "verified_at": "2026-06-06T12:31:11.592Z"
+      "verified_at": "2026-06-07T05:10:13.269Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:11.963Z",
-      "last_ok": "2026-06-06T12:31:11.963Z",
-      "latency_ms": 488,
+      "last_checked": "2026-06-07T05:10:13.619Z",
+      "last_ok": "2026-06-07T05:10:13.619Z",
+      "latency_ms": 485,
       "method_tested": "HEAD",
       "netuid": 71,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-71-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/leadpoet/leadpoet",
-      "verified_at": "2026-06-06T12:31:11.963Z"
+      "verified_at": "2026-06-07T05:10:13.619Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:11.960Z",
-      "last_ok": "2026-06-06T12:31:11.960Z",
-      "latency_ms": 477,
+      "last_checked": "2026-06-07T05:10:13.601Z",
+      "last_ok": "2026-06-07T05:10:13.601Z",
+      "latency_ms": 464,
       "method_tested": "HEAD",
       "netuid": 71,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-71-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://leadpoet.com/",
-      "verified_at": "2026-06-06T12:31:11.960Z"
+      "verified_at": "2026-06-07T05:10:13.601Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:11.842Z",
-      "last_ok": "2026-06-06T12:31:11.842Z",
-      "latency_ms": 350,
+      "last_checked": "2026-06-07T05:10:13.552Z",
+      "last_ok": "2026-06-07T05:10:13.552Z",
+      "latency_ms": 407,
       "method_tested": "HEAD",
       "netuid": 71,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-71-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/71",
-      "verified_at": "2026-06-06T12:31:11.842Z"
+      "verified_at": "2026-06-07T05:10:13.552Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:11.957Z",
-      "last_ok": "2026-06-06T12:31:11.957Z",
-      "latency_ms": 464,
+      "last_checked": "2026-06-07T05:10:13.620Z",
+      "last_ok": "2026-06-07T05:10:13.620Z",
+      "latency_ms": 434,
       "method_tested": "HEAD",
       "netuid": 71,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-71-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://leadpoet.com/docs",
-      "verified_at": "2026-06-06T12:31:11.957Z"
+      "verified_at": "2026-06-07T05:10:13.620Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:11.958Z",
-      "last_ok": "2026-06-06T12:31:11.958Z",
-      "latency_ms": 461,
+      "last_checked": "2026-06-07T05:10:13.695Z",
+      "last_ok": "2026-06-07T05:10:13.695Z",
+      "latency_ms": 426,
       "method_tested": "GET",
       "netuid": 71,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-71-website-common-swagger",
       "uptime_sample_ratio": 1,
       "url": "https://leadpoet.com/swagger",
-      "verified_at": "2026-06-06T12:31:11.958Z"
+      "verified_at": "2026-06-07T05:10:13.695Z"
     }
   ]
 }

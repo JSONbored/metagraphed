@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-106",
   "summary": {
-    "avg_latency_ms": 433,
+    "avg_latency_ms": 470,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:16.619Z",
-    "last_ok": "2026-06-06T12:31:16.619Z",
+    "last_checked": "2026-06-07T05:10:19.182Z",
+    "last_ok": "2026-06-07T05:10:19.182Z",
     "name": "VoidAI",
     "netuid": 106,
     "ok_count": 5,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:16.133Z",
-      "last_ok": "2026-06-06T12:31:16.133Z",
-      "latency_ms": 147,
+      "last_checked": "2026-06-07T05:10:18.757Z",
+      "last_ok": "2026-06-07T05:10:18.757Z",
+      "latency_ms": 319,
       "method_tested": "HEAD",
       "netuid": 106,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-106-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/106",
-      "verified_at": "2026-06-06T12:31:16.133Z"
+      "verified_at": "2026-06-07T05:10:18.757Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:16.475Z",
-      "last_ok": "2026-06-06T12:31:16.475Z",
-      "latency_ms": 482,
+      "last_checked": "2026-06-07T05:10:18.944Z",
+      "last_ok": "2026-06-07T05:10:18.944Z",
+      "latency_ms": 497,
       "method_tested": "HEAD",
       "netuid": 106,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-106-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/v0idai/SN106",
-      "verified_at": "2026-06-06T12:31:16.475Z"
+      "verified_at": "2026-06-07T05:10:18.944Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:16.619Z",
-      "last_ok": "2026-06-06T12:31:16.619Z",
-      "latency_ms": 617,
+      "last_checked": "2026-06-07T05:10:19.077Z",
+      "last_ok": "2026-06-07T05:10:19.077Z",
+      "latency_ms": 577,
       "method_tested": "HEAD",
       "netuid": 106,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-106-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://voidai.com/",
-      "verified_at": "2026-06-06T12:31:16.619Z"
+      "verified_at": "2026-06-07T05:10:19.077Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.324Z",
-      "last_ok": "2026-06-06T12:31:16.324Z",
-      "latency_ms": 318,
+      "last_checked": "2026-06-07T05:10:18.951Z",
+      "last_ok": "2026-06-07T05:10:18.951Z",
+      "latency_ms": 387,
       "method_tested": "HEAD",
       "netuid": 106,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-106-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/106",
-      "verified_at": "2026-06-06T12:31:16.324Z"
+      "verified_at": "2026-06-07T05:10:18.951Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.606Z",
-      "last_ok": "2026-06-06T12:31:16.606Z",
-      "latency_ms": 599,
+      "last_checked": "2026-06-07T05:10:19.182Z",
+      "last_ok": "2026-06-07T05:10:19.182Z",
+      "latency_ms": 571,
       "method_tested": "HEAD",
       "netuid": 106,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-106-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://voidai.com/docs",
-      "verified_at": "2026-06-06T12:31:16.606Z"
+      "verified_at": "2026-06-07T05:10:19.182Z"
     }
   ]
 }

@@ -1,0 +1,157 @@
+{
+  "contract_version": "2026-06-06.1",
+  "endpoints": [
+    {
+      "archive_support": null,
+      "auth_required": false,
+      "authority": "registry-observed",
+      "chain": "bittensor",
+      "classification": "live",
+      "error": null,
+      "id": "endpoint-sn-111-tensorplex-docs",
+      "kind": "docs",
+      "last_checked": "2026-06-07T05:10:19.698Z",
+      "latency_ms": 426,
+      "latest_block": null,
+      "layer": "docs-provider",
+      "method_support": null,
+      "method_tested": "HEAD",
+      "monitoring_policy": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "source": "surface-probe-config",
+        "timeout_ms": 10000
+      },
+      "monitoring_status": "monitored",
+      "netuid": 111,
+      "network": "finney",
+      "operator": "tensorplex-subnet-docs",
+      "pool_eligible": false,
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "publication_state": "monitored",
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "rpc_method_count": null,
+      "score": 66,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/111/subnet.json"
+      ],
+      "status": "ok",
+      "subnet_name": "oneoneone",
+      "subnet_slug": "sn-111",
+      "surface_id": "sn-111-tensorplex-docs",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/111"
+    },
+    {
+      "archive_support": null,
+      "auth_required": false,
+      "authority": "registry-observed",
+      "chain": "bittensor",
+      "classification": "live",
+      "error": null,
+      "id": "endpoint-sn-111-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "last_checked": "2026-06-07T05:10:19.822Z",
+      "latency_ms": 604,
+      "latest_block": null,
+      "layer": "docs-provider",
+      "method_support": null,
+      "method_tested": "HEAD",
+      "monitoring_policy": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "source": "surface-probe-config",
+        "timeout_ms": 10000
+      },
+      "monitoring_status": "monitored",
+      "netuid": 111,
+      "network": "finney",
+      "operator": "taomarketcap",
+      "pool_eligible": false,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "publication_state": "monitored",
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "rpc_method_count": null,
+      "score": 64,
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/111",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/111/subnet.json"
+      ],
+      "status": "ok",
+      "subnet_name": "oneoneone",
+      "subnet_slug": "sn-111",
+      "surface_id": "sn-111-taomarketcap-source-repo",
+      "url": "https://github.com/oneoneone-io/subnet-111"
+    },
+    {
+      "archive_support": null,
+      "auth_required": false,
+      "authority": "registry-observed",
+      "chain": "bittensor",
+      "classification": "live",
+      "error": null,
+      "id": "endpoint-sn-111-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "last_checked": "2026-06-07T05:10:19.340Z",
+      "latency_ms": 155,
+      "latest_block": null,
+      "layer": "subnet-app",
+      "method_support": null,
+      "method_tested": "HEAD",
+      "monitoring_policy": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "source": "surface-probe-config",
+        "timeout_ms": 10000
+      },
+      "monitoring_status": "monitored",
+      "netuid": 111,
+      "network": "finney",
+      "operator": "taomarketcap",
+      "pool_eligible": false,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "publication_state": "monitored",
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "rpc_method_count": null,
+      "score": 68,
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/111"
+      ],
+      "status": "ok",
+      "subnet_name": "oneoneone",
+      "subnet_slug": "sn-111",
+      "surface_id": "sn-111-taomarketcap-dashboard",
+      "url": "https://taomarketcap.com/subnets/111"
+    }
+  ],
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "name": "oneoneone",
+  "netuid": 111,
+  "schema_version": 1,
+  "slug": "sn-111",
+  "summary": {
+    "by_kind": {
+      "dashboard": 1,
+      "docs": 1,
+      "source-repo": 1
+    },
+    "by_layer": {
+      "docs-provider": 2,
+      "subnet-app": 1
+    },
+    "by_publication_state": {
+      "monitored": 3
+    },
+    "by_status": {
+      "ok": 3
+    },
+    "endpoint_count": 3,
+    "monitored_count": 3,
+    "pool_eligible_count": 0
+  }
+}

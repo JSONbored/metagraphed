@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-97",
   "summary": {
-    "avg_latency_ms": 334,
+    "avg_latency_ms": 386,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:15.495Z",
-    "last_ok": "2026-06-06T12:31:15.495Z",
+    "last_checked": "2026-06-07T05:10:17.922Z",
+    "last_ok": "2026-06-07T05:10:17.922Z",
     "name": "Albedo",
     "netuid": 97,
     "ok_count": 12,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:14.943Z",
-      "last_ok": "2026-06-06T12:31:14.943Z",
-      "latency_ms": 345,
+      "last_checked": "2026-06-07T05:10:17.196Z",
+      "last_ok": "2026-06-07T05:10:17.196Z",
+      "latency_ms": 508,
       "method_tested": "HEAD",
       "netuid": 97,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-97-github-readme-unarbos-albedo-dashboard-2",
       "uptime_sample_ratio": 1,
       "url": "https://us-east-1.hippius.com/albedo/dashboard.json",
-      "verified_at": "2026-06-06T12:31:14.943Z"
+      "verified_at": "2026-06-07T05:10:17.196Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:14.873Z",
-      "last_ok": "2026-06-06T12:31:14.873Z",
-      "latency_ms": 184,
+      "last_checked": "2026-06-07T05:10:17.117Z",
+      "last_ok": "2026-06-07T05:10:17.117Z",
+      "latency_ms": 326,
       "method_tested": "HEAD",
       "netuid": 97,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-97-github-readme-unarbos-albedo-data-artifact-1",
       "uptime_sample_ratio": 1,
       "url": "https://huggingface.co/datasets/AlienKevin/SWE-ZERO-12M-trajectories",
-      "verified_at": "2026-06-06T12:31:14.873Z"
+      "verified_at": "2026-06-07T05:10:17.117Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:14.871Z",
-      "last_ok": "2026-06-06T12:31:14.871Z",
-      "latency_ms": 138,
+      "last_checked": "2026-06-07T05:10:17.128Z",
+      "last_ok": "2026-06-07T05:10:17.128Z",
+      "latency_ms": 185,
       "method_tested": "HEAD",
       "netuid": 97,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-97-github-readme-unarbos-albedo-data-artifact-3",
       "uptime_sample_ratio": 1,
       "url": "https://huggingface.co/ricdomolm/mini-coder-1.7b",
-      "verified_at": "2026-06-06T12:31:14.871Z"
+      "verified_at": "2026-06-07T05:10:17.128Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.122Z",
-      "last_ok": "2026-06-06T12:31:15.122Z",
-      "latency_ms": 251,
+      "last_checked": "2026-06-07T05:10:17.225Z",
+      "last_ok": "2026-06-07T05:10:17.225Z",
+      "latency_ms": 191,
       "method_tested": "HEAD",
       "netuid": 97,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-97-github-readme-unitone-labs-flamewire-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.flamewire.io/docs/miners/registration",
-      "verified_at": "2026-06-06T12:31:15.122Z"
+      "verified_at": "2026-06-07T05:10:17.225Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.085Z",
-      "last_ok": "2026-06-06T12:31:15.085Z",
-      "latency_ms": 212,
+      "last_checked": "2026-06-07T05:10:17.211Z",
+      "last_ok": "2026-06-07T05:10:17.211Z",
+      "latency_ms": 150,
       "method_tested": "HEAD",
       "netuid": 97,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-97-github-readme-unitone-labs-flamewire-docs-2",
       "uptime_sample_ratio": 1,
       "url": "https://docs.flamewire.io/docs/validators/guide",
-      "verified_at": "2026-06-06T12:31:15.085Z"
+      "verified_at": "2026-06-07T05:10:17.211Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:15.041Z",
-      "last_ok": "2026-06-06T12:31:15.041Z",
-      "latency_ms": 139,
+      "last_checked": "2026-06-07T05:10:17.257Z",
+      "last_ok": "2026-06-07T05:10:17.257Z",
+      "latency_ms": 140,
       "method_tested": "HEAD",
       "netuid": 97,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-97-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/97",
-      "verified_at": "2026-06-06T12:31:15.041Z"
+      "verified_at": "2026-06-07T05:10:17.257Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:15.463Z",
-      "last_ok": "2026-06-06T12:31:15.463Z",
-      "latency_ms": 547,
+      "last_checked": "2026-06-07T05:10:17.650Z",
+      "last_ok": "2026-06-07T05:10:17.650Z",
+      "latency_ms": 524,
       "method_tested": "HEAD",
       "netuid": 97,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-97-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/unarbos/albedo",
-      "verified_at": "2026-06-06T12:31:15.463Z"
+      "verified_at": "2026-06-07T05:10:17.650Z"
     },
     {
       "auth_required": false,
@@ -202,9 +202,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:15.252Z",
-      "last_ok": "2026-06-06T12:31:15.252Z",
-      "latency_ms": 332,
+      "last_checked": "2026-06-07T05:10:17.475Z",
+      "last_ok": "2026-06-07T05:10:17.475Z",
+      "latency_ms": 347,
       "method_tested": "HEAD",
       "netuid": 97,
       "private_redirect_blocked": false,
@@ -218,7 +218,7 @@
       "surface_id": "sn-97-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://us-east-1.hippius.com/albedo/index.html",
-      "verified_at": "2026-06-06T12:31:15.252Z"
+      "verified_at": "2026-06-07T05:10:17.475Z"
     },
     {
       "auth_required": false,
@@ -227,9 +227,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.279Z",
-      "last_ok": "2026-06-06T12:31:15.279Z",
-      "latency_ms": 353,
+      "last_checked": "2026-06-07T05:10:17.669Z",
+      "last_ok": "2026-06-07T05:10:17.669Z",
+      "latency_ms": 472,
       "method_tested": "HEAD",
       "netuid": 97,
       "private_redirect_blocked": false,
@@ -243,7 +243,7 @@
       "surface_id": "sn-97-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/97",
-      "verified_at": "2026-06-06T12:31:15.279Z"
+      "verified_at": "2026-06-07T05:10:17.669Z"
     },
     {
       "auth_required": false,
@@ -252,9 +252,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:15.363Z",
-      "last_ok": "2026-06-06T12:31:15.363Z",
-      "latency_ms": 434,
+      "last_checked": "2026-06-07T05:10:17.764Z",
+      "last_ok": "2026-06-07T05:10:17.764Z",
+      "latency_ms": 553,
       "method_tested": "HEAD",
       "netuid": 97,
       "private_redirect_blocked": false,
@@ -268,7 +268,7 @@
       "surface_id": "sn-97-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/unitone-labs/FlameWire",
-      "verified_at": "2026-06-06T12:31:15.363Z"
+      "verified_at": "2026-06-07T05:10:17.764Z"
     },
     {
       "auth_required": false,
@@ -277,9 +277,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.492Z",
-      "last_ok": "2026-06-06T12:31:15.492Z",
-      "latency_ms": 549,
+      "last_checked": "2026-06-07T05:10:17.782Z",
+      "last_ok": "2026-06-07T05:10:17.782Z",
+      "latency_ms": 557,
       "method_tested": "HEAD",
       "netuid": 97,
       "private_redirect_blocked": false,
@@ -293,7 +293,7 @@
       "surface_id": "sn-97-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://us-east-1.hippius.com/docs",
-      "verified_at": "2026-06-06T12:31:15.492Z"
+      "verified_at": "2026-06-07T05:10:17.782Z"
     },
     {
       "auth_required": false,
@@ -302,9 +302,9 @@
       "error": null,
       "error_class": null,
       "kind": "openapi",
-      "last_checked": "2026-06-06T12:31:15.495Z",
-      "last_ok": "2026-06-06T12:31:15.495Z",
-      "latency_ms": 528,
+      "last_checked": "2026-06-07T05:10:17.922Z",
+      "last_ok": "2026-06-07T05:10:17.922Z",
+      "latency_ms": 676,
       "method_tested": "GET",
       "netuid": 97,
       "private_redirect_blocked": false,
@@ -318,7 +318,7 @@
       "surface_id": "sn-97-website-common-openapi-json",
       "uptime_sample_ratio": 1,
       "url": "https://us-east-1.hippius.com/openapi.json",
-      "verified_at": "2026-06-06T12:31:15.495Z"
+      "verified_at": "2026-06-07T05:10:17.922Z"
     }
   ]
 }

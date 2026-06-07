@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-109",
   "summary": {
-    "avg_latency_ms": 338,
+    "avg_latency_ms": 382,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:16.946Z",
-    "last_ok": "2026-06-06T12:31:16.946Z",
+    "last_checked": "2026-06-07T05:10:19.558Z",
+    "last_ok": "2026-06-07T05:10:19.558Z",
     "name": "Academia",
     "netuid": 109,
     "ok_count": 3,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:16.701Z",
-      "last_ok": "2026-06-06T12:31:16.701Z",
-      "latency_ms": 215,
+      "last_checked": "2026-06-07T05:10:19.073Z",
+      "last_ok": "2026-06-07T05:10:19.073Z",
+      "latency_ms": 121,
       "method_tested": "HEAD",
       "netuid": 109,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-109-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/109",
-      "verified_at": "2026-06-06T12:31:16.701Z"
+      "verified_at": "2026-06-07T05:10:19.073Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:16.946Z",
-      "last_ok": "2026-06-06T12:31:16.946Z",
-      "latency_ms": 457,
+      "last_checked": "2026-06-07T05:10:19.558Z",
+      "last_ok": "2026-06-07T05:10:19.558Z",
+      "latency_ms": 587,
       "method_tested": "HEAD",
       "netuid": 109,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-109-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/fx-integral/academia",
-      "verified_at": "2026-06-06T12:31:16.946Z"
+      "verified_at": "2026-06-07T05:10:19.558Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.846Z",
-      "last_ok": "2026-06-06T12:31:16.846Z",
-      "latency_ms": 341,
+      "last_checked": "2026-06-07T05:10:19.412Z",
+      "last_ok": "2026-06-07T05:10:19.412Z",
+      "latency_ms": 439,
       "method_tested": "HEAD",
       "netuid": 109,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-109-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/109",
-      "verified_at": "2026-06-06T12:31:16.846Z"
+      "verified_at": "2026-06-07T05:10:19.412Z"
     }
   ]
 }

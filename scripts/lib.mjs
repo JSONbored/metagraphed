@@ -419,17 +419,127 @@ export function buildRpcEndpointArtifact({
   };
 }
 
+export function buildEndpointResourceArtifact({
+  surfaces,
+  healthSurfaces = [],
+  generatedAt,
+  contractVersion,
+  source,
+}) {
+  const healthBySurface = new Map(
+    healthSurfaces.map((surface) => [surface.surface_id, surface]),
+  );
+  const endpoints = surfaces.map((surface) => {
+    const health = healthBySurface.get(surface.id) || {};
+    const monitored = surface.probe?.enabled === true && surface.public_safe;
+    const score = endpointScore({
+      ...surface,
+      ...health,
+      status: health.status || "unknown",
+    });
+    const poolEligible =
+      isBaseLayerEndpoint(surface.kind) &&
+      health.status === "ok" &&
+      surface.auth_required === false &&
+      surface.public_safe === true;
+
+    return {
+      id: `endpoint-${surface.id}`,
+      surface_id: surface.id,
+      netuid: surface.netuid,
+      subnet_slug: surface.subnet_slug,
+      subnet_name: surface.subnet_name,
+      chain: "bittensor",
+      network: "finney",
+      layer: endpointLayer(surface.kind),
+      kind: surface.kind,
+      url: surface.url,
+      provider: surface.provider,
+      operator: surface.provider,
+      authority: surface.authority,
+      auth_required: surface.auth_required,
+      public_safe: surface.public_safe,
+      monitoring_policy: endpointMonitoringPolicy(surface),
+      monitoring_status: monitored ? "monitored" : "not_monitored",
+      publication_state: endpointPublicationState({
+        monitored,
+        poolEligible,
+        surface,
+      }),
+      pool_eligible: poolEligible,
+      archive_support: health.archive_support ?? null,
+      latest_block: health.latest_block ?? null,
+      method_support: health.methods_supported || null,
+      rpc_method_count: health.rpc_method_count ?? null,
+      method_tested: health.method_tested || surface.probe?.method || null,
+      status: monitored ? health.status || "unknown" : "unknown",
+      classification: monitored
+        ? health.classification || "unknown"
+        : "unknown",
+      latency_ms: monitored ? (health.latency_ms ?? null) : null,
+      score,
+      last_checked: monitored
+        ? health.verified_at || health.last_checked || null
+        : null,
+      error: monitored ? health.error || null : null,
+      rate_limit_notes: surface.rate_limit_notes || null,
+      source_urls: surface.source_urls || [],
+    };
+  });
+
+  endpoints.sort(
+    (a, b) =>
+      a.netuid - b.netuid ||
+      a.layer.localeCompare(b.layer) ||
+      a.kind.localeCompare(b.kind) ||
+      a.id.localeCompare(b.id),
+  );
+
+  return {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    source,
+    notes: [
+      "Endpoint resources are normalized from curated public surfaces.",
+      "Observed health, latency, and pool eligibility are probe-derived only.",
+      "Subnet application APIs are heterogeneous and are not proxied in v1.",
+    ],
+    summary: {
+      endpoint_count: endpoints.length,
+      monitored_count: endpoints.filter(
+        (endpoint) => endpoint.monitoring_status === "monitored",
+      ).length,
+      pool_eligible_count: endpoints.filter(
+        (endpoint) => endpoint.pool_eligible,
+      ).length,
+      by_kind: countRecord(endpoints, (endpoint) => endpoint.kind),
+      by_layer: countRecord(endpoints, (endpoint) => endpoint.layer),
+      by_provider: countRecord(endpoints, (endpoint) => endpoint.provider),
+      by_publication_state: countRecord(
+        endpoints,
+        (endpoint) => endpoint.publication_state,
+      ),
+      by_status: countRecord(endpoints, (endpoint) => endpoint.status),
+    },
+    endpoints,
+  };
+}
+
 export function buildEndpointPoolArtifact({
   generatedAt,
   contractVersion,
-  rpcArtifact,
+  rpcArtifact = null,
+  endpointArtifact = null,
 }) {
-  const endpoints = (rpcArtifact.endpoints || []).map((endpoint) => {
+  const sourceArtifact = endpointArtifact || rpcArtifact || { endpoints: [] };
+  const endpoints = (sourceArtifact.endpoints || []).map((endpoint) => {
     const score = endpointScore(endpoint);
     return {
       ...endpoint,
       score,
       pool_eligible:
+        isBaseLayerEndpoint(endpoint.kind) &&
         endpoint.status === "ok" &&
         endpoint.auth_required === false &&
         endpoint.public_safe === true,
@@ -441,10 +551,13 @@ export function buildEndpointPoolArtifact({
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: generatedAt,
-    source: "rpc-endpoint-probes",
+    source: endpointArtifact
+      ? "endpoint-resource-probes"
+      : "rpc-endpoint-probes",
     notes: [
       "Endpoint pools are advisory only in v1.",
       "Future proxy/load-balancer routes must block write and unsafe RPC methods by default.",
+      "Only Bittensor base-layer RPC/WSS endpoints are pool candidates in v1.",
     ],
     disabled_proxy_contract: {
       enabled: false,
@@ -497,6 +610,8 @@ function endpointPool(id, kind, endpoints) {
     endpoints: poolEndpoints.map((endpoint) => ({
       archive_support: endpoint.archive_support,
       id: endpoint.id,
+      kind: endpoint.kind,
+      layer: endpoint.layer || endpointLayer(endpoint.kind),
       latency_ms: endpoint.latency_ms,
       latest_block: endpoint.latest_block,
       pool_eligible: endpoint.pool_eligible,
@@ -508,21 +623,75 @@ function endpointPool(id, kind, endpoints) {
   };
 }
 
+function endpointLayer(kind) {
+  if (isBaseLayerEndpoint(kind) || kind === "archive") {
+    return "bittensor-base";
+  }
+  if (
+    ["subnet-api", "openapi", "sse", "dashboard", "sdk", "example"].includes(
+      kind,
+    )
+  ) {
+    return "subnet-app";
+  }
+  if (kind === "data-artifact") {
+    return "data-provider";
+  }
+  return "docs-provider";
+}
+
+function isBaseLayerEndpoint(kind) {
+  return ["subtensor-rpc", "subtensor-wss"].includes(kind);
+}
+
+function endpointMonitoringPolicy(surface) {
+  if (!surface.probe) {
+    return {
+      enabled: false,
+      method: null,
+      expect: null,
+      source: "not-configured",
+    };
+  }
+  return {
+    enabled: surface.probe.enabled === true,
+    method: surface.probe.method || null,
+    expect: surface.probe.expect || null,
+    timeout_ms: surface.probe.timeout_ms || null,
+    source: "surface-probe-config",
+  };
+}
+
+function endpointPublicationState({ monitored, poolEligible, surface }) {
+  if (surface.public_safe !== true) {
+    return "disabled";
+  }
+  if (poolEligible) {
+    return "pool-eligible";
+  }
+  if (monitored) {
+    return "monitored";
+  }
+  return "verified";
+}
+
 function endpointScore(endpoint) {
   let score = 0;
   if (endpoint.status === "ok") score += 50;
   if (endpoint.archive_support === true) score += 15;
   if (endpoint.latest_block) score += 10;
+  const methodSupport = endpoint.methods_supported || endpoint.method_support;
   if (
-    endpoint.methods_supported &&
-    typeof endpoint.methods_supported === "object"
+    methodSupport &&
+    typeof methodSupport === "object" &&
+    !Array.isArray(methodSupport)
   ) {
     score += Math.min(
-      Object.values(endpoint.methods_supported).filter(Boolean).length * 5,
+      Object.values(methodSupport).filter(Boolean).length * 5,
       20,
     );
-  } else if (Array.isArray(endpoint.methods_supported)) {
-    score += Math.min(endpoint.methods_supported.length, 20);
+  } else if (Array.isArray(methodSupport)) {
+    score += Math.min(methodSupport.length, 20);
   }
   if (Number.isFinite(endpoint.latency_ms))
     score += Math.max(0, 20 - Math.round(endpoint.latency_ms / 100));

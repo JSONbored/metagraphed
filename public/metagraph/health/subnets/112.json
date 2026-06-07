@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-112",
   "summary": {
-    "avg_latency_ms": 306,
+    "avg_latency_ms": 309,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:17.395Z",
-    "last_ok": "2026-06-06T12:31:17.395Z",
+    "last_checked": "2026-06-07T05:10:19.958Z",
+    "last_ok": "2026-06-07T05:10:19.958Z",
     "name": "minotaur",
     "netuid": 112,
     "ok_count": 5,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:17.009Z",
-      "last_ok": "2026-06-06T12:31:17.009Z",
-      "latency_ms": 214,
+      "last_checked": "2026-06-07T05:10:19.522Z",
+      "last_ok": "2026-06-07T05:10:19.522Z",
+      "latency_ms": 209,
       "method_tested": "HEAD",
       "netuid": 112,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-112-github-readme-subnet112-minotaur-subnet-dashboard-2",
       "uptime_sample_ratio": 1,
       "url": "https://taostats.io/subnets/112/chart",
-      "verified_at": "2026-06-06T12:31:17.009Z"
+      "verified_at": "2026-06-07T05:10:19.522Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:17.020Z",
-      "last_ok": "2026-06-06T12:31:17.020Z",
-      "latency_ms": 209,
+      "last_checked": "2026-06-07T05:10:19.489Z",
+      "last_ok": "2026-06-07T05:10:19.489Z",
+      "latency_ms": 151,
       "method_tested": "HEAD",
       "netuid": 112,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-112-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/112",
-      "verified_at": "2026-06-06T12:31:17.020Z"
+      "verified_at": "2026-06-07T05:10:19.489Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:17.395Z",
-      "last_ok": "2026-06-06T12:31:17.395Z",
-      "latency_ms": 582,
+      "last_checked": "2026-06-07T05:10:19.958Z",
+      "last_ok": "2026-06-07T05:10:19.958Z",
+      "latency_ms": 618,
       "method_tested": "HEAD",
       "netuid": 112,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-112-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/subnet112/minotaur_subnet",
-      "verified_at": "2026-06-06T12:31:17.395Z"
+      "verified_at": "2026-06-07T05:10:19.958Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:17.034Z",
-      "last_ok": "2026-06-06T12:31:17.034Z",
-      "latency_ms": 192,
+      "last_checked": "2026-06-07T05:10:19.519Z",
+      "last_ok": "2026-06-07T05:10:19.519Z",
+      "latency_ms": 150,
       "method_tested": "HEAD",
       "netuid": 112,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-112-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://minotaursubnet.com/",
-      "verified_at": "2026-06-06T12:31:17.034Z"
+      "verified_at": "2026-06-07T05:10:19.519Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:17.180Z",
-      "last_ok": "2026-06-06T12:31:17.180Z",
-      "latency_ms": 333,
+      "last_checked": "2026-06-07T05:10:19.814Z",
+      "last_ok": "2026-06-07T05:10:19.814Z",
+      "latency_ms": 415,
       "method_tested": "HEAD",
       "netuid": 112,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-112-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/112",
-      "verified_at": "2026-06-06T12:31:17.180Z"
+      "verified_at": "2026-06-07T05:10:19.814Z"
     }
   ]
 }

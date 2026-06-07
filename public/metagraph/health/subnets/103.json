@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-103",
   "summary": {
-    "avg_latency_ms": 541,
+    "avg_latency_ms": 299,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:16.795Z",
-    "last_ok": "2026-06-06T12:31:16.795Z",
+    "last_checked": "2026-06-07T05:10:18.702Z",
+    "last_ok": "2026-06-07T05:10:18.702Z",
     "name": "Djinn",
     "netuid": 103,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:15.809Z",
-      "last_ok": "2026-06-06T12:31:15.809Z",
-      "latency_ms": 67,
+      "last_checked": "2026-06-07T05:10:18.252Z",
+      "last_ok": "2026-06-07T05:10:18.252Z",
+      "latency_ms": 54,
       "method_tested": "HEAD",
       "netuid": 103,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-103-github-readme-djinn-inc-djinn-docs-1",
       "uptime_sample_ratio": 1,
       "url": "https://docs.astral.sh/uv",
-      "verified_at": "2026-06-06T12:31:15.809Z"
+      "verified_at": "2026-06-07T05:10:18.252Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:15.961Z",
-      "last_ok": "2026-06-06T12:31:15.961Z",
-      "latency_ms": 152,
+      "last_checked": "2026-06-07T05:10:18.361Z",
+      "last_ok": "2026-06-07T05:10:18.361Z",
+      "latency_ms": 143,
       "method_tested": "HEAD",
       "netuid": 103,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-103-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/103",
-      "verified_at": "2026-06-06T12:31:15.961Z"
+      "verified_at": "2026-06-07T05:10:18.361Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:16.290Z",
-      "last_ok": "2026-06-06T12:31:16.290Z",
-      "latency_ms": 476,
+      "last_checked": "2026-06-07T05:10:18.702Z",
+      "last_ok": "2026-06-07T05:10:18.702Z",
+      "latency_ms": 463,
       "method_tested": "HEAD",
       "netuid": 103,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-103-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/Djinn-Inc/djinn",
-      "verified_at": "2026-06-06T12:31:16.290Z"
+      "verified_at": "2026-06-07T05:10:18.702Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:16.752Z",
-      "last_ok": "2026-06-06T12:31:16.752Z",
-      "latency_ms": 937,
+      "last_checked": "2026-06-07T05:10:18.565Z",
+      "last_ok": "2026-06-07T05:10:18.565Z",
+      "latency_ms": 324,
       "method_tested": "HEAD",
       "netuid": 103,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-103-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://djinn.gg/",
-      "verified_at": "2026-06-06T12:31:16.752Z"
+      "verified_at": "2026-06-07T05:10:18.565Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.088Z",
-      "last_ok": "2026-06-06T12:31:16.088Z",
-      "latency_ms": 264,
+      "last_checked": "2026-06-07T05:10:18.611Z",
+      "last_ok": "2026-06-07T05:10:18.611Z",
+      "latency_ms": 359,
       "method_tested": "HEAD",
       "netuid": 103,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-103-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/103",
-      "verified_at": "2026-06-06T12:31:16.088Z"
+      "verified_at": "2026-06-07T05:10:18.611Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.795Z",
-      "last_ok": "2026-06-06T12:31:16.795Z",
-      "latency_ms": 948,
+      "last_checked": "2026-06-07T05:10:18.625Z",
+      "last_ok": "2026-06-07T05:10:18.625Z",
+      "latency_ms": 342,
       "method_tested": "HEAD",
       "netuid": 103,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-103-website-common-docs",
       "uptime_sample_ratio": 1,
       "url": "https://djinn.gg/docs",
-      "verified_at": "2026-06-06T12:31:16.795Z"
+      "verified_at": "2026-06-07T05:10:18.625Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:16.793Z",
-      "last_ok": "2026-06-06T12:31:16.793Z",
-      "latency_ms": 945,
+      "last_checked": "2026-06-07T05:10:18.697Z",
+      "last_ok": "2026-06-07T05:10:18.697Z",
+      "latency_ms": 406,
       "method_tested": "HEAD",
       "netuid": 103,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-103-website-link-djinn-gg-dashboard-4",
       "uptime_sample_ratio": 1,
       "url": "https://djinn.gg/leaderboard",
-      "verified_at": "2026-06-06T12:31:16.793Z"
+      "verified_at": "2026-06-07T05:10:18.697Z"
     }
   ]
 }

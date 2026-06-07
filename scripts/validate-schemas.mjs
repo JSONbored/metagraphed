@@ -4,6 +4,7 @@ import path from "node:path";
 import { PUBLIC_ARTIFACTS } from "../src/contracts.mjs";
 import {
   listJsonFiles,
+  listJsonFilesRecursive,
   loadCandidates,
   loadProviders,
   loadSubnets,
@@ -108,9 +109,15 @@ async function artifactValidationTargets() {
       artifact.path.includes("{slug}") ||
       artifact.path.includes("{date}")
     ) {
-      for (const filePath of await listJsonFiles(
-        templatedArtifactDirectory(artifact.id),
-      )) {
+      const filePaths =
+        artifact.id === "provider-endpoints"
+          ? (
+              await listJsonFilesRecursive(
+                templatedArtifactDirectory(artifact.id),
+              )
+            ).filter((filePath) => path.basename(filePath) === "endpoints.json")
+          : await listJsonFiles(templatedArtifactDirectory(artifact.id));
+      for (const filePath of filePaths) {
         targets.push({
           file_path: filePath,
           label: `${artifact.id}:${path.basename(filePath)}`,
@@ -145,6 +152,7 @@ function templatedArtifactDirectory(artifactId) {
 function netuidArtifactDirectories() {
   return {
     "candidates-subnet": "candidates",
+    "endpoints-subnet": "endpoints",
     "health-badge": "health/badges",
     "health-subnet": "health/subnets",
     "subnet-detail": "subnets",
@@ -157,6 +165,7 @@ function slugArtifactDirectories() {
   return {
     adapter: "adapters",
     "provider-detail": "providers",
+    "provider-endpoints": "providers",
   };
 }
 

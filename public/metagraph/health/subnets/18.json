@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-18",
   "summary": {
-    "avg_latency_ms": 439,
+    "avg_latency_ms": 505,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:05.896Z",
-    "last_ok": "2026-06-06T12:31:05.896Z",
+    "last_checked": "2026-06-07T05:10:06.924Z",
+    "last_ok": "2026-06-07T05:10:06.924Z",
     "name": "Zeus",
     "netuid": 18,
     "ok_count": 6,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:05.237Z",
-      "last_ok": "2026-06-06T12:31:05.237Z",
-      "latency_ms": 137,
+      "last_checked": "2026-06-07T05:10:06.390Z",
+      "last_ok": "2026-06-07T05:10:06.390Z",
+      "latency_ms": 255,
       "method_tested": "HEAD",
       "netuid": 18,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-18-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/18",
-      "verified_at": "2026-06-06T12:31:05.237Z"
+      "verified_at": "2026-06-07T05:10:06.390Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:05.501Z",
-      "last_ok": "2026-06-06T12:31:05.501Z",
-      "latency_ms": 392,
+      "last_checked": "2026-06-07T05:10:06.664Z",
+      "last_ok": "2026-06-07T05:10:06.664Z",
+      "latency_ms": 501,
       "method_tested": "HEAD",
       "netuid": 18,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-18-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/Orpheus-AI/Zeus",
-      "verified_at": "2026-06-06T12:31:05.501Z"
+      "verified_at": "2026-06-07T05:10:06.664Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:05.735Z",
-      "last_ok": "2026-06-06T12:31:05.735Z",
-      "latency_ms": 594,
+      "last_checked": "2026-06-07T05:10:06.765Z",
+      "last_ok": "2026-06-07T05:10:06.765Z",
+      "latency_ms": 584,
       "method_tested": "HEAD",
       "netuid": 18,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-18-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.zeussubnet.com/",
-      "verified_at": "2026-06-06T12:31:05.735Z"
+      "verified_at": "2026-06-07T05:10:06.765Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:05.492Z",
-      "last_ok": "2026-06-06T12:31:05.492Z",
-      "latency_ms": 343,
+      "last_checked": "2026-06-07T05:10:06.711Z",
+      "last_ok": "2026-06-07T05:10:06.711Z",
+      "latency_ms": 501,
       "method_tested": "HEAD",
       "netuid": 18,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-18-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/18",
-      "verified_at": "2026-06-06T12:31:05.492Z"
+      "verified_at": "2026-06-07T05:10:06.711Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:05.809Z",
-      "last_ok": "2026-06-06T12:31:05.809Z",
-      "latency_ms": 571,
+      "last_checked": "2026-06-07T05:10:06.817Z",
+      "last_ok": "2026-06-07T05:10:06.817Z",
+      "latency_ms": 576,
       "method_tested": "HEAD",
       "netuid": 18,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-18-website-link-www-zeussubnet-com-dashboard-5",
       "uptime_sample_ratio": 1,
       "url": "https://www.zeussubnet.com/dashboard",
-      "verified_at": "2026-06-06T12:31:05.809Z"
+      "verified_at": "2026-06-07T05:10:06.817Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:05.896Z",
-      "last_ok": "2026-06-06T12:31:05.896Z",
-      "latency_ms": 599,
+      "last_checked": "2026-06-07T05:10:06.924Z",
+      "last_ok": "2026-06-07T05:10:06.924Z",
+      "latency_ms": 610,
       "method_tested": "HEAD",
       "netuid": 18,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-18-website-link-www-zeussubnet-com-docs-4",
       "uptime_sample_ratio": 1,
       "url": "https://docs.zeussubnet.com/docs/introduction",
-      "verified_at": "2026-06-06T12:31:05.896Z"
+      "verified_at": "2026-06-07T05:10:06.924Z"
     }
   ]
 }

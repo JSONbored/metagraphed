@@ -75,6 +75,27 @@ The file must contain exactly one candidate:
 Generated artifacts, scripts, workflows, package metadata, native snapshots,
 private URLs, secrets, wallet/PAT data, and validator-local data are rejected.
 
+## Supported UGC Types
+
+The public gate accepts or routes:
+
+- subnet interface additions and corrections;
+- endpoint resource submissions for `subtensor-rpc`, `subtensor-wss`,
+  `archive`, `subnet-api`, `openapi`, `sse`, `data-artifact`, `dashboard`,
+  `docs`, `website`, `source-repo`, `sdk`, and `example`;
+- provider/operator profile submissions;
+- endpoint status reports;
+- auth and rate-limit metadata corrections;
+- adapter requests and evidence/provenance corrections.
+
+Base-layer RPC/WSS/archive claims, unknown providers, authenticated APIs,
+adapter requests, and conflicting source claims route to manual/private review.
+
+Endpoint and status submissions can create candidates, reports, or re-probe
+work. They cannot directly set observed uptime, latency, status, health class,
+or pool eligibility; those values are generated only from Metagraphed probes and
+adapter checks.
+
 ## Private Gate Runtime
 
 The private `metagraphed-submission-gate` should run on Cloudflare:

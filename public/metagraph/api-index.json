@@ -20,6 +20,12 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "provider-endpoints",
+      "path": "/metagraph/providers/{slug}/endpoints.json",
+      "schema_ref": "#/components/schemas/ProviderEndpointsArtifact"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "api-index",
       "path": "/metagraph/api-index.json",
       "schema_ref": "#/components/schemas/ApiIndexArtifact"
@@ -65,6 +71,18 @@
       "id": "surfaces-subnet",
       "path": "/metagraph/surfaces/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetSurfacesArtifact"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "endpoints",
+      "path": "/metagraph/endpoints.json",
+      "schema_ref": "#/components/schemas/EndpointsArtifact"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "endpoints-subnet",
+      "path": "/metagraph/endpoints/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetEndpointsArtifact"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -185,6 +203,12 @@
       "id": "rpc-pools",
       "path": "/metagraph/rpc/pools.json",
       "schema_ref": "#/components/schemas/RpcPoolsArtifact"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "endpoint-pools",
+      "path": "/metagraph/endpoint-pools.json",
+      "schema_ref": "#/components/schemas/EndpointPoolsArtifact"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -424,11 +448,14 @@
           "name": "kind",
           "schema": {
             "enum": [
+              "archive",
               "dashboard",
               "data-artifact",
               "docs",
+              "example",
               "openapi",
               "repo-registry",
+              "sdk",
               "source-repo",
               "sse",
               "subnet-api",
@@ -502,11 +529,14 @@
           "name": "kind",
           "schema": {
             "enum": [
+              "archive",
               "dashboard",
               "data-artifact",
               "docs",
+              "example",
               "openapi",
               "repo-registry",
+              "sdk",
               "source-repo",
               "sse",
               "subnet-api",
@@ -563,6 +593,290 @@
       ]
     },
     {
+      "artifact_path": "/metagraph/endpoints.json",
+      "cache": "short",
+      "description": "List generalized endpoint resources and monitored public surfaces.",
+      "id": "endpoints",
+      "method": "GET",
+      "path": "/api/v1/endpoints",
+      "public": true,
+      "query_collection": "endpoints",
+      "query_filter_names": [
+        "kind",
+        "layer",
+        "netuid",
+        "pool_eligible",
+        "provider",
+        "publication_state",
+        "status"
+      ],
+      "query_parameters": [
+        {
+          "name": "kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "layer",
+          "schema": {
+            "enum": [
+              "bittensor-base",
+              "data-provider",
+              "docs-provider",
+              "subnet-app"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "pool_eligible",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "publication_state",
+          "schema": {
+            "enum": [
+              "candidate",
+              "verified",
+              "monitored",
+              "pool-eligible",
+              "disabled",
+              "rejected"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "status",
+          "schema": {
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "kind",
+              "last_checked",
+              "latency_ms",
+              "layer",
+              "netuid",
+              "pool_eligible",
+              "provider",
+              "publication_state",
+              "score",
+              "status"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/endpoints/{netuid}.json",
+      "cache": "short",
+      "description": "List generalized endpoint resources for one subnet.",
+      "id": "subnet-endpoints",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/endpoints",
+      "public": true,
+      "query_collection": "endpoints",
+      "query_filter_names": [
+        "kind",
+        "layer",
+        "pool_eligible",
+        "provider",
+        "publication_state",
+        "status"
+      ],
+      "query_parameters": [
+        {
+          "name": "kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "layer",
+          "schema": {
+            "enum": [
+              "bittensor-base",
+              "data-provider",
+              "docs-provider",
+              "subnet-app"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "pool_eligible",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "publication_state",
+          "schema": {
+            "enum": [
+              "candidate",
+              "verified",
+              "monitored",
+              "pool-eligible",
+              "disabled",
+              "rejected"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "status",
+          "schema": {
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "kind",
+              "last_checked",
+              "latency_ms",
+              "layer",
+              "netuid",
+              "pool_eligible",
+              "provider",
+              "publication_state",
+              "score",
+              "status"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
       "artifact_path": "/metagraph/candidates.json",
       "cache": "standard",
       "description": "List unpromoted candidate surfaces.",
@@ -589,11 +903,14 @@
           "name": "kind",
           "schema": {
             "enum": [
+              "archive",
               "dashboard",
               "data-artifact",
               "docs",
+              "example",
               "openapi",
               "repo-registry",
+              "sdk",
               "source-repo",
               "sse",
               "subnet-api",
@@ -684,11 +1001,14 @@
           "name": "kind",
           "schema": {
             "enum": [
+              "archive",
               "dashboard",
               "data-artifact",
               "docs",
+              "example",
               "openapi",
               "repo-registry",
+              "sdk",
               "source-repo",
               "sse",
               "subnet-api",
@@ -855,6 +1175,145 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/providers/{slug}/endpoints.json",
+      "cache": "short",
+      "description": "List endpoint resources for one provider or operator.",
+      "id": "provider-endpoints",
+      "method": "GET",
+      "path": "/api/v1/providers/{slug}/endpoints",
+      "public": true,
+      "query_collection": "endpoints",
+      "query_filter_names": [
+        "kind",
+        "layer",
+        "netuid",
+        "pool_eligible",
+        "publication_state",
+        "status"
+      ],
+      "query_parameters": [
+        {
+          "name": "kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "layer",
+          "schema": {
+            "enum": [
+              "bittensor-base",
+              "data-provider",
+              "docs-provider",
+              "subnet-app"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "pool_eligible",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "publication_state",
+          "schema": {
+            "enum": [
+              "candidate",
+              "verified",
+              "monitored",
+              "pool-eligible",
+              "disabled",
+              "rejected"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "status",
+          "schema": {
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "kind",
+              "last_checked",
+              "latency_ms",
+              "layer",
+              "netuid",
+              "pool_eligible",
+              "provider",
+              "publication_state",
+              "score",
+              "status"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/coverage.json",
@@ -1129,11 +1588,14 @@
           "name": "kind",
           "schema": {
             "enum": [
+              "archive",
               "dashboard",
               "data-artifact",
               "docs",
+              "example",
               "openapi",
               "repo-registry",
+              "sdk",
               "source-repo",
               "sse",
               "subnet-api",
@@ -1245,11 +1707,14 @@
           "name": "kind",
           "schema": {
             "enum": [
+              "archive",
               "dashboard",
               "data-artifact",
               "docs",
+              "example",
               "openapi",
               "repo-registry",
+              "sdk",
               "source-repo",
               "sse",
               "subnet-api",
@@ -1498,7 +1963,11 @@
       "query_collection": "endpoints",
       "query_filter_names": [
         "kind",
+        "layer",
+        "netuid",
+        "pool_eligible",
         "provider",
+        "publication_state",
         "status"
       ],
       "query_parameters": [
@@ -1506,11 +1975,14 @@
           "name": "kind",
           "schema": {
             "enum": [
+              "archive",
               "dashboard",
               "data-artifact",
               "docs",
+              "example",
               "openapi",
               "repo-registry",
+              "sdk",
               "source-repo",
               "sse",
               "subnet-api",
@@ -1522,8 +1994,51 @@
           }
         },
         {
+          "name": "layer",
+          "schema": {
+            "enum": [
+              "bittensor-base",
+              "data-provider",
+              "docs-provider",
+              "subnet-app"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "pool_eligible",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "provider",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "publication_state",
+          "schema": {
+            "enum": [
+              "candidate",
+              "verified",
+              "monitored",
+              "pool-eligible",
+              "disabled",
+              "rejected"
+            ],
             "type": "string"
           }
         },
@@ -1559,8 +2074,14 @@
           "schema": {
             "enum": [
               "kind",
+              "last_checked",
               "latency_ms",
+              "layer",
+              "netuid",
+              "pool_eligible",
               "provider",
+              "publication_state",
+              "score",
               "status"
             ],
             "type": "string"
@@ -1588,6 +2109,75 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/endpoint-pools.json",
+      "cache": "short",
+      "description": "Fetch generalized endpoint pool scores.",
+      "id": "endpoint-pools",
+      "method": "GET",
+      "path": "/api/v1/endpoint-pools",
+      "public": true,
+      "query_collection": "endpoint-pools",
+      "query_filter_names": [
+        "id",
+        "kind"
+      ],
+      "query_parameters": [
+        {
+          "name": "id",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "kind",
+          "schema": {
+            "enum": [
+              "subtensor-rpc",
+              "subtensor-wss",
+              "archive"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "eligible_count",
+              "endpoint_count",
+              "id",
+              "kind"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/schemas/index.json",

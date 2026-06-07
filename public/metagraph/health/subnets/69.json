@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-69",
   "summary": {
-    "avg_latency_ms": 257,
+    "avg_latency_ms": 261,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:11.647Z",
-    "last_ok": "2026-06-06T12:31:11.647Z",
+    "last_checked": "2026-06-07T05:10:13.326Z",
+    "last_ok": "2026-06-07T05:10:13.326Z",
     "name": "ain",
     "netuid": 69,
     "ok_count": 2,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:11.465Z",
-      "last_ok": "2026-06-06T12:31:11.465Z",
-      "latency_ms": 179,
+      "last_checked": "2026-06-07T05:10:13.116Z",
+      "last_ok": "2026-06-07T05:10:13.116Z",
+      "latency_ms": 164,
       "method_tested": "HEAD",
       "netuid": 69,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-69-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/69",
-      "verified_at": "2026-06-06T12:31:11.465Z"
+      "verified_at": "2026-06-07T05:10:13.116Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:11.647Z",
-      "last_ok": "2026-06-06T12:31:11.647Z",
-      "latency_ms": 335,
+      "last_checked": "2026-06-07T05:10:13.326Z",
+      "last_ok": "2026-06-07T05:10:13.326Z",
+      "latency_ms": 357,
       "method_tested": "HEAD",
       "netuid": 69,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-69-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/69",
-      "verified_at": "2026-06-06T12:31:11.647Z"
+      "verified_at": "2026-06-07T05:10:13.326Z"
     }
   ]
 }

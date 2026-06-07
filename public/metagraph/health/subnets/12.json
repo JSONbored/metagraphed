@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-12",
   "summary": {
-    "avg_latency_ms": 289,
+    "avg_latency_ms": 339,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:04.596Z",
-    "last_ok": "2026-06-06T12:31:04.596Z",
+    "last_checked": "2026-06-07T05:10:05.562Z",
+    "last_ok": "2026-06-07T05:10:05.562Z",
     "name": "Compute Horde",
     "netuid": 12,
     "ok_count": 4,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:04.361Z",
-      "last_ok": "2026-06-06T12:31:04.361Z",
-      "latency_ms": 235,
+      "last_checked": "2026-06-07T05:10:05.234Z",
+      "last_ok": "2026-06-07T05:10:05.234Z",
+      "latency_ms": 193,
       "method_tested": "HEAD",
       "netuid": 12,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-12-github-readme-backend-developers-ltd-computehorde-dashboard-2",
       "uptime_sample_ratio": 1,
       "url": "https://taostats.io/subnets/12",
-      "verified_at": "2026-06-06T12:31:04.361Z"
+      "verified_at": "2026-06-07T05:10:05.234Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:04.285Z",
-      "last_ok": "2026-06-06T12:31:04.285Z",
-      "latency_ms": 150,
+      "last_checked": "2026-06-07T05:10:05.291Z",
+      "last_ok": "2026-06-07T05:10:05.291Z",
+      "latency_ms": 249,
       "method_tested": "HEAD",
       "netuid": 12,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-12-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/12",
-      "verified_at": "2026-06-06T12:31:04.285Z"
+      "verified_at": "2026-06-07T05:10:05.291Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:04.596Z",
-      "last_ok": "2026-06-06T12:31:04.596Z",
-      "latency_ms": 439,
+      "last_checked": "2026-06-07T05:10:05.485Z",
+      "last_ok": "2026-06-07T05:10:05.485Z",
+      "latency_ms": 423,
       "method_tested": "HEAD",
       "netuid": 12,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-12-taomarketcap-source-repo",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/backend-developers-ltd/ComputeHorde",
-      "verified_at": "2026-06-06T12:31:04.596Z"
+      "verified_at": "2026-06-07T05:10:05.485Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:04.490Z",
-      "last_ok": "2026-06-06T12:31:04.490Z",
-      "latency_ms": 330,
+      "last_checked": "2026-06-07T05:10:05.562Z",
+      "last_ok": "2026-06-07T05:10:05.562Z",
+      "latency_ms": 492,
       "method_tested": "HEAD",
       "netuid": 12,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-12-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/12",
-      "verified_at": "2026-06-06T12:31:04.490Z"
+      "verified_at": "2026-06-07T05:10:05.562Z"
     }
   ]
 }

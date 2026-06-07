@@ -51,6 +51,12 @@ test("public artifacts are internally consistent", () => {
   const rpcEndpoints = JSON.parse(
     readFileSync("public/metagraph/rpc-endpoints.json", "utf8"),
   );
+  const endpoints = JSON.parse(
+    readFileSync("public/metagraph/endpoints.json", "utf8"),
+  );
+  const subnetEndpoints = JSON.parse(
+    readFileSync("public/metagraph/endpoints/7.json", "utf8"),
+  );
   const coverage = JSON.parse(
     readFileSync("public/metagraph/coverage.json", "utf8"),
   );
@@ -79,7 +85,13 @@ test("public artifacts are internally consistent", () => {
     readFileSync("public/metagraph/evidence-ledger.json", "utf8"),
   );
   const endpointPools = JSON.parse(
+    readFileSync("public/metagraph/endpoint-pools.json", "utf8"),
+  );
+  const rpcEndpointPools = JSON.parse(
     readFileSync("public/metagraph/rpc/pools.json", "utf8"),
+  );
+  const providerEndpoints = JSON.parse(
+    readFileSync("public/metagraph/providers/allways/endpoints.json", "utf8"),
   );
   const r2Manifest = JSON.parse(
     readFileSync("public/metagraph/r2-manifest.json", "utf8"),
@@ -119,6 +131,32 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     rpcEndpoints.endpoints.every((endpoint) => endpoint.netuid === 0),
+    true,
+  );
+  assert.equal(endpoints.endpoints.length, surfaces.surfaces.length);
+  assert.equal(
+    endpoints.endpoints.every(
+      (endpoint) =>
+        endpoint.publication_state === "pool-eligible" ||
+        endpoint.publication_state === "monitored" ||
+        endpoint.publication_state === "verified" ||
+        endpoint.publication_state === "disabled",
+    ),
+    true,
+  );
+  assert.equal(
+    endpoints.endpoints.filter((endpoint) => endpoint.pool_eligible).length <=
+      endpointPools.pools.reduce((sum, pool) => sum + pool.eligible_count, 0),
+    true,
+  );
+  assert.equal(
+    subnetEndpoints.endpoints.every((endpoint) => endpoint.netuid === 7),
+    true,
+  );
+  assert.equal(
+    providerEndpoints.endpoints.every(
+      (endpoint) => endpoint.provider === "allways",
+    ),
     true,
   );
   assert.equal(healthSummary.subnets.length, native.subnets.length);
@@ -191,6 +229,7 @@ test("public artifacts are internally consistent", () => {
     evidenceLedger.claims.length,
   );
   assert.equal(endpointPools.pools.length >= 3, true);
+  assert.equal(rpcEndpointPools.pools.length >= 3, true);
   assert.equal(r2Manifest.artifact_count, r2Manifest.artifacts.length);
   assert.equal(
     schemaDrift.openapi_surface_count ?? schemaDrift.summary?.surface_count,
@@ -237,6 +276,10 @@ test("public artifacts are internally consistent", () => {
     );
     assert.equal(
       existsSync(`public/metagraph/health/badges/${subnet.netuid}.json`),
+      true,
+    );
+    assert.equal(
+      existsSync(`public/metagraph/endpoints/${subnet.netuid}.json`),
       true,
     );
   }

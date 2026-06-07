@@ -1,5 +1,14 @@
 {
   "contract_version": "2026-06-06.1",
+  "endpoint_summary": {
+    "by_kind": {},
+    "by_layer": {},
+    "by_publication_state": {},
+    "by_status": {},
+    "endpoint_count": 0,
+    "monitored_count": 0,
+    "pool_eligible_count": 0
+  },
   "generated_at": "1970-01-01T00:00:00.000Z",
   "provider": {
     "authority": "provider-claimed",

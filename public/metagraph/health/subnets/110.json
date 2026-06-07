@@ -6,11 +6,11 @@
   "schema_version": 1,
   "slug": "sn-110",
   "summary": {
-    "avg_latency_ms": 277,
+    "avg_latency_ms": 332,
     "degraded_count": 0,
     "failed_count": 0,
-    "last_checked": "2026-06-06T12:31:17.034Z",
-    "last_ok": "2026-06-06T12:31:17.034Z",
+    "last_checked": "2026-06-07T05:10:19.698Z",
+    "last_ok": "2026-06-07T05:10:19.698Z",
     "name": "Green Compute",
     "netuid": 110,
     "ok_count": 7,
@@ -27,9 +27,9 @@
       "error": null,
       "error_class": null,
       "kind": "dashboard",
-      "last_checked": "2026-06-06T12:31:16.665Z",
-      "last_ok": "2026-06-06T12:31:16.665Z",
-      "latency_ms": 143,
+      "last_checked": "2026-06-07T05:10:19.272Z",
+      "last_ok": "2026-06-07T05:10:19.272Z",
+      "latency_ms": 248,
       "method_tested": "HEAD",
       "netuid": 110,
       "private_redirect_blocked": false,
@@ -43,7 +43,7 @@
       "surface_id": "sn-110-taomarketcap-dashboard",
       "uptime_sample_ratio": 1,
       "url": "https://taomarketcap.com/subnets/110",
-      "verified_at": "2026-06-06T12:31:16.665Z"
+      "verified_at": "2026-06-07T05:10:19.272Z"
     },
     {
       "auth_required": false,
@@ -52,9 +52,9 @@
       "error": null,
       "error_class": null,
       "kind": "website",
-      "last_checked": "2026-06-06T12:31:16.738Z",
-      "last_ok": "2026-06-06T12:31:16.738Z",
-      "latency_ms": 195,
+      "last_checked": "2026-06-07T05:10:19.185Z",
+      "last_ok": "2026-06-07T05:10:19.185Z",
+      "latency_ms": 159,
       "method_tested": "HEAD",
       "netuid": 110,
       "private_redirect_blocked": false,
@@ -68,7 +68,7 @@
       "surface_id": "sn-110-taomarketcap-website",
       "uptime_sample_ratio": 1,
       "url": "https://www.green-compute.com/",
-      "verified_at": "2026-06-06T12:31:16.738Z"
+      "verified_at": "2026-06-07T05:10:19.185Z"
     },
     {
       "auth_required": false,
@@ -77,9 +77,9 @@
       "error": null,
       "error_class": null,
       "kind": "docs",
-      "last_checked": "2026-06-06T12:31:16.926Z",
-      "last_ok": "2026-06-06T12:31:16.926Z",
-      "latency_ms": 320,
+      "last_checked": "2026-06-07T05:10:19.554Z",
+      "last_ok": "2026-06-07T05:10:19.554Z",
+      "latency_ms": 481,
       "method_tested": "HEAD",
       "netuid": 110,
       "private_redirect_blocked": false,
@@ -93,7 +93,7 @@
       "surface_id": "sn-110-tensorplex-docs",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/110",
-      "verified_at": "2026-06-06T12:31:16.926Z"
+      "verified_at": "2026-06-07T05:10:19.554Z"
     },
     {
       "auth_required": false,
@@ -102,9 +102,9 @@
       "error": null,
       "error_class": null,
       "kind": "source-repo",
-      "last_checked": "2026-06-06T12:31:17.032Z",
-      "last_ok": "2026-06-06T12:31:17.032Z",
-      "latency_ms": 413,
+      "last_checked": "2026-06-07T05:10:19.698Z",
+      "last_ok": "2026-06-07T05:10:19.698Z",
+      "latency_ms": 621,
       "method_tested": "HEAD",
       "netuid": 110,
       "private_redirect_blocked": false,
@@ -118,7 +118,7 @@
       "surface_id": "sn-110-tensorplex-source-repo-1",
       "uptime_sample_ratio": 1,
       "url": "https://github.com/Rich-Kids-of-TAO/rkt-subnet",
-      "verified_at": "2026-06-06T12:31:17.032Z"
+      "verified_at": "2026-06-07T05:10:19.698Z"
     },
     {
       "auth_required": false,
@@ -127,9 +127,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:16.873Z",
-      "last_ok": "2026-06-06T12:31:16.873Z",
-      "latency_ms": 250,
+      "last_checked": "2026-06-07T05:10:19.369Z",
+      "last_ok": "2026-06-07T05:10:19.369Z",
+      "latency_ms": 259,
       "method_tested": "HEAD",
       "netuid": 110,
       "private_redirect_blocked": false,
@@ -143,7 +143,7 @@
       "surface_id": "sn-110-website-link-www-green-compute-com-data-artifact-10",
       "uptime_sample_ratio": 1,
       "url": "https://www.green-compute.com/models?prefill=Qwen%2FQwen2.5-7B-Instruct",
-      "verified_at": "2026-06-06T12:31:16.873Z"
+      "verified_at": "2026-06-07T05:10:19.369Z"
     },
     {
       "auth_required": false,
@@ -152,9 +152,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:17.034Z",
-      "last_ok": "2026-06-06T12:31:17.034Z",
-      "latency_ms": 369,
+      "last_checked": "2026-06-07T05:10:19.399Z",
+      "last_ok": "2026-06-07T05:10:19.399Z",
+      "latency_ms": 281,
       "method_tested": "HEAD",
       "netuid": 110,
       "private_redirect_blocked": false,
@@ -168,7 +168,7 @@
       "surface_id": "sn-110-website-link-www-green-compute-com-data-artifact-6",
       "uptime_sample_ratio": 1,
       "url": "https://www.green-compute.com/models",
-      "verified_at": "2026-06-06T12:31:17.034Z"
+      "verified_at": "2026-06-07T05:10:19.399Z"
     },
     {
       "auth_required": false,
@@ -177,9 +177,9 @@
       "error": null,
       "error_class": null,
       "kind": "data-artifact",
-      "last_checked": "2026-06-06T12:31:16.949Z",
-      "last_ok": "2026-06-06T12:31:16.949Z",
-      "latency_ms": 248,
+      "last_checked": "2026-06-07T05:10:19.454Z",
+      "last_ok": "2026-06-07T05:10:19.454Z",
+      "latency_ms": 272,
       "method_tested": "HEAD",
       "netuid": 110,
       "private_redirect_blocked": false,
@@ -193,7 +193,7 @@
       "surface_id": "sn-110-website-link-www-green-compute-com-data-artifact-9",
       "uptime_sample_ratio": 1,
       "url": "https://www.green-compute.com/models?prefill=meta-llama%2FMeta-Llama-3.1-8B-Instruct",
-      "verified_at": "2026-06-06T12:31:16.949Z"
+      "verified_at": "2026-06-07T05:10:19.454Z"
     }
   ]
 }

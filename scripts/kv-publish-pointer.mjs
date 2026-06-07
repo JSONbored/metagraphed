@@ -11,7 +11,7 @@ const freshness = await readJson(
   path.join(repoRoot, "public/metagraph/freshness.json"),
 );
 const endpointPools = await readJson(
-  path.join(repoRoot, "public/metagraph/rpc/pools.json"),
+  path.join(repoRoot, "public/metagraph/endpoint-pools.json"),
 );
 const sourceHealth = await readJson(
   path.join(repoRoot, "public/metagraph/source-health.json"),
