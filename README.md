@@ -120,6 +120,20 @@ Generated public artifacts live under `public/metagraph`:
 
 The generated files are deterministic and suitable for static hosting, CI review, and downstream consumption.
 
+## Contract Source Of Truth
+
+Metagraphed uses JSON Schema as the canonical public/runtime contract. Contributors should edit modular schemas under `schemas/components/*.schema.json`, then run `npm run schemas:bundle` and `npm run build`.
+
+The contract chain is:
+
+- modular JSON Schema components are canonical;
+- `schemas/api-components.schema.json` is a generated bundle;
+- `/metagraph/openapi.json` is generated from the schema bundle plus route metadata;
+- `/metagraph/types.d.ts` and `generated/metagraphed-api.d.ts` are generated from OpenAPI;
+- `generated/metagraphed-client.ts` is a generated TypeScript frontend handoff helper.
+
+Zod is not the backend source of truth in v1. If Zod helpers are added later, they should be generated consumer tooling for frontend/runtime form validation, not canonical registry authority.
+
 Worker API routes expose stable envelopes over the same canonical artifacts:
 
 - `/api/v1`
@@ -168,9 +182,15 @@ npm run verify:candidates:dry-run
 npm run curate:baseline:dry-run
 npm run review:promote:dry-run
 npm run schemas:snapshot:dry-run
+npm run schemas:bundle
 npm run adapters:snapshot:dry-run
 npm run validate:schemas
 npm run validate:api
+npm run validate:contract-drift
+npm run validate:schema-enums
+npm run validate:openapi-examples
+npm run validate:generated-client
+npm run contract:summary
 npm run validate:docs
 npm run validate:intake
 npm run validate:workflows
@@ -193,6 +213,12 @@ npm run probes:smoke
 `review:promote` applies public-safe maintainer review decisions from `registry/reviews/maintainer-reviewed.json`.
 
 `schemas:snapshot` captures machine-readable OpenAPI/Swagger schema summaries and drift state.
+
+`schemas:bundle` bundles canonical modular JSON Schema components into `schemas/api-components.schema.json`.
+
+`validate:contract-drift`, `validate:schema-enums`, `validate:openapi-examples`, and `validate:generated-client` enforce schema/OpenAPI/type/client parity.
+
+`contract:summary` compares the bundled schema against a base ref and classifies contract changes as additive, risky, or breaking for PR review.
 
 `adapters:snapshot` captures safe Allways/Gittensor public adapter summaries without raw wallet, miner, PAT, or validator-local payloads.
 
@@ -218,6 +244,7 @@ registry/subnets/     curated subnet interface overlays
 registry/verification/ generated candidate verification snapshots
 schemas/              public JSON schema contracts
 scripts/              validation, artifact generation, probe, and safety scripts
+generated/            generated TypeScript handoff types and client helpers
 workers/              Cloudflare Worker API routes over static artifacts
 public/metagraph/     generated public JSON artifacts
 tests/                node test runner checks

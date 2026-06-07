@@ -1,0 +1,364 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/10-contracts-build.schema.json",
+  "title": "Metagraphed OpenAPI components 10-contracts-build",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "ArtifactContractEntry": {
+        "type": "object",
+        "required": ["contract_version", "id", "path", "schema_ref"],
+        "properties": {
+          "content_type": {
+            "type": "string"
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^/metagraph/"
+          },
+          "schema_ref": {
+            "type": ["string", "null"],
+            "pattern": "^#/components/schemas/[A-Za-z0-9]+$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ArtifactDiffEntry": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "hash": {
+                "type": "string"
+              },
+              "previous_hash": {
+                "type": ["string", "null"]
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ContractsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "artifacts",
+              "base_path",
+              "name",
+              "openapi_url",
+              "primary_domain",
+              "status_domain",
+              "type_definitions_url"
+            ],
+            "properties": {
+              "artifacts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ArtifactContractEntry"
+                }
+              },
+              "base_path": {
+                "const": "/metagraph"
+              },
+              "name": {
+                "type": "string"
+              },
+              "openapi_url": {
+                "const": "/metagraph/openapi.json"
+              },
+              "primary_domain": {
+                "const": "metagraph.sh"
+              },
+              "status_domain": {
+                "type": "null"
+              },
+              "type_definitions_url": {
+                "const": "/metagraph/types.d.ts"
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ApiIndexArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "artifact_contracts",
+              "base_path",
+              "openapi_url",
+              "primary_domain",
+              "response_envelope",
+              "routes",
+              "type_definitions_url"
+            ],
+            "properties": {
+              "artifact_contracts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ArtifactContractEntry"
+                }
+              },
+              "base_path": {
+                "const": "/api/v1"
+              },
+              "openapi_url": {
+                "const": "/api/v1/openapi.json"
+              },
+              "primary_domain": {
+                "const": "metagraph.sh"
+              },
+              "response_envelope": {
+                "$ref": "#/components/schemas/ResponseEnvelopeContract"
+              },
+              "routes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ApiRoute"
+                }
+              },
+              "type_definitions_url": {
+                "const": "/metagraph/types.d.ts"
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "OpenApiArtifact": {
+        "type": "object",
+        "required": ["openapi", "info", "paths", "components"],
+        "properties": {
+          "openapi": {
+            "const": "3.1.0"
+          },
+          "info": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "servers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "paths": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "components": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "x-metagraphed": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "ChangelogArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["artifacts", "source", "subnets", "summary"],
+            "properties": {
+              "artifacts": {
+                "type": "object",
+                "required": ["added", "modified", "removed"],
+                "properties": {
+                  "added": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ArtifactDiffEntry"
+                    }
+                  },
+                  "modified": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ArtifactDiffEntry"
+                    }
+                  },
+                  "removed": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ArtifactDiffEntry"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "source": {
+                "const": "generated-artifact-diff"
+              },
+              "subnets": {
+                "type": "object",
+                "required": ["added", "removed", "renamed"],
+                "properties": {
+                  "added": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "removed": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "renamed": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "artifact_added_count",
+                  "artifact_modified_count",
+                  "artifact_removed_count",
+                  "coverage_delta",
+                  "netuid_added_count",
+                  "netuid_removed_count",
+                  "netuid_renamed_count"
+                ],
+                "properties": {
+                  "artifact_added_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "artifact_modified_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "artifact_removed_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "coverage_delta": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/CoverageDelta"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "netuid_added_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "netuid_removed_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "netuid_renamed_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "GenericArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          }
+        ]
+      },
+      "BuildSummaryArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "artifact_count",
+              "artifact_size_bytes",
+              "subnet_count",
+              "surface_count"
+            ],
+            "properties": {
+              "artifact_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "artifact_size_bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "subnet_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "surface_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "candidate_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "provider_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "artifact_budgets": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ArtifactSizeBudget"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    }
+  }
+}

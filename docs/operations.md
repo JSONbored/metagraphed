@@ -12,6 +12,8 @@ npm run pipeline:check
 
 This performs dry-run sync/discovery/verification, contract validation, Worker runtime checks, workflow validation, public-safety scanning, and tests.
 
+The contract checks include schema bundle drift, schema/query enum parity, OpenAPI example validation, generated TypeScript freshness, and generated client freshness.
+
 ## Refreshing Artifacts
 
 ```bash
@@ -69,3 +71,5 @@ Rollback is pointer-first:
 ## Known Non-Blocking Drift
 
 `sync:subnets:dry-run` can report chain metadata changes, such as subnet names. These should become reviewed sync PRs, not silent direct pushes.
+
+Current known drift from the live dry run: SN92 reports `TensorClaw -> luis` and SN95 reports `nion -> Actual`. The endpoint registry PR intentionally did not refresh native subnet identity data; handle this as a separate reviewed registry-data PR.

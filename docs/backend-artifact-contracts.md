@@ -9,9 +9,13 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `registry/candidates/**/*.json` is discovery-only. Candidates are not verified registry surfaces until promotion.
 - `registry/adapters/latest/*.json` stores safe adapter snapshots for subnet-specific public metrics.
 - `registry/reviews/maintainer-reviewed.json` stores public-safe maintainer review decisions.
+- `schemas/components/*.schema.json` is canonical for public API/artifact component schemas.
+- `schemas/api-components.schema.json` is a generated bundle and should not be edited by hand.
+- `/metagraph/openapi.json`, `/metagraph/types.d.ts`, `generated/metagraphed-api.d.ts`, and `generated/metagraphed-client.ts` are generated from the canonical schema and route metadata.
 - `public/metagraph/*` files are generated projections and should not be edited by hand.
 - Health, RPC, adapter, and schema-drift artifacts are operational observations, not protocol authority.
 - No secrets, wallet data, PATs, private dashboards, or validator-sensitive flows belong in any public artifact.
+- Zod is not backend contract authority in v1. Zod helpers can be generated later for frontend consumers, but JSON Schema plus AJV remains canonical.
 
 ## Core Artifacts
 
@@ -105,6 +109,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run curate:baseline`: promote verified candidates into generated overlays.
 - `npm run review:promote`: apply public-safe maintainer review decisions to overlays.
 - `npm run schemas:snapshot`: fetch machine-readable OpenAPI/Swagger JSON snapshots and update schema drift.
+- `npm run schemas:bundle`: bundle canonical modular JSON Schema components into `schemas/api-components.schema.json`.
 - `npm run adapters:snapshot`: capture safe Allways/Gittensor public adapter summaries.
 - `METAGRAPH_WRITE_PROBE_RESULTS=1 npm run probes:smoke`: run live read-only probes and persist health/RPC history.
 - `npm run r2:manifest`: regenerate the Cloudflare R2 manifest from current public artifacts.
@@ -112,6 +117,11 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run kv:publish:dry-run`: summarize KV latest pointer, feature flags, endpoint pool, and freshness control records.
 - `npm run validate:schemas`: run strict JSON Schema validation over registry inputs and public artifacts.
 - `npm run validate:api`: validate Worker API routes over local artifacts.
+- `npm run validate:contract-drift`: validate schema bundle, OpenAPI, generated TypeScript, generated client, and typed route response parity.
+- `npm run validate:schema-enums`: validate enum parity between canonical schemas and route/query validation.
+- `npm run validate:openapi-examples`: validate real artifact-backed response examples against OpenAPI.
+- `npm run validate:generated-client`: validate the generated TypeScript client helper is current.
+- `npm run contract:summary`: compare schema contracts against a base ref and classify changes as additive, risky, or breaking.
 - `npm run validate:docs`: validate public docs against current artifact and API contracts.
 - `npm run validate:intake`: validate GitHub issue intake templates.
 - `npm run validate:workflows`: validate workflow hardening rules.

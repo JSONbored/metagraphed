@@ -1,0 +1,633 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/05-subnets.schema.json",
+  "title": "Metagraphed OpenAPI components 05-subnets",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "CurationMetadata": {
+        "type": "object",
+        "required": ["level", "review_state"],
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "reviewed_at": {
+            "type": ["string", "null"]
+          },
+          "verified_at": {
+            "type": ["string", "null"]
+          },
+          "source_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "gap_notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "Gaps": {
+        "type": "object",
+        "required": ["missing_kinds", "supported_kinds", "gap_notes"],
+        "properties": {
+          "missing_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "supported_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "gap_notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubnetIndexEntry": {
+        "type": "object",
+        "required": [
+          "netuid",
+          "name",
+          "slug",
+          "status",
+          "subnet_type",
+          "coverage_level",
+          "curation_level",
+          "surface_count"
+        ],
+        "properties": {
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "native_name": {
+            "type": ["string", "null"]
+          },
+          "native_name_quality": {
+            "enum": ["chain", "placeholder", "empty"]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SubnetStatus"
+          },
+          "subnet_type": {
+            "$ref": "#/components/schemas/SubnetType"
+          },
+          "symbol": {
+            "type": ["string", "null"]
+          },
+          "coverage_level": {
+            "$ref": "#/components/schemas/CoverageLevel"
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "probed_surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "participant_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tempo": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "block": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "registered_at_block": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mechanism_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "docs_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "website_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "dashboard_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "source_repo": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "gap_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubnetDetail": {
+        "type": "object",
+        "required": [
+          "netuid",
+          "name",
+          "slug",
+          "status",
+          "subnet_type",
+          "coverage_level",
+          "curation_level",
+          "surface_count",
+          "curation",
+          "gaps",
+          "provenance",
+          "links"
+        ],
+        "properties": {
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "native_name": {
+            "type": ["string", "null"]
+          },
+          "native_name_quality": {
+            "enum": ["chain", "placeholder", "empty"]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SubnetStatus"
+          },
+          "subnet_type": {
+            "$ref": "#/components/schemas/SubnetType"
+          },
+          "symbol": {
+            "type": ["string", "null"]
+          },
+          "coverage_level": {
+            "$ref": "#/components/schemas/CoverageLevel"
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "probed_surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "participant_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tempo": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "block": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "registered_at_block": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mechanism_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "docs_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "website_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "dashboard_url": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "source_repo": {
+            "type": ["string", "null"],
+            "format": "uri"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "gap_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "curation": {
+            "$ref": "#/components/schemas/CurationMetadata"
+          },
+          "gaps": {
+            "$ref": "#/components/schemas/Gaps"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "native_slug": {
+            "type": ["string", "null"]
+          },
+          "notes": {
+            "type": ["string", "null"]
+          },
+          "provenance": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubnetsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["network", "source", "subnets"],
+            "properties": {
+              "network": {
+                "const": "finney"
+              },
+              "source": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "subnets": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SubnetIndexEntry"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SubnetDetailArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["subnet", "surfaces", "candidate_surfaces", "gaps"],
+            "properties": {
+              "subnet": {
+                "$ref": "#/components/schemas/SubnetDetail"
+              },
+              "surfaces": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Surface"
+                }
+              },
+              "verified_surfaces": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Surface"
+                }
+              },
+              "candidate_surfaces": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CandidateSurface"
+                }
+              },
+              "candidates": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CandidateSurface"
+                }
+              },
+              "endpoints": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/EndpointResource"
+                }
+              },
+              "gaps": {
+                "$ref": "#/components/schemas/Gaps"
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "CoverageArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "application_subnet_count",
+              "candidate_count",
+              "candidate_subnet_count",
+              "chain_subnet_count",
+              "curated_overlay_count",
+              "curation_level_counts",
+              "manifested_count",
+              "native_only_count",
+              "native_only_with_candidates",
+              "native_only_without_candidates",
+              "native_snapshot_captured_at",
+              "network",
+              "probed_count",
+              "probed_surface_count",
+              "root_subnet_count",
+              "source",
+              "surface_count"
+            ],
+            "properties": {
+              "application_subnet_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "candidate_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "candidate_subnet_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "chain_subnet_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "curated_overlay_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "curation_level_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "manifested_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "native_only_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "native_only_with_candidates": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "native_only_without_candidates": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "native_snapshot_captured_at": {
+                "type": "string"
+              },
+              "network": {
+                "const": "finney"
+              },
+              "probed_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "probed_surface_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "root_subnet_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source": {
+                "type": "object",
+                "required": ["candidates", "native", "overlays"],
+                "properties": {
+                  "candidates": {
+                    "type": "string"
+                  },
+                  "native": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    ]
+                  },
+                  "overlays": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "surface_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "CoverageDelta": {
+        "type": "object",
+        "required": ["after", "before", "delta"],
+        "properties": {
+          "after": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "before": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "delta": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CurationEntry": {
+        "type": "object",
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "coverage_level",
+          "surface_count",
+          "candidate_count",
+          "curation",
+          "gaps"
+        ],
+        "properties": {
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "coverage_level": {
+            "$ref": "#/components/schemas/CoverageLevel"
+          },
+          "surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "gap_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "curation": {
+            "$ref": "#/components/schemas/CurationMetadata"
+          },
+          "gaps": {
+            "$ref": "#/components/schemas/Gaps"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CurationArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["curation"],
+            "properties": {
+              "curation": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CurationEntry"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "GapsEntry": {
+        "type": "object",
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "coverage_level",
+          "curation_level",
+          "gaps"
+        ],
+        "properties": {
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "coverage_level": {
+            "$ref": "#/components/schemas/CoverageLevel"
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "gaps": {
+            "$ref": "#/components/schemas/Gaps"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GapsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["gaps"],
+            "properties": {
+              "gaps": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/GapsEntry"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    }
+  }
+}

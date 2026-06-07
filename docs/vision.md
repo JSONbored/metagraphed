@@ -22,6 +22,7 @@ The backend currently covers all active Finney netuids:
 - Health, badge, status, adapter, review, schema, RPC, search, freshness, evidence, and R2 manifest artifacts all live under `metagraph.sh/metagraph/*`.
 - Generalized endpoint resources and endpoint pools are generated under `metagraph.sh/metagraph/*` from curated surfaces and probe-derived observations.
 - Worker API routes under `metagraph.sh/api/v1/*` expose stable envelopes over those canonical artifacts.
+- JSON Schema is the canonical public contract source. OpenAPI, TypeScript definitions, and frontend handoff helpers are generated projections.
 
 ## Product Layers
 

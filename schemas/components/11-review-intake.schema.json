@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/11-review-intake.schema.json",
+  "title": "Metagraphed OpenAPI components 11-review-intake",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "ReviewGapPriority": {
+        "type": "object",
+        "required": [
+          "candidate_count",
+          "curation_level",
+          "missing_kinds",
+          "name",
+          "netuid",
+          "priority_score",
+          "review_state",
+          "slug",
+          "suggested_next_action",
+          "surface_count",
+          "verified_candidate_count"
+        ],
+        "properties": {
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "missing_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "suggested_next_action": {
+            "type": "string"
+          },
+          "surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "verified_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewAdapterCandidate": {
+        "type": "object",
+        "required": [
+          "candidate_api_count",
+          "curation_level",
+          "name",
+          "netuid",
+          "operational_kinds",
+          "operational_surface_count",
+          "priority_score",
+          "slug"
+        ],
+        "properties": {
+          "candidate_api_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operational_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "operational_surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewDecision": {
+        "type": "object",
+        "required": [
+          "confidence",
+          "decision",
+          "netuid",
+          "notes",
+          "reviewed_at",
+          "slug",
+          "source_urls"
+        ],
+        "properties": {
+          "confidence": {
+            "enum": ["low", "medium", "high"]
+          },
+          "decision": {
+            "enum": ["maintainer-reviewed", "needs-review", "rejected", "stale"]
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notes": {
+            "type": "string"
+          },
+          "reviewed_at": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewCurationArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "adapter_candidates",
+              "gap_priorities",
+              "review_decisions",
+              "summary"
+            ],
+            "properties": {
+              "adapter_candidates": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewAdapterCandidate"
+                }
+              },
+              "gap_priorities": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewGapPriority"
+                }
+              },
+              "review_decisions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewDecision"
+                }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "adapter_candidate_count",
+                  "gap_kind_counts",
+                  "maintainer_decision_count",
+                  "needs_maintainer_review_count",
+                  "subnet_count"
+                ],
+                "properties": {
+                  "adapter_candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "gap_kind_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "maintainer_decision_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "needs_maintainer_review_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "subnet_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewGapPrioritiesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["priorities"],
+            "properties": {
+              "priorities": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewGapPriority"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewAdapterCandidatesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["candidates"],
+            "properties": {
+              "candidates": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewAdapterCandidate"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewDecisionsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["decisions"],
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewDecision"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "VerificationArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["candidate_count", "results"],
+            "properties": {
+              "candidate_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "summary": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/VerificationResult"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SubnetVerificationArtifact": {
+        "$ref": "#/components/schemas/VerificationArtifact"
+      }
+    }
+  }
+}

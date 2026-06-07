@@ -410,7 +410,7 @@
         ]
       },
       "CandidateSurface": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "auth_required": {
             "type": "boolean"
@@ -880,7 +880,7 @@
         ]
       },
       "CurationEntry": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "candidate_count": {
             "minimum": 0,
@@ -936,7 +936,7 @@
         ]
       },
       "CurationMetadata": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "gap_notes": {
             "items": {
@@ -982,7 +982,7 @@
         ]
       },
       "EndpointMonitoringPolicy": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "enabled": {
             "type": "boolean"
@@ -1032,7 +1032,7 @@
         ]
       },
       "EndpointResource": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "archive_support": {
             "type": [
@@ -1231,7 +1231,7 @@
         ]
       },
       "EndpointSummary": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "by_kind": {
             "$ref": "#/components/schemas/CountMap"
@@ -1310,7 +1310,7 @@
         "type": "object"
       },
       "EvidenceClaim": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "claim": {
             "type": "string"
@@ -1471,7 +1471,7 @@
         "type": "object"
       },
       "Gaps": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "gap_notes": {
             "items": {
@@ -1522,7 +1522,7 @@
         ]
       },
       "GapsEntry": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "coverage_level": {
             "$ref": "#/components/schemas/CoverageLevel"
@@ -1802,7 +1802,7 @@
         ]
       },
       "HealthSubnetSummary": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "avg_latency_ms": {
             "minimum": 0,
@@ -1898,10 +1898,25 @@
         ]
       },
       "HealthSurface": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
+          "archive_support": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "auth_required": {
+            "type": "boolean"
+          },
           "classification": {
             "$ref": "#/components/schemas/Classification"
+          },
+          "content_type": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "error": {
             "type": [
@@ -1937,12 +1952,68 @@
               "null"
             ]
           },
+          "latest_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "method_results": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "object"
+          },
+          "method_tested": {
+            "type": "string"
+          },
+          "methods_supported": {
+            "oneOf": [
+              {
+                "additionalProperties": {
+                  "type": "boolean"
+                },
+                "type": "object"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "netuid": {
             "minimum": 0,
             "type": "integer"
           },
+          "private_redirect_blocked": {
+            "type": "boolean"
+          },
           "provider": {
             "type": "string"
+          },
+          "public_safe": {
+            "type": "boolean"
+          },
+          "redirect_target": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rpc_method_count": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"
@@ -2120,7 +2191,7 @@
         "type": "object"
       },
       "Provider": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "authority": {
             "$ref": "#/components/schemas/Authority"
@@ -2711,7 +2782,7 @@
         ]
       },
       "RpcEndpoint": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "archive_support": {
             "type": [
@@ -2719,11 +2790,23 @@
               "null"
             ]
           },
+          "auth_required": {
+            "type": "boolean"
+          },
+          "authority": {
+            "$ref": "#/components/schemas/Authority"
+          },
           "chain": {
             "const": "bittensor"
           },
           "classification": {
             "$ref": "#/components/schemas/Classification"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "id": {
             "type": "string"
@@ -2732,6 +2815,12 @@
             "enum": [
               "subtensor-rpc",
               "subtensor-wss"
+            ]
+          },
+          "last_checked": {
+            "type": [
+              "string",
+              "null"
             ]
           },
           "latency_ms": {
@@ -2747,6 +2836,9 @@
               "integer",
               "null"
             ]
+          },
+          "method_tested": {
+            "type": "string"
           },
           "methods_supported": {
             "oneOf": [
@@ -2767,11 +2859,24 @@
               }
             ]
           },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "network": {
             "const": "finney"
           },
           "provider": {
             "type": "string"
+          },
+          "public_safe": {
+            "type": "boolean"
+          },
+          "rate_limit_notes": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "rpc_method_count": {
             "minimum": 0,
@@ -2780,8 +2885,21 @@
               "null"
             ]
           },
+          "source_urls": {
+            "items": {
+              "format": "uri",
+              "type": "string"
+            },
+            "type": "array"
+          },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"
+          },
+          "subnet_name": {
+            "type": "string"
+          },
+          "subnet_slug": {
+            "type": "string"
           },
           "url": {
             "format": "uri",
@@ -2828,7 +2946,7 @@
         ]
       },
       "RpcPool": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "best_endpoint_id": {
             "type": [
@@ -2867,7 +2985,7 @@
         "type": "object"
       },
       "RpcPoolEndpoint": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "archive_support": {
             "type": [
@@ -2877,6 +2995,9 @@
           },
           "id": {
             "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
           },
           "latency_ms": {
             "minimum": 0,
@@ -2891,6 +3012,9 @@
               "integer",
               "null"
             ]
+          },
+          "layer": {
+            "$ref": "#/components/schemas/EndpointLayer"
           },
           "pool_eligible": {
             "type": "boolean"
@@ -2992,7 +3116,7 @@
         ]
       },
       "SchemaDriftSurface": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "drift_status": {
             "enum": [
@@ -3090,7 +3214,7 @@
         ]
       },
       "SchemaIndexEntry": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "content_type": {
             "type": [
@@ -3200,7 +3324,7 @@
         ]
       },
       "SearchDocument": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "artifact_path": {
             "type": "string"
@@ -3477,40 +3601,164 @@
         "$ref": "#/components/schemas/CandidatesArtifact"
       },
       "SubnetDetail": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/SubnetIndexEntry"
+        "additionalProperties": false,
+        "properties": {
+          "block": {
+            "minimum": 0,
+            "type": "integer"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "curation": {
-                "$ref": "#/components/schemas/CurationMetadata"
-              },
-              "gaps": {
-                "$ref": "#/components/schemas/Gaps"
-              },
-              "links": {
-                "items": {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "provenance": {
-                "additionalProperties": true,
-                "type": "object"
-              }
+          "candidate_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
             },
-            "required": [
-              "curation",
-              "gaps",
-              "provenance",
-              "links"
-            ],
+            "type": "array"
+          },
+          "coverage_level": {
+            "$ref": "#/components/schemas/CoverageLevel"
+          },
+          "curation": {
+            "$ref": "#/components/schemas/CurationMetadata"
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "dashboard_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "docs_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gap_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "gaps": {
+            "$ref": "#/components/schemas/Gaps"
+          },
+          "links": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "mechanism_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "native_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "native_name_quality": {
+            "enum": [
+              "chain",
+              "placeholder",
+              "empty"
+            ]
+          },
+          "native_slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "participant_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "probed_surface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "provenance": {
+            "additionalProperties": true,
             "type": "object"
+          },
+          "registered_at_block": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source_repo": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/SubnetStatus"
+          },
+          "subnet_type": {
+            "$ref": "#/components/schemas/SubnetType"
+          },
+          "surface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "symbol": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tempo": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "website_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
           }
-        ]
+        },
+        "required": [
+          "netuid",
+          "name",
+          "slug",
+          "status",
+          "subnet_type",
+          "coverage_level",
+          "curation_level",
+          "surface_count",
+          "curation",
+          "gaps",
+          "provenance",
+          "links"
+        ],
+        "type": "object"
       },
       "SubnetDetailArtifact": {
         "allOf": [
@@ -3605,7 +3853,7 @@
         ]
       },
       "SubnetIndexEntry": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "block": {
             "minimum": 0,
@@ -3807,7 +4055,7 @@
         "type": "object"
       },
       "Surface": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
           "auth_required": {
             "type": "boolean"
@@ -3843,6 +4091,39 @@
           "public_safe": {
             "type": "boolean"
           },
+          "quality_signals": {
+            "additionalProperties": false,
+            "properties": {
+              "archived": {
+                "type": "boolean"
+              },
+              "content_type_matches_kind": {
+                "type": "boolean"
+              },
+              "has_default_branch": {
+                "type": "boolean"
+              },
+              "has_recent_push_metadata": {
+                "type": "boolean"
+              },
+              "public_safe": {
+                "type": "boolean"
+              },
+              "rate_limited": {
+                "type": "boolean"
+              },
+              "redirected": {
+                "type": "boolean"
+              },
+              "source_tier": {
+                "$ref": "#/components/schemas/SourceTier"
+              },
+              "transient_failure": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
           "rate_limit_notes": {
             "type": "string"
           },
@@ -3876,6 +4157,89 @@
           "url": {
             "format": "uri",
             "type": "string"
+          },
+          "verification": {
+            "additionalProperties": false,
+            "properties": {
+              "archived": {
+                "type": "boolean"
+              },
+              "classification": {
+                "$ref": "#/components/schemas/Classification"
+              },
+              "confidence_score": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "content_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "default_branch": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "error": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "github_api_url": {
+                "format": "uri",
+                "type": "string"
+              },
+              "homepage": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "last_push_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "latency_ms": {
+                "minimum": 0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "method_tested": {
+                "type": "string"
+              },
+              "redirect_target": {
+                "format": "uri",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status_code": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "topics": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "verified_at": {
+                "type": "string"
+              }
+            },
+            "type": "object"
           }
         },
         "required": [
@@ -3962,8 +4326,11 @@
         ]
       },
       "VerificationResult": {
-        "additionalProperties": true,
+        "additionalProperties": false,
         "properties": {
+          "archived": {
+            "type": "boolean"
+          },
           "candidate_id": {
             "type": "string"
           },
@@ -3981,14 +4348,49 @@
               "null"
             ]
           },
+          "default_branch": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "error": {
             "type": [
               "string",
               "null"
             ]
           },
+          "github_api_status": {
+            "type": "integer"
+          },
+          "github_api_url": {
+            "format": "uri",
+            "type": "string"
+          },
+          "homepage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "html_url": {
+            "format": "uri",
+            "type": "string"
+          },
           "kind": {
             "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "last_push_at": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "latency_ms": {
             "minimum": 0,
@@ -4000,15 +4402,75 @@
           "method_tested": {
             "type": "string"
           },
+          "name": {
+            "type": "string"
+          },
           "netuid": {
             "minimum": 0,
             "type": "integer"
           },
+          "private_redirect_blocked": {
+            "type": "boolean"
+          },
           "provider": {
             "type": "string"
           },
+          "quality_signals": {
+            "additionalProperties": false,
+            "properties": {
+              "archived": {
+                "type": "boolean"
+              },
+              "content_type_matches_kind": {
+                "type": "boolean"
+              },
+              "has_default_branch": {
+                "type": "boolean"
+              },
+              "has_recent_push_metadata": {
+                "type": "boolean"
+              },
+              "public_safe": {
+                "type": "boolean"
+              },
+              "rate_limited": {
+                "type": "boolean"
+              },
+              "redirected": {
+                "type": "boolean"
+              },
+              "source_tier": {
+                "$ref": "#/components/schemas/SourceTier"
+              },
+              "transient_failure": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "redirect_target": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "source_tier": {
             "$ref": "#/components/schemas/SourceTier"
+          },
+          "source_type": {
+            "type": "string"
+          },
+          "source_url": {
+            "format": "uri",
+            "type": "string"
+          },
+          "source_urls": {
+            "items": {
+              "format": "uri",
+              "type": "string"
+            },
+            "type": "array"
           },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"
@@ -4018,6 +4480,12 @@
               "integer",
               "null"
             ]
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "url": {
             "format": "uri",

@@ -1,13 +1,11 @@
-import path from "node:path";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
-import { buildTimestamp, readJson, repoRoot } from "./lib.mjs";
+import { buildApiComponentBundle } from "./bundle-schemas.mjs";
+import { buildTimestamp } from "./lib.mjs";
 
 export async function loadOpenApiComponentSchemas(
   generatedAt = buildTimestamp(),
 ) {
-  const document = await readJson(
-    path.join(repoRoot, "schemas/api-components.schema.json"),
-  );
+  const document = await buildApiComponentBundle();
   return {
     ...structuredClone(document.components.schemas),
     GeneratedOpenApiMarker: {

@@ -676,8 +676,6 @@ export interface components {
             /** Format: uri */
             url: string;
             verification?: components["schemas"]["VerificationResult"] | null;
-        } & {
-            [key: string]: unknown;
         };
         ChangelogArtifact: components["schemas"]["ArtifactBase"] & ({
             artifacts: {
@@ -778,8 +776,6 @@ export interface components {
             netuid: number;
             slug: string;
             surface_count: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @enum {unknown} */
         CurationLevel: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
@@ -790,8 +786,6 @@ export interface components {
             reviewed_at?: string | null;
             source_count?: number;
             verified_at?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @enum {unknown} */
         EndpointLayer: "bittensor-base" | "subnet-app" | "data-provider" | "docs-provider";
@@ -801,8 +795,6 @@ export interface components {
             method: string | null;
             source: string;
             timeout_ms?: number | null;
-        } & {
-            [key: string]: unknown;
         };
         EndpointPoolsArtifact: components["schemas"]["RpcPoolsArtifact"];
         /** @enum {unknown} */
@@ -846,8 +838,6 @@ export interface components {
             surface_id: string;
             /** Format: uri */
             url: string;
-        } & {
-            [key: string]: unknown;
         };
         EndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
             endpoints: components["schemas"]["EndpointResource"][];
@@ -864,8 +854,6 @@ export interface components {
             endpoint_count: number;
             monitored_count: number;
             pool_eligible_count: number;
-        } & {
-            [key: string]: unknown;
         };
         ErrorEnvelope: {
             data: null;
@@ -890,8 +878,6 @@ export interface components {
             subject: string;
             support_summary: string;
             verified_at?: string;
-        } & {
-            [key: string]: unknown;
         };
         EvidenceLedgerArtifact: components["schemas"]["ArtifactBase"] & ({
             claims: components["schemas"]["EvidenceClaim"][];
@@ -922,8 +908,6 @@ export interface components {
             gap_notes: string[];
             missing_kinds: components["schemas"]["SurfaceKind"][];
             supported_kinds: components["schemas"]["SurfaceKind"][];
-        } & {
-            [key: string]: unknown;
         };
         GapsArtifact: components["schemas"]["ArtifactBase"] & ({
             gaps: components["schemas"]["GapsEntry"][];
@@ -937,8 +921,6 @@ export interface components {
             name: string;
             netuid: number;
             slug: string;
-        } & {
-            [key: string]: unknown;
         };
         GeneratedOpenApiMarker: {
             /** @constant */
@@ -1013,8 +995,6 @@ export interface components {
             status: components["schemas"]["HealthStatus"];
             surface_count: number;
             unknown_count: number;
-        } & {
-            [key: string]: unknown;
         };
         HealthSummaryArtifact: components["schemas"]["ArtifactBase"] & ({
             global: {
@@ -1025,15 +1005,33 @@ export interface components {
             [key: string]: unknown;
         });
         HealthSurface: {
+            archive_support?: boolean | null;
+            auth_required?: boolean;
             classification: components["schemas"]["Classification"];
+            content_type?: string | null;
             error?: string | null;
             error_class?: string | null;
             kind?: components["schemas"]["SurfaceKind"];
             last_checked?: string | null;
             last_ok?: string | null;
             latency_ms?: number | null;
+            latest_block?: number | null;
+            method_results?: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            method_tested?: string;
+            methods_supported?: {
+                [key: string]: boolean;
+            } | string[] | null;
             netuid: number;
+            private_redirect_blocked?: boolean;
             provider?: string;
+            public_safe?: boolean;
+            /** Format: uri */
+            redirect_target?: string | null;
+            rpc_method_count?: number | null;
             status: components["schemas"]["HealthStatus"];
             status_code?: number | null;
             subnet_name?: string;
@@ -1043,8 +1041,6 @@ export interface components {
             /** Format: uri */
             url: string;
             verified_at?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         JsonObject: {
             [key: string]: unknown;
@@ -1108,8 +1104,6 @@ export interface components {
             team_url?: string;
             /** Format: uri */
             website_url: string;
-        } & {
-            [key: string]: unknown;
         };
         ProviderArtifact: components["schemas"]["ArtifactBase"] & ({
             provider: components["schemas"]["Provider"];
@@ -1239,26 +1233,35 @@ export interface components {
         ReviewState: "unreviewed" | "machine-generated" | "maintainer-reviewed" | "needs-review" | "stale";
         RpcEndpoint: {
             archive_support?: boolean | null;
+            auth_required?: boolean;
+            authority?: components["schemas"]["Authority"];
             /** @constant */
             chain: "bittensor";
             classification: components["schemas"]["Classification"];
+            error?: string | null;
             id: string;
             /** @enum {unknown} */
             kind: "subtensor-rpc" | "subtensor-wss";
+            last_checked?: string | null;
             latency_ms?: number | null;
             latest_block?: number | null;
+            method_tested?: string;
             methods_supported?: {
                 [key: string]: boolean;
             } | string[] | null;
+            netuid?: number;
             /** @constant */
             network: "finney";
             provider: string;
+            public_safe?: boolean;
+            rate_limit_notes?: string | null;
             rpc_method_count?: number | null;
+            source_urls?: string[];
             status: components["schemas"]["HealthStatus"];
+            subnet_name?: string;
+            subnet_slug?: string;
             /** Format: uri */
             url: string;
-        } & {
-            [key: string]: unknown;
         };
         RpcEndpointsArtifact: components["schemas"]["ArtifactBase"] & ({
             endpoints: components["schemas"]["RpcEndpoint"][];
@@ -1275,22 +1278,20 @@ export interface components {
             endpoints: components["schemas"]["RpcPoolEndpoint"][];
             id: string;
             kind: string;
-        } & {
-            [key: string]: unknown;
         };
         RpcPoolEndpoint: {
             archive_support?: boolean | null;
             id: string;
+            kind?: components["schemas"]["SurfaceKind"];
             latency_ms?: number | null;
             latest_block?: number | null;
+            layer?: components["schemas"]["EndpointLayer"];
             pool_eligible: boolean;
             provider: string;
             score: number;
             status: components["schemas"]["HealthStatus"];
             /** Format: uri */
             url: string;
-        } & {
-            [key: string]: unknown;
         };
         RpcPoolsArtifact: components["schemas"]["ArtifactBase"] & ({
             disabled_proxy_contract?: {
@@ -1325,8 +1326,6 @@ export interface components {
             surface_id: string;
             /** Format: uri */
             url: string;
-        } & {
-            [key: string]: unknown;
         };
         SchemaIndexArtifact: components["schemas"]["ArtifactBase"] & ({
             schemas: components["schemas"]["SchemaIndexEntry"][];
@@ -1354,8 +1353,6 @@ export interface components {
             surface_id: string;
             /** Format: uri */
             url?: string;
-        } & {
-            [key: string]: unknown;
         };
         SearchArtifact: components["schemas"]["ArtifactBase"] & ({
             document_count?: number;
@@ -1374,8 +1371,6 @@ export interface components {
             /** @enum {unknown} */
             type: "subnet" | "surface" | "provider";
             url?: string;
-        } & {
-            [key: string]: unknown;
         };
         SourceHealthArtifact: components["schemas"]["ArtifactBase"] & ({
             providers: components["schemas"]["SourceHealthProvider"][];
@@ -1429,18 +1424,47 @@ export interface components {
         /** @enum {unknown} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
         SubnetCandidatesArtifact: components["schemas"]["CandidatesArtifact"];
-        SubnetDetail: components["schemas"]["SubnetIndexEntry"] & ({
+        SubnetDetail: {
+            block?: number;
+            candidate_count?: number;
+            categories?: string[];
+            coverage_level: components["schemas"]["CoverageLevel"];
             curation: components["schemas"]["CurationMetadata"];
+            curation_level: components["schemas"]["CurationLevel"];
+            /** Format: uri */
+            dashboard_url?: string | null;
+            /** Format: uri */
+            docs_url?: string | null;
+            gap_count?: number;
             gaps: components["schemas"]["Gaps"];
             links: {
                 [key: string]: unknown;
             }[];
+            mechanism_count?: number;
+            name: string;
+            native_name?: string | null;
+            /** @enum {unknown} */
+            native_name_quality?: "chain" | "placeholder" | "empty";
+            native_slug?: string | null;
+            netuid: number;
+            notes?: string | null;
+            participant_count?: number;
+            probed_surface_count?: number;
             provenance: {
                 [key: string]: unknown;
             };
-        } & {
-            [key: string]: unknown;
-        });
+            registered_at_block?: number;
+            slug: string;
+            /** Format: uri */
+            source_repo?: string | null;
+            status: components["schemas"]["SubnetStatus"];
+            subnet_type: components["schemas"]["SubnetType"];
+            surface_count: number;
+            symbol?: string | null;
+            tempo?: number;
+            /** Format: uri */
+            website_url?: string | null;
+        };
         SubnetDetailArtifact: components["schemas"]["ArtifactBase"] & ({
             candidate_surfaces: components["schemas"]["CandidateSurface"][];
             candidates?: components["schemas"]["CandidateSurface"][];
@@ -1491,8 +1515,6 @@ export interface components {
             tempo?: number;
             /** Format: uri */
             website_url?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         SubnetsArtifact: components["schemas"]["ArtifactBase"] & ({
             /** @constant */
@@ -1532,6 +1554,17 @@ export interface components {
             probe?: components["schemas"]["ProbeConfig"];
             provider: string;
             public_safe: boolean;
+            quality_signals?: {
+                archived?: boolean;
+                content_type_matches_kind?: boolean;
+                has_default_branch?: boolean;
+                has_recent_push_metadata?: boolean;
+                public_safe?: boolean;
+                rate_limited?: boolean;
+                redirected?: boolean;
+                source_tier?: components["schemas"]["SourceTier"];
+                transient_failure?: boolean;
+            };
             rate_limit_notes?: string;
             /** @enum {unknown} */
             schema_status?: "machine-readable" | "ui-only" | "not-captured";
@@ -1543,8 +1576,25 @@ export interface components {
             subnet_slug?: string;
             /** Format: uri */
             url: string;
-        } & {
-            [key: string]: unknown;
+            verification?: {
+                archived?: boolean;
+                classification?: components["schemas"]["Classification"];
+                confidence_score?: number;
+                content_type?: string | null;
+                default_branch?: string | null;
+                error?: string | null;
+                /** Format: uri */
+                github_api_url?: string;
+                homepage?: string | null;
+                last_push_at?: string | null;
+                latency_ms?: number | null;
+                method_tested?: string;
+                /** Format: uri */
+                redirect_target?: string | null;
+                status_code?: number | null;
+                topics?: string[];
+                verified_at?: string;
+            };
         };
         /** @enum {unknown} */
         SurfaceKind: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
@@ -1563,24 +1613,52 @@ export interface components {
             [key: string]: unknown;
         });
         VerificationResult: {
+            archived?: boolean;
             candidate_id: string;
             classification: components["schemas"]["Classification"];
             confidence_score?: number;
             content_type?: string | null;
+            default_branch?: string | null;
+            description?: string | null;
             error?: string | null;
+            github_api_status?: number;
+            /** Format: uri */
+            github_api_url?: string;
+            homepage?: string | null;
+            /** Format: uri */
+            html_url?: string;
             kind?: components["schemas"]["SurfaceKind"];
+            last_push_at?: string | null;
             latency_ms?: number | null;
             method_tested?: string;
+            name?: string;
             netuid?: number;
+            private_redirect_blocked?: boolean;
             provider?: string;
+            quality_signals?: {
+                archived?: boolean;
+                content_type_matches_kind?: boolean;
+                has_default_branch?: boolean;
+                has_recent_push_metadata?: boolean;
+                public_safe?: boolean;
+                rate_limited?: boolean;
+                redirected?: boolean;
+                source_tier?: components["schemas"]["SourceTier"];
+                transient_failure?: boolean;
+            };
+            /** Format: uri */
+            redirect_target?: string | null;
             source_tier?: components["schemas"]["SourceTier"];
+            source_type?: string;
+            /** Format: uri */
+            source_url?: string;
+            source_urls?: string[];
             status: components["schemas"]["HealthStatus"];
             status_code?: number | null;
+            topics?: string[];
             /** Format: uri */
             url: string;
             verified_at: string;
-        } & {
-            [key: string]: unknown;
         };
     };
     responses: never;

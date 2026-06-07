@@ -1,0 +1,523 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/07-endpoints-rpc.schema.json",
+  "title": "Metagraphed OpenAPI components 07-endpoints-rpc",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "RpcEndpoint": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "url",
+          "provider",
+          "status",
+          "classification",
+          "network",
+          "chain"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "auth_required": {
+            "type": "boolean"
+          },
+          "authority": {
+            "$ref": "#/components/schemas/Authority"
+          },
+          "kind": {
+            "enum": ["subtensor-rpc", "subtensor-wss"]
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "subnet_name": {
+            "type": "string"
+          },
+          "subnet_slug": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "network": {
+            "const": "finney"
+          },
+          "chain": {
+            "const": "bittensor"
+          },
+          "archive_support": {
+            "type": ["boolean", "null"]
+          },
+          "latency_ms": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "latest_block": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "rpc_method_count": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "methods_supported": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "boolean"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "method_tested": {
+            "type": "string"
+          },
+          "public_safe": {
+            "type": "boolean"
+          },
+          "rate_limit_notes": {
+            "type": ["string", "null"]
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "last_checked": {
+            "type": ["string", "null"]
+          },
+          "error": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "RpcPool": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "endpoint_count",
+          "eligible_count",
+          "endpoints"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "best_endpoint_id": {
+            "type": ["string", "null"]
+          },
+          "endpoint_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "eligible_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endpoints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RpcPoolEndpoint"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "RpcPoolEndpoint": {
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "provider",
+          "status",
+          "score",
+          "pool_eligible"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "layer": {
+            "$ref": "#/components/schemas/EndpointLayer"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "score": {
+            "type": "integer"
+          },
+          "pool_eligible": {
+            "type": "boolean"
+          },
+          "archive_support": {
+            "type": ["boolean", "null"]
+          },
+          "latency_ms": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "latest_block": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "EndpointMonitoringPolicy": {
+        "type": "object",
+        "required": ["enabled", "method", "expect", "source"],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "method": {
+            "type": ["string", "null"]
+          },
+          "expect": {
+            "type": ["string", "null"]
+          },
+          "timeout_ms": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EndpointResource": {
+        "type": "object",
+        "required": [
+          "id",
+          "surface_id",
+          "netuid",
+          "layer",
+          "kind",
+          "url",
+          "provider",
+          "operator",
+          "auth_required",
+          "public_safe",
+          "monitoring_policy",
+          "monitoring_status",
+          "publication_state",
+          "pool_eligible",
+          "status",
+          "score"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "surface_id": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "subnet_slug": {
+            "type": "string"
+          },
+          "subnet_name": {
+            "type": "string"
+          },
+          "chain": {
+            "const": "bittensor"
+          },
+          "network": {
+            "const": "finney"
+          },
+          "layer": {
+            "$ref": "#/components/schemas/EndpointLayer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "operator": {
+            "type": "string"
+          },
+          "authority": {
+            "$ref": "#/components/schemas/Authority"
+          },
+          "auth_required": {
+            "type": "boolean"
+          },
+          "public_safe": {
+            "type": "boolean"
+          },
+          "monitoring_policy": {
+            "$ref": "#/components/schemas/EndpointMonitoringPolicy"
+          },
+          "monitoring_status": {
+            "enum": ["monitored", "not_monitored"]
+          },
+          "publication_state": {
+            "$ref": "#/components/schemas/EndpointPublicationState"
+          },
+          "pool_eligible": {
+            "type": "boolean"
+          },
+          "archive_support": {
+            "type": ["boolean", "null"]
+          },
+          "latest_block": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "method_support": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "boolean"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rpc_method_count": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "method_tested": {
+            "type": ["string", "null"]
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "latency_ms": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_checked": {
+            "type": ["string", "null"]
+          },
+          "error": {
+            "type": ["string", "null"]
+          },
+          "rate_limit_notes": {
+            "type": ["string", "null"]
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "EndpointSummary": {
+        "type": "object",
+        "required": [
+          "endpoint_count",
+          "monitored_count",
+          "pool_eligible_count"
+        ],
+        "properties": {
+          "endpoint_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "monitored_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pool_eligible_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "by_kind": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_layer": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_provider": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_publication_state": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_status": {
+            "$ref": "#/components/schemas/CountMap"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RpcEndpointsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["summary", "endpoints"],
+            "properties": {
+              "summary": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "endpoints": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RpcEndpoint"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "RpcPoolsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["pools"],
+            "properties": {
+              "disabled_proxy_contract": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "pools": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RpcPool"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "EndpointPoolsArtifact": {
+        "$ref": "#/components/schemas/RpcPoolsArtifact"
+      },
+      "EndpointsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["summary", "endpoints"],
+            "properties": {
+              "summary": {
+                "$ref": "#/components/schemas/EndpointSummary"
+              },
+              "endpoints": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/EndpointResource"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SubnetEndpointsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["netuid", "summary", "endpoints"],
+            "properties": {
+              "netuid": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "summary": {
+                "$ref": "#/components/schemas/EndpointSummary"
+              },
+              "endpoints": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/EndpointResource"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    }
+  }
+}

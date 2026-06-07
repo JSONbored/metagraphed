@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/02-envelopes.schema.json",
+  "title": "Metagraphed OpenAPI components 02-envelopes",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "SuccessEnvelope": {
+        "type": "object",
+        "required": ["ok", "schema_version", "data", "meta"],
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "schema_version": {
+            "const": 1
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "required": ["ok", "schema_version", "data", "error", "meta"],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "schema_version": {
+            "const": 1
+          },
+          "data": {
+            "type": "null"
+          },
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResponseMeta": {
+        "type": "object",
+        "required": ["contract_version"],
+        "properties": {
+          "artifact_path": {
+            "type": "string"
+          },
+          "cache": {
+            "$ref": "#/components/schemas/CacheProfile"
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": ["string", "null"]
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "required": [
+          "collection",
+          "total",
+          "returned",
+          "limit",
+          "cursor",
+          "next_cursor"
+        ],
+        "properties": {
+          "collection": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "returned": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cursor": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "next_cursor": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "sort": {
+            "type": ["string", "null"]
+          },
+          "order": {
+            "enum": ["asc", "desc"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ApiQueryParameter": {
+        "type": "object",
+        "required": ["name", "schema"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ApiRoute": {
+        "type": "object",
+        "required": [
+          "artifact_path",
+          "cache",
+          "description",
+          "id",
+          "method",
+          "path",
+          "public",
+          "query_parameters"
+        ],
+        "properties": {
+          "artifact_path": {
+            "type": "string",
+            "pattern": "^/metagraph/"
+          },
+          "cache": {
+            "$ref": "#/components/schemas/CacheProfile"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "method": {
+            "enum": ["GET"]
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^/api/v1"
+          },
+          "public": {
+            "const": true
+          },
+          "query_collection": {
+            "type": ["string", "null"]
+          },
+          "query_filter_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "query_parameters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiQueryParameter"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResponseEnvelopeContract": {
+        "type": "object",
+        "required": [
+          "error_schema_ref",
+          "fields",
+          "notes",
+          "schema_version",
+          "success_schema_ref"
+        ],
+        "properties": {
+          "error_schema_ref": {
+            "const": "#/components/schemas/ErrorEnvelope"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "enum": ["ok", "data", "meta", "error"]
+            }
+          },
+          "notes": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1
+          },
+          "success_schema_ref": {
+            "const": "#/components/schemas/SuccessEnvelope"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
