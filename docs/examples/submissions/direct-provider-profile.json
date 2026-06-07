@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "example-contributor",
+    "submitted_by_url": "https://github.com/example-contributor"
+  },
+  "provider": {
+    "schema_version": 1,
+    "id": "example-operator",
+    "name": "Example Operator",
+    "kind": "infrastructure-provider",
+    "website_url": "https://example.com",
+    "docs_url": "https://docs.example.com",
+    "github_url": "https://github.com/example",
+    "contact_url": "https://example.com/contact",
+    "authority": "community",
+    "public_notes": "Example public-safe provider profile submission."
+  }
+}

@@ -33,10 +33,11 @@ The stable marker comment is:
 
 ## Direct PR Shape
 
-Direct UGC PRs must change exactly one file:
+Direct UGC PRs must change exactly one candidate or provider review file:
 
 ```text
 registry/candidates/community/<slug>.json
+registry/providers/community/<slug>.json
 ```
 
 The file must contain exactly one candidate:
@@ -72,8 +73,35 @@ The file must contain exactly one candidate:
 }
 ```
 
+Provider profile review files must contain exactly one provider profile:
+
+```json
+{
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "github-login",
+    "submitted_by_url": "https://github.com/github-login"
+  },
+  "provider": {
+    "schema_version": 1,
+    "id": "example-operator",
+    "name": "Example Operator",
+    "kind": "infrastructure-provider",
+    "website_url": "https://example.com",
+    "docs_url": "https://docs.example.com",
+    "github_url": "https://github.com/example",
+    "contact_url": "https://example.com/contact",
+    "authority": "community",
+    "public_notes": "Public-safe provider profile submission."
+  }
+}
+```
+
 Generated artifacts, scripts, workflows, package metadata, native snapshots,
 private URLs, secrets, wallet/PAT data, and validator-local data are rejected.
+Provider profile submissions are review inputs only; they cannot claim official
+authority, directly modify canonical provider manifests, set endpoint health, or
+make any endpoint pool-eligible.
 
 ## Supported UGC Types
 

@@ -10,9 +10,9 @@
 
 - [ ] No secrets, PATs, wallet data, private dashboards, private URLs, or validator-local state.
 - [ ] Generated artifacts came from repo scripts, not hand-edited public JSON.
-- [ ] Direct community submissions change exactly one `registry/candidates/community/*.json` file and no generated artifacts.
+- [ ] Direct community submissions change exactly one `registry/candidates/community/*.json` or `registry/providers/community/*.json` file and no generated artifacts.
 - [ ] Community-submitted interfaces pass public preflight before private gate review.
-- [ ] Direct community submission files were generated with `npm run candidate:new` or match `docs/examples/submissions/direct-candidate.json`.
+- [ ] Direct community submission files were generated with `npm run candidate:new` / `npm run provider:new` or match `docs/examples/submissions/direct-candidate.json` / `docs/examples/submissions/direct-provider-profile.json`.
 
 ## Validation
 

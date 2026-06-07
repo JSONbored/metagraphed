@@ -27,6 +27,12 @@ const validCandidateDocument = JSON.parse(
     "utf8",
   ),
 );
+const validProviderDocument = JSON.parse(
+  readFileSync(
+    "docs/examples/submissions/direct-provider-profile.json",
+    "utf8",
+  ),
+);
 const native = await loadNativeSnapshot();
 const providers = await loadProviders();
 const subnets = await loadSubnets();
@@ -72,6 +78,88 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(scope.scope, "direct-candidate");
     assert.equal(scope.errors.length, 1);
     assert.equal(scope.errors[0].category, "generated-artifact-tampering");
+  });
+
+  test("routes direct provider profile PRs to manual review", () => {
+    const document = structuredClone(validProviderDocument);
+    document.submission.submitted_by = "jsonbored";
+    document.submission.submitted_by_url = "https://github.com/jsonbored";
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/providers/community/example-operator.json"],
+      providerDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "JSONbored",
+    });
+
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(report.next_action, "manual-review");
+    assert.equal(report.private_review_required, true);
+    assert.equal(report.blocking, false);
+    assert.equal(
+      report.direct_provider_file,
+      "registry/providers/community/example-operator.json",
+    );
+    assert.equal(report.provider.id, "example-operator");
+    assert.equal(
+      report.manual_reasons.includes(
+        "provider profile submissions require review",
+      ),
+      true,
+    );
+  });
+
+  test("blocks unsafe direct provider profile PRs", () => {
+    const document = structuredClone(validProviderDocument);
+    document.submission.submitted_by = "jsonbored";
+    document.submission.submitted_by_url = "https://github.com/jsonbored";
+    document.provider.authority = "official";
+    document.provider.website_url = "http://127.0.0.1";
+    document.provider.notes = "github_pat_abcdefghijklmnopqrstuvwxyz123456";
+
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/providers/community/unsafe-provider.json"],
+      providerDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "JSONbored",
+    });
+
+    assert.equal(report.public_state, "fix_required");
+    assert.equal(report.blocking, true);
+    assert.equal(
+      report.errors.includes(
+        "community provider submissions can only use community or provider-claimed authority",
+      ),
+      true,
+    );
+    assert.equal(
+      report.errors.includes(
+        "community provider submissions must use public_notes, not notes",
+      ),
+      true,
+    );
+    assert.equal(
+      report.error_categories.includes("private-or-unsafe-url"),
+      true,
+    );
+    assert.equal(
+      report.error_categories.includes("secret-or-credential"),
+      true,
+    );
+  });
+
+  test("blocks mixed direct candidate and provider PRs", () => {
+    const scope = classifyPrScope([
+      "registry/candidates/community/allways-docs-example.json",
+      "registry/providers/community/example-operator.json",
+    ]);
+
+    assert.equal(scope.scope, "direct-provider");
+    assert.equal(scope.errors.length, 1);
+    assert.equal(scope.errors[0].category, "unsupported-shape");
   });
 
   test("blocks unsafe candidate URLs", () => {

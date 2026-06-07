@@ -45,7 +45,8 @@ Community submissions can become candidates, not direct registry truth. There ar
 two supported paths:
 
 - PR-first: add exactly one `registry/candidates/community/*.json` candidate
-  document and no other files.
+  document or exactly one `registry/providers/community/*.json` provider
+  profile document and no other files.
 - Issue-first: submit an `interface-submission` issue and let the import
   workflow create the candidate PR after approval.
 - Endpoint/provider/status issues: submit endpoint resources, provider profiles,
@@ -56,6 +57,12 @@ You can generate a direct candidate PR file locally:
 
 ```bash
 npm run candidate:new -- --netuid 7 --kind docs --url https://docs.all-ways.io/community-submission-example --source-url https://docs.all-ways.io/how-it-works.html --provider allways --submitted-by <github-login> --write
+```
+
+You can generate a direct provider profile review file locally:
+
+```bash
+npm run provider:new -- --id example-operator --name "Example Operator" --kind infrastructure-provider --website-url https://example.com --docs-url https://docs.example.com --github-url https://github.com/example --contact-url https://example.com/contact --submitted-by <github-login> --write
 ```
 
 Example payloads live under `docs/examples/submissions`.
@@ -71,9 +78,14 @@ The public submission gate performs deterministic checks first:
 - registered provider;
 - public-safe interface and source URLs;
 - one candidate per submission;
+- one provider profile per provider submission;
 - no duplicate curated surface or candidate;
 - submitter provenance for direct PRs;
 - no generated artifact edits.
+
+Provider profile submissions are review inputs only. They cannot claim official
+authority, cannot make endpoints pool-eligible, and cannot directly edit
+canonical `registry/providers/*.json` entries.
 
 Passing public preflight routes the submission into private gate review. The
 private reviewer may merge/import clean submissions, close hard failures, or

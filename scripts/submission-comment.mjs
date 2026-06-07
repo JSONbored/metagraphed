@@ -22,6 +22,11 @@ export function buildSubmissionMarkdown(report) {
       `Candidate file: ${formatMarkdownValue(report.direct_candidate_file)}`,
     );
   }
+  if (report.direct_provider_file) {
+    lines.push(
+      `Provider file: ${formatMarkdownValue(report.direct_provider_file)}`,
+    );
+  }
 
   lines.push("");
   appendList(lines, "Errors", report.errors);
