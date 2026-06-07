@@ -220,7 +220,7 @@ export function isUnsafeUrl(value) {
   }
 }
 
-export async function isUnsafeResolvedUrl(value) {
+export async function isUnsafeResolvedUrl(value, resolver = lookup) {
   try {
     const url = new URL(value);
     if (isUnsafeUrl(url.toString())) {
@@ -232,7 +232,7 @@ export async function isUnsafeResolvedUrl(value) {
       return false;
     }
 
-    const records = await lookup(host, { all: true, verbatim: true });
+    const records = await resolver(host, { all: true, verbatim: true });
     return (
       records.length === 0 ||
       records.some((record) => isUnsafeIpAddress(record.address))

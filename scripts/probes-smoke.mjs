@@ -6,7 +6,7 @@ import {
   buildTimestamp,
   flattenSurfaces,
   isJsonContentType,
-  isUnsafeUrl,
+  isUnsafeResolvedUrl,
   loadSubnets,
   repoRoot,
   writeJson,
@@ -148,7 +148,7 @@ async function probeSubtensorSurface(surface) {
 }
 
 async function probeUrl(url, method, accept, timeoutMs, redirectCount = 0) {
-  if (isUnsafeUrl(url)) {
+  if (await isUnsafeResolvedUrl(url)) {
     return {
       ok: false,
       error: "unsafe URL",
@@ -182,7 +182,7 @@ async function probeUrl(url, method, accept, timeoutMs, redirectCount = 0) {
       redirectCount < 5
     ) {
       const redirectTarget = new URL(location, url).toString();
-      if (isUnsafeUrl(redirectTarget)) {
+      if (await isUnsafeResolvedUrl(redirectTarget)) {
         await response.body?.cancel();
         return {
           ok: false,
@@ -346,7 +346,7 @@ function statusForClassification(classification, surface = null) {
 }
 
 async function probeSubtensorHttp(url, timeoutMs) {
-  if (isUnsafeUrl(url)) {
+  if (await isUnsafeResolvedUrl(url)) {
     return {
       unsafe_url: true,
       error: "unsafe URL",
@@ -392,7 +392,7 @@ async function probeSubtensorHttp(url, timeoutMs) {
 }
 
 async function probeSubtensorWss(url, timeoutMs) {
-  if (isUnsafeUrl(url)) {
+  if (await isUnsafeResolvedUrl(url)) {
     return {
       unsafe_url: true,
       error: "unsafe URL",
@@ -455,7 +455,7 @@ async function jsonRpcHttp(url, method, params, id, timeoutMs) {
     const location = response.headers.get("location");
     if ([301, 302, 303, 307, 308].includes(response.status) && location) {
       const redirectTarget = new URL(location, url).toString();
-      if (isUnsafeUrl(redirectTarget)) {
+      if (await isUnsafeResolvedUrl(redirectTarget)) {
         await response.body?.cancel();
         return {
           transport_error: true,
