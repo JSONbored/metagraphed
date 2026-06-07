@@ -177,6 +177,90 @@ const blockedRpc = await handleRequest(
 assert.equal(blockedRpc.status, 403, "unsafe RPC methods must be blocked");
 assert.equal((await blockedRpc.json()).error.code, "rpc_method_blocked");
 
+for (const unsafeUrl of [
+  "http://127.0.0.1:9650/internal",
+  "http://10.0.0.2:9650/internal",
+  "http://169.254.169.254/latest/meta-data",
+]) {
+  let unsafeFetchCalled = false;
+  const unsafeOriginalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    unsafeFetchCalled = true;
+    throw new Error("unsafe endpoint should not be fetched");
+  };
+
+  try {
+    const unsafeRpc = await handleRequest(
+      new Request("https://metagraph.sh/rpc/v1/finney", {
+        method: "POST",
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "chain_getHeader",
+          params: [],
+        }),
+      }),
+      {
+        ...env,
+        METAGRAPH_ENABLE_RPC_PROXY: "true",
+        ASSETS: {
+          async fetch(request) {
+            const url = new URL(request.url);
+            if (url.pathname === "/metagraph/rpc/pools.json") {
+              return new Response(
+                JSON.stringify({
+                  schema_version: 1,
+                  contract_version: "2026-06-06.1",
+                  generated_at: "1970-01-01T00:00:00.000Z",
+                  pools: [
+                    {
+                      id: "finney-rpc",
+                      kind: "subtensor-rpc",
+                      endpoint_count: 1,
+                      eligible_count: 1,
+                      endpoints: [
+                        {
+                          id: "unsafe-rpc",
+                          provider: "fixture",
+                          pool_eligible: true,
+                          score: 100,
+                          status: "ok",
+                          url: unsafeUrl,
+                        },
+                      ],
+                    },
+                  ],
+                }),
+                {
+                  status: 200,
+                  headers: {
+                    "content-type": "application/json",
+                  },
+                },
+              );
+            }
+            return env.ASSETS.fetch(request);
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(
+      unsafeRpc.status,
+      502,
+      `unsafe endpoint ${unsafeUrl} should be rejected before fetch`,
+    );
+    assert.equal((await unsafeRpc.json()).error.code, "rpc_endpoint_unsafe");
+    assert.equal(
+      unsafeFetchCalled,
+      false,
+      `unsafe endpoint ${unsafeUrl} should not reach fetch`,
+    );
+  } finally {
+    globalThis.fetch = unsafeOriginalFetch;
+  }
+}
+
 const originalFetch = globalThis.fetch;
 let upstreamCalled = false;
 globalThis.fetch = async (url, init) => {
@@ -220,7 +304,7 @@ try {
                       pool_eligible: true,
                       score: 100,
                       status: "ok",
-                      url: "https://rpc.example.test",
+                      url: "https://bittensor-finney.api.onfinality.io/public",
                     },
                   ],
                 },

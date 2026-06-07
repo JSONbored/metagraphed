@@ -5,6 +5,7 @@ import {
   flattenSurfaces,
   hashJson,
   isJsonContentType,
+  isUnsafeResolvedUrl,
   isUnsafeUrl,
   loadSubnets,
   repoRoot,
@@ -228,7 +229,7 @@ function candidateSchemaUrls(surface) {
 }
 
 async function fetchJson(url, redirectCount = 0) {
-  if (isUnsafeUrl(url)) {
+  if (await isUnsafeResolvedUrl(url)) {
     return { ok: false, unsafe_url: true, error: "unsafe URL" };
   }
 
@@ -250,7 +251,7 @@ async function fetchJson(url, redirectCount = 0) {
       redirectCount < 5
     ) {
       const redirectTarget = new URL(location, url).toString();
-      if (isUnsafeUrl(redirectTarget)) {
+      if (await isUnsafeResolvedUrl(redirectTarget)) {
         await response.body?.cancel();
         return {
           ok: false,

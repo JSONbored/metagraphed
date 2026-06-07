@@ -17,6 +17,7 @@ import {
   hashJson,
   isHtmlContentType,
   isJsonContentType,
+  isUnsafeResolvedUrl,
   isUnsafeUrl,
   isValidUrl,
   listJsonFiles,
@@ -120,9 +121,13 @@ describe("script utility contracts", () => {
     assert.equal(isValidUrl("ftp://metagraph.sh"), false);
     assert.equal(isValidUrl("not a url"), false);
     assert.equal(isUnsafeUrl("http://127.0.0.1:9944"), true);
+    assert.equal(isUnsafeUrl("http://metadata.localhost"), true);
     assert.equal(isUnsafeUrl("ftp://metagraph.sh"), true);
+    assert.equal(isUnsafeUrl("http://100.64.0.1"), true);
     assert.equal(isUnsafeUrl("http://172.16.0.1"), true);
     assert.equal(isUnsafeUrl("http://[fd00::1]"), true);
+    assert.equal(isUnsafeUrl("http://[fe80::1]"), true);
+    assert.equal(isUnsafeUrl("http://[::ffff:127.0.0.1]"), true);
     assert.equal(isUnsafeUrl("not a url"), true);
     assert.equal(isUnsafeUrl("https://metagraph.sh"), false);
     assert.equal(
@@ -146,6 +151,10 @@ describe("script utility contracts", () => {
       stableStringify({ b: 1, a: { d: 2, c: 3 } }),
       '{\n  "a": {\n    "c": 3,\n    "d": 2\n  },\n  "b": 1\n}',
     );
+    assert.equal(
+      stableStringify([{ b: 1, a: 2 }]),
+      '[\n  {\n    "a": 2,\n    "b": 1\n  }\n]',
+    );
     assert.equal(hashJson({ b: 1, a: 2 }), hashJson({ a: 2, b: 1 }));
     assert.equal(
       registrySurfaceKey({
@@ -156,6 +165,29 @@ describe("script utility contracts", () => {
       "7|docs|https://docs.all-ways.io/",
     );
     assert.equal(slugify("TAO / Metagraph: Build"), "tao-metagraph-build");
+  });
+
+  test("resolves hostnames before treating probe URLs as safe", async () => {
+    const privateResolver = async () => [
+      { address: "192.168.1.10", family: 4 },
+    ];
+    const publicResolver = async () => [
+      { address: "93.184.216.34", family: 4 },
+    ];
+    const emptyResolver = async () => [];
+
+    assert.equal(
+      await isUnsafeResolvedUrl("https://metadata.example", privateResolver),
+      true,
+    );
+    assert.equal(
+      await isUnsafeResolvedUrl("https://metagraph.example", publicResolver),
+      false,
+    );
+    assert.equal(
+      await isUnsafeResolvedUrl("https://empty.example", emptyResolver),
+      true,
+    );
   });
 
   test("builds RPC endpoint and pool artifacts from surface health", () => {
@@ -179,6 +211,15 @@ describe("script utility contracts", () => {
             id: "root-docs",
             kind: "docs",
             url: "https://docs.example.com",
+            provider: "example",
+            authority: "provider-claimed",
+            auth_required: false,
+            public_safe: true,
+          },
+          {
+            id: "root-data",
+            kind: "data-artifact",
+            url: "https://data.example.com/root.json",
             provider: "example",
             authority: "provider-claimed",
             auth_required: false,
@@ -220,8 +261,8 @@ describe("script utility contracts", () => {
         },
         {
           surface_id: "root-wss",
-          status: "degraded",
-          classification: "transient",
+          status: "ok",
+          classification: "live",
           latency_ms: 2500,
           methods_supported: ["chain_getHeader", "system_health"],
           last_checked: "1970-01-01T00:00:00.000Z",
@@ -260,12 +301,18 @@ describe("script utility contracts", () => {
       contractVersion: "test",
       source: "fixture",
     });
-    assert.equal(endpointResources.summary.endpoint_count, 4);
+    assert.equal(endpointResources.summary.endpoint_count, 5);
     assert.equal(
       endpointResources.endpoints.find(
         (endpoint) => endpoint.surface_id === "root-docs",
       ).layer,
       "docs-provider",
+    );
+    assert.equal(
+      endpointResources.endpoints.find(
+        (endpoint) => endpoint.surface_id === "root-data",
+      ).layer,
+      "data-provider",
     );
     assert.equal(
       endpointResources.endpoints.find(
@@ -291,6 +338,11 @@ describe("script utility contracts", () => {
     assert.equal(
       pools.pools.find((pool) => pool.id === "finney-wss").eligible_count,
       0,
+    );
+    assert.equal(
+      pools.pools.find((pool) => pool.id === "finney-wss").endpoints[0].score >
+        0,
+      true,
     );
   });
 
@@ -401,6 +453,18 @@ describe("submission policy helpers", () => {
       }).length,
       2,
     );
+    assert.equal(
+      validateSubmissionProvenance({
+        submitter: "jsonbored",
+        document: {
+          submission: {
+            submitted_by: "jsonbored",
+            submitted_by_url: "https://github.com/not-jsonbored",
+          },
+        },
+      })[0].message,
+      "submission.submitted_by_url must match submitted_by",
+    );
   });
 
   test("validates candidate submission edge cases", () => {
@@ -420,6 +484,13 @@ describe("submission policy helpers", () => {
       auth_required: false,
       public_safe: true,
     };
+
+    const missingCandidate = validateCandidateForSubmission({
+      candidate: null,
+      native,
+      providers,
+    });
+    assert.equal(missingCandidate.errors[0].category, "unsupported-shape");
 
     const valid = validateCandidateForSubmission({
       candidate: baseCandidate,
@@ -463,6 +534,58 @@ describe("submission policy helpers", () => {
     assert.equal(invalid.errors.length >= 10, true);
     assert.equal(invalid.manual_reasons.length >= 2, true);
     assert.equal(invalid.warnings.length, 1);
+
+    const badProvenanceList = validateCandidateForSubmission({
+      candidate: {
+        ...baseCandidate,
+        source_urls: ["https://docs.all-ways.io/extra/", "http://127.0.0.1"],
+      },
+      document: {
+        submission: {
+          submitted_by: "jsonbored",
+          submitted_by_url: "https://github.com/jsonbored",
+        },
+      },
+      submitter: "jsonbored",
+      native,
+      providers,
+      existingCandidates: [],
+      existingSubnets: [],
+    });
+    assert.equal(
+      badProvenanceList.errors.some(
+        (error) =>
+          error.message === "candidate source_urls[1] is invalid or unsafe",
+      ),
+      true,
+    );
+    assert.equal(
+      badProvenanceList.warnings.some((warning) =>
+        warning.includes("source_urls[0] will be normalized"),
+      ),
+      true,
+    );
+
+    const nonArrayProvenanceList = validateCandidateForSubmission({
+      candidate: { ...baseCandidate, source_urls: "https://docs.all-ways.io" },
+      document: {
+        submission: {
+          submitted_by: "jsonbored",
+          submitted_by_url: "https://github.com/jsonbored",
+        },
+      },
+      submitter: "jsonbored",
+      native,
+      providers,
+      existingCandidates: [],
+      existingSubnets: [],
+    });
+    assert.equal(
+      nonArrayProvenanceList.errors.some(
+        (error) => error.message === "candidate source_urls must be an array",
+      ),
+      true,
+    );
 
     const duplicate = validateCandidateForSubmission({
       candidate: {

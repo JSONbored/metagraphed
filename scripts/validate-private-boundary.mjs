@@ -3,6 +3,8 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.mjs";
 
+const maxScannedFileBytes = 1024 * 1024;
+
 const trackedFiles = execFileSync("git", ["ls-files"], {
   cwd: repoRoot,
   encoding: "utf8",
@@ -52,11 +54,35 @@ for (const file of trackedFiles) {
     }
   }
 
-  if (isBinaryOrLarge(file)) {
+  if (isBinaryOrGenerated(file)) {
     continue;
   }
 
-  const content = await fs.readFile(path.join(repoRoot, file), "utf8");
+  const absolutePath = path.join(repoRoot, file);
+  let stat;
+  try {
+    stat = await fs.lstat(absolutePath);
+  } catch (error) {
+    console.warn(`Skipping unreadable path ${file}: ${error.message}`);
+    continue;
+  }
+
+  if (
+    stat.isSymbolicLink() ||
+    !stat.isFile() ||
+    stat.size > maxScannedFileBytes
+  ) {
+    continue;
+  }
+
+  let content;
+  try {
+    content = await fs.readFile(absolutePath, "utf8");
+  } catch (error) {
+    console.warn(`Skipping unreadable file ${file}: ${error.message}`);
+    continue;
+  }
+
   for (const [index, line] of content.split(/\r?\n/).entries()) {
     for (const pattern of contentPatterns) {
       if (!pattern.regex.test(line)) {
@@ -85,7 +111,7 @@ if (findings.length > 0) {
 
 console.log("Private-boundary validation passed.");
 
-function isBinaryOrLarge(file) {
+function isBinaryOrGenerated(file) {
   return (
     file.endsWith(".png") ||
     file.endsWith(".jpg") ||

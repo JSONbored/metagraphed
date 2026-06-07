@@ -94,6 +94,33 @@ describe("Metagraphed submission gate policy", () => {
     );
   });
 
+  test("blocks unsafe candidate provenance URLs", () => {
+    const document = structuredClone(validCandidateDocument);
+    document.candidates[0].source_urls = [
+      "https://docs.all-ways.io/how-it-works.html",
+      "http://169.254.169.254/latest/meta-data/",
+    ];
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/bad-provenance.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "jsonbored",
+    });
+
+    assert.equal(report.public_state, "fix_required");
+    assert.equal(report.blocking, true);
+    assert.equal(
+      report.errors.includes("candidate source_urls[1] is invalid or unsafe"),
+      true,
+    );
+    assert.equal(
+      report.error_categories.includes("private-or-unsafe-url"),
+      true,
+    );
+  });
+
   test("routes auth-required and base-layer endpoint claims to manual review", () => {
     const authDocument = structuredClone(validCandidateDocument);
     authDocument.candidates[0].auth_required = true;
@@ -164,6 +191,55 @@ describe("Metagraphed submission gate policy", () => {
       ),
       true,
     );
+  });
+
+  test("rejects duplicate issue fields hidden in markdown", () => {
+    const body = [
+      "### Netuid",
+      "7",
+      "### Subnet name",
+      "Allways",
+      "### Interface kind",
+      "docs",
+      "### Public URL",
+      "https://docs.all-ways.io/community-submission-example",
+      "### Source URL",
+      "https://docs.all-ways.io/how-it-works.html",
+      "### Provider or team",
+      "allways",
+      "### Does this interface require authentication?",
+      "no",
+      "### Evidence",
+      "<!--",
+      "### Public URL",
+      "https://phishing.example.net/login",
+      "-->",
+      "### Source URL",
+      "https://evil.example.net/proof",
+    ].join("\n\n");
+    const report = buildIssueIntakeReport({
+      issue: {
+        number: 43,
+        title: "interface: hidden duplicate",
+        user: { login: "jsonbored" },
+        labels: [
+          { name: SUBMISSION_LABELS.interfaceSubmission },
+          { name: SUBMISSION_LABELS.importApproved },
+        ],
+        body,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+
+    assert.equal(report.state, "schema-invalid");
+    assert.equal(report.import_allowed, false);
+    assert.equal(
+      report.errors.includes("duplicate issue field heading: Source URL"),
+      true,
+    );
+    assert.equal(report.candidate, null);
   });
 
   test("keeps issue approval explicit", () => {
