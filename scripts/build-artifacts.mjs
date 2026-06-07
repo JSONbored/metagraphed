@@ -17,6 +17,7 @@ import {
   nativeDisplayName,
   nativeNameQuality,
   readJson,
+  redactCredentialedUrls,
   repoRoot,
   sha256Hex,
   slugify,
@@ -36,7 +37,7 @@ import { buildCanonicalOpenApiArtifact } from "./openapi-components.mjs";
 const providers = await loadProviders();
 const overlays = await loadSubnets();
 const candidates = await loadCandidates();
-const verification = await loadVerification();
+const verification = redactCredentialedUrls(await loadVerification());
 const adapterSnapshots = await loadAdapterSnapshots();
 const reviewDecisions = await loadReviewDecisions();
 const nativeSnapshot = await loadNativeSnapshot();

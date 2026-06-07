@@ -20,6 +20,11 @@ const patterns = [
   { name: "openai-style token", regex: /sk-[A-Za-z0-9]{20,}/ },
   { name: "slack-style token", regex: /xox[baprs]-[A-Za-z0-9-]+/ },
   {
+    name: "signed object-storage URL parameter",
+    regex:
+      /[?&](?:X-Amz-(?:Credential|Signature|Security-Token)|X-Goog-(?:Credential|Signature|Security-Token|SignedHeaders|Expires)|X-Oss-(?:Credential|Signature))=/i,
+  },
+  {
     name: "private or loopback URL",
     regex:
       /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i,

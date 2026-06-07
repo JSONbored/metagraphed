@@ -4,6 +4,7 @@ import {
   isHtmlContentType,
   isJsonContentType,
   isUnsafeResolvedUrl,
+  redactCredentialedUrl,
   loadCandidates,
   repoRoot,
   stableStringify,
@@ -135,7 +136,7 @@ async function verifyGithubRepo(base, repo) {
       { ...base, kind: "source-repo", public_safe: true },
       { ...fallback, classification },
     ),
-    redirect_target: fallback.redirect_target,
+    redirect_target: redactCredentialedUrl(fallback.redirect_target),
     status: fallback.ok ? "ok" : "failed",
     status_code: fallback.status_code || null,
   };
@@ -157,7 +158,7 @@ async function verifyHttpSurface(base, candidate) {
     latency_ms: probe.latency_ms,
     method_tested: probe.method_tested,
     private_redirect_blocked: probe.private_redirect_blocked || false,
-    redirect_target: probe.redirect_target,
+    redirect_target: redactCredentialedUrl(probe.redirect_target),
     status: probe.ok ? "ok" : "failed",
     status_code: probe.status_code || null,
     confidence_score: scoreCandidate(candidate, { ...probe, classification }),
@@ -205,7 +206,7 @@ async function probeUrl(url, method, accept, redirectCount = 0) {
           latency_ms: latencyMs,
           method_tested: method,
           private_redirect_blocked: true,
-          redirect_target: redirectTarget,
+          redirect_target: redactCredentialedUrl(redirectTarget),
           status_code: response.status,
         };
       }
@@ -219,7 +220,9 @@ async function probeUrl(url, method, accept, redirectCount = 0) {
       return {
         ...redirected,
         latency_ms: latencyMs + (redirected.latency_ms || 0),
-        redirect_target: redirected.redirect_target || redirectTarget,
+        redirect_target: redactCredentialedUrl(
+          redirected.redirect_target || redirectTarget,
+        ),
       };
     }
 

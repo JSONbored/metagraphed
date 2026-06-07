@@ -1,6 +1,6 @@
 {
   "artifact_count": 975,
-  "artifact_size_bytes": 30023458,
+  "artifact_size_bytes": 30021471,
   "artifacts": [
     {
       "content_type": "application/json",
@@ -31,8 +31,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/candidates.json",
       "latest_key": "latest/candidates.json",
       "path": "/metagraph/candidates.json",
-      "sha256": "64e0fa52ae812f4d980c37cd9ae8a9410dbfbf2215767053aeb81d64020bd62b",
-      "size_bytes": 3433999
+      "sha256": "5d81e7c3fafede9d998cbb6b5e93e49db6f7a5f07692a26f448a43eaf7a6c220",
+      "size_bytes": 3433657
     },
     {
       "content_type": "application/json",
@@ -983,8 +983,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/candidates/9.json",
       "latest_key": "latest/candidates/9.json",
       "path": "/metagraph/candidates/9.json",
-      "sha256": "c84369ac8a5052815a2ff1ff1f87c06c02e0365130beb7997f2fd8299a82f39e",
-      "size_bytes": 48916
+      "sha256": "2e40143e66e05884ac6d917018641b017461d12d55f31be9cffb9469e9954188",
+      "size_bytes": 48574
     },
     {
       "content_type": "application/json",
@@ -1071,8 +1071,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/changelog.json",
       "latest_key": "latest/changelog.json",
       "path": "/metagraph/changelog.json",
-      "sha256": "a5a63597efe508d7f8dd4a09413a19044c311307c6707028b83098a4b16d91fa",
-      "size_bytes": 1486
+      "sha256": "444aa1078bf9e3fd54f899df9c336eebdb15b99c3d56c594f3434fcf7805f5cc",
+      "size_bytes": 1209
     },
     {
       "content_type": "application/json",
@@ -4527,8 +4527,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review-queue.json",
       "latest_key": "latest/review-queue.json",
       "path": "/metagraph/review-queue.json",
-      "sha256": "79a1dd964e81c823bdff0bf351a04ba041c140d4024e0d7df59c1529e6ed0157",
-      "size_bytes": 3433982
+      "sha256": "9908d96ec9bf0f7bf8d4f5f36312abc8d9d59df154d8e98a0e19bb1d0349f833",
+      "size_bytes": 3433640
     },
     {
       "content_type": "application/json",
@@ -4671,7 +4671,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/source-snapshots.json",
       "latest_key": "latest/source-snapshots.json",
       "path": "/metagraph/source-snapshots.json",
-      "sha256": "731f2cf225283560eae083a535ed8b57fcbba60000f0baedfa2363b98633ba24",
+      "sha256": "fe5751a8842d72e8fb817f8193f35b52b288871e35d89aba2c3e3b60d6fcfc38",
       "size_bytes": 2743
     },
     {
@@ -6767,8 +6767,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/verification/latest.json",
       "latest_key": "latest/verification/latest.json",
       "path": "/metagraph/verification/latest.json",
-      "sha256": "1a76091f4bb61d61de88de13cd6d2bf3fa298995cda90f077f188caf4a1562d3",
-      "size_bytes": 1790147
+      "sha256": "556a90ebe80f77063d34a47c08be290f063ea09d0ab88f3f7453c2bb1b5c4c16",
+      "size_bytes": 1789805
     },
     {
       "content_type": "application/json",
@@ -7719,8 +7719,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/verification/subnets/9.json",
       "latest_key": "latest/verification/subnets/9.json",
       "path": "/metagraph/verification/subnets/9.json",
-      "sha256": "11559c7166d720b17d923247f717a278a12fea607240a810957aa79b6f60815b",
-      "size_bytes": 26224
+      "sha256": "040bcd9c8604880d047137fc41ce7470188dba02b4327edd50891c9a1be61349",
+      "size_bytes": 25882
     },
     {
       "content_type": "application/json",

@@ -6,6 +6,19 @@ import path from "node:path";
 
 export const repoRoot = new URL("..", import.meta.url).pathname;
 
+const credentialedUrlParams = new Set([
+  "x-amz-credential",
+  "x-amz-signature",
+  "x-amz-security-token",
+  "x-goog-credential",
+  "x-goog-signature",
+  "x-goog-security-token",
+  "x-goog-signedheaders",
+  "x-goog-expires",
+  "x-oss-signature",
+  "x-oss-credential",
+]);
+
 const unsafeIpBlocks = new BlockList();
 unsafeIpBlocks.addSubnet("0.0.0.0", 8);
 unsafeIpBlocks.addSubnet("10.0.0.0", 8);
@@ -265,6 +278,48 @@ function normalizeHostname(hostname) {
     .toLowerCase()
     .replace(/^\[(.*)\]$/, "$1")
     .replace(/\.$/, "");
+}
+
+export function isCredentialedUrl(value) {
+  try {
+    const url = new URL(value);
+    for (const key of url.searchParams.keys()) {
+      if (credentialedUrlParams.has(key.toLowerCase())) {
+        return true;
+      }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function redactCredentialedUrl(value) {
+  if (!isCredentialedUrl(value)) {
+    return value;
+  }
+
+  const url = new URL(value);
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+export function redactCredentialedUrls(value) {
+  if (Array.isArray(value)) {
+    return value.map(redactCredentialedUrls);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [
+        key,
+        redactCredentialedUrls(nested),
+      ]),
+    );
+  }
+
+  return typeof value === "string" ? redactCredentialedUrl(value) : value;
 }
 
 export function normalizePublicUrl(value) {

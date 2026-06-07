@@ -6,6 +6,7 @@ import {
   loadNativeSnapshot,
   loadProviders,
   loadSubnets,
+  isCredentialedUrl,
   isValidUrl,
   nativeDisplayName,
   nativeNameQuality,
@@ -320,6 +321,29 @@ function validateLinks(key, links) {
         `${key}: links[${index}].source_url must be a URL`,
       );
     }
+  }
+}
+
+function validatePublicSafeJson(value, pathSegments = []) {
+  if (Array.isArray(value)) {
+    for (const [index, nested] of value.entries()) {
+      validatePublicSafeJson(nested, [...pathSegments, index]);
+    }
+    return;
+  }
+
+  if (value && typeof value === "object") {
+    for (const [key, nested] of Object.entries(value)) {
+      validatePublicSafeJson(nested, [...pathSegments, key]);
+    }
+    return;
+  }
+
+  if (typeof value === "string" && isCredentialedUrl(value)) {
+    assert(
+      false,
+      `${pathSegments.join(".") || "value"}: must not expose credentialed URL query parameters`,
+    );
   }
 }
 
@@ -751,6 +775,14 @@ async function validateGeneratedArtifacts(
     path.join(repoRoot, "public/metagraph/review/maintainer-decisions.json"),
   );
 
+  for (const [artifactName, artifact] of [
+    ["public candidates", candidatesArtifact],
+    ["public review queue", reviewQueueArtifact],
+    ["public verification", verificationArtifact],
+  ]) {
+    validatePublicSafeJson(artifact, [artifactName]);
+  }
+
   const nativeNetuids = nativeSnapshot.subnets.map((subnet) => subnet.netuid);
   const generatedNetuids = subnetsArtifact.subnets.map(
     (subnet) => subnet.netuid,
@@ -1128,6 +1160,10 @@ const candidates = await loadCandidates();
 const reviewDecisionsDocument = await readJson(
   path.join(repoRoot, "registry/reviews/maintainer-reviewed.json"),
 );
+const verificationDocument = await readJson(
+  path.join(repoRoot, "registry/verification/latest.json"),
+);
+validatePublicSafeJson(verificationDocument, ["registry verification"]);
 const providerIds = new Set();
 const netuids = new Set();
 const slugs = new Set();

@@ -16,6 +16,7 @@ import {
   classifyNativeName,
   flattenSurfaces,
   hashJson,
+  isCredentialedUrl,
   isHtmlContentType,
   isJsonContentType,
   isUnsafeResolvedUrl,
@@ -29,6 +30,8 @@ import {
   nativeNameQuality,
   normalizePublicUrl,
   readJson,
+  redactCredentialedUrl,
+  redactCredentialedUrls,
   registrySurfaceKey,
   repoRoot,
   sha256Hex,
@@ -93,6 +96,39 @@ describe("script utility contracts", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+
+  test("redacts credentialed object-storage URLs", () => {
+    const signedUrl =
+      "https://ams3.digitaloceanspaces.com/releases/file.dmg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=KEY%2F20260607%2Fams3%2Fs3%2Faws4_request&X-Amz-Signature=abc&x-id=GetObject";
+
+    assert.equal(isCredentialedUrl(signedUrl), true);
+    assert.equal(
+      redactCredentialedUrl(signedUrl),
+      "https://ams3.digitaloceanspaces.com/releases/file.dmg",
+    );
+    assert.equal(
+      redactCredentialedUrl(`${signedUrl}#fragment`),
+      "https://ams3.digitaloceanspaces.com/releases/file.dmg",
+    );
+    assert.deepEqual(redactCredentialedUrls({ nested: [signedUrl] }), {
+      nested: ["https://ams3.digitaloceanspaces.com/releases/file.dmg"],
+    });
+    assert.deepEqual(redactCredentialedUrls([null, 7, false]), [
+      null,
+      7,
+      false,
+    ]);
+    assert.equal(redactCredentialedUrl("not a url"), "not a url");
+    assert.equal(
+      redactCredentialedUrl("https://example.com/download?file=1"),
+      "https://example.com/download?file=1",
+    );
+    assert.equal(isCredentialedUrl("not a url"), false);
+    assert.equal(
+      isCredentialedUrl("https://example.com/download?file=1"),
+      false,
+    );
   });
 
   test("loads checked-in candidates and verification fallback contracts", async () => {

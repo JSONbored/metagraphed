@@ -1,16 +1,7 @@
 {
   "artifacts": {
     "added": [],
-    "modified": [
-      {
-        "hash": "58e73a4a000b6ee92a4e0b382bcaa768dca58d8b46eaf3c7268e737f75fa8aa1",
-        "path": "endpoint-pools.json"
-      },
-      {
-        "hash": "5086b1a275a112aa0be553bb44397434a38acca5e8cbcbb87106537981f98436",
-        "path": "rpc/pools.json"
-      }
-    ],
+    "modified": [],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
@@ -28,7 +19,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 2,
+    "artifact_modified_count": 0,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {

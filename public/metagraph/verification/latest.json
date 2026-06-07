@@ -4967,7 +4967,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://ams3.digitaloceanspaces.com/iota-train-at-home-releases/releases/prod/darwin/arm64/IOTA%20Train%20at%20Home-3.3.4-arm64.dmg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=DO801VW62ENXU4TLZHMF%2F20260607%2Fams3%2Fs3%2Faws4_request&X-Amz-Date=20260607T070641Z&X-Amz-Expires=600&X-Amz-Signature=f69c6e0501e91d4f4e2cf55842cfb3b87b5880146a180a4c771122b5c0e73d4d&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+      "redirect_target": "https://ams3.digitaloceanspaces.com/iota-train-at-home-releases/releases/prod/darwin/arm64/IOTA%20Train%20at%20Home-3.3.4-arm64.dmg",
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
       "source_url": "https://iota.macrocosmos.ai/",

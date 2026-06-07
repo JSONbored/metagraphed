@@ -30,7 +30,7 @@
     },
     {
       "captured_at": "1970-01-01T00:00:00.000Z",
-      "hash": "4ddb05c7ec8bacb34d5d623e75da84b2189eed27f1c455fbd09c8a229b84eb4c",
+      "hash": "ec37037c719a1a09e3131bd8d138296bcfe044b5ea6c6d68516bad62235542f0",
       "id": "candidate-verification",
       "kind": "probe-results",
       "path": "registry/verification/latest.json",
