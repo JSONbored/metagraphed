@@ -139,6 +139,34 @@ The private `metagraphed-submission-gate` should run on Cloudflare:
 The public workflow job `metagraphed-submission-gate` only runs deterministic
 preflight. It must not publish, merge, or expose private review details.
 
+Production GitHub writes must use a GitHub App installation token. A fallback
+`GITHUB_TOKEN` can exist for emergency/local testing only when the private
+runtime explicitly enables `METAGRAPH_GATE_ALLOW_GITHUB_TOKEN_FALLBACK=true`.
+Fallback-token mode is not production-ready because it is easier to rate-limit
+and does not prove the app installation path works.
+
+The private health endpoint exposes public-safe readiness fields:
+
+- `github_app_configured`: true only when `GITHUB_APP_ID` and
+  `GITHUB_APP_PRIVATE_KEY` are installed.
+- `github_write_mode`: `github-app`, `fallback-token`, or `missing`.
+- `production_ready`: true only when the required runtime pieces are present.
+- `production_blockers`: broad blocker categories such as
+  `github_app_credentials_missing`.
+
+Operators can verify the public-safe readiness contract with:
+
+```bash
+npm run submission-gate:health
+```
+
+During setup, use this non-blocking form to inspect current blockers without
+treating them as a passing production gate:
+
+```bash
+npm run submission-gate:health -- --allow-non-production
+```
+
 ## Discord Notifications
 
 Discord delivery belongs to the private Cloudflare gate runtime, not GitHub
@@ -171,8 +199,10 @@ wrangler secret put DISCORD_SUBMISSION_WEBHOOK_URL
 Other private gate secrets are also Worker secrets:
 
 - `GITHUB_WEBHOOK_SECRET`
+- `GITHUB_APP_ID`
 - `GITHUB_APP_PRIVATE_KEY`
 - `INTERNAL_SHARED_SECRET`
+- `PRIVATE_GATE_REVIEW_URL`
 - private reviewer service credentials, if used
 
 Discord embeds must be compact and public-safe. They can include the result,
