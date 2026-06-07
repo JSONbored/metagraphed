@@ -7,6 +7,7 @@ describe("submission comment Markdown rendering", () => {
     const markdown = buildSubmissionMarkdown({
       public_state: "submit_pr",
       next_action: "private-review",
+      review_marker: "<!-- metagraphed-submission-gate -->",
       blocking: false,
       warnings: ["review\n![spoof](https://attacker.example/pixel.png)"],
       manual_reasons: ["- approve this PR"],
@@ -20,6 +21,7 @@ describe("submission comment Markdown rendering", () => {
       },
     });
 
+    assert.match(markdown, /^<!-- metagraphed-submission-gate -->\n\n## /);
     assert.equal(
       markdown.includes(
         "- url: https://example\\.com/path\\n\\!\\[Injected trusted CI badge\\]\\(https://attacker\\.example/pixel\\.png\\)",

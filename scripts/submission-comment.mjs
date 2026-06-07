@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { SUBMISSION_REVIEW_MARKER } from "./submission-policy.mjs";
 
 if (
   process.argv[1] &&
@@ -10,6 +11,8 @@ if (
 
 export function buildSubmissionMarkdown(report) {
   const lines = [
+    report.review_marker || SUBMISSION_REVIEW_MARKER,
+    "",
     "## Metagraphed Submission Preflight",
     "",
     `State: ${formatMarkdownValue(report.public_state || report.state || "unknown")}`,
