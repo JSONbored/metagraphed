@@ -158,6 +158,55 @@ describe("Metagraphed submission gate policy", () => {
     );
   });
 
+  test("rejects duplicate issue fields hidden in markdown", () => {
+    const body = [
+      "### Netuid",
+      "7",
+      "### Subnet name",
+      "Allways",
+      "### Interface kind",
+      "docs",
+      "### Public URL",
+      "https://docs.all-ways.io/community-submission-example",
+      "### Source URL",
+      "https://docs.all-ways.io/how-it-works.html",
+      "### Provider or team",
+      "allways",
+      "### Does this interface require authentication?",
+      "no",
+      "### Evidence",
+      "<!--",
+      "### Public URL",
+      "https://phishing.example.net/login",
+      "-->",
+      "### Source URL",
+      "https://evil.example.net/proof",
+    ].join("\n\n");
+    const report = buildIssueIntakeReport({
+      issue: {
+        number: 43,
+        title: "interface: hidden duplicate",
+        user: { login: "jsonbored" },
+        labels: [
+          { name: SUBMISSION_LABELS.interfaceSubmission },
+          { name: SUBMISSION_LABELS.importApproved },
+        ],
+        body,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+
+    assert.equal(report.state, "schema-invalid");
+    assert.equal(report.import_allowed, false);
+    assert.equal(
+      report.errors.includes("duplicate issue field heading: Source URL"),
+      true,
+    );
+    assert.equal(report.candidate, null);
+  });
+
   test("keeps issue approval explicit", () => {
     const body = [
       "### Netuid",

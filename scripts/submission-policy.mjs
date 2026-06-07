@@ -49,6 +49,8 @@ const TERMINAL_FIX_CATEGORIES = new Set([
   "unsupported-shape",
 ]);
 
+const FIELD_PARSE_ERRORS = Symbol("metagraphed.issueFieldParseErrors");
+
 const SECRET_PATTERNS = [
   /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/,
   /\bgithub_pat_[A-Za-z0-9_]{20,}\b/,
@@ -63,10 +65,11 @@ export function buildIssueIntakeReport({
   generatedAt = new Date().toISOString(),
 }) {
   const fields = parseIssueFields(issue?.body || "");
+  const fieldErrors = issueFieldParseErrors(fields);
   const labels = issueLabels(issue);
   const providerIds = new Set(providers.map((provider) => provider.id));
   const importApproved = labels.includes(SUBMISSION_LABELS.importApproved);
-  const errors = [];
+  const errors = [...fieldErrors];
   const manual_reasons = [];
 
   const netuid = Number(fields.netuid);
@@ -559,19 +562,34 @@ function normalizeChangedFilePath(file) {
 
 export function parseIssueFields(body) {
   const fields = {};
-  const sections = String(body || "")
-    .split(/^###\s+/m)
-    .slice(1);
+  const errors = [];
+  const sanitizedBody = String(body || "").replace(
+    /<!--[\s\S]*?(?:-->|$)/g,
+    "",
+  );
+  const sections = sanitizedBody.split(/^###\s+/m).slice(1);
   for (const section of sections) {
     const [heading, ...rest] = section.split(/\r?\n/);
     const key = heading.trim().toLowerCase();
+    if (Object.hasOwn(fields, key)) {
+      errors.push(`duplicate issue field heading: ${heading.trim()}`);
+      continue;
+    }
     const value = rest
       .join("\n")
       .trim()
       .replace(/^_No response_$/i, "");
     fields[key] = value;
   }
+  Object.defineProperty(fields, FIELD_PARSE_ERRORS, {
+    value: errors,
+    enumerable: false,
+  });
   return fields;
+}
+
+export function issueFieldParseErrors(fields) {
+  return fields?.[FIELD_PARSE_ERRORS] || [];
 }
 
 export function normalizeKind(value) {
