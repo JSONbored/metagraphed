@@ -44,11 +44,15 @@
       "endpoints": [
         {
           "archive_support": null,
+          "health_source": "missing-probe",
+          "health_stale": true,
           "id": "endpoint-nodies-finney-rpc",
           "kind": "subtensor-rpc",
+          "last_ok": null,
           "latency_ms": null,
           "latest_block": null,
           "layer": "bittensor-base",
+          "observed_at": null,
           "pool_eligibility_reasons": [
             "status-unknown"
           ],
@@ -61,11 +65,15 @@
         },
         {
           "archive_support": null,
+          "health_source": "missing-probe",
+          "health_stale": true,
           "id": "endpoint-onfinality-finney-rpc",
           "kind": "subtensor-rpc",
+          "last_ok": null,
           "latency_ms": null,
           "latest_block": null,
           "layer": "bittensor-base",
+          "observed_at": null,
           "pool_eligibility_reasons": [
             "status-unknown"
           ],
@@ -87,11 +95,15 @@
       "endpoints": [
         {
           "archive_support": null,
+          "health_source": "missing-probe",
+          "health_stale": true,
           "id": "endpoint-onfinality-finney-wss",
           "kind": "subtensor-wss",
+          "last_ok": null,
           "latency_ms": null,
           "latest_block": null,
           "layer": "bittensor-base",
+          "observed_at": null,
           "pool_eligibility_reasons": [
             "status-unknown"
           ],
@@ -104,11 +116,15 @@
         },
         {
           "archive_support": null,
+          "health_source": "missing-probe",
+          "health_stale": true,
           "id": "endpoint-opentensor-archive-wss",
           "kind": "subtensor-wss",
+          "last_ok": null,
           "latency_ms": null,
           "latest_block": null,
           "layer": "bittensor-base",
+          "observed_at": null,
           "pool_eligibility_reasons": [
             "status-unknown"
           ],
@@ -121,11 +137,15 @@
         },
         {
           "archive_support": null,
+          "health_source": "missing-probe",
+          "health_stale": true,
           "id": "endpoint-opentensor-finney-wss",
           "kind": "subtensor-wss",
+          "last_ok": null,
           "latency_ms": null,
           "latest_block": null,
           "layer": "bittensor-base",
+          "observed_at": null,
           "pool_eligibility_reasons": [
             "status-unknown"
           ],
@@ -138,11 +158,15 @@
         },
         {
           "archive_support": null,
+          "health_source": "missing-probe",
+          "health_stale": true,
           "id": "endpoint-opentensor-lite-wss",
           "kind": "subtensor-wss",
+          "last_ok": null,
           "latency_ms": null,
           "latest_block": null,
           "layer": "bittensor-base",
+          "observed_at": null,
           "pool_eligibility_reasons": [
             "status-unknown"
           ],

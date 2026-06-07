@@ -71,12 +71,8 @@ const outputRoot = path.join(repoRoot, "public/metagraph");
 const r2OutputRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 const generatedAt = buildTimestamp();
 const contractVersion = CONTRACT_VERSION;
-const previousR2ManifestArtifact = await readOptionalJson(
-  path.join(outputRoot, "r2-manifest.json"),
-);
 const previousArtifactDigests = await collectArtifactDigests({
   includeR2Root: false,
-  previousManifest: previousR2ManifestArtifact,
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
 });
@@ -601,6 +597,7 @@ for (const [slug, artifact] of Object.entries(adapterArtifacts)) {
 }
 
 const currentArtifactDigests = await collectArtifactDigests({
+  includeR2Root: false,
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
 });
@@ -633,18 +630,28 @@ const artifactSizes = await collectArtifactSizes({
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
 });
+const reviewArtifactSizes = artifactSizes.filter(
+  (artifact) => artifact.storage_tier !== "r2",
+);
 const artifactBudgets = evaluateArtifactBudgets(artifactSizes);
 await writeJson(artifactFile("build-summary.json"), {
   schema_version: 1,
   contract_version: contractVersion,
   generated_at: generatedAt,
   adapter_count: Object.keys(adapterArtifacts).length,
-  artifact_count: artifactSizes.length,
-  artifact_size_bytes: artifactSizes.reduce(
+  artifact_count: reviewArtifactSizes.length,
+  artifact_size_bytes: reviewArtifactSizes.reduce(
     (sum, artifact) => sum + artifact.size_bytes,
     0,
   ),
-  artifacts: artifactSizes.slice(0, 250),
+  full_artifact_count: artifactSizes.length,
+  full_artifact_size_bytes: artifactSizes.reduce(
+    (sum, artifact) => sum + artifact.size_bytes,
+    0,
+  ),
+  storage_tier_counts: countByStorageTier(artifactSizes),
+  storage_tier_size_bytes: sumBytesByStorageTier(artifactSizes),
+  artifacts: reviewArtifactSizes.slice(0, 250),
   artifact_budget_summary: summarizeArtifactBudgets(artifactBudgets),
   artifact_budgets: artifactBudgets
     .filter((budget) => budget.status !== "ok")
@@ -1871,6 +1878,21 @@ async function collectArtifactSizes({ publicRoot, r2Root }) {
     });
   });
   return files.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+function countByStorageTier(artifacts) {
+  return artifacts.reduce((counts, artifact) => {
+    counts[artifact.storage_tier] = (counts[artifact.storage_tier] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function sumBytesByStorageTier(artifacts) {
+  return artifacts.reduce((counts, artifact) => {
+    counts[artifact.storage_tier] =
+      (counts[artifact.storage_tier] || 0) + artifact.size_bytes;
+    return counts;
+  }, {});
 }
 
 async function collectArtifactFiles(

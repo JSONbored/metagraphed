@@ -451,6 +451,24 @@ describe("script utility contracts", () => {
     assert.equal(rpc.summary.endpoint_count, 4);
     assert.equal(rpc.summary.archive_supported_count, 1);
     assert.equal(rpc.endpoints[0].method_tested, "chain_getHeader");
+    assert.equal(
+      rpc.endpoints.find((endpoint) => endpoint.id === "root-rpc")
+        .health_source,
+      "probe-derived",
+    );
+    assert.equal(
+      rpc.endpoints.find((endpoint) => endpoint.id === "root-rpc").observed_at,
+      "1970-01-01T00:00:00.000Z",
+    );
+    assert.equal(
+      rpc.endpoints.find((endpoint) => endpoint.id === "root-rpc").last_ok,
+      "1970-01-01T00:00:00.000Z",
+    );
+    assert.equal(
+      rpc.endpoints.find((endpoint) => endpoint.id === "root-failed-rpc")
+        .health_stale,
+      true,
+    );
 
     const endpointResources = buildEndpointResourceArtifact({
       surfaces,
@@ -519,6 +537,24 @@ describe("script utility contracts", () => {
     );
     assert.equal(
       endpointResources.endpoints.find(
+        (endpoint) => endpoint.surface_id === "root-rpc",
+      ).health_source,
+      "probe-derived",
+    );
+    assert.equal(
+      endpointResources.endpoints.find(
+        (endpoint) => endpoint.surface_id === "root-docs",
+      ).health_source,
+      "not-monitored",
+    );
+    assert.equal(
+      endpointResources.endpoints.find(
+        (endpoint) => endpoint.surface_id === "root-docs",
+      ).health_stale,
+      false,
+    );
+    assert.equal(
+      endpointResources.endpoints.find(
         (endpoint) => endpoint.surface_id === "root-private-api",
       ).publication_state,
       "disabled",
@@ -562,6 +598,18 @@ describe("script utility contracts", () => {
         ),
       true,
     );
+    assert.equal(
+      pools.pools
+        .find((pool) => pool.id === "finney-rpc")
+        .endpoints.find((endpoint) => endpoint.id === "root-rpc").health_source,
+      "probe-derived",
+    );
+    assert.equal(
+      pools.pools
+        .find((pool) => pool.id === "finney-rpc")
+        .endpoints.find((endpoint) => endpoint.id === "root-rpc").last_ok,
+      "1970-01-01T00:00:00.000Z",
+    );
     const generalizedPools = buildEndpointPoolArtifact({
       generatedAt: "1970-01-01T00:00:00.000Z",
       contractVersion: "test",
@@ -594,6 +642,11 @@ describe("script utility contracts", () => {
     );
     assert.equal(incidents.incidents[0].user_reported, false);
     assert.equal(incidents.incidents[0].source, "probe-derived");
+    assert.equal(incidents.incidents[0].health_source, "probe-derived");
+    assert.equal(
+      incidents.incidents[0].observed_at,
+      "1970-01-01T00:00:00.000Z",
+    );
   });
 
   test("evaluates artifact budgets with wildcard matching", () => {

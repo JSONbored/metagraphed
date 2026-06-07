@@ -164,6 +164,29 @@ for (const unsafeUrl of [
   };
 
   try {
+    const unsafePoolArtifact = {
+      schema_version: 1,
+      contract_version: "2026-06-06.1",
+      generated_at: "1970-01-01T00:00:00.000Z",
+      pools: [
+        {
+          id: "finney-rpc",
+          kind: "subtensor-rpc",
+          endpoint_count: 1,
+          eligible_count: 1,
+          endpoints: [
+            {
+              id: "unsafe-rpc",
+              provider: "fixture",
+              pool_eligible: true,
+              score: 100,
+              status: "ok",
+              url: unsafeUrl,
+            },
+          ],
+        },
+      ],
+    };
     const unsafeRpc = await handleRequest(
       new Request("https://metagraph.sh/rpc/v1/finney", {
         method: "POST",
@@ -181,39 +204,19 @@ for (const unsafeUrl of [
           async fetch(request) {
             const url = new URL(request.url);
             if (url.pathname === "/metagraph/rpc/pools.json") {
-              return new Response(
-                JSON.stringify({
-                  schema_version: 1,
-                  contract_version: "2026-06-06.1",
-                  generated_at: "1970-01-01T00:00:00.000Z",
-                  pools: [
-                    {
-                      id: "finney-rpc",
-                      kind: "subtensor-rpc",
-                      endpoint_count: 1,
-                      eligible_count: 1,
-                      endpoints: [
-                        {
-                          id: "unsafe-rpc",
-                          provider: "fixture",
-                          pool_eligible: true,
-                          score: 100,
-                          status: "ok",
-                          url: unsafeUrl,
-                        },
-                      ],
-                    },
-                  ],
-                }),
-                {
-                  status: 200,
-                  headers: {
-                    "content-type": "application/json",
-                  },
-                },
-              );
+              return Response.json(unsafePoolArtifact);
             }
             return env.ASSETS.fetch(request);
+          },
+        },
+        METAGRAPH_ARCHIVE: {
+          async get(key) {
+            assert.equal(key, "latest/rpc/pools.json");
+            return {
+              async json() {
+                return unsafePoolArtifact;
+              },
+            };
           },
         },
       },
@@ -253,6 +256,29 @@ globalThis.fetch = async (url, init) => {
 };
 
 try {
+  const safePoolArtifact = {
+    schema_version: 1,
+    contract_version: "2026-06-06.1",
+    generated_at: "1970-01-01T00:00:00.000Z",
+    pools: [
+      {
+        id: "finney-rpc",
+        kind: "subtensor-rpc",
+        endpoint_count: 1,
+        eligible_count: 1,
+        endpoints: [
+          {
+            id: "fixture-rpc",
+            provider: "fixture",
+            pool_eligible: true,
+            score: 100,
+            status: "ok",
+            url: "https://bittensor-finney.api.onfinality.io/public",
+          },
+        ],
+      },
+    ],
+  };
   const proxyEnv = {
     ...env,
     METAGRAPH_ENABLE_RPC_PROXY: "true",
@@ -260,39 +286,19 @@ try {
       async fetch(request) {
         const url = new URL(request.url);
         if (url.pathname === "/metagraph/rpc/pools.json") {
-          return new Response(
-            JSON.stringify({
-              schema_version: 1,
-              contract_version: "2026-06-06.1",
-              generated_at: "1970-01-01T00:00:00.000Z",
-              pools: [
-                {
-                  id: "finney-rpc",
-                  kind: "subtensor-rpc",
-                  endpoint_count: 1,
-                  eligible_count: 1,
-                  endpoints: [
-                    {
-                      id: "fixture-rpc",
-                      provider: "fixture",
-                      pool_eligible: true,
-                      score: 100,
-                      status: "ok",
-                      url: "https://bittensor-finney.api.onfinality.io/public",
-                    },
-                  ],
-                },
-              ],
-            }),
-            {
-              status: 200,
-              headers: {
-                "content-type": "application/json",
-              },
-            },
-          );
+          return Response.json(safePoolArtifact);
         }
         return env.ASSETS.fetch(request);
+      },
+    },
+    METAGRAPH_ARCHIVE: {
+      async get(key) {
+        assert.equal(key, "latest/rpc/pools.json");
+        return {
+          async json() {
+            return safePoolArtifact;
+          },
+        };
       },
     },
   };

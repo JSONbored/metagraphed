@@ -519,6 +519,10 @@ export function buildRpcEndpointArtifact({
     )
     .map((surface) => {
       const health = healthBySurface.get(surface.id) || {};
+      const healthMeta = endpointHealthMetadata({
+        health,
+        monitored: true,
+      });
       return {
         id: surface.id,
         netuid: surface.netuid,
@@ -540,7 +544,11 @@ export function buildRpcEndpointArtifact({
         status: health.status || "unknown",
         classification: health.classification || "unknown",
         latency_ms: health.latency_ms ?? null,
-        last_checked: health.verified_at || health.last_checked || null,
+        observed_at: healthMeta.observed_at,
+        health_source: healthMeta.health_source,
+        health_stale: healthMeta.health_stale,
+        last_ok: healthMeta.last_ok,
+        last_checked: healthMeta.last_checked,
         error: health.error || null,
         rate_limit_notes: surface.rate_limit_notes || null,
         source_urls: surface.source_urls || [],
@@ -584,6 +592,10 @@ export function buildEndpointResourceArtifact({
   const endpoints = surfaces.map((surface) => {
     const health = healthBySurface.get(surface.id) || {};
     const monitored = surface.probe?.enabled === true && surface.public_safe;
+    const healthMeta = endpointHealthMetadata({
+      health,
+      monitored,
+    });
     const scoreBreakdown = endpointScoreBreakdown({
       ...surface,
       ...health,
@@ -629,11 +641,13 @@ export function buildEndpointResourceArtifact({
         ? health.classification || "unknown"
         : "unknown",
       latency_ms: monitored ? (health.latency_ms ?? null) : null,
+      observed_at: healthMeta.observed_at,
+      health_source: healthMeta.health_source,
+      health_stale: healthMeta.health_stale,
       score: scoreBreakdown.score,
       score_reasons: scoreBreakdown.reasons,
-      last_checked: monitored
-        ? health.verified_at || health.last_checked || null
-        : null,
+      last_ok: healthMeta.last_ok,
+      last_checked: healthMeta.last_checked,
       error: monitored ? health.error || null : null,
       rate_limit_notes: surface.rate_limit_notes || null,
       source_urls: surface.source_urls || [],
@@ -776,14 +790,18 @@ function endpointPool(id, kind, endpoints) {
       id: endpoint.id,
       kind: endpoint.kind,
       layer: endpoint.layer || endpointLayer(endpoint.kind),
+      health_source: endpoint.health_source || "missing-probe",
+      health_stale: endpoint.health_stale ?? endpoint.status !== "ok",
       latency_ms: endpoint.latency_ms,
       latest_block: endpoint.latest_block,
+      observed_at: endpoint.observed_at || endpoint.last_checked || null,
       pool_eligible: endpoint.pool_eligible,
       provider: endpoint.provider,
       score: endpoint.score,
       score_reasons: endpoint.score_reasons || [],
       status: endpoint.status,
       url: endpoint.url,
+      last_ok: endpoint.last_ok || null,
       pool_eligibility_reasons: endpoint.pool_eligibility_reasons || [],
     })),
   };
@@ -817,10 +835,14 @@ export function buildEndpointIncidentArtifact({
         operator: endpoint.operator,
         status: endpoint.status,
         classification: endpoint.classification,
+        observed_at: endpoint.observed_at || endpoint.last_checked || null,
+        health_source: endpoint.health_source || "probe-derived",
+        health_stale: endpoint.health_stale ?? endpoint.status !== "ok",
         severity,
         state: "active",
         reason,
         detected_at: endpoint.last_checked || generatedAt,
+        last_ok: endpoint.last_ok || null,
         last_checked: endpoint.last_checked,
         pool_eligible: false,
         user_reported: false,
@@ -874,6 +896,29 @@ function endpointLayer(kind) {
     return "data-provider";
   }
   return "docs-provider";
+}
+
+function endpointHealthMetadata({ health, monitored }) {
+  if (!monitored) {
+    return {
+      observed_at: null,
+      health_source: "not-monitored",
+      health_stale: false,
+      last_checked: null,
+      last_ok: null,
+    };
+  }
+
+  const observedAt = health.verified_at || health.last_checked || null;
+  const lastOk = health.last_ok || (health.status === "ok" ? observedAt : null);
+
+  return {
+    observed_at: observedAt,
+    health_source: observedAt ? "probe-derived" : "missing-probe",
+    health_stale: observedAt === null,
+    last_checked: observedAt,
+    last_ok: lastOk,
+  };
 }
 
 function isBaseLayerEndpoint(kind) {

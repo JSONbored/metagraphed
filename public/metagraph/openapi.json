@@ -993,6 +993,16 @@
           "endpoint_id": {
             "type": "string"
           },
+          "health_source": {
+            "enum": [
+              "probe-derived",
+              "missing-probe",
+              "not-monitored"
+            ]
+          },
+          "health_stale": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string"
           },
@@ -1005,12 +1015,24 @@
               "null"
             ]
           },
+          "last_ok": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "layer": {
             "$ref": "#/components/schemas/EndpointLayer"
           },
           "netuid": {
             "minimum": 0,
             "type": "integer"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "operator": {
             "type": "string"
@@ -1071,6 +1093,10 @@
           "state",
           "reason",
           "detected_at",
+          "observed_at",
+          "health_source",
+          "health_stale",
+          "last_ok",
           "last_checked",
           "pool_eligible",
           "user_reported",
@@ -1272,6 +1298,16 @@
               "null"
             ]
           },
+          "health_source": {
+            "enum": [
+              "probe-derived",
+              "missing-probe",
+              "not-monitored"
+            ]
+          },
+          "health_stale": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string"
           },
@@ -1279,6 +1315,12 @@
             "$ref": "#/components/schemas/SurfaceKind"
           },
           "last_checked": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_ok": {
             "type": [
               "string",
               "null"
@@ -1341,6 +1383,12 @@
           },
           "network": {
             "const": "finney"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "operator": {
             "type": "string"
@@ -1425,6 +1473,10 @@
           "monitoring_status",
           "publication_state",
           "pool_eligible",
+          "observed_at",
+          "health_source",
+          "health_stale",
+          "last_ok",
           "status",
           "score"
         ],
@@ -3058,6 +3110,16 @@
               "null"
             ]
           },
+          "health_source": {
+            "enum": [
+              "probe-derived",
+              "missing-probe",
+              "not-monitored"
+            ]
+          },
+          "health_stale": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string"
           },
@@ -3068,6 +3130,12 @@
             ]
           },
           "last_checked": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_ok": {
             "type": [
               "string",
               "null"
@@ -3116,6 +3184,12 @@
           "network": {
             "const": "finney"
           },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "provider": {
             "type": "string"
           },
@@ -3163,6 +3237,10 @@
           "provider",
           "status",
           "classification",
+          "observed_at",
+          "health_source",
+          "health_stale",
+          "last_ok",
           "network",
           "chain"
         ],
@@ -3243,11 +3321,27 @@
               "null"
             ]
           },
+          "health_source": {
+            "enum": [
+              "probe-derived",
+              "missing-probe",
+              "not-monitored"
+            ]
+          },
+          "health_stale": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string"
           },
           "kind": {
             "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "last_ok": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "latency_ms": {
             "minimum": 0,
@@ -3265,6 +3359,12 @@
           },
           "layer": {
             "$ref": "#/components/schemas/EndpointLayer"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "pool_eligibility_reasons": {
             "items": {
@@ -3301,6 +3401,10 @@
           "provider",
           "status",
           "score",
+          "observed_at",
+          "health_source",
+          "health_stale",
+          "last_ok",
           "pool_eligible"
         ],
         "type": "object"

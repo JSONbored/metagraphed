@@ -45,6 +45,16 @@ const DENIED_RPC_PREFIXES = [
 const MAX_RPC_BODY_BYTES = 65536;
 const METAGRAPH_LATEST_KEY = "metagraph:latest";
 const STATIC_RAW_ARTIFACT_PATHS = new Set(["/metagraph/metagraph/latest.json"]);
+const R2_PREFERRED_DUAL_ARTIFACT_PATHS = new Set([
+  "/metagraph/endpoint-incidents.json",
+  "/metagraph/endpoint-pools.json",
+  "/metagraph/endpoints.json",
+  "/metagraph/freshness.json",
+  "/metagraph/health/summary.json",
+  "/metagraph/rpc/pools.json",
+  "/metagraph/rpc-endpoints.json",
+  "/metagraph/source-health.json",
+]);
 const TRUSTED_RPC_UPSTREAM_ORIGINS = new Set([
   "https://bittensor-finney.api.onfinality.io",
   "https://bittensor-public.nodies.app",
@@ -380,6 +390,23 @@ async function readArtifact(env, artifactPath) {
       return r2;
     }
     return readAsset(env, artifactPath, storageTier);
+  }
+
+  if (
+    storageTier === ARTIFACT_STORAGE_TIERS.dual &&
+    R2_PREFERRED_DUAL_ARTIFACT_PATHS.has(artifactPath)
+  ) {
+    const r2 = await readR2(env, artifactPath, storageTier);
+    if (r2.ok) {
+      return r2;
+    }
+
+    const asset = await readAsset(env, artifactPath, storageTier);
+    if (asset.ok) {
+      return asset;
+    }
+
+    return r2.status !== 404 ? r2 : asset;
   }
 
   const asset = await readAsset(env, artifactPath, storageTier);

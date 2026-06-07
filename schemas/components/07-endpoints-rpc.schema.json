@@ -14,6 +14,10 @@
           "provider",
           "status",
           "classification",
+          "observed_at",
+          "health_source",
+          "health_stale",
+          "last_ok",
           "network",
           "chain"
         ],
@@ -65,6 +69,18 @@
           "latency_ms": {
             "type": ["integer", "null"],
             "minimum": 0
+          },
+          "observed_at": {
+            "type": ["string", "null"]
+          },
+          "health_source": {
+            "enum": ["probe-derived", "missing-probe", "not-monitored"]
+          },
+          "health_stale": {
+            "type": "boolean"
+          },
+          "last_ok": {
+            "type": ["string", "null"]
           },
           "latest_block": {
             "type": ["integer", "null"],
@@ -162,6 +178,10 @@
           "provider",
           "status",
           "score",
+          "observed_at",
+          "health_source",
+          "health_stale",
+          "last_ok",
           "pool_eligible"
         ],
         "properties": {
@@ -208,6 +228,18 @@
           "latency_ms": {
             "type": ["integer", "null"],
             "minimum": 0
+          },
+          "observed_at": {
+            "type": ["string", "null"]
+          },
+          "health_source": {
+            "enum": ["probe-derived", "missing-probe", "not-monitored"]
+          },
+          "health_stale": {
+            "type": "boolean"
+          },
+          "last_ok": {
+            "type": ["string", "null"]
           },
           "latest_block": {
             "type": ["integer", "null"],
@@ -256,6 +288,10 @@
           "monitoring_status",
           "publication_state",
           "pool_eligible",
+          "observed_at",
+          "health_source",
+          "health_stale",
+          "last_ok",
           "status",
           "score"
         ],
@@ -368,6 +404,15 @@
             "type": ["integer", "null"],
             "minimum": 0
           },
+          "observed_at": {
+            "type": ["string", "null"]
+          },
+          "health_source": {
+            "enum": ["probe-derived", "missing-probe", "not-monitored"]
+          },
+          "health_stale": {
+            "type": "boolean"
+          },
           "score": {
             "type": "integer",
             "minimum": 0
@@ -379,6 +424,9 @@
             }
           },
           "last_checked": {
+            "type": ["string", "null"]
+          },
+          "last_ok": {
             "type": ["string", "null"]
           },
           "error": {
@@ -477,6 +525,10 @@
           "state",
           "reason",
           "detected_at",
+          "observed_at",
+          "health_source",
+          "health_stale",
+          "last_ok",
           "last_checked",
           "pool_eligible",
           "user_reported",
@@ -531,6 +583,18 @@
           },
           "detected_at": {
             "type": "string"
+          },
+          "observed_at": {
+            "type": ["string", "null"]
+          },
+          "health_source": {
+            "enum": ["probe-derived", "missing-probe", "not-monitored"]
+          },
+          "health_stale": {
+            "type": "boolean"
+          },
+          "last_ok": {
+            "type": ["string", "null"]
           },
           "last_checked": {
             "type": ["string", "null"]

@@ -311,6 +311,91 @@ describe("Worker runtime", () => {
     assert.equal((await r2Miss.json()).error.code, "artifact_not_found");
   });
 
+  test("prefers R2 for operational dual artifacts with static fallback", async () => {
+    const r2KeysRequested = [];
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/endpoints"),
+      {
+        ASSETS: {
+          async fetch() {
+            return Response.json({
+              schema_version: 1,
+              generated_at: "1970-01-01T00:00:00.000Z",
+              endpoints: [
+                {
+                  id: "endpoint-static",
+                  status: "unknown",
+                  provider: "static",
+                },
+              ],
+            });
+          },
+        },
+        METAGRAPH_ARCHIVE: {
+          async get(key) {
+            r2KeysRequested.push(key);
+            assert.equal(key, "latest/endpoints.json");
+            return {
+              async json() {
+                return {
+                  schema_version: 1,
+                  generated_at: "1970-01-01T00:00:00.000Z",
+                  endpoints: [
+                    {
+                      id: "endpoint-r2",
+                      status: "ok",
+                      provider: "r2",
+                    },
+                  ],
+                };
+              },
+            };
+          },
+        },
+      },
+      {},
+    );
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.meta.source, "r2");
+    assert.deepEqual(r2KeysRequested, ["latest/endpoints.json"]);
+    assert.equal(body.data.endpoints[0].id, "endpoint-r2");
+    assert.equal(body.data.endpoints[0].status, "ok");
+
+    const fallback = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/endpoints"),
+      {
+        ASSETS: {
+          async fetch() {
+            return Response.json({
+              schema_version: 1,
+              generated_at: "1970-01-01T00:00:00.000Z",
+              endpoints: [
+                {
+                  id: "endpoint-static",
+                  status: "unknown",
+                  provider: "static",
+                },
+              ],
+            });
+          },
+        },
+        METAGRAPH_ARCHIVE: {
+          async get() {
+            return null;
+          },
+        },
+      },
+      {},
+    );
+
+    assert.equal(fallback.status, 200);
+    const fallbackBody = await fallback.json();
+    assert.equal(fallbackBody.meta.source, "static-assets");
+    assert.equal(fallbackBody.data.endpoints[0].id, "endpoint-static");
+  });
+
   test("keeps RPC proxy disabled and blocks unsafe methods", async () => {
     const wrongMethod = await handleRequest(
       new Request("https://metagraph.sh/rpc/v1/finney", { method: "GET" }),
@@ -629,6 +714,37 @@ describe("Worker runtime", () => {
     };
 
     try {
+      const rpcPoolArtifact = {
+        schema_version: 1,
+        contract_version: "2026-06-06.1",
+        generated_at: "1970-01-01T00:00:00.000Z",
+        pools: [
+          {
+            id: "finney-rpc",
+            endpoints: [
+              {
+                id: "fixture-rpc",
+                pool_eligible: true,
+                provider: "fixture",
+                status: "ok",
+                url: "https://bittensor-finney.api.onfinality.io/public",
+              },
+            ],
+          },
+          {
+            id: "finney-wss",
+            endpoints: [
+              {
+                id: "fixture-wss",
+                pool_eligible: true,
+                provider: "fixture",
+                status: "ok",
+                url: "wss://lite.chain.opentensor.ai:443",
+              },
+            ],
+          },
+        ],
+      };
       const proxyEnv = {
         ...env,
         METAGRAPH_ENABLE_RPC_PROXY: "true",
@@ -636,45 +752,19 @@ describe("Worker runtime", () => {
           async fetch(request) {
             const url = new URL(request.url);
             if (url.pathname === "/metagraph/rpc/pools.json") {
-              return new Response(
-                JSON.stringify({
-                  schema_version: 1,
-                  contract_version: "2026-06-06.1",
-                  generated_at: "1970-01-01T00:00:00.000Z",
-                  pools: [
-                    {
-                      id: "finney-rpc",
-                      endpoints: [
-                        {
-                          id: "fixture-rpc",
-                          pool_eligible: true,
-                          provider: "fixture",
-                          status: "ok",
-                          url: "https://bittensor-finney.api.onfinality.io/public",
-                        },
-                      ],
-                    },
-                    {
-                      id: "finney-wss",
-                      endpoints: [
-                        {
-                          id: "fixture-wss",
-                          pool_eligible: true,
-                          provider: "fixture",
-                          status: "ok",
-                          url: "wss://lite.chain.opentensor.ai:443",
-                        },
-                      ],
-                    },
-                  ],
-                }),
-                {
-                  status: 200,
-                  headers: { "content-type": "application/json" },
-                },
-              );
+              return Response.json(rpcPoolArtifact);
             }
             return env.ASSETS.fetch(request);
+          },
+        },
+        METAGRAPH_ARCHIVE: {
+          async get(key) {
+            assert.equal(key, "latest/rpc/pools.json");
+            return {
+              async json() {
+                return rpcPoolArtifact;
+              },
+            };
           },
         },
       };

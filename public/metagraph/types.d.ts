@@ -810,11 +810,16 @@ export interface components {
             classification: components["schemas"]["Classification"];
             detected_at: string;
             endpoint_id: string;
+            /** @enum {unknown} */
+            health_source: "probe-derived" | "missing-probe" | "not-monitored";
+            health_stale: boolean;
             id: string;
             kind: components["schemas"]["SurfaceKind"];
             last_checked: string | null;
+            last_ok: string | null;
             layer: components["schemas"]["EndpointLayer"];
             netuid: number;
+            observed_at: string | null;
             operator: string;
             pool_eligible: boolean;
             provider: string;
@@ -877,9 +882,13 @@ export interface components {
             chain?: "bittensor";
             classification?: components["schemas"]["Classification"];
             error?: string | null;
+            /** @enum {unknown} */
+            health_source: "probe-derived" | "missing-probe" | "not-monitored";
+            health_stale: boolean;
             id: string;
             kind: components["schemas"]["SurfaceKind"];
             last_checked?: string | null;
+            last_ok: string | null;
             latency_ms?: number | null;
             latest_block?: number | null;
             layer: components["schemas"]["EndpointLayer"];
@@ -893,6 +902,7 @@ export interface components {
             netuid: number;
             /** @constant */
             network?: "finney";
+            observed_at: string | null;
             operator: string;
             pool_eligibility_reasons?: string[];
             pool_eligible: boolean;
@@ -1317,10 +1327,14 @@ export interface components {
             chain: "bittensor";
             classification: components["schemas"]["Classification"];
             error?: string | null;
+            /** @enum {unknown} */
+            health_source: "probe-derived" | "missing-probe" | "not-monitored";
+            health_stale: boolean;
             id: string;
             /** @enum {unknown} */
             kind: "subtensor-rpc" | "subtensor-wss";
             last_checked?: string | null;
+            last_ok: string | null;
             latency_ms?: number | null;
             latest_block?: number | null;
             method_tested?: string;
@@ -1330,6 +1344,7 @@ export interface components {
             netuid?: number;
             /** @constant */
             network: "finney";
+            observed_at: string | null;
             provider: string;
             public_safe?: boolean;
             rate_limit_notes?: string | null;
@@ -1359,11 +1374,16 @@ export interface components {
         };
         RpcPoolEndpoint: {
             archive_support?: boolean | null;
+            /** @enum {unknown} */
+            health_source: "probe-derived" | "missing-probe" | "not-monitored";
+            health_stale: boolean;
             id: string;
             kind?: components["schemas"]["SurfaceKind"];
+            last_ok: string | null;
             latency_ms?: number | null;
             latest_block?: number | null;
             layer?: components["schemas"]["EndpointLayer"];
+            observed_at: string | null;
             pool_eligibility_reasons?: string[];
             pool_eligible: boolean;
             provider: string;
