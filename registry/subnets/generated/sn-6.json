@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T10:43:25.067Z"
+    "verified_at": null
   },
   "dashboard_url": "https://app.hex.tech/1644b22a-abe5-4113-9d5f-3ad05e4a8de7/app/Numinous-031erYRYSssIrH3W3KcyHg/latest",
   "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
@@ -53,20 +53,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/6",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json"
       ],
-      "url": "https://github.com/numinouslabs/numinous",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/numinouslabs/numinous",
-        "homepage": null,
-        "last_push_at": "2026-06-05T09:27:27Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:25.063Z"
-      }
+      "url": "https://github.com/numinouslabs/numinous"
     },
     {
       "auth_required": false,
@@ -95,17 +82,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/6"
       ],
-      "url": "https://numinouslabs.io/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html",
-        "latency_ms": 125,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:25.067Z"
-      }
+      "url": "https://numinouslabs.io/"
     },
     {
       "auth_required": false,
@@ -113,7 +90,7 @@
       "id": "sn-6-taopedia-article",
       "kind": "docs",
       "name": "Numinous Taopedia article",
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -134,17 +111,7 @@
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx"
       ],
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 485,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:25.067Z"
-      }
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx"
     },
     {
       "auth_required": false,
@@ -173,17 +140,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/6",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 698,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:25.067Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/6"
     },
     {
       "auth_required": false,
@@ -191,7 +148,7 @@
       "id": "sn-6-github-readme-numinouslabs-numinous-dashboard-1",
       "kind": "dashboard",
       "name": "Numinous dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -212,17 +169,7 @@
       "source_urls": [
         "https://github.com/numinouslabs/numinous/blob/main/README.md"
       ],
-      "url": "https://app.hex.tech/1644b22a-abe5-4113-9d5f-3ad05e4a8de7/app/Numinous-031erYRYSssIrH3W3KcyHg/latest",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 233,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:24.923Z"
-      }
+      "url": "https://app.hex.tech/1644b22a-abe5-4113-9d5f-3ad05e4a8de7/app/Numinous-031erYRYSssIrH3W3KcyHg/latest"
     },
     {
       "auth_required": false,
@@ -230,7 +177,7 @@
       "id": "sn-6-github-readme-numinouslabs-numinous-dashboard-2",
       "kind": "dashboard",
       "name": "Numinous dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -251,17 +198,7 @@
       "source_urls": [
         "https://github.com/numinouslabs/numinous/blob/main/README.md"
       ],
-      "url": "https://taostats.io/subnets/6/chart",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 261,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:24.978Z"
-      }
+      "url": "https://taostats.io/subnets/6/chart"
     },
     {
       "auth_required": false,
@@ -290,17 +227,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/6"
       ],
-      "url": "https://taomarketcap.com/subnets/6",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 150,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:25.055Z"
-      }
+      "url": "https://taomarketcap.com/subnets/6"
     }
   ],
   "website_url": "https://numinouslabs.io/"

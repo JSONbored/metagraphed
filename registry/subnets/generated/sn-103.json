@@ -12,8 +12,8 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 4,
-    "verified_at": "2026-06-07T10:43:50.467Z"
+    "source_count": 5,
+    "verified_at": null
   },
   "dashboard_url": "https://taomarketcap.com/subnets/103",
   "docs_url": "https://docs.astral.sh/uv",
@@ -42,30 +42,18 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/103"
       ],
-      "url": "https://github.com/Djinn-Inc/djinn",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/Djinn-Inc/djinn",
-        "homepage": "https://djinn-tau.vercel.app/",
-        "last_push_at": "2026-06-07T10:13:17Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:50.389Z"
-      }
+      "url": "https://github.com/Djinn-Inc/djinn"
     },
     {
       "auth_required": false,
@@ -94,17 +82,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/103"
       ],
-      "url": "https://djinn.gg/",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 72,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 324,
-        "method_tested": "HEAD",
-        "redirect_target": "https://www.djinn.gg/",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:50.409Z"
-      }
+      "url": "https://djinn.gg/"
     },
     {
       "auth_required": false,
@@ -112,7 +90,7 @@
       "id": "sn-103-github-readme-djinn-inc-djinn-docs-1",
       "kind": "docs",
       "name": "Djinn docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -133,17 +111,36 @@
       "source_urls": [
         "https://github.com/Djinn-Inc/djinn/blob/main/README.md"
       ],
-      "url": "https://docs.astral.sh/uv",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 61,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 58,
-        "method_tested": "HEAD",
-        "redirect_target": "https://docs.astral.sh/uv/",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:50.345Z"
-      }
+      "url": "https://docs.astral.sh/uv"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-103-taopedia-article",
+      "kind": "docs",
+      "name": "Djinn Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_103/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_103/index.mdx"
     },
     {
       "auth_required": false,
@@ -172,17 +169,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/103/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/103",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 408,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:50.413Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/103"
     },
     {
       "auth_required": false,
@@ -190,7 +177,7 @@
       "id": "sn-103-website-common-docs",
       "kind": "docs",
       "name": "Djinn docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -211,17 +198,7 @@
       "source_urls": [
         "https://djinn.gg/"
       ],
-      "url": "https://djinn.gg/docs",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 71,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 337,
-        "method_tested": "HEAD",
-        "redirect_target": "https://www.djinn.gg/docs",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:50.417Z"
-      }
+      "url": "https://djinn.gg/docs"
     },
     {
       "auth_required": false,
@@ -250,17 +227,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/103"
       ],
-      "url": "https://taomarketcap.com/subnets/103",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 131,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:50.384Z"
-      }
+      "url": "https://taomarketcap.com/subnets/103"
     },
     {
       "auth_required": false,
@@ -268,7 +235,7 @@
       "id": "sn-103-website-link-djinn-gg-dashboard-4",
       "kind": "dashboard",
       "name": "Djinn dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -289,17 +256,7 @@
       "source_urls": [
         "https://djinn.gg/"
       ],
-      "url": "https://djinn.gg/leaderboard",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 71,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 311,
-        "method_tested": "HEAD",
-        "redirect_target": "https://www.djinn.gg/leaderboard",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:50.467Z"
-      }
+      "url": "https://djinn.gg/leaderboard"
     }
   ],
   "website_url": "https://djinn.gg/"

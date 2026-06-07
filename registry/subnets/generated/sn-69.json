@@ -14,11 +14,11 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 2,
-    "verified_at": "2026-06-07T10:43:40.847Z"
+    "source_count": 3,
+    "verified_at": null
   },
   "dashboard_url": "https://taomarketcap.com/subnets/69",
-  "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/69",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_69/index.mdx",
   "links": [],
   "name": "ain",
   "netuid": 69,
@@ -27,6 +27,35 @@
   "slug": "sn-69",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-69-taopedia-article",
+      "kind": "docs",
+      "name": "ain Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_69/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_69/index.mdx"
+    },
     {
       "auth_required": false,
       "authority": "registry-observed",
@@ -54,17 +83,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/69/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/69",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 319,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:40.847Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/69"
     },
     {
       "auth_required": false,
@@ -93,17 +112,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/69"
       ],
-      "url": "https://taomarketcap.com/subnets/69",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 159,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:40.824Z"
-      }
+      "url": "https://taomarketcap.com/subnets/69"
     }
   ]
 }

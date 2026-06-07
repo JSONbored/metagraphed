@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T10:43:24.609Z"
+    "verified_at": null
   },
   "dashboard_url": "https://taomarketcap.com/subnets/4",
   "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_4/index.mdx",
@@ -53,20 +53,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/4",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/4/subnet.json"
       ],
-      "url": "https://github.com/manifold-inc/targon",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/manifold-inc/targon",
-        "homepage": null,
-        "last_push_at": "2026-06-05T20:39:53Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:24.344Z"
-      }
+      "url": "https://github.com/manifold-inc/targon"
     },
     {
       "auth_required": false,
@@ -95,17 +82,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/4"
       ],
-      "url": "https://targon.com/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 138,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:24.352Z"
-      }
+      "url": "https://targon.com/"
     },
     {
       "auth_required": false,
@@ -113,7 +90,7 @@
       "id": "sn-4-taopedia-article",
       "kind": "docs",
       "name": "Targon Taopedia article",
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -134,17 +111,7 @@
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_4/index.mdx"
       ],
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_4/index.mdx",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 478,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:24.362Z"
-      }
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_4/index.mdx"
     },
     {
       "auth_required": false,
@@ -173,17 +140,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/4/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/4",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 493,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:24.369Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/4"
     },
     {
       "auth_required": false,
@@ -212,17 +169,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/4/subnet.json"
       ],
-      "url": "https://github.com/manifold-inc/targon",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 785,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:24.370Z"
-      }
+      "url": "https://github.com/manifold-inc/targon"
     },
     {
       "auth_required": false,
@@ -230,7 +177,7 @@
       "id": "sn-4-website-link-targon-com-docs-4",
       "kind": "docs",
       "name": "Targon docs",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -251,17 +198,7 @@
       "source_urls": [
         "https://targon.com/"
       ],
-      "url": "https://docs.targon.com/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 161,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:24.609Z"
-      }
+      "url": "https://docs.targon.com/"
     },
     {
       "auth_required": false,
@@ -290,17 +227,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/4"
       ],
-      "url": "https://taomarketcap.com/subnets/4",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 267,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:24.339Z"
-      }
+      "url": "https://taomarketcap.com/subnets/4"
     },
     {
       "auth_required": false,
@@ -308,7 +235,7 @@
       "id": "sn-4-website-link-targon-com-dashboard-6",
       "kind": "dashboard",
       "name": "Targon dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -329,17 +256,7 @@
       "source_urls": [
         "https://targon.com/"
       ],
-      "url": "https://targon.com/dashboard",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 71,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 154,
-        "method_tested": "HEAD",
-        "redirect_target": "https://targon.com/sign-in",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:24.595Z"
-      }
+      "url": "https://targon.com/dashboard"
     }
   ],
   "website_url": "https://targon.com/"

@@ -3,12 +3,12 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "global": {
     "classification_counts": {
-      "unknown": 750
+      "unknown": 852
     },
     "status_counts": {
-      "unknown": 750
+      "unknown": 852
     },
-    "surface_count": 750
+    "surface_count": 852
   },
   "schema_version": 1,
   "source": "artifact-build",
@@ -66,8 +66,8 @@
       "ok_count": 0,
       "slug": "sn-3",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -164,8 +164,8 @@
       "ok_count": 0,
       "slug": "sn-10",
       "status": "unknown",
-      "surface_count": 4,
-      "unknown_count": 4
+      "surface_count": 5,
+      "unknown_count": 5
     },
     {
       "avg_latency_ms": null,
@@ -178,8 +178,8 @@
       "ok_count": 0,
       "slug": "sn-11",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -192,8 +192,8 @@
       "ok_count": 0,
       "slug": "sn-12",
       "status": "unknown",
-      "surface_count": 4,
-      "unknown_count": 4
+      "surface_count": 5,
+      "unknown_count": 5
     },
     {
       "avg_latency_ms": null,
@@ -248,8 +248,8 @@
       "ok_count": 0,
       "slug": "sn-16",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -262,8 +262,8 @@
       "ok_count": 0,
       "slug": "sn-17",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -276,8 +276,8 @@
       "ok_count": 0,
       "slug": "sn-18",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -304,8 +304,8 @@
       "ok_count": 0,
       "slug": "sn-20",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -318,8 +318,8 @@
       "ok_count": 0,
       "slug": "sn-21",
       "status": "unknown",
-      "surface_count": 4,
-      "unknown_count": 4
+      "surface_count": 5,
+      "unknown_count": 5
     },
     {
       "avg_latency_ms": null,
@@ -332,8 +332,8 @@
       "ok_count": 0,
       "slug": "sn-22",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -360,8 +360,8 @@
       "ok_count": 0,
       "slug": "sn-24",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -374,8 +374,8 @@
       "ok_count": 0,
       "slug": "sn-25",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -388,8 +388,8 @@
       "ok_count": 0,
       "slug": "sn-26",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -402,8 +402,8 @@
       "ok_count": 0,
       "slug": "sn-27",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -416,8 +416,8 @@
       "ok_count": 0,
       "slug": "sn-28",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -430,8 +430,8 @@
       "ok_count": 0,
       "slug": "sn-29",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -444,8 +444,8 @@
       "ok_count": 0,
       "slug": "sn-30",
       "status": "unknown",
-      "surface_count": 4,
-      "unknown_count": 4
+      "surface_count": 5,
+      "unknown_count": 5
     },
     {
       "avg_latency_ms": null,
@@ -458,8 +458,8 @@
       "ok_count": 0,
       "slug": "sn-31",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -472,8 +472,8 @@
       "ok_count": 0,
       "slug": "sn-32",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 6,
+      "unknown_count": 6
     },
     {
       "avg_latency_ms": null,
@@ -500,8 +500,8 @@
       "ok_count": 0,
       "slug": "sn-34",
       "status": "unknown",
-      "surface_count": 4,
-      "unknown_count": 4
+      "surface_count": 5,
+      "unknown_count": 5
     },
     {
       "avg_latency_ms": null,
@@ -514,8 +514,8 @@
       "ok_count": 0,
       "slug": "sn-35",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -528,8 +528,8 @@
       "ok_count": 0,
       "slug": "sn-36",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -542,8 +542,8 @@
       "ok_count": 0,
       "slug": "sn-37",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -556,8 +556,8 @@
       "ok_count": 0,
       "slug": "sn-38",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -570,8 +570,8 @@
       "ok_count": 0,
       "slug": "sn-39",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -584,8 +584,8 @@
       "ok_count": 0,
       "slug": "sn-40",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -612,8 +612,8 @@
       "ok_count": 0,
       "slug": "sn-42",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -626,8 +626,8 @@
       "ok_count": 0,
       "slug": "sn-43",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -640,8 +640,8 @@
       "ok_count": 0,
       "slug": "sn-44",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 6,
+      "unknown_count": 6
     },
     {
       "avg_latency_ms": null,
@@ -668,8 +668,8 @@
       "ok_count": 0,
       "slug": "sn-46",
       "status": "unknown",
-      "surface_count": 11,
-      "unknown_count": 11
+      "surface_count": 12,
+      "unknown_count": 12
     },
     {
       "avg_latency_ms": null,
@@ -682,8 +682,8 @@
       "ok_count": 0,
       "slug": "sn-47",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -696,8 +696,8 @@
       "ok_count": 0,
       "slug": "sn-48",
       "status": "unknown",
-      "surface_count": 4,
-      "unknown_count": 4
+      "surface_count": 5,
+      "unknown_count": 5
     },
     {
       "avg_latency_ms": null,
@@ -710,8 +710,8 @@
       "ok_count": 0,
       "slug": "sn-49",
       "status": "unknown",
-      "surface_count": 4,
-      "unknown_count": 4
+      "surface_count": 5,
+      "unknown_count": 5
     },
     {
       "avg_latency_ms": null,
@@ -724,8 +724,8 @@
       "ok_count": 0,
       "slug": "sn-50",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -738,8 +738,8 @@
       "ok_count": 0,
       "slug": "sn-51",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -766,8 +766,8 @@
       "ok_count": 0,
       "slug": "sn-53",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -780,8 +780,8 @@
       "ok_count": 0,
       "slug": "sn-54",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 6,
+      "unknown_count": 6
     },
     {
       "avg_latency_ms": null,
@@ -794,8 +794,8 @@
       "ok_count": 0,
       "slug": "sn-55",
       "status": "unknown",
-      "surface_count": 4,
-      "unknown_count": 4
+      "surface_count": 5,
+      "unknown_count": 5
     },
     {
       "avg_latency_ms": null,
@@ -808,8 +808,8 @@
       "ok_count": 0,
       "slug": "sn-56",
       "status": "unknown",
-      "surface_count": 8,
-      "unknown_count": 8
+      "surface_count": 9,
+      "unknown_count": 9
     },
     {
       "avg_latency_ms": null,
@@ -822,8 +822,8 @@
       "ok_count": 0,
       "slug": "sn-57",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -836,8 +836,8 @@
       "ok_count": 0,
       "slug": "sn-58",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -850,8 +850,8 @@
       "ok_count": 0,
       "slug": "sn-59",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -878,8 +878,8 @@
       "ok_count": 0,
       "slug": "sn-61",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -892,8 +892,8 @@
       "ok_count": 0,
       "slug": "sn-62",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -906,8 +906,8 @@
       "ok_count": 0,
       "slug": "sn-63",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 6,
+      "unknown_count": 6
     },
     {
       "avg_latency_ms": null,
@@ -920,8 +920,8 @@
       "ok_count": 0,
       "slug": "sn-64",
       "status": "unknown",
-      "surface_count": 11,
-      "unknown_count": 11
+      "surface_count": 12,
+      "unknown_count": 12
     },
     {
       "avg_latency_ms": null,
@@ -948,8 +948,8 @@
       "ok_count": 0,
       "slug": "sn-66",
       "status": "unknown",
-      "surface_count": 9,
-      "unknown_count": 9
+      "surface_count": 10,
+      "unknown_count": 10
     },
     {
       "avg_latency_ms": null,
@@ -962,8 +962,8 @@
       "ok_count": 0,
       "slug": "sn-67",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -976,8 +976,8 @@
       "ok_count": 0,
       "slug": "sn-68",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -990,8 +990,8 @@
       "ok_count": 0,
       "slug": "sn-69",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -1004,8 +1004,8 @@
       "ok_count": 0,
       "slug": "sn-70",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -1018,8 +1018,8 @@
       "ok_count": 0,
       "slug": "sn-71",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -1032,8 +1032,8 @@
       "ok_count": 0,
       "slug": "sn-72",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -1046,8 +1046,8 @@
       "ok_count": 0,
       "slug": "sn-73",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -1074,8 +1074,8 @@
       "ok_count": 0,
       "slug": "sn-75",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -1088,8 +1088,8 @@
       "ok_count": 0,
       "slug": "sn-76",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -1102,8 +1102,8 @@
       "ok_count": 0,
       "slug": "sn-77",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -1116,8 +1116,8 @@
       "ok_count": 0,
       "slug": "sn-78",
       "status": "unknown",
-      "surface_count": 8,
-      "unknown_count": 8
+      "surface_count": 9,
+      "unknown_count": 9
     },
     {
       "avg_latency_ms": null,
@@ -1130,8 +1130,8 @@
       "ok_count": 0,
       "slug": "sn-79",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 6,
+      "unknown_count": 6
     },
     {
       "avg_latency_ms": null,
@@ -1158,8 +1158,8 @@
       "ok_count": 0,
       "slug": "sn-81",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -1172,8 +1172,8 @@
       "ok_count": 0,
       "slug": "sn-82",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -1186,8 +1186,8 @@
       "ok_count": 0,
       "slug": "sn-83",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -1200,8 +1200,8 @@
       "ok_count": 0,
       "slug": "sn-84",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 6,
+      "unknown_count": 6
     },
     {
       "avg_latency_ms": null,
@@ -1214,8 +1214,8 @@
       "ok_count": 0,
       "slug": "sn-85",
       "status": "unknown",
-      "surface_count": 9,
-      "unknown_count": 9
+      "surface_count": 10,
+      "unknown_count": 10
     },
     {
       "avg_latency_ms": null,
@@ -1223,13 +1223,13 @@
       "failed_count": 0,
       "last_checked": null,
       "last_ok": null,
-      "name": "⚒",
+      "name": "Subnet 86",
       "netuid": 86,
       "ok_count": 0,
       "slug": "sn-86",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -1242,8 +1242,8 @@
       "ok_count": 0,
       "slug": "sn-87",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -1256,8 +1256,8 @@
       "ok_count": 0,
       "slug": "sn-88",
       "status": "unknown",
-      "surface_count": 8,
-      "unknown_count": 8
+      "surface_count": 9,
+      "unknown_count": 9
     },
     {
       "avg_latency_ms": null,
@@ -1284,8 +1284,8 @@
       "ok_count": 0,
       "slug": "sn-90",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -1298,8 +1298,8 @@
       "ok_count": 0,
       "slug": "sn-91",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -1312,8 +1312,8 @@
       "ok_count": 0,
       "slug": "sn-92",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -1326,8 +1326,8 @@
       "ok_count": 0,
       "slug": "sn-93",
       "status": "unknown",
-      "surface_count": 8,
-      "unknown_count": 8
+      "surface_count": 9,
+      "unknown_count": 9
     },
     {
       "avg_latency_ms": null,
@@ -1340,8 +1340,8 @@
       "ok_count": 0,
       "slug": "sn-94",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -1354,8 +1354,8 @@
       "ok_count": 0,
       "slug": "sn-95",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 6,
+      "unknown_count": 6
     },
     {
       "avg_latency_ms": null,
@@ -1368,8 +1368,8 @@
       "ok_count": 0,
       "slug": "sn-96",
       "status": "unknown",
-      "surface_count": 9,
-      "unknown_count": 9
+      "surface_count": 10,
+      "unknown_count": 10
     },
     {
       "avg_latency_ms": null,
@@ -1396,8 +1396,8 @@
       "ok_count": 0,
       "slug": "sn-98",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -1424,8 +1424,8 @@
       "ok_count": 0,
       "slug": "sn-100",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -1438,8 +1438,8 @@
       "ok_count": 0,
       "slug": "sn-101",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -1466,8 +1466,8 @@
       "ok_count": 0,
       "slug": "sn-103",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -1480,8 +1480,8 @@
       "ok_count": 0,
       "slug": "sn-104",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -1494,8 +1494,8 @@
       "ok_count": 0,
       "slug": "sn-105",
       "status": "unknown",
-      "surface_count": 6,
-      "unknown_count": 6
+      "surface_count": 7,
+      "unknown_count": 7
     },
     {
       "avg_latency_ms": null,
@@ -1508,8 +1508,8 @@
       "ok_count": 0,
       "slug": "sn-106",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 6,
+      "unknown_count": 6
     },
     {
       "avg_latency_ms": null,
@@ -1536,8 +1536,8 @@
       "ok_count": 0,
       "slug": "sn-108",
       "status": "unknown",
-      "surface_count": 4,
-      "unknown_count": 4
+      "surface_count": 5,
+      "unknown_count": 5
     },
     {
       "avg_latency_ms": null,
@@ -1550,8 +1550,8 @@
       "ok_count": 0,
       "slug": "sn-109",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -1564,8 +1564,8 @@
       "ok_count": 0,
       "slug": "sn-110",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -1578,8 +1578,8 @@
       "ok_count": 0,
       "slug": "sn-111",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -1592,8 +1592,8 @@
       "ok_count": 0,
       "slug": "sn-112",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 6,
+      "unknown_count": 6
     },
     {
       "avg_latency_ms": null,
@@ -1620,8 +1620,8 @@
       "ok_count": 0,
       "slug": "sn-114",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -1634,8 +1634,8 @@
       "ok_count": 0,
       "slug": "sn-115",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -1648,8 +1648,8 @@
       "ok_count": 0,
       "slug": "sn-116",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -1662,8 +1662,8 @@
       "ok_count": 0,
       "slug": "sn-117",
       "status": "unknown",
-      "surface_count": 4,
-      "unknown_count": 4
+      "surface_count": 5,
+      "unknown_count": 5
     },
     {
       "avg_latency_ms": null,
@@ -1690,8 +1690,8 @@
       "ok_count": 0,
       "slug": "sn-119",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -1704,8 +1704,8 @@
       "ok_count": 0,
       "slug": "sn-120",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 6,
+      "unknown_count": 6
     },
     {
       "avg_latency_ms": null,
@@ -1718,8 +1718,8 @@
       "ok_count": 0,
       "slug": "sn-121",
       "status": "unknown",
-      "surface_count": 4,
-      "unknown_count": 4
+      "surface_count": 5,
+      "unknown_count": 5
     },
     {
       "avg_latency_ms": null,
@@ -1732,8 +1732,8 @@
       "ok_count": 0,
       "slug": "sn-122",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -1746,8 +1746,8 @@
       "ok_count": 0,
       "slug": "sn-123",
       "status": "unknown",
-      "surface_count": 3,
-      "unknown_count": 3
+      "surface_count": 4,
+      "unknown_count": 4
     },
     {
       "avg_latency_ms": null,
@@ -1760,8 +1760,8 @@
       "ok_count": 0,
       "slug": "sn-124",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     },
     {
       "avg_latency_ms": null,
@@ -1774,8 +1774,8 @@
       "ok_count": 0,
       "slug": "sn-125",
       "status": "unknown",
-      "surface_count": 2,
-      "unknown_count": 2
+      "surface_count": 3,
+      "unknown_count": 3
     },
     {
       "avg_latency_ms": null,
@@ -1788,8 +1788,8 @@
       "ok_count": 0,
       "slug": "sn-126",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 6,
+      "unknown_count": 6
     },
     {
       "avg_latency_ms": null,
@@ -1802,8 +1802,8 @@
       "ok_count": 0,
       "slug": "sn-127",
       "status": "unknown",
-      "surface_count": 5,
-      "unknown_count": 5
+      "surface_count": 6,
+      "unknown_count": 6
     },
     {
       "avg_latency_ms": null,
@@ -1816,8 +1816,8 @@
       "ok_count": 0,
       "slug": "sn-128",
       "status": "unknown",
-      "surface_count": 7,
-      "unknown_count": 7
+      "surface_count": 8,
+      "unknown_count": 8
     }
   ]
 }

@@ -12,11 +12,11 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 3,
-    "verified_at": "2026-06-07T10:43:26.391Z"
+    "source_count": 4,
+    "verified_at": null
   },
   "dashboard_url": "https://taomarketcap.com/subnets/11",
-  "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/11",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx",
   "links": [],
   "name": "TrajectoryRL",
   "netuid": 11,
@@ -53,29 +53,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/11",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/11/subnet.json"
       ],
-      "url": "https://github.com/trajectoryRL/trajectoryRL",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/trajectoryRL/trajectoryRL",
-        "homepage": "https://trajrl.com/",
-        "last_push_at": "2026-06-07T02:24:34Z",
-        "redirect_target": null,
-        "topics": [
-          "agent-skills",
-          "ai-agents",
-          "bittensor",
-          "decentralized-ai",
-          "policy-optimization",
-          "reinforcement-learning",
-          "skill-factory",
-          "subnet"
-        ],
-        "verified_at": "2026-06-07T10:43:26.190Z"
-      }
+      "url": "https://github.com/trajectoryRL/trajectoryRL"
     },
     {
       "auth_required": false,
@@ -104,17 +82,36 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/11"
       ],
-      "url": "https://trajrl.com/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 332,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:26.218Z"
-      }
+      "url": "https://trajrl.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-11-taopedia-article",
+      "kind": "docs",
+      "name": "TrajectoryRL Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
     },
     {
       "auth_required": false,
@@ -143,17 +140,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/11/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/11",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 346,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:26.254Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/11"
     },
     {
       "auth_required": false,
@@ -161,7 +148,7 @@
       "id": "sn-11-website-common-docs",
       "kind": "docs",
       "name": "TrajectoryRL docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -182,17 +169,7 @@
       "source_urls": [
         "https://trajrl.com/"
       ],
-      "url": "https://trajrl.com/docs",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 326,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:26.293Z"
-      }
+      "url": "https://trajrl.com/docs"
     },
     {
       "auth_required": false,
@@ -221,17 +198,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/11"
       ],
-      "url": "https://taomarketcap.com/subnets/11",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 137,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:26.178Z"
-      }
+      "url": "https://taomarketcap.com/subnets/11"
     },
     {
       "auth_required": false,
@@ -239,7 +206,7 @@
       "id": "sn-11-website-link-trajrl-com-dashboard-3",
       "kind": "dashboard",
       "name": "TrajectoryRL dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -260,17 +227,7 @@
       "source_urls": [
         "https://trajrl.com/"
       ],
-      "url": "https://trajrl.com/leaderboard",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 320,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:26.391Z"
-      }
+      "url": "https://trajrl.com/leaderboard"
     }
   ],
   "website_url": "https://trajrl.com/"

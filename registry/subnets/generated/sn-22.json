@@ -11,11 +11,11 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 3,
-    "verified_at": "2026-06-07T10:43:29.989Z"
+    "source_count": 4,
+    "verified_at": null
   },
   "dashboard_url": "https://taomarketcap.com/subnets/22",
-  "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/22",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx",
   "links": [],
   "name": "Desearch",
   "netuid": 22,
@@ -41,31 +41,19 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/22",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json"
       ],
-      "url": "https://github.com/datura-ai/desearch",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/datura-ai/desearch",
-        "homepage": "https://desearch.ai/",
-        "last_push_at": "2026-05-29T13:00:54Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:29.955Z"
-      }
+      "url": "https://github.com/datura-ai/desearch"
     },
     {
       "auth_required": false,
@@ -94,17 +82,36 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/22"
       ],
-      "url": "https://desearch.ai/",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 72,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 312,
-        "method_tested": "HEAD",
-        "redirect_target": "https://www.desearch.ai/",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:29.955Z"
-      }
+      "url": "https://desearch.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-22-taopedia-article",
+      "kind": "docs",
+      "name": "Desearch Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx"
     },
     {
       "auth_required": false,
@@ -133,17 +140,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/22",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 315,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:29.983Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/22"
     },
     {
       "auth_required": false,
@@ -151,7 +148,7 @@
       "id": "sn-22-website-common-docs",
       "kind": "docs",
       "name": "Desearch docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -172,17 +169,7 @@
       "source_urls": [
         "https://desearch.ai/"
       ],
-      "url": "https://desearch.ai/docs",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 71,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 297,
-        "method_tested": "HEAD",
-        "redirect_target": "https://www.desearch.ai/docs",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:29.989Z"
-      }
+      "url": "https://desearch.ai/docs"
     },
     {
       "auth_required": false,
@@ -211,17 +198,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/22"
       ],
-      "url": "https://taomarketcap.com/subnets/22",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 139,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:29.925Z"
-      }
+      "url": "https://taomarketcap.com/subnets/22"
     },
     {
       "auth_required": false,
@@ -229,7 +206,7 @@
       "id": "sn-22-website-common-openapi-json",
       "kind": "openapi",
       "name": "Desearch OpenAPI JSON",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -252,17 +229,7 @@
       "source_urls": [
         "https://desearch.ai/"
       ],
-      "url": "https://desearch.ai/openapi.json",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 73,
-        "content_type": "application/json; charset=utf-8",
-        "latency_ms": 298,
-        "method_tested": "HEAD",
-        "redirect_target": "https://www.desearch.ai/openapi.json",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:29.989Z"
-      }
+      "url": "https://desearch.ai/openapi.json"
     },
     {
       "auth_required": false,
@@ -270,7 +237,7 @@
       "id": "sn-22-website-common-swagger",
       "kind": "openapi",
       "name": "Desearch Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -292,17 +259,7 @@
       "source_urls": [
         "https://desearch.ai/"
       ],
-      "url": "https://desearch.ai/swagger",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 63,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 333,
-        "method_tested": "HEAD",
-        "redirect_target": "https://www.desearch.ai/swagger",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:29.989Z"
-      }
+      "url": "https://desearch.ai/swagger"
     }
   ],
   "website_url": "https://desearch.ai/"

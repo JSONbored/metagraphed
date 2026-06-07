@@ -12,11 +12,11 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 2,
-    "verified_at": "2026-06-07T10:43:35.386Z"
+    "source_count": 3,
+    "verified_at": null
   },
   "dashboard_url": "https://taomarketcap.com/subnets/48",
-  "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/48",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_48/index.mdx",
   "links": [],
   "name": "Quantum Compute",
   "netuid": 48,
@@ -42,30 +42,18 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/48"
       ],
-      "url": "https://github.com/qbittensor-labs/quantum-compute",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/qbittensor-labs/quantum-compute",
-        "homepage": "https://www.qbittensorlabs.com/quantum",
-        "last_push_at": "2026-02-26T15:10:22Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:35.352Z"
-      }
+      "url": "https://github.com/qbittensor-labs/quantum-compute"
     },
     {
       "auth_required": false,
@@ -94,17 +82,36 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/48"
       ],
-      "url": "https://www.qbittensorlabs.com/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 259,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:35.364Z"
-      }
+      "url": "https://www.qbittensorlabs.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-48-taopedia-article",
+      "kind": "docs",
+      "name": "Quantum Compute Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_48/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_48/index.mdx"
     },
     {
       "auth_required": false,
@@ -133,17 +140,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/48/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/48",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 325,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:35.386Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/48"
     },
     {
       "auth_required": false,
@@ -172,17 +169,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/48"
       ],
-      "url": "https://taomarketcap.com/subnets/48",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 127,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:35.332Z"
-      }
+      "url": "https://taomarketcap.com/subnets/48"
     }
   ],
   "website_url": "https://www.qbittensorlabs.com/"

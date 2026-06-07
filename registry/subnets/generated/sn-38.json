@@ -4,7 +4,6 @@
   ],
   "curation": {
     "gap_notes": [
-      "No verified source repository yet.",
       "No verified subnet API surface yet.",
       "No verified SSE/event stream yet.",
       "No verified data artifact yet."
@@ -12,19 +11,50 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 3,
-    "verified_at": "2026-06-07T10:43:33.768Z"
+    "source_count": 4,
+    "verified_at": null
   },
   "dashboard_url": "https://taomarketcap.com/subnets/38",
-  "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/38",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx",
   "links": [],
   "name": "colosseum",
   "netuid": 38,
   "notes": "Machine-generated baseline overlay from verified public-source candidates.",
   "schema_version": 1,
   "slug": "sn-38",
+  "source_repo": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
   "status": "active",
   "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-38-taomarketcap-source-repo",
+      "kind": "source-repo",
+      "name": "colosseum source repository",
+      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/38",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json"
+      ],
+      "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
+    },
     {
       "auth_required": false,
       "authority": "registry-observed",
@@ -52,17 +82,36 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/38"
       ],
-      "url": "https://www.taocolosseum.com/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html",
-        "latency_ms": 183,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:33.686Z"
-      }
+      "url": "https://www.taocolosseum.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-38-taopedia-article",
+      "kind": "docs",
+      "name": "colosseum Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx"
     },
     {
       "auth_required": false,
@@ -91,17 +140,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/38",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 355,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:33.692Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/38"
     },
     {
       "auth_required": false,
@@ -109,7 +148,7 @@
       "id": "sn-38-website-common-docs",
       "kind": "docs",
       "name": "colosseum docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -130,17 +169,7 @@
       "source_urls": [
         "https://www.taocolosseum.com/"
       ],
-      "url": "https://www.taocolosseum.com/docs",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html",
-        "latency_ms": 215,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:33.696Z"
-      }
+      "url": "https://www.taocolosseum.com/docs"
     },
     {
       "auth_required": false,
@@ -169,17 +198,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/38"
       ],
-      "url": "https://taomarketcap.com/subnets/38",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 127,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:33.640Z"
-      }
+      "url": "https://taomarketcap.com/subnets/38"
     },
     {
       "auth_required": false,
@@ -187,7 +206,7 @@
       "id": "sn-38-website-common-swagger",
       "kind": "openapi",
       "name": "colosseum Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -209,17 +228,7 @@
       "source_urls": [
         "https://www.taocolosseum.com/"
       ],
-      "url": "https://www.taocolosseum.com/swagger",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 68,
-        "content_type": "text/html",
-        "latency_ms": 220,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:33.768Z"
-      }
+      "url": "https://www.taocolosseum.com/swagger"
     }
   ],
   "website_url": "https://www.taocolosseum.com/"

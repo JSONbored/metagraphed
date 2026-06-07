@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 5,
-    "verified_at": "2026-06-07T10:43:27.556Z"
+    "verified_at": null
   },
   "dashboard_url": "https://taohash.com/leaderboard",
   "docs_url": "https://cacheon.ai/docs",
@@ -52,29 +52,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/14"
       ],
-      "url": "https://github.com/latent-to/cacheon",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/latent-to/cacheon",
-        "homepage": "https://cacheon.ai/",
-        "last_push_at": "2026-06-06T21:56:30Z",
-        "redirect_target": null,
-        "topics": [
-          "ai",
-          "bittensor",
-          "bittensor-subnet",
-          "inference",
-          "inference-engine",
-          "inference-optimization",
-          "llm",
-          "tao"
-        ],
-        "verified_at": "2026-06-07T10:43:27.418Z"
-      }
+      "url": "https://github.com/latent-to/cacheon"
     },
     {
       "auth_required": false,
@@ -102,26 +80,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/14/subnet.json"
       ],
-      "url": "https://github.com/latent-to/taohash",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/latent-to/taohash",
-        "homepage": "https://taohash.com/",
-        "last_push_at": "2025-12-16T19:25:48Z",
-        "redirect_target": null,
-        "topics": [
-          "bitcoin",
-          "bittensor",
-          "hashrate",
-          "mining",
-          "proofofwork"
-        ],
-        "verified_at": "2026-06-07T10:43:27.474Z"
-      }
+      "url": "https://github.com/latent-to/taohash"
     },
     {
       "auth_required": false,
@@ -150,17 +109,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/14"
       ],
-      "url": "https://cacheon.ai/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html",
-        "latency_ms": 38,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.438Z"
-      }
+      "url": "https://cacheon.ai/"
     },
     {
       "auth_required": false,
@@ -168,7 +117,7 @@
       "id": "sn-14-github-readme-latent-to-cacheon-docs-1",
       "kind": "docs",
       "name": "Cacheon docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -187,19 +136,10 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
+        "https://cacheon.ai/",
         "https://github.com/latent-to/cacheon/blob/main/README.md"
       ],
-      "url": "https://cacheon.ai/docs",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html",
-        "latency_ms": 98,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.192Z"
-      }
+      "url": "https://cacheon.ai/docs"
     },
     {
       "auth_required": false,
@@ -207,7 +147,7 @@
       "id": "sn-14-github-readme-latent-to-cacheon-docs-10",
       "kind": "docs",
       "name": "Cacheon docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -228,17 +168,7 @@
       "source_urls": [
         "https://github.com/latent-to/cacheon/blob/main/README.md"
       ],
-      "url": "https://cacheon.ai/docs/evaluation/prompts",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html",
-        "latency_ms": 277,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.247Z"
-      }
+      "url": "https://cacheon.ai/docs/evaluation/prompts"
     },
     {
       "auth_required": false,
@@ -246,7 +176,7 @@
       "id": "sn-14-github-readme-latent-to-cacheon-docs-2",
       "kind": "docs",
       "name": "Cacheon docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -265,19 +195,10 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
+        "https://cacheon.ai/",
         "https://github.com/latent-to/cacheon/blob/main/README.md"
       ],
-      "url": "https://cacheon.ai/docs/evaluation/scoring",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html",
-        "latency_ms": 282,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.254Z"
-      }
+      "url": "https://cacheon.ai/docs/evaluation/scoring"
     },
     {
       "auth_required": false,
@@ -285,7 +206,7 @@
       "id": "sn-14-github-readme-latent-to-cacheon-docs-3",
       "kind": "docs",
       "name": "Cacheon docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -306,17 +227,7 @@
       "source_urls": [
         "https://github.com/latent-to/cacheon/blob/main/README.md"
       ],
-      "url": "https://cacheon.ai/docs/miners/overview",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html",
-        "latency_ms": 279,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.276Z"
-      }
+      "url": "https://cacheon.ai/docs/miners/overview"
     },
     {
       "auth_required": false,
@@ -324,7 +235,7 @@
       "id": "sn-14-github-readme-latent-to-taohash-dashboard-5",
       "kind": "dashboard",
       "name": "Cacheon dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -345,17 +256,7 @@
       "source_urls": [
         "https://github.com/latent-to/taohash/blob/main/README.md"
       ],
-      "url": "https://taohash.com/leaderboard",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html",
-        "latency_ms": 248,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.345Z"
-      }
+      "url": "https://taohash.com/leaderboard"
     },
     {
       "auth_required": false,
@@ -384,17 +285,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/14"
       ],
-      "url": "https://taomarketcap.com/subnets/14",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 143,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.403Z"
-      }
+      "url": "https://taomarketcap.com/subnets/14"
     },
     {
       "auth_required": false,
@@ -402,7 +293,7 @@
       "id": "sn-14-website-link-cacheon-ai-dashboard-1",
       "kind": "dashboard",
       "name": "Cacheon dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -423,17 +314,7 @@
       "source_urls": [
         "https://cacheon.ai/"
       ],
-      "url": "https://cacheon.ai/dashboard",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html",
-        "latency_ms": 33,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.556Z"
-      }
+      "url": "https://cacheon.ai/dashboard"
     }
   ],
   "website_url": "https://cacheon.ai/"

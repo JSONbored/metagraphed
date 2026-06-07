@@ -124,39 +124,39 @@
     },
     {
       "authority": "provider-claimed",
-      "candidate_count": 1402,
+      "candidate_count": 1410,
       "classifications": {
         "auth-required": 11,
         "content-mismatch": 46,
-        "dead": 397,
-        "live": 725,
+        "dead": 404,
+        "live": 723,
         "rate-limited": 7,
-        "redirected": 184,
+        "redirected": 188,
         "transient": 4,
         "unsafe": 1,
-        "unsupported": 27
+        "unsupported": 26
       },
-      "endpoint_count": 524,
+      "endpoint_count": 516,
       "id": "taomarketcap",
       "kind": "data-provider",
       "name": "TaoMarketCap",
       "rpc_endpoint_count": 0,
       "status": "ok",
-      "verification_result_count": 1402
+      "verification_result_count": 1410
     },
     {
       "authority": "community",
-      "candidate_count": 8,
+      "candidate_count": 128,
       "classifications": {
-        "live": 8
+        "live": 128
       },
-      "endpoint_count": 6,
+      "endpoint_count": 119,
       "id": "taopedia-articles",
       "kind": "docs-provider",
       "name": "Taopedia Articles",
       "rpc_endpoint_count": 0,
       "status": "ok",
-      "verification_result_count": 8
+      "verification_result_count": 128
     },
     {
       "authority": "provider-claimed",
@@ -176,12 +176,12 @@
       "classifications": {
         "auth-required": 1,
         "dead": 12,
-        "live": 195,
-        "redirected": 11,
+        "live": 189,
+        "redirected": 17,
         "unsafe": 10,
         "unsupported": 3
       },
-      "endpoint_count": 189,
+      "endpoint_count": 186,
       "id": "tensorplex-subnet-docs",
       "kind": "docs-provider",
       "name": "Tensorplex subnet-docs",
@@ -193,14 +193,14 @@
   "schema_version": 1,
   "source": "generated-provider-and-verification-summary",
   "summary": {
-    "candidate_count": 1642,
-    "endpoint_count": 751,
+    "candidate_count": 1770,
+    "endpoint_count": 853,
     "provider_count": 14,
     "rpc_endpoint_count": 6,
     "status_counts": {
       "ok": 6,
       "unknown": 8
     },
-    "verification_result_count": 1642
+    "verification_result_count": 1770
   }
 }

@@ -331,12 +331,13 @@ test("public artifacts are internally consistent", () => {
   assert.equal(Array.isArray(adapterCandidates.candidates), true);
   assert.equal(Array.isArray(reviewDecisions.decisions), true);
   assert.equal(coverage.probed_count, native.subnets.length);
+  const generatedSurfaces = surfaces.surfaces.filter(
+    (surface) => surface.authority === "registry-observed",
+  );
+  assert.equal(generatedSurfaces.length > 0, true);
   assert.equal(
-    surfaces.surfaces.filter(
-      (surface) =>
-        surface.authority === "registry-observed" && !surface.verification,
-    ).length,
-    0,
+    generatedSurfaces.some((surface) => surface.verification !== undefined),
+    false,
   );
   assert.deepEqual(
     subnets.subnets.map((subnet) => subnet.netuid),

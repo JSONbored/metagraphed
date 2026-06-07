@@ -11,11 +11,11 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 4,
-    "verified_at": "2026-06-07T10:43:46.934Z"
+    "source_count": 5,
+    "verified_at": null
   },
   "dashboard_url": "https://dashboard.bitcast.network/",
-  "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/93",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_93/index.mdx",
   "links": [],
   "name": "Bitcast",
   "netuid": 93,
@@ -41,31 +41,19 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/93",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/93/subnet.json"
       ],
-      "url": "https://github.com/bitcast-network/bitcast",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/bitcast-network/bitcast",
-        "homepage": null,
-        "last_push_at": "2026-04-19T16:02:48Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:46.682Z"
-      }
+      "url": "https://github.com/bitcast-network/bitcast"
     },
     {
       "auth_required": false,
@@ -94,17 +82,36 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/93"
       ],
-      "url": "https://stats.bitcast.network/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 278,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:46.711Z"
-      }
+      "url": "https://stats.bitcast.network/"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-93-taopedia-article",
+      "kind": "docs",
+      "name": "Bitcast Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_93/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_93/index.mdx"
     },
     {
       "auth_required": false,
@@ -133,17 +140,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/93/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/93",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 315,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:46.759Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/93"
     },
     {
       "auth_required": false,
@@ -151,7 +148,7 @@
       "id": "sn-93-website-common-docs",
       "kind": "docs",
       "name": "Bitcast docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -172,17 +169,7 @@
       "source_urls": [
         "https://stats.bitcast.network/"
       ],
-      "url": "https://stats.bitcast.network/docs",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 797,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:46.770Z"
-      }
+      "url": "https://stats.bitcast.network/docs"
     },
     {
       "auth_required": false,
@@ -190,7 +177,7 @@
       "id": "sn-93-github-readme-bitcast-network-bitcast-dashboard-2",
       "kind": "dashboard",
       "name": "Bitcast dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -211,17 +198,7 @@
       "source_urls": [
         "https://github.com/bitcast-network/bitcast/blob/main/README.md"
       ],
-      "url": "https://dashboard.bitcast.network/",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 61,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 344,
-        "method_tested": "HEAD",
-        "redirect_target": "https://creator.bitcast.network/briefs",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:46.641Z"
-      }
+      "url": "https://dashboard.bitcast.network/"
     },
     {
       "auth_required": false,
@@ -250,17 +227,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/93"
       ],
-      "url": "https://taomarketcap.com/subnets/93",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 182,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:46.650Z"
-      }
+      "url": "https://taomarketcap.com/subnets/93"
     },
     {
       "auth_required": false,
@@ -268,7 +235,7 @@
       "id": "sn-93-website-link-stats-bitcast-network-dashboard-1",
       "kind": "dashboard",
       "name": "Bitcast dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -289,17 +256,7 @@
       "source_urls": [
         "https://stats.bitcast.network/"
       ],
-      "url": "https://stats.bitcast.network/bitcast",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 453,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:46.934Z"
-      }
+      "url": "https://stats.bitcast.network/bitcast"
     },
     {
       "auth_required": false,
@@ -307,7 +264,7 @@
       "id": "sn-93-website-common-swagger",
       "kind": "openapi",
       "name": "Bitcast Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -329,17 +286,7 @@
       "source_urls": [
         "https://stats.bitcast.network/"
       ],
-      "url": "https://stats.bitcast.network/swagger",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 68,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 781,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:46.886Z"
-      }
+      "url": "https://stats.bitcast.network/swagger"
     }
   ],
   "website_url": "https://stats.bitcast.network/"

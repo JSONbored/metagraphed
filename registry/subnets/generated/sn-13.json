@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 3,
-    "verified_at": "2026-06-07T10:43:26.883Z"
+    "verified_at": null
   },
   "dashboard_url": "https://taomarketcap.com/subnets/13",
   "docs_url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/a-guide-to-lawful-basis",
@@ -53,20 +53,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/13",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/13/subnet.json"
       ],
-      "url": "https://github.com/macrocosm-os/data-universe",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/macrocosm-os/data-universe",
-        "homepage": null,
-        "last_push_at": "2026-06-05T21:54:10Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:26.859Z"
-      }
+      "url": "https://github.com/macrocosm-os/data-universe"
     },
     {
       "auth_required": false,
@@ -95,17 +82,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/13"
       ],
-      "url": "https://www.macrocosmos.ai/gravity",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 72,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 286,
-        "method_tested": "HEAD",
-        "redirect_target": "https://datauniverse.macrocosmos.ai/",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:26.883Z"
-      }
+      "url": "https://www.macrocosmos.ai/gravity"
     },
     {
       "auth_required": false,
@@ -113,7 +90,7 @@
       "id": "sn-13-github-readme-macrocosm-os-data-universe-docs-1",
       "kind": "docs",
       "name": "Data Universe docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -134,17 +111,7 @@
       "source_urls": [
         "https://github.com/macrocosm-os/data-universe/blob/main/README.md"
       ],
-      "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/a-guide-to-lawful-basis",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 285,
-        "method_tested": "GET",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:26.679Z"
-      }
+      "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/lawful-basis/a-guide-to-lawful-basis"
     },
     {
       "auth_required": false,
@@ -152,7 +119,7 @@
       "id": "sn-13-github-readme-macrocosm-os-data-universe-docs-2",
       "kind": "docs",
       "name": "Data Universe docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -173,17 +140,7 @@
       "source_urls": [
         "https://github.com/macrocosm-os/data-universe/blob/main/README.md"
       ],
-      "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/individual-rights",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 337,
-        "method_tested": "GET",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:26.711Z"
-      }
+      "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/individual-rights/individual-rights"
     },
     {
       "auth_required": false,
@@ -191,7 +148,7 @@
       "id": "sn-13-github-readme-macrocosm-os-data-universe-docs-3",
       "kind": "docs",
       "name": "Data Universe docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -212,17 +169,7 @@
       "source_urls": [
         "https://github.com/macrocosm-os/data-universe/blob/main/README.md"
       ],
-      "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/security/a-guide-to-data-security",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 271,
-        "method_tested": "GET",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:26.712Z"
-      }
+      "url": "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/security/a-guide-to-data-security"
     },
     {
       "auth_required": false,
@@ -230,7 +177,7 @@
       "id": "sn-13-github-readme-macrocosm-os-data-universe-docs-4",
       "kind": "docs",
       "name": "Data Universe docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -251,17 +198,7 @@
       "source_urls": [
         "https://github.com/macrocosm-os/data-universe/blob/main/README.md"
       ],
-      "url": "https://ico.org.uk/for-organisations/report-a-breach/personal-data-breach/personal-data-breaches-a-guide",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 312,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:26.729Z"
-      }
+      "url": "https://ico.org.uk/for-organisations/report-a-breach/personal-data-breach/personal-data-breaches-a-guide"
     },
     {
       "auth_required": false,
@@ -290,17 +227,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/13"
       ],
-      "url": "https://taomarketcap.com/subnets/13",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 188,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:26.850Z"
-      }
+      "url": "https://taomarketcap.com/subnets/13"
     }
   ],
   "website_url": "https://www.macrocosmos.ai/gravity"

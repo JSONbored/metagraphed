@@ -11,8 +11,8 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 5,
-    "verified_at": "2026-06-07T10:43:38.564Z"
+    "source_count": 6,
+    "verified_at": null
   },
   "dashboard_url": "https://taostats.io/",
   "docs_url": "https://bittensor.com/whitepaper",
@@ -41,30 +41,18 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/60"
       ],
-      "url": "https://github.com/Bitsec-AI/sandbox",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/Bitsec-AI/sandbox",
-        "homepage": null,
-        "last_push_at": "2026-06-01T02:43:25Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:38.423Z"
-      }
+      "url": "https://github.com/Bitsec-AI/sandbox"
     },
     {
       "auth_required": false,
@@ -82,30 +70,18 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/60/subnet.json"
       ],
-      "url": "https://github.com/Bitsec-AI/subnet",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/Bitsec-AI/subnet",
-        "homepage": null,
-        "last_push_at": "2025-08-28T20:55:43Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:38.452Z"
-      }
+      "url": "https://github.com/Bitsec-AI/subnet"
     },
     {
       "auth_required": false,
@@ -134,17 +110,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/60"
       ],
-      "url": "https://bitsec.ai/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 143,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:38.440Z"
-      }
+      "url": "https://bitsec.ai/"
     },
     {
       "auth_required": false,
@@ -152,7 +118,7 @@
       "id": "sn-60-github-readme-bitsec-ai-sandbox-docs-2",
       "kind": "docs",
       "name": "Bitsec.ai docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -173,17 +139,7 @@
       "source_urls": [
         "https://github.com/Bitsec-AI/sandbox/blob/main/README.md"
       ],
-      "url": "https://bittensor.com/whitepaper",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 166,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:38.377Z"
-      }
+      "url": "https://bittensor.com/whitepaper"
     },
     {
       "auth_required": false,
@@ -191,7 +147,7 @@
       "id": "sn-60-github-readme-bitsec-ai-sandbox-docs-3",
       "kind": "docs",
       "name": "Bitsec.ai docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -212,17 +168,7 @@
       "source_urls": [
         "https://github.com/Bitsec-AI/sandbox/blob/main/README.md"
       ],
-      "url": "https://docs.bitsec.ai/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 74,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:38.382Z"
-      }
+      "url": "https://docs.bitsec.ai/"
     },
     {
       "auth_required": false,
@@ -230,7 +176,7 @@
       "id": "sn-60-github-readme-bitsec-ai-subnet-docs-2",
       "kind": "docs",
       "name": "Bitsec.ai docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -251,32 +197,22 @@
       "source_urls": [
         "https://github.com/Bitsec-AI/subnet/blob/main/README.md"
       ],
-      "url": "https://learnbittensor.org/guides",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html;charset=utf-8",
-        "latency_ms": 609,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:38.388Z"
-      }
+      "url": "https://learnbittensor.org/guides"
     },
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-60-tensorplex-docs",
+      "id": "sn-60-taopedia-article",
       "kind": "docs",
-      "name": "Bitsec.ai Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "name": "Bitsec.ai Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taopedia-articles",
       "public_safe": true,
       "quality_signals": {
         "content_type_matches_kind": true,
@@ -288,19 +224,9 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/60/subnet.json"
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_60/index.mdx"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/60",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 404,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:38.447Z"
-      }
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_60/index.mdx"
     },
     {
       "auth_required": false,
@@ -308,7 +234,7 @@
       "id": "sn-60-github-readme-bitsec-ai-sandbox-dashboard-1",
       "kind": "dashboard",
       "name": "Bitsec.ai dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -329,17 +255,7 @@
       "source_urls": [
         "https://github.com/Bitsec-AI/sandbox/blob/main/README.md"
       ],
-      "url": "https://taostats.io/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 218,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:38.377Z"
-      }
+      "url": "https://taostats.io/"
     },
     {
       "auth_required": false,
@@ -368,17 +284,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/60"
       ],
-      "url": "https://taomarketcap.com/subnets/60",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 157,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:38.422Z"
-      }
+      "url": "https://taomarketcap.com/subnets/60"
     },
     {
       "auth_required": false,
@@ -386,7 +292,7 @@
       "id": "sn-60-website-common-swagger",
       "kind": "openapi",
       "name": "Bitsec.ai Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -408,17 +314,7 @@
       "source_urls": [
         "https://bitsec.ai/"
       ],
-      "url": "https://bitsec.ai/swagger",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 68,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 137,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:38.564Z"
-      }
+      "url": "https://bitsec.ai/swagger"
     }
   ],
   "website_url": "https://bitsec.ai/"

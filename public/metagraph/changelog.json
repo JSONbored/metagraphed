@@ -23,8 +23,8 @@
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
-        "after": 1642,
-        "before": 1642,
+        "after": 1770,
+        "before": 1770,
         "delta": 0
       },
       "curated_overlay_count": {
@@ -39,8 +39,8 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 751,
-        "before": 751,
+        "after": 853,
+        "before": 853,
         "delta": 0
       }
     },

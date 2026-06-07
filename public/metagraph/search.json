@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 894,
+  "document_count": 996,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -200,22 +200,6 @@
       ],
       "type": "provider",
       "url": "https://github.com/tensorplex-labs/subnet-docs"
-    },
-    {
-      "artifact_path": "/metagraph/subnets/86.json",
-      "id": "subnet:86",
-      "netuid": 86,
-      "slug": "sn-86",
-      "subtitle": "SN86 ᚳ",
-      "title": "⚒",
-      "tokens": [
-        "86",
-        "baseline",
-        "curated",
-        "sn"
-      ],
-      "type": "subnet",
-      "url": "/subnets/86"
     },
     {
       "artifact_path": "/metagraph/subnets/17.json",
@@ -2092,6 +2076,23 @@
       "url": "/subnets/42"
     },
     {
+      "artifact_path": "/metagraph/subnets/86.json",
+      "id": "subnet:86",
+      "netuid": 86,
+      "slug": "sn-86",
+      "subtitle": "SN86 ᚳ",
+      "title": "Subnet 86",
+      "tokens": [
+        "86",
+        "baseline",
+        "curated",
+        "sn",
+        "subnet"
+      ],
+      "type": "subnet",
+      "url": "/subnets/86"
+    },
+    {
       "artifact_path": "/metagraph/subnets/121.json",
       "id": "subnet:121",
       "netuid": 121,
@@ -2421,6 +2422,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-76-taomarketcap-website",
+      "netuid": 76,
+      "slug": "sn-76",
+      "subtitle": "website / taomarketcap",
+      "title": "› website",
+      "tokens": [
+        "76",
+        "byzantium",
+        "sn",
+        "taomarketcap",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://www.byzantiumai.net/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-86-taomarketcap-dashboard",
       "netuid": 86,
       "slug": "sn-86",
@@ -2430,10 +2448,30 @@
         "86",
         "dashboard",
         "sn",
+        "subnet",
         "taomarketcap"
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/86"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-86-taopedia-article",
+      "netuid": 86,
+      "slug": "sn-86",
+      "subtitle": "docs / taopedia-articles",
+      "title": "⚒ Taopedia article",
+      "tokens": [
+        "86",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "subnet",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_86/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -2534,6 +2572,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-17-taopedia-article",
+      "netuid": 17,
+      "slug": "sn-17",
+      "subtitle": "docs / taopedia-articles",
+      "title": "404—GEN Taopedia article",
+      "tokens": [
+        "17",
+        "404",
+        "article",
+        "articles",
+        "docs",
+        "gen",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_17/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-17-tensorplex-docs",
       "netuid": 17,
       "slug": "sn-17",
@@ -2589,6 +2647,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-125-taopedia-article",
+      "netuid": 125,
+      "slug": "sn-125",
+      "subtitle": "docs / taopedia-articles",
+      "title": "8 Ball Taopedia article",
+      "tokens": [
+        "125",
+        "8",
+        "article",
+        "articles",
+        "ball",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_125/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-125-tensorplex-docs",
       "netuid": 125,
       "slug": "sn-125",
@@ -2641,6 +2719,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/109"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-109-taopedia-article",
+      "netuid": 109,
+      "slug": "sn-109",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Academia Taopedia article",
+      "tokens": [
+        "109",
+        "academia",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_109/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -2715,6 +2812,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-95-taopedia-article",
+      "netuid": 95,
+      "slug": "sn-95",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Actual Taopedia article",
+      "tokens": [
+        "95",
+        "actual",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_95/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-95-tensorplex-docs",
       "netuid": 95,
       "slug": "sn-95",
@@ -2783,6 +2899,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/21"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-21-taopedia-article",
+      "netuid": 21,
+      "slug": "sn-21",
+      "subtitle": "docs / taopedia-articles",
+      "title": "AdTAO Taopedia article",
+      "tokens": [
+        "21",
+        "adtao",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_21/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -2874,6 +3009,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-120-taopedia-article",
+      "netuid": 120,
+      "slug": "sn-120",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Affine Taopedia article",
+      "tokens": [
+        "120",
+        "affine",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_120/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-120-tensorplex-docs",
       "netuid": 120,
       "slug": "sn-120",
@@ -2923,6 +3077,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/69"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-69-taopedia-article",
+      "netuid": 69,
+      "slug": "sn-69",
+      "subtitle": "docs / taopedia-articles",
+      "title": "ain Taopedia article",
+      "tokens": [
+        "69",
+        "ain",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_69/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -2998,23 +3171,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-97-website-common-docs",
-      "netuid": 97,
-      "slug": "sn-97",
-      "subtitle": "docs / taomarketcap",
-      "title": "Albedo docs",
-      "tokens": [
-        "97",
-        "albedo",
-        "docs",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://us-east-1.hippius.com/docs"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-97-website-common-openapi-json",
       "netuid": 97,
       "slug": "sn-97",
@@ -3087,6 +3243,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/97"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-97-taopedia-article",
+      "netuid": 97,
+      "slug": "sn-97",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Albedo Taopedia article",
+      "tokens": [
+        "97",
+        "albedo",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_97/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -3402,23 +3577,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-41-website-common-docs",
-      "netuid": 41,
-      "slug": "sn-41",
-      "subtitle": "docs / taomarketcap",
-      "title": "Almanac docs",
-      "tokens": [
-        "41",
-        "almanac",
-        "docs",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://almanac.market/docs"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-41-taomarketcap-source-repo",
       "netuid": 41,
       "slug": "sn-41",
@@ -3471,6 +3629,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/41"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-41-taopedia-article",
+      "netuid": 41,
+      "slug": "sn-41",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Almanac Taopedia article",
+      "tokens": [
+        "41",
+        "almanac",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_41/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -3583,6 +3760,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/84"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-84-taopedia-article",
+      "netuid": 84,
+      "slug": "sn-84",
+      "subtitle": "docs / taopedia-articles",
+      "title": "ansuz Taopedia article",
+      "tokens": [
+        "84",
+        "ansuz",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_84/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -3780,6 +3976,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-127-taopedia-article",
+      "netuid": 127,
+      "slug": "sn-127",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Astrid Taopedia article",
+      "tokens": [
+        "127",
+        "article",
+        "articles",
+        "astrid",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_127/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-127-tensorplex-docs",
       "netuid": 127,
       "slug": "sn-127",
@@ -3908,6 +4123,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-37-taopedia-article",
+      "netuid": 37,
+      "slug": "sn-37",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Aurelius Taopedia article",
+      "tokens": [
+        "37",
+        "article",
+        "articles",
+        "aurelius",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_37/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-37-tensorplex-docs",
       "netuid": 37,
       "slug": "sn-37",
@@ -4012,6 +4246,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/59"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-59-taopedia-article",
+      "netuid": 59,
+      "slug": "sn-59",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Babelbit Taopedia article",
+      "tokens": [
+        "59",
+        "article",
+        "articles",
+        "babelbit",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_59/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4122,6 +4375,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-105-taopedia-article",
+      "netuid": 105,
+      "slug": "sn-105",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Beam Taopedia article",
+      "tokens": [
+        "105",
+        "article",
+        "articles",
+        "beam",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_105/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-105-tensorplex-docs",
       "netuid": 105,
       "slug": "sn-105",
@@ -4226,6 +4498,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/16"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-16-taopedia-article",
+      "netuid": 16,
+      "slug": "sn-16",
+      "subtitle": "docs / taopedia-articles",
+      "title": "BitAds Taopedia article",
+      "tokens": [
+        "16",
+        "article",
+        "articles",
+        "bitads",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_16/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4370,6 +4661,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-93-taopedia-article",
+      "netuid": 93,
+      "slug": "sn-93",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Bitcast Taopedia article",
+      "tokens": [
+        "93",
+        "article",
+        "articles",
+        "bitcast",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_93/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-93-tensorplex-docs",
       "netuid": 93,
       "slug": "sn-93",
@@ -4456,6 +4766,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/34"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-34-taopedia-article",
+      "netuid": 34,
+      "slug": "sn-34",
+      "subtitle": "docs / taopedia-articles",
+      "title": "BitMind Taopedia article",
+      "tokens": [
+        "34",
+        "article",
+        "articles",
+        "bitmind",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_34/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4630,22 +4959,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-60-tensorplex-docs",
+      "id": "surface:sn-60-taopedia-article",
       "netuid": 60,
       "slug": "sn-60",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "Bitsec.ai Tensorplex subnet docs",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Bitsec.ai Taopedia article",
       "tokens": [
         "60",
         "ai",
+        "article",
+        "articles",
         "bitsec",
         "docs",
         "sn",
-        "subnet",
-        "tensorplex"
+        "taopedia"
       ],
       "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/60"
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_60/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4737,6 +5067,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-94-taopedia-article",
+      "netuid": 94,
+      "slug": "sn-94",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Bitsota Taopedia article",
+      "tokens": [
+        "94",
+        "article",
+        "articles",
+        "bitsota",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_94/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-94-tensorplex-docs",
       "netuid": 94,
       "slug": "sn-94",
@@ -4787,6 +5136,26 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/91"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-91-taopedia-article",
+      "netuid": 91,
+      "slug": "sn-91",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Bitstarter #1 Taopedia article",
+      "tokens": [
+        "1",
+        "91",
+        "article",
+        "articles",
+        "bitstarter",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_91/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4913,23 +5282,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-19-website-link-blockmachine-io-docs-4",
-      "netuid": 19,
-      "slug": "sn-19",
-      "subtitle": "docs / taomarketcap",
-      "title": "blockmachine docs",
-      "tokens": [
-        "19",
-        "blockmachine",
-        "docs",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://blockmachine.io/docs/ai-agents"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-19-taomarketcap-source-repo",
       "netuid": 19,
       "slug": "sn-19",
@@ -4963,6 +5315,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/19"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-19-taopedia-article",
+      "netuid": 19,
+      "slug": "sn-19",
+      "subtitle": "docs / taopedia-articles",
+      "title": "blockmachine Taopedia article",
+      "tokens": [
+        "19",
+        "article",
+        "articles",
+        "blockmachine",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_19/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5094,6 +5465,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-128-taopedia-article",
+      "netuid": 128,
+      "slug": "sn-128",
+      "subtitle": "docs / taopedia-articles",
+      "title": "ByteLeap Taopedia article",
+      "tokens": [
+        "128",
+        "article",
+        "articles",
+        "byteleap",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_128/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-128-tensorplex-docs",
       "netuid": 128,
       "slug": "sn-128",
@@ -5143,6 +5533,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/76"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-76-taopedia-article",
+      "netuid": 76,
+      "slug": "sn-76",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Byzantium Taopedia article",
+      "tokens": [
+        "76",
+        "article",
+        "articles",
+        "byzantium",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_76/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5359,6 +5768,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-40-taopedia-article",
+      "netuid": 40,
+      "slug": "sn-40",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Chunking Taopedia article",
+      "tokens": [
+        "40",
+        "article",
+        "articles",
+        "chunking",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_40/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-40-tensorplex-docs",
       "netuid": 40,
       "slug": "sn-40",
@@ -5545,6 +5973,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-64-taopedia-article",
+      "netuid": 64,
+      "slug": "sn-64",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Chutes Taopedia article",
+      "tokens": [
+        "64",
+        "article",
+        "articles",
+        "chutes",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_64/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-64-tensorplex-docs",
       "netuid": 64,
       "slug": "sn-64",
@@ -5649,6 +6096,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/83"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-83-taopedia-article",
+      "netuid": 83,
+      "slug": "sn-83",
+      "subtitle": "docs / taopedia-articles",
+      "title": "CliqueAI Taopedia article",
+      "tokens": [
+        "83",
+        "article",
+        "articles",
+        "cliqueai",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_83/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5779,6 +6245,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-29-taopedia-article",
+      "netuid": 29,
+      "slug": "sn-29",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Coldint Taopedia article",
+      "tokens": [
+        "29",
+        "article",
+        "articles",
+        "coldint",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_29/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-29-tensorplex-docs",
       "netuid": 29,
       "slug": "sn-29",
@@ -5811,6 +6296,25 @@
       ],
       "type": "surface",
       "url": "https://www.taocolosseum.com/docs"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-38-taomarketcap-source-repo",
+      "netuid": 38,
+      "slug": "sn-38",
+      "subtitle": "source-repo / taomarketcap",
+      "title": "colosseum source repository",
+      "tokens": [
+        "38",
+        "colosseum",
+        "repo",
+        "repository",
+        "sn",
+        "source",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5847,6 +6351,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/38"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-38-taopedia-article",
+      "netuid": 38,
+      "slug": "sn-38",
+      "subtitle": "docs / taopedia-articles",
+      "title": "colosseum Taopedia article",
+      "tokens": [
+        "38",
+        "article",
+        "articles",
+        "colosseum",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5979,6 +6502,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-82-taopedia-article",
+      "netuid": 82,
+      "slug": "sn-82",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Compelle Taopedia article",
+      "tokens": [
+        "82",
+        "article",
+        "articles",
+        "compelle",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_82/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-82-tensorplex-docs",
       "netuid": 82,
       "slug": "sn-82",
@@ -6070,6 +6612,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-12-taopedia-article",
+      "netuid": 12,
+      "slug": "sn-12",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Compute Horde Taopedia article",
+      "tokens": [
+        "12",
+        "article",
+        "articles",
+        "compute",
+        "docs",
+        "horde",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_12/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-12-tensorplex-docs",
       "netuid": 12,
       "slug": "sn-12",
@@ -6123,23 +6685,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-102-website-link-connito-ai-docs-3",
-      "netuid": 102,
-      "slug": "sn-102",
-      "subtitle": "docs / taomarketcap",
-      "title": "ConnitoAI docs",
-      "tokens": [
-        "102",
-        "connitoai",
-        "docs",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://connito.ai/whitepaper"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-102-taomarketcap-source-repo",
       "netuid": 102,
       "slug": "sn-102",
@@ -6173,6 +6718,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/102"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-102-taopedia-article",
+      "netuid": 102,
+      "slug": "sn-102",
+      "subtitle": "docs / taopedia-articles",
+      "title": "ConnitoAI Taopedia article",
+      "tokens": [
+        "102",
+        "article",
+        "articles",
+        "connitoai",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_102/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6453,6 +7017,63 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-3-taopedia-article",
+      "netuid": 3,
+      "slug": "sn-3",
+      "subtitle": "docs / taopedia-articles",
+      "title": "deprecated Taopedia article",
+      "tokens": [
+        "3",
+        "article",
+        "articles",
+        "deprecated",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_3/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-39-taopedia-article",
+      "netuid": 39,
+      "slug": "sn-39",
+      "subtitle": "docs / taopedia-articles",
+      "title": "deprecated Taopedia article",
+      "tokens": [
+        "39",
+        "article",
+        "articles",
+        "deprecated",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_39/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-81-taopedia-article",
+      "netuid": 81,
+      "slug": "sn-81",
+      "subtitle": "docs / taopedia-articles",
+      "title": "deprecated Taopedia article",
+      "tokens": [
+        "81",
+        "article",
+        "articles",
+        "deprecated",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_81/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-3-tensorplex-docs",
       "netuid": 3,
       "slug": "sn-3",
@@ -6597,6 +7218,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-22-taopedia-article",
+      "netuid": 22,
+      "slug": "sn-22",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Desearch Taopedia article",
+      "tokens": [
+        "22",
+        "article",
+        "articles",
+        "desearch",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-22-tensorplex-docs",
       "netuid": 22,
       "slug": "sn-22",
@@ -6668,23 +7308,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-118-website-common-docs",
-      "netuid": 118,
-      "slug": "sn-118",
-      "subtitle": "docs / taomarketcap",
-      "title": "Ditto docs",
-      "tokens": [
-        "118",
-        "ditto",
-        "docs",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://heyditto.ai/docs"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-118-taomarketcap-source-repo",
       "netuid": 118,
       "slug": "sn-118",
@@ -6739,6 +7362,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/118"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-118-taopedia-article",
+      "netuid": 118,
+      "slug": "sn-118",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Ditto Taopedia article",
+      "tokens": [
+        "118",
+        "article",
+        "articles",
+        "ditto",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_118/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6861,6 +7503,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/103"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-103-taopedia-article",
+      "netuid": 103,
+      "slug": "sn-103",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Djinn Taopedia article",
+      "tokens": [
+        "103",
+        "article",
+        "articles",
+        "djinn",
+        "docs",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_103/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7399,6 +8060,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-53-taopedia-article",
+      "netuid": 53,
+      "slug": "sn-53",
+      "subtitle": "docs / taopedia-articles",
+      "title": "EfficientFrontier Taopedia article",
+      "tokens": [
+        "53",
+        "article",
+        "articles",
+        "docs",
+        "efficientfrontier",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_53/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-53-tensorplex-docs",
       "netuid": 53,
       "slug": "sn-53",
@@ -7487,6 +8167,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-36-taopedia-article",
+      "netuid": 36,
+      "slug": "sn-36",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Eirel Taopedia article",
+      "tokens": [
+        "36",
+        "article",
+        "articles",
+        "docs",
+        "eirel",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_36/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-36-tensorplex-docs",
       "netuid": 36,
       "slug": "sn-36",
@@ -7558,6 +8257,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-30-taopedia-article",
+      "netuid": 30,
+      "slug": "sn-30",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Endure Network Taopedia article",
+      "tokens": [
+        "30",
+        "article",
+        "articles",
+        "docs",
+        "endure",
+        "network",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_30/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-30-tensorplex-docs",
       "netuid": 30,
       "slug": "sn-30",
@@ -7609,6 +8328,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/101"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-101-taopedia-article",
+      "netuid": 101,
+      "slug": "sn-101",
+      "subtitle": "docs / taopedia-articles",
+      "title": "eni Taopedia article",
+      "tokens": [
+        "101",
+        "article",
+        "articles",
+        "docs",
+        "eni",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_101/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7680,6 +8418,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/63"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-63-taopedia-article",
+      "netuid": 63,
+      "slug": "sn-63",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Enigma Taopedia article",
+      "tokens": [
+        "63",
+        "article",
+        "articles",
+        "docs",
+        "enigma",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_63/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7812,6 +8569,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-47-taopedia-article",
+      "netuid": 47,
+      "slug": "sn-47",
+      "subtitle": "docs / taopedia-articles",
+      "title": "EvolAI Taopedia article",
+      "tokens": [
+        "47",
+        "article",
+        "articles",
+        "docs",
+        "evolai",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_47/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-47-tensorplex-docs",
       "netuid": 47,
       "slug": "sn-47",
@@ -7848,6 +8624,29 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/104"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-104-taopedia-article",
+      "netuid": 104,
+      "slug": "sn-104",
+      "subtitle": "docs / taopedia-articles",
+      "title": "for sale (burn to uid1) Taopedia article",
+      "tokens": [
+        "104",
+        "article",
+        "articles",
+        "burn",
+        "docs",
+        "for",
+        "sale",
+        "sn",
+        "taopedia",
+        "to",
+        "uid1"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_104/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7964,6 +8763,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-98-taopedia-article",
+      "netuid": 98,
+      "slug": "sn-98",
+      "subtitle": "docs / taopedia-articles",
+      "title": "ForeverMoney Taopedia article",
+      "tokens": [
+        "98",
+        "article",
+        "articles",
+        "docs",
+        "forevermoney",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_98/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-98-tensorplex-docs",
       "netuid": 98,
       "slug": "sn-98",
@@ -8037,6 +8855,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-57-taopedia-article",
+      "netuid": 57,
+      "slug": "sn-57",
+      "subtitle": "docs / taopedia-articles",
+      "title": "gaia Taopedia article",
+      "tokens": [
+        "57",
+        "article",
+        "articles",
+        "docs",
+        "gaia",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_57/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-57-tensorplex-docs",
       "netuid": 57,
       "slug": "sn-57",
@@ -8092,6 +8929,26 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/122"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-122-taopedia-article",
+      "netuid": 122,
+      "slug": "sn-122",
+      "subtitle": "docs / taopedia-articles",
+      "title": "gamma_small Taopedia article",
+      "tokens": [
+        "122",
+        "article",
+        "articles",
+        "docs",
+        "gamma",
+        "small",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_122/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8242,6 +9099,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-28-taopedia-article",
+      "netuid": 28,
+      "slug": "sn-28",
+      "subtitle": "docs / taopedia-articles",
+      "title": "gm Taopedia article",
+      "tokens": [
+        "28",
+        "article",
+        "articles",
+        "docs",
+        "gm",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_28/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-28-tensorplex-docs",
       "netuid": 28,
       "slug": "sn-28",
@@ -8371,6 +9247,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-56-taopedia-article",
+      "netuid": 56,
+      "slug": "sn-56",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Gradients Taopedia article",
+      "tokens": [
+        "56",
+        "article",
+        "articles",
+        "docs",
+        "gradients",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_56/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-56-tensorplex-docs",
       "netuid": 56,
       "slug": "sn-56",
@@ -8439,6 +9334,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/43"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-43-taopedia-article",
+      "netuid": 43,
+      "slug": "sn-43",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Graphite Taopedia article",
+      "tokens": [
+        "43",
+        "article",
+        "articles",
+        "docs",
+        "graphite",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_43/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8557,6 +9471,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-110-taopedia-article",
+      "netuid": 110,
+      "slug": "sn-110",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Green Compute Taopedia article",
+      "tokens": [
+        "110",
+        "article",
+        "articles",
+        "compute",
+        "docs",
+        "green",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_110/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-110-tensorplex-docs",
       "netuid": 110,
       "slug": "sn-110",
@@ -8611,6 +9545,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-20-taopedia-article",
+      "netuid": 20,
+      "slug": "sn-20",
+      "subtitle": "docs / taopedia-articles",
+      "title": "GroundLayer Taopedia article",
+      "tokens": [
+        "20",
+        "article",
+        "articles",
+        "docs",
+        "groundlayer",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_20/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-20-tensorplex-docs",
       "netuid": 20,
       "slug": "sn-20",
@@ -8661,6 +9614,26 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/116"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-116-taopedia-article",
+      "netuid": 116,
+      "slug": "sn-116",
+      "subtitle": "docs / taopedia-articles",
+      "title": "hard_sign Taopedia article",
+      "tokens": [
+        "116",
+        "article",
+        "articles",
+        "docs",
+        "hard",
+        "sign",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_116/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8757,6 +9730,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-67-taopedia-article",
+      "netuid": 67,
+      "slug": "sn-67",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Harnyx Taopedia article",
+      "tokens": [
+        "67",
+        "article",
+        "articles",
+        "docs",
+        "harnyx",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_67/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-67-tensorplex-docs",
       "netuid": 67,
       "slug": "sn-67",
@@ -8825,6 +9817,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/115"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-115-taopedia-article",
+      "netuid": 115,
+      "slug": "sn-115",
+      "subtitle": "docs / taopedia-articles",
+      "title": "HashiChain Taopedia article",
+      "tokens": [
+        "115",
+        "article",
+        "articles",
+        "docs",
+        "hashichain",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_115/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8938,6 +9949,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/75"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-75-taopedia-article",
+      "netuid": 75,
+      "slug": "sn-75",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Hippius Taopedia article",
+      "tokens": [
+        "75",
+        "article",
+        "articles",
+        "docs",
+        "hippius",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_75/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9188,21 +10218,22 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-89-tensorplex-docs",
+      "id": "surface:sn-89-taopedia-article",
       "netuid": 89,
       "slug": "sn-89",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "InfiniteHash Tensorplex subnet docs",
+      "subtitle": "docs / taopedia-articles",
+      "title": "InfiniteHash Taopedia article",
       "tokens": [
         "89",
+        "article",
+        "articles",
         "docs",
         "infinitehash",
         "sn",
-        "subnet",
-        "tensorplex"
+        "taopedia"
       ],
       "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/89"
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_89/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9309,6 +10340,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/88"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-88-taopedia-article",
+      "netuid": 88,
+      "slug": "sn-88",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Investing Taopedia article",
+      "tokens": [
+        "88",
+        "article",
+        "articles",
+        "docs",
+        "investing",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_88/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9558,6 +10608,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-32-taopedia-article",
+      "netuid": 32,
+      "slug": "sn-32",
+      "subtitle": "docs / taopedia-articles",
+      "title": "ItsAI Taopedia article",
+      "tokens": [
+        "32",
+        "article",
+        "articles",
+        "docs",
+        "itsai",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_32/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-32-tensorplex-docs",
       "netuid": 32,
       "slug": "sn-32",
@@ -9662,6 +10731,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/71"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-71-taopedia-article",
+      "netuid": 71,
+      "slug": "sn-71",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Leadpoet Taopedia article",
+      "tokens": [
+        "71",
+        "article",
+        "articles",
+        "docs",
+        "leadpoet",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_71/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9845,21 +10933,22 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-99-tensorplex-docs",
+      "id": "surface:sn-99-taopedia-article",
       "netuid": 99,
       "slug": "sn-99",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "Leoma Tensorplex subnet docs",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Leoma Taopedia article",
       "tokens": [
         "99",
+        "article",
+        "articles",
         "docs",
         "leoma",
         "sn",
-        "subnet",
-        "tensorplex"
+        "taopedia"
       ],
       "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/99"
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_99/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9949,6 +11038,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/77"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-77-taopedia-article",
+      "netuid": 77,
+      "slug": "sn-77",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Liquidity Taopedia article",
+      "tokens": [
+        "77",
+        "article",
+        "articles",
+        "docs",
+        "liquidity",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_77/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10080,6 +11188,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-51-taopedia-article",
+      "netuid": 51,
+      "slug": "sn-51",
+      "subtitle": "docs / taopedia-articles",
+      "title": "lium.io Taopedia article",
+      "tokens": [
+        "51",
+        "article",
+        "articles",
+        "docs",
+        "io",
+        "lium",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_51/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-51-tensorplex-docs",
       "netuid": 51,
       "slug": "sn-51",
@@ -10155,6 +11283,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-92-taopedia-article",
+      "netuid": 92,
+      "slug": "sn-92",
+      "subtitle": "docs / taopedia-articles",
+      "title": "luis Taopedia article",
+      "tokens": [
+        "92",
+        "article",
+        "articles",
+        "docs",
+        "luis",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-92-tensorplex-docs",
       "netuid": 92,
       "slug": "sn-92",
@@ -10188,6 +11335,26 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/87"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-87-taopedia-article",
+      "netuid": 87,
+      "slug": "sn-87",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Luminar Network Taopedia article",
+      "tokens": [
+        "87",
+        "article",
+        "articles",
+        "docs",
+        "luminar",
+        "network",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10297,6 +11464,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-25-taopedia-article",
+      "netuid": 25,
+      "slug": "sn-25",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Mainframe Taopedia article",
+      "tokens": [
+        "25",
+        "article",
+        "articles",
+        "docs",
+        "mainframe",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_25/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-25-tensorplex-docs",
       "netuid": 25,
       "slug": "sn-25",
@@ -10365,6 +11551,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/123"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-123-taopedia-article",
+      "netuid": 123,
+      "slug": "sn-123",
+      "subtitle": "docs / taopedia-articles",
+      "title": "MANTIS Taopedia article",
+      "tokens": [
+        "123",
+        "article",
+        "articles",
+        "docs",
+        "mantis",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_123/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10477,23 +11682,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-107-website-link-theminos-ai-docs-4",
-      "netuid": 107,
-      "slug": "sn-107",
-      "subtitle": "docs / taomarketcap",
-      "title": "Minos docs",
-      "tokens": [
-        "107",
-        "docs",
-        "minos",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://docs.theminos.ai/"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-107-taomarketcap-source-repo",
       "netuid": 107,
       "slug": "sn-107",
@@ -10548,6 +11736,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/107"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-107-taopedia-article",
+      "netuid": 107,
+      "slug": "sn-107",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Minos Taopedia article",
+      "tokens": [
+        "107",
+        "article",
+        "articles",
+        "docs",
+        "minos",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_107/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10636,6 +11843,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/112"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-112-taopedia-article",
+      "netuid": 112,
+      "slug": "sn-112",
+      "subtitle": "docs / taopedia-articles",
+      "title": "minotaur Taopedia article",
+      "tokens": [
+        "112",
+        "article",
+        "articles",
+        "docs",
+        "minotaur",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_112/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10730,6 +11956,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-79-taopedia-article",
+      "netuid": 79,
+      "slug": "sn-79",
+      "subtitle": "docs / taopedia-articles",
+      "title": "MVTRX Taopedia article",
+      "tokens": [
+        "79",
+        "article",
+        "articles",
+        "docs",
+        "mvtrx",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_79/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-79-tensorplex-docs",
       "netuid": 79,
       "slug": "sn-79",
@@ -10821,6 +12066,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-49-taopedia-article",
+      "netuid": 49,
+      "slug": "sn-49",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Nepher Robotics Taopedia article",
+      "tokens": [
+        "49",
+        "article",
+        "articles",
+        "docs",
+        "nepher",
+        "robotics",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_49/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-49-tensorplex-docs",
       "netuid": 49,
       "slug": "sn-49",
@@ -10908,6 +12173,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/70"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-70-taopedia-article",
+      "netuid": 70,
+      "slug": "sn-70",
+      "subtitle": "docs / taopedia-articles",
+      "title": "NexisGen Taopedia article",
+      "tokens": [
+        "70",
+        "article",
+        "articles",
+        "docs",
+        "nexisgen",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_70/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11074,6 +12358,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-66-taopedia-article",
+      "netuid": 66,
+      "slug": "sn-66",
+      "subtitle": "docs / taopedia-articles",
+      "title": "ninja Taopedia article",
+      "tokens": [
+        "66",
+        "article",
+        "articles",
+        "docs",
+        "ninja",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-66-tensorplex-docs",
       "netuid": 66,
       "slug": "sn-66",
@@ -11145,6 +12448,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-55-taopedia-article",
+      "netuid": 55,
+      "slug": "sn-55",
+      "subtitle": "docs / taopedia-articles",
+      "title": "NIOME Taopedia article",
+      "tokens": [
+        "55",
+        "article",
+        "articles",
+        "docs",
+        "niome",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_55/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-55-tensorplex-docs",
       "netuid": 55,
       "slug": "sn-55",
@@ -11194,6 +12516,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/27"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-27-taopedia-article",
+      "netuid": 27,
+      "slug": "sn-27",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Nodexo Taopedia article",
+      "tokens": [
+        "27",
+        "article",
+        "articles",
+        "docs",
+        "nodexo",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_27/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11318,6 +12659,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/68"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-68-taopedia-article",
+      "netuid": 68,
+      "slug": "sn-68",
+      "subtitle": "docs / taopedia-articles",
+      "title": "NOVA Taopedia article",
+      "tokens": [
+        "68",
+        "article",
+        "articles",
+        "docs",
+        "nova",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_68/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11497,6 +12857,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-90-taopedia-article",
+      "netuid": 90,
+      "slug": "sn-90",
+      "subtitle": "docs / taopedia-articles",
+      "title": "ogham Taopedia article",
+      "tokens": [
+        "90",
+        "article",
+        "articles",
+        "docs",
+        "ogham",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_90/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-90-tensorplex-docs",
       "netuid": 90,
       "slug": "sn-90",
@@ -11548,6 +12927,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/111"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-111-taopedia-article",
+      "netuid": 111,
+      "slug": "sn-111",
+      "subtitle": "docs / taopedia-articles",
+      "title": "oneoneone Taopedia article",
+      "tokens": [
+        "111",
+        "article",
+        "articles",
+        "docs",
+        "oneoneone",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_111/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11885,6 +13283,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-35-taopedia-article",
+      "netuid": 35,
+      "slug": "sn-35",
+      "subtitle": "docs / taopedia-articles",
+      "title": "OxMarkets Taopedia article",
+      "tokens": [
+        "35",
+        "article",
+        "articles",
+        "docs",
+        "oxmarkets",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_35/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-35-tensorplex-docs",
       "netuid": 35,
       "slug": "sn-35",
@@ -11934,6 +13351,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/73"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-73-taopedia-article",
+      "netuid": 73,
+      "slug": "sn-73",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Parked Taopedia article",
+      "tokens": [
+        "73",
+        "article",
+        "articles",
+        "docs",
+        "parked",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_73/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12071,6 +13507,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-58-taopedia-article",
+      "netuid": 58,
+      "slug": "sn-58",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Pending Taopedia article",
+      "tokens": [
+        "58",
+        "article",
+        "articles",
+        "docs",
+        "pending",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_58/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-58-tensorplex-docs",
       "netuid": 58,
       "slug": "sn-58",
@@ -12158,6 +13613,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/26"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-26-taopedia-article",
+      "netuid": 26,
+      "slug": "sn-26",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Perturb Taopedia article",
+      "tokens": [
+        "26",
+        "article",
+        "articles",
+        "docs",
+        "perturb",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_26/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12296,6 +13770,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-100-taopedia-article",
+      "netuid": 100,
+      "slug": "sn-100",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Plaτform Taopedia article",
+      "tokens": [
+        "100",
+        "article",
+        "articles",
+        "docs",
+        "form",
+        "pla",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_100/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-100-tensorplex-docs",
       "netuid": 100,
       "slug": "sn-100",
@@ -12386,6 +13880,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-126-taopedia-article",
+      "netuid": 126,
+      "slug": "sn-126",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Poker44 Taopedia article",
+      "tokens": [
+        "126",
+        "article",
+        "articles",
+        "docs",
+        "poker44",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_126/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-126-tensorplex-docs",
       "netuid": 126,
       "slug": "sn-126",
@@ -12456,6 +13969,26 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/48"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-48-taopedia-article",
+      "netuid": 48,
+      "slug": "sn-48",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Quantum Compute Taopedia article",
+      "tokens": [
+        "48",
+        "article",
+        "articles",
+        "compute",
+        "docs",
+        "quantum",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_48/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12583,6 +14116,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/24"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-24-taopedia-article",
+      "netuid": 24,
+      "slug": "sn-24",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Quasar Taopedia article",
+      "tokens": [
+        "24",
+        "article",
+        "articles",
+        "docs",
+        "quasar",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_24/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12796,6 +14348,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-31-taopedia-article",
+      "netuid": 31,
+      "slug": "sn-31",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Recall Taopedia article",
+      "tokens": [
+        "31",
+        "article",
+        "articles",
+        "docs",
+        "recall",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_31/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-31-tensorplex-docs",
       "netuid": 31,
       "slug": "sn-31",
@@ -12884,6 +14455,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-61-taopedia-article",
+      "netuid": 61,
+      "slug": "sn-61",
+      "subtitle": "docs / taopedia-articles",
+      "title": "RedTeam Taopedia article",
+      "tokens": [
+        "61",
+        "article",
+        "articles",
+        "docs",
+        "redteam",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_61/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-61-tensorplex-docs",
       "netuid": 61,
       "slug": "sn-61",
@@ -12955,6 +14545,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-62-taopedia-article",
+      "netuid": 62,
+      "slug": "sn-62",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Ridges Taopedia article",
+      "tokens": [
+        "62",
+        "article",
+        "articles",
+        "docs",
+        "ridges",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_62/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-62-tensorplex-docs",
       "netuid": 62,
       "slug": "sn-62",
@@ -13018,6 +14627,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/119"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-119-taopedia-article",
+      "netuid": 119,
+      "slug": "sn-119",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Satori Taopedia article",
+      "tokens": [
+        "119",
+        "article",
+        "articles",
+        "docs",
+        "satori",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_119/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13093,6 +14721,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/44"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-44-taopedia-article",
+      "netuid": 44,
+      "slug": "sn-44",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Score Taopedia article",
+      "tokens": [
+        "44",
+        "article",
+        "articles",
+        "docs",
+        "score",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_44/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13223,6 +14870,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-114-taopedia-article",
+      "netuid": 114,
+      "slug": "sn-114",
+      "subtitle": "docs / taopedia-articles",
+      "title": "SOMA Taopedia article",
+      "tokens": [
+        "114",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "soma",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_114/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-114-tensorplex-docs",
       "netuid": 114,
       "slug": "sn-114",
@@ -13337,6 +15003,27 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-72-taopedia-article",
+      "netuid": 72,
+      "slug": "sn-72",
+      "subtitle": "docs / taopedia-articles",
+      "title": "StreetVision by NATIX Taopedia article",
+      "tokens": [
+        "72",
+        "article",
+        "articles",
+        "by",
+        "docs",
+        "natix",
+        "sn",
+        "streetvision",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_72/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-72-tensorplex-docs",
       "netuid": 72,
       "slug": "sn-72",
@@ -13413,6 +15100,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-117-taopedia-article",
+      "netuid": 117,
+      "slug": "sn-117",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Subnet 117 Taopedia article",
+      "tokens": [
+        "117",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "subnet",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_117/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-117-tensorplex-docs",
       "netuid": 117,
       "slug": "sn-117",
@@ -13444,6 +15150,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/42"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-42-taopedia-article",
+      "netuid": 42,
+      "slug": "sn-42",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Subnet 42 Taopedia article",
+      "tokens": [
+        "42",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "subnet",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13520,6 +15245,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-121-taopedia-article",
+      "netuid": 121,
+      "slug": "sn-121",
+      "subtitle": "docs / taopedia-articles",
+      "title": "sundae_bar Taopedia article",
+      "tokens": [
+        "121",
+        "article",
+        "articles",
+        "bar",
+        "docs",
+        "sn",
+        "sundae",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_121/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-121-tensorplex-docs",
       "netuid": 121,
       "slug": "sn-121",
@@ -13590,6 +15335,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/10"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-10-taopedia-article",
+      "netuid": 10,
+      "slug": "sn-10",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Swap Taopedia article",
+      "tokens": [
+        "10",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "swap",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_10/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13717,6 +15481,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-124-taopedia-article",
+      "netuid": 124,
+      "slug": "sn-124",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Swarm Taopedia article",
+      "tokens": [
+        "124",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "swarm",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_124/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-124-tensorplex-docs",
       "netuid": 124,
       "slug": "sn-124",
@@ -13824,6 +15607,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-50-taopedia-article",
+      "netuid": 50,
+      "slug": "sn-50",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Synth Taopedia article",
+      "tokens": [
+        "50",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "synth",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_50/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-50-tensorplex-docs",
       "netuid": 50,
       "slug": "sn-50",
@@ -13895,24 +15697,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-45-website-link-ai-talisman-xyz-docs-9",
-      "netuid": 45,
-      "slug": "sn-45",
-      "subtitle": "docs / taomarketcap",
-      "title": "Talisman AI docs",
-      "tokens": [
-        "45",
-        "ai",
-        "docs",
-        "sn",
-        "talisman",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://docs.talisman.xyz/talisman/about/terms-of-use"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-45-taomarketcap-source-repo",
       "netuid": 45,
       "slug": "sn-45",
@@ -13948,6 +15732,26 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/45"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-45-taopedia-article",
+      "netuid": 45,
+      "slug": "sn-45",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Talisman AI Taopedia article",
+      "tokens": [
+        "45",
+        "ai",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "talisman",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_45/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14021,6 +15825,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/108"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-108-taopedia-article",
+      "netuid": 108,
+      "slug": "sn-108",
+      "subtitle": "docs / taopedia-articles",
+      "title": "TalkHead Taopedia article",
+      "tokens": [
+        "108",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "talkhead",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_108/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14116,25 +15939,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-65-website-link-tpn-taofu-xyz-docs-2",
-      "netuid": 65,
-      "slug": "sn-65",
-      "subtitle": "docs / taomarketcap",
-      "title": "TAO Private Network docs",
-      "tokens": [
-        "65",
-        "docs",
-        "network",
-        "private",
-        "sn",
-        "tao",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://tpn.taofu.xyz/docs/worker"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-65-taomarketcap-source-repo",
       "netuid": 65,
       "slug": "sn-65",
@@ -14193,6 +15997,27 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/65"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-65-taopedia-article",
+      "netuid": 65,
+      "slug": "sn-65",
+      "subtitle": "docs / taopedia-articles",
+      "title": "TAO Private Network Taopedia article",
+      "tokens": [
+        "65",
+        "article",
+        "articles",
+        "docs",
+        "network",
+        "private",
+        "sn",
+        "tao",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_65/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14413,23 +16238,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-113-website-link-tensorusd-com-docs-1",
-      "netuid": 113,
-      "slug": "sn-113",
-      "subtitle": "docs / taomarketcap",
-      "title": "TensorUSD docs",
-      "tokens": [
-        "113",
-        "docs",
-        "sn",
-        "taomarketcap",
-        "tensorusd"
-      ],
-      "type": "surface",
-      "url": "https://docs.tensorusd.com/"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-113-taomarketcap-source-repo",
       "netuid": 113,
       "slug": "sn-113",
@@ -14463,6 +16271,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/113"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-113-taopedia-article",
+      "netuid": 113,
+      "slug": "sn-113",
+      "subtitle": "docs / taopedia-articles",
+      "title": "TensorUSD Taopedia article",
+      "tokens": [
+        "113",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia",
+        "tensorusd"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_113/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14568,6 +16395,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/11"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-11-taopedia-article",
+      "netuid": 11,
+      "slug": "sn-11",
+      "subtitle": "docs / taopedia-articles",
+      "title": "TrajectoryRL Taopedia article",
+      "tokens": [
+        "11",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia",
+        "trajectoryrl"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14694,23 +16540,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-23-website-link-trishool-ai-docs-2",
-      "netuid": 23,
-      "slug": "sn-23",
-      "subtitle": "docs / taomarketcap",
-      "title": "Trishool docs",
-      "tokens": [
-        "23",
-        "docs",
-        "sn",
-        "taomarketcap",
-        "trishool"
-      ],
-      "type": "surface",
-      "url": "https://litepaper.trishool.ai/"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-23-taomarketcap-source-repo",
       "netuid": 23,
       "slug": "sn-23",
@@ -14765,6 +16594,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/23"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-23-taopedia-article",
+      "netuid": 23,
+      "slug": "sn-23",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Trishool Taopedia article",
+      "tokens": [
+        "23",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia",
+        "trishool"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_23/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15092,6 +16940,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-96-taopedia-article",
+      "netuid": 96,
+      "slug": "sn-96",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Verathos Taopedia article",
+      "tokens": [
+        "96",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia",
+        "verathos"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_96/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-96-tensorplex-docs",
       "netuid": 96,
       "slug": "sn-96",
@@ -15250,6 +17117,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-85-taopedia-article",
+      "netuid": 85,
+      "slug": "sn-85",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Vidaio Taopedia article",
+      "tokens": [
+        "85",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia",
+        "vidaio"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_85/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-85-tensorplex-docs",
       "netuid": 85,
       "slug": "sn-85",
@@ -15399,6 +17285,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-78-taopedia-article",
+      "netuid": 78,
+      "slug": "sn-78",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Vocence Taopedia article",
+      "tokens": [
+        "78",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia",
+        "vocence"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_78/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-78-tensorplex-docs",
       "netuid": 78,
       "slug": "sn-78",
@@ -15484,6 +17389,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/106"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-106-taopedia-article",
+      "netuid": 106,
+      "slug": "sn-106",
+      "subtitle": "docs / taopedia-articles",
+      "title": "VoidAI Taopedia article",
+      "tokens": [
+        "106",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia",
+        "voidai"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_106/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15575,6 +17499,26 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/54"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-54-taopedia-article",
+      "netuid": 54,
+      "slug": "sn-54",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Yanez MIID Taopedia article",
+      "tokens": [
+        "54",
+        "article",
+        "articles",
+        "docs",
+        "miid",
+        "sn",
+        "taopedia",
+        "yanez"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_54/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15682,6 +17626,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/18"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-18-taopedia-article",
+      "netuid": 18,
+      "slug": "sn-18",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Zeus Taopedia article",
+      "tokens": [
+        "18",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia",
+        "zeus"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_18/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15881,6 +17844,25 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/46"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-46-taopedia-article",
+      "netuid": 46,
+      "slug": "sn-46",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Zipcode Taopedia article",
+      "tokens": [
+        "46",
+        "article",
+        "articles",
+        "docs",
+        "sn",
+        "taopedia",
+        "zipcode"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_46/index.mdx"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

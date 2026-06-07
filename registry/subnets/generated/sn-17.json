@@ -12,11 +12,11 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 3,
-    "verified_at": "2026-06-07T10:43:28.116Z"
+    "source_count": 4,
+    "verified_at": null
   },
   "dashboard_url": "https://dashboard.404.xyz/d/main/404-gen",
-  "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/17",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_17/index.mdx",
   "links": [],
   "name": "404—GEN",
   "netuid": 17,
@@ -52,20 +52,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/17"
       ],
-      "url": "https://github.com/404-Repo/404-gen-subnet",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/404-Repo/404-gen-subnet",
-        "homepage": null,
-        "last_push_at": "2026-05-27T05:59:46Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:28.064Z"
-      }
+      "url": "https://github.com/404-Repo/404-gen-subnet"
     },
     {
       "auth_required": false,
@@ -83,30 +70,18 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json"
       ],
-      "url": "https://github.com/404-Repo/three-gen-subnet",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/404-Repo/three-gen-subnet",
-        "homepage": null,
-        "last_push_at": "2025-11-17T16:01:31Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:28.116Z"
-      }
+      "url": "https://github.com/404-Repo/three-gen-subnet"
     },
     {
       "auth_required": false,
@@ -135,17 +110,36 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/17"
       ],
-      "url": "https://www.404.xyz/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 105,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:28.065Z"
-      }
+      "url": "https://www.404.xyz/"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-17-taopedia-article",
+      "kind": "docs",
+      "name": "404—GEN Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_17/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_17/index.mdx"
     },
     {
       "auth_required": false,
@@ -174,17 +168,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/17",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 387,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:28.112Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/17"
     },
     {
       "auth_required": false,
@@ -192,7 +176,7 @@
       "id": "sn-17-github-readme-404-repo-three-gen-subnet-dashboard-1",
       "kind": "dashboard",
       "name": "404—GEN dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -213,17 +197,7 @@
       "source_urls": [
         "https://github.com/404-Repo/three-gen-subnet/blob/main/README.md"
       ],
-      "url": "https://dashboard.404.xyz/d/main/404-gen",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=UTF-8",
-        "latency_ms": 260,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:28.056Z"
-      }
+      "url": "https://dashboard.404.xyz/d/main/404-gen"
     },
     {
       "auth_required": false,
@@ -252,17 +226,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/17"
       ],
-      "url": "https://taomarketcap.com/subnets/17",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 140,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:28.064Z"
-      }
+      "url": "https://taomarketcap.com/subnets/17"
     }
   ],
   "website_url": "https://www.404.xyz/"

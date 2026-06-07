@@ -10,11 +10,11 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 4,
-    "verified_at": "2026-06-07T10:43:40.160Z"
+    "source_count": 5,
+    "verified_at": null
   },
   "dashboard_url": "https://taomarketcap.com/subnets/66",
-  "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/66",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx",
   "links": [],
   "name": "ninja",
   "netuid": 66,
@@ -40,31 +40,19 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/66",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json"
       ],
-      "url": "https://github.com/unarbos/tau",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/unarbos/tau",
-        "homepage": null,
-        "last_push_at": "2026-06-07T07:46:44Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:40.077Z"
-      }
+      "url": "https://github.com/unarbos/tau"
     },
     {
       "auth_required": false,
@@ -93,17 +81,36 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/66"
       ],
-      "url": "https://ninja.arbos.life/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html",
-        "latency_ms": 168,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:40.095Z"
-      }
+      "url": "https://ninja.arbos.life/"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-66-taopedia-article",
+      "kind": "docs",
+      "name": "ninja Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx"
     },
     {
       "auth_required": false,
@@ -132,17 +139,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/66",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 401,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:40.117Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/66"
     },
     {
       "auth_required": false,
@@ -150,7 +147,7 @@
       "id": "sn-66-website-common-docs",
       "kind": "docs",
       "name": "ninja docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -171,17 +168,7 @@
       "source_urls": [
         "https://ninja.arbos.life/"
       ],
-      "url": "https://ninja.arbos.life/docs",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html",
-        "latency_ms": 129,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:40.123Z"
-      }
+      "url": "https://ninja.arbos.life/docs"
     },
     {
       "auth_required": false,
@@ -210,17 +197,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/66"
       ],
-      "url": "https://taomarketcap.com/subnets/66",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 123,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:40.071Z"
-      }
+      "url": "https://taomarketcap.com/subnets/66"
     },
     {
       "auth_required": false,
@@ -228,7 +205,7 @@
       "id": "sn-66-website-link-ninja-arbos-life-dashboard-1",
       "kind": "dashboard",
       "name": "ninja dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -249,17 +226,7 @@
       "source_urls": [
         "https://ninja.arbos.life/"
       ],
-      "url": "https://ninja.arbos.life/dashboard-summary.json",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 68,
-        "content_type": "application/json",
-        "latency_ms": 152,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:40.160Z"
-      }
+      "url": "https://ninja.arbos.life/dashboard-summary.json"
     },
     {
       "auth_required": false,
@@ -267,7 +234,7 @@
       "id": "sn-66-website-common-swagger",
       "kind": "openapi",
       "name": "ninja Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -289,17 +256,7 @@
       "source_urls": [
         "https://ninja.arbos.life/"
       ],
-      "url": "https://ninja.arbos.life/swagger",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 68,
-        "content_type": "text/html",
-        "latency_ms": 143,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:40.157Z"
-      }
+      "url": "https://ninja.arbos.life/swagger"
     },
     {
       "auth_required": false,
@@ -307,7 +264,7 @@
       "id": "sn-66-github-readme-unarbos-tau-subnet-api-2",
       "kind": "subnet-api",
       "name": "ninja API surface",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -328,17 +285,7 @@
       "source_urls": [
         "https://github.com/unarbos/tau/blob/main/README.md"
       ],
-      "url": "https://ninja66.ai/api/submissions",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 68,
-        "content_type": "application/json",
-        "latency_ms": 226,
-        "method_tested": "GET",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:40.065Z"
-      }
+      "url": "https://ninja66.ai/api/submissions"
     },
     {
       "auth_required": false,
@@ -346,7 +293,7 @@
       "id": "sn-66-website-common-health",
       "kind": "subnet-api",
       "name": "ninja health endpoint",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -367,17 +314,7 @@
       "source_urls": [
         "https://ninja.arbos.life/"
       ],
-      "url": "https://ninja.arbos.life/health",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 68,
-        "content_type": "text/plain",
-        "latency_ms": 151,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:40.138Z"
-      }
+      "url": "https://ninja.arbos.life/health"
     }
   ],
   "website_url": "https://ninja.arbos.life/"

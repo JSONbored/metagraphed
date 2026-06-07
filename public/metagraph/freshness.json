@@ -29,7 +29,7 @@
       "path": "registry/native/finney-subnets.json",
       "stale_after_hours": 24,
       "status": "captured",
-      "timestamp": "2026-06-07T10:43:21Z"
+      "timestamp": "2026-06-07T15:29:09Z"
     },
     {
       "id": "schema-drift",
@@ -48,8 +48,8 @@
   ],
   "summary": {
     "adapter_count": 2,
-    "health_surface_count": 750,
-    "native_snapshot_captured_at": "2026-06-07T10:43:21Z",
+    "health_surface_count": 852,
+    "native_snapshot_captured_at": "2026-06-07T15:29:09Z",
     "openapi_surface_count": 28,
     "verification_generated_at": "1970-01-01T00:00:00.000Z"
   }

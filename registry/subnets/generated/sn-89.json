@@ -13,8 +13,8 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 3,
-    "verified_at": "2026-06-07T10:43:46.091Z"
+    "source_count": 4,
+    "verified_at": null
   },
   "dashboard_url": "https://taomarketcap.com/subnets/89",
   "docs_url": "https://docs.docker.com/compose/install/linux",
@@ -43,31 +43,19 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/89",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/89/subnet.json"
       ],
-      "url": "https://github.com/backend-developers-ltd/InfiniteHash",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "master",
-        "github_api_url": "https://api.github.com/repos/backend-developers-ltd/InfiniteHash",
-        "homepage": "https://infinitehash.xyz/",
-        "last_push_at": "2026-03-27T12:38:55Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:46.081Z"
-      }
+      "url": "https://github.com/backend-developers-ltd/InfiniteHash"
     },
     {
       "auth_required": false,
@@ -75,7 +63,7 @@
       "id": "sn-89-github-readme-backend-developers-ltd-infinitehash-docs-1",
       "kind": "docs",
       "name": "InfiniteHash docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -96,17 +84,7 @@
       "source_urls": [
         "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/README.md"
       ],
-      "url": "https://docs.docker.com/compose/install/linux",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html",
-        "latency_ms": 144,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:46.005Z"
-      }
+      "url": "https://docs.docker.com/compose/install/linux"
     },
     {
       "auth_required": false,
@@ -114,7 +92,7 @@
       "id": "sn-89-github-readme-backend-developers-ltd-infinitehash-docs-2",
       "kind": "docs",
       "name": "InfiniteHash docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -135,17 +113,7 @@
       "source_urls": [
         "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/README.md"
       ],
-      "url": "https://docs.astral.sh/uv",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 61,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 62,
-        "method_tested": "HEAD",
-        "redirect_target": "https://docs.astral.sh/uv/",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:46.022Z"
-      }
+      "url": "https://docs.astral.sh/uv"
     },
     {
       "auth_required": false,
@@ -153,7 +121,7 @@
       "id": "sn-89-github-readme-backend-developers-ltd-infinitehash-docs-3",
       "kind": "docs",
       "name": "InfiniteHash docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -174,32 +142,22 @@
       "source_urls": [
         "https://github.com/backend-developers-ltd/InfiniteHash/blob/master/README.md"
       ],
-      "url": "https://www.backblaze.com/docs/cloud-storage-configure-and-manage-lifecycle-rules",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 305,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:46.037Z"
-      }
+      "url": "https://www.backblaze.com/docs/cloud-storage-configure-and-manage-lifecycle-rules"
     },
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-89-tensorplex-docs",
+      "id": "sn-89-taopedia-article",
       "kind": "docs",
-      "name": "InfiniteHash Tensorplex subnet docs",
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "name": "InfiniteHash Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taopedia-articles",
       "public_safe": true,
       "quality_signals": {
         "content_type_matches_kind": true,
@@ -211,19 +169,9 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/89/subnet.json"
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_89/index.mdx"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/89",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 299,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:46.091Z"
-      }
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_89/index.mdx"
     },
     {
       "auth_required": false,
@@ -252,17 +200,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/89"
       ],
-      "url": "https://taomarketcap.com/subnets/89",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 126,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:46.053Z"
-      }
+      "url": "https://taomarketcap.com/subnets/89"
     }
   ]
 }

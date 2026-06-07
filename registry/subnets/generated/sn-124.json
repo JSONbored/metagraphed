@@ -11,11 +11,11 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 4,
-    "verified_at": "2026-06-07T10:43:56.151Z"
+    "source_count": 5,
+    "verified_at": null
   },
   "dashboard_url": "https://swarm124.com/benchmark",
-  "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/124",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_124/index.mdx",
   "links": [],
   "name": "Swarm",
   "netuid": 124,
@@ -41,37 +41,19 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/124",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/124/subnet.json"
       ],
-      "url": "https://github.com/swarm-subnet/swarm",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/swarm-subnet/swarm",
-        "homepage": "https://swarm124.com/",
-        "last_push_at": "2026-06-05T18:43:35Z",
-        "redirect_target": null,
-        "topics": [
-          "ai",
-          "ai-agents",
-          "drone",
-          "robotics",
-          "robotics-competition"
-        ],
-        "verified_at": "2026-06-07T10:43:56.054Z"
-      }
+      "url": "https://github.com/swarm-subnet/swarm"
     },
     {
       "auth_required": false,
@@ -100,17 +82,36 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/124"
       ],
-      "url": "https://www.swarm124.com/",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 72,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 699,
-        "method_tested": "HEAD",
-        "redirect_target": "https://swarm124.com/",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:56.061Z"
-      }
+      "url": "https://www.swarm124.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-124-taopedia-article",
+      "kind": "docs",
+      "name": "Swarm Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_124/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_124/index.mdx"
     },
     {
       "auth_required": false,
@@ -139,17 +140,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/124/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/124",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 456,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:56.090Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/124"
     },
     {
       "auth_required": false,
@@ -157,7 +148,7 @@
       "id": "sn-124-website-common-docs",
       "kind": "docs",
       "name": "Swarm docs",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -178,17 +169,7 @@
       "source_urls": [
         "https://www.swarm124.com/"
       ],
-      "url": "https://www.swarm124.com/docs",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 71,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1143,
-        "method_tested": "HEAD",
-        "redirect_target": "https://swarm124.com/docs",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:56.109Z"
-      }
+      "url": "https://www.swarm124.com/docs"
     },
     {
       "auth_required": false,
@@ -196,7 +177,7 @@
       "id": "sn-124-github-readme-swarm-subnet-swarm-dashboard-1",
       "kind": "dashboard",
       "name": "Swarm dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -217,17 +198,7 @@
       "source_urls": [
         "https://github.com/swarm-subnet/swarm/blob/main/README.md"
       ],
-      "url": "https://swarm124.com/benchmark",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 549,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:55.990Z"
-      }
+      "url": "https://swarm124.com/benchmark"
     },
     {
       "auth_required": false,
@@ -256,17 +227,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/124"
       ],
-      "url": "https://taomarketcap.com/subnets/124",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 406,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:55.995Z"
-      }
+      "url": "https://taomarketcap.com/subnets/124"
     },
     {
       "auth_required": false,
@@ -274,7 +235,7 @@
       "id": "sn-124-website-common-swagger",
       "kind": "openapi",
       "name": "Swarm Swagger UI",
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh. Machine-readable OpenAPI schema has not been captured for this surface.",
+      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion. Machine-readable OpenAPI schema has not been captured for this surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -296,17 +257,7 @@
       "source_urls": [
         "https://www.swarm124.com/"
       ],
-      "url": "https://www.swarm124.com/swagger",
-      "verification": {
-        "classification": "redirected",
-        "confidence_score": 63,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 1109,
-        "method_tested": "HEAD",
-        "redirect_target": "https://swarm124.com/swagger",
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:56.151Z"
-      }
+      "url": "https://www.swarm124.com/swagger"
     }
   ],
   "website_url": "https://www.swarm124.com/"

@@ -13,7 +13,7 @@
     "review_state": "machine-generated",
     "reviewed_at": null,
     "source_count": 4,
-    "verified_at": "2026-06-07T10:43:27.845Z"
+    "verified_at": null
   },
   "dashboard_url": "https://oroagents.com/",
   "docs_url": "https://docs.oroagents.com/docs/validators/installation",
@@ -53,20 +53,7 @@
         "https://api.taomarketcap.com/public/v1/subnets/15",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json"
       ],
-      "url": "https://github.com/ORO-AI/oro",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/ORO-AI/oro",
-        "homepage": null,
-        "last_push_at": "2026-06-04T17:41:32Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:27.717Z"
-      }
+      "url": "https://github.com/ORO-AI/oro"
     },
     {
       "auth_required": false,
@@ -95,17 +82,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/15"
       ],
-      "url": "https://oroagents.com/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 147,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.719Z"
-      }
+      "url": "https://oroagents.com/"
     },
     {
       "auth_required": false,
@@ -113,7 +90,7 @@
       "id": "sn-15-github-readme-oro-ai-oro-docs-10",
       "kind": "docs",
       "name": "ORO docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -134,17 +111,7 @@
       "source_urls": [
         "https://github.com/ORO-AI/oro/blob/main/README.md"
       ],
-      "url": "https://docs.oroagents.com/docs/validators/installation",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 219,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.561Z"
-      }
+      "url": "https://docs.oroagents.com/docs/validators/installation"
     },
     {
       "auth_required": false,
@@ -152,7 +119,7 @@
       "id": "sn-15-github-readme-oro-ai-oro-docs-2",
       "kind": "docs",
       "name": "ORO docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -173,17 +140,7 @@
       "source_urls": [
         "https://github.com/ORO-AI/oro/blob/main/README.md"
       ],
-      "url": "https://docs.oroagents.com/docs/miners/quick-start",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 214,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.592Z"
-      }
+      "url": "https://docs.oroagents.com/docs/miners/quick-start"
     },
     {
       "auth_required": false,
@@ -191,7 +148,7 @@
       "id": "sn-15-github-readme-oro-ai-oro-docs-3",
       "kind": "docs",
       "name": "ORO docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -212,17 +169,7 @@
       "source_urls": [
         "https://github.com/ORO-AI/oro/blob/main/README.md"
       ],
-      "url": "https://docs.oroagents.com/docs/validators/overview",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 213,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.600Z"
-      }
+      "url": "https://docs.oroagents.com/docs/validators/overview"
     },
     {
       "auth_required": false,
@@ -230,7 +177,7 @@
       "id": "sn-15-github-readme-oro-ai-oro-docs-4",
       "kind": "docs",
       "name": "ORO docs",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -249,19 +196,10 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/ORO-AI/oro/blob/main/README.md"
+        "https://github.com/ORO-AI/oro/blob/main/README.md",
+        "https://oroagents.com/"
       ],
-      "url": "https://docs.oroagents.com/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 206,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.603Z"
-      }
+      "url": "https://docs.oroagents.com/"
     },
     {
       "auth_required": false,
@@ -269,7 +207,7 @@
       "id": "sn-15-github-readme-oro-ai-oro-dashboard-1",
       "kind": "dashboard",
       "name": "ORO dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -290,17 +228,7 @@
       "source_urls": [
         "https://github.com/ORO-AI/oro/blob/main/README.md"
       ],
-      "url": "https://oroagents.com/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 225,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.556Z"
-      }
+      "url": "https://oroagents.com/"
     },
     {
       "auth_required": false,
@@ -329,17 +257,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/15"
       ],
-      "url": "https://taomarketcap.com/subnets/15",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 144,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.700Z"
-      }
+      "url": "https://taomarketcap.com/subnets/15"
     },
     {
       "auth_required": false,
@@ -347,7 +265,7 @@
       "id": "sn-15-website-link-oroagents-com-dashboard-4",
       "kind": "dashboard",
       "name": "ORO dashboard",
-      "notes": "Discovered from a public project website link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public project website link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -368,17 +286,7 @@
       "source_urls": [
         "https://oroagents.com/"
       ],
-      "url": "https://oroagents.com/leaderboard",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 76,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 169,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:27.845Z"
-      }
+      "url": "https://oroagents.com/leaderboard"
     }
   ],
   "website_url": "https://oroagents.com/"

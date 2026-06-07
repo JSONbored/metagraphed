@@ -12,11 +12,11 @@
     "level": "machine-verified",
     "review_state": "machine-generated",
     "reviewed_at": null,
-    "source_count": 3,
-    "verified_at": "2026-06-07T10:43:39.117Z"
+    "source_count": 4,
+    "verified_at": null
   },
   "dashboard_url": "https://taostats.io/subnets/63",
-  "docs_url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/63",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_63/index.mdx",
   "links": [],
   "name": "Enigma",
   "netuid": 63,
@@ -42,30 +42,18 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/63"
       ],
-      "url": "https://github.com/qbittensor-labs/enigma",
-      "verification": {
-        "archived": false,
-        "classification": "live",
-        "confidence_score": 80,
-        "content_type": null,
-        "default_branch": "main",
-        "github_api_url": "https://api.github.com/repos/qbittensor-labs/enigma",
-        "homepage": "https://www.qbittensorlabs.com/enigma",
-        "last_push_at": "2026-06-05T23:53:18Z",
-        "redirect_target": null,
-        "topics": [],
-        "verified_at": "2026-06-07T10:43:39.092Z"
-      }
+      "url": "https://github.com/qbittensor-labs/enigma"
     },
     {
       "auth_required": false,
@@ -94,17 +82,36 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/63"
       ],
-      "url": "https://www.qbittensorlabs.com/",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 90,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:39.117Z"
-      }
+      "url": "https://www.qbittensorlabs.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-63-taopedia-article",
+      "kind": "docs",
+      "name": "Enigma Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_63/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_63/index.mdx"
     },
     {
       "auth_required": false,
@@ -133,17 +140,7 @@
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/63/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/63",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 73,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 359,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:39.117Z"
-      }
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/63"
     },
     {
       "auth_required": false,
@@ -151,7 +148,7 @@
       "id": "sn-63-github-readme-qbittensor-labs-enigma-dashboard-1",
       "kind": "dashboard",
       "name": "Enigma dashboard",
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion. Source refresh failed; preserved pending a successful refresh. Source refresh failed; preserved pending a successful refresh.",
+      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -172,17 +169,7 @@
       "source_urls": [
         "https://github.com/qbittensor-labs/enigma/blob/main/README.md"
       ],
-      "url": "https://taostats.io/subnets/63",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 66,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 214,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:39.032Z"
-      }
+      "url": "https://taostats.io/subnets/63"
     },
     {
       "auth_required": false,
@@ -211,17 +198,7 @@
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/63"
       ],
-      "url": "https://taomarketcap.com/subnets/63",
-      "verification": {
-        "classification": "live",
-        "confidence_score": 77,
-        "content_type": "text/html; charset=utf-8",
-        "latency_ms": 122,
-        "method_tested": "HEAD",
-        "redirect_target": null,
-        "status_code": 200,
-        "verified_at": "2026-06-07T10:43:39.065Z"
-      }
+      "url": "https://taomarketcap.com/subnets/63"
     }
   ],
   "website_url": "https://www.qbittensorlabs.com/"
