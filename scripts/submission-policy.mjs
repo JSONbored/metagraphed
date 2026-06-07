@@ -447,6 +447,28 @@ export function validateCandidateForSubmission({
       message: "candidate source_url is missing, invalid, or unsafe",
     });
   }
+  if (candidate.source_urls !== undefined) {
+    if (!Array.isArray(candidate.source_urls)) {
+      errors.push({
+        category: "unsupported-shape",
+        message: "candidate source_urls must be an array",
+      });
+    } else {
+      for (const [index, sourceUrl] of candidate.source_urls.entries()) {
+        const normalizedProvenanceUrl = normalizePublicUrl(sourceUrl);
+        if (!normalizedProvenanceUrl) {
+          errors.push({
+            category: "private-or-unsafe-url",
+            message: `candidate source_urls[${index}] is invalid or unsafe`,
+          });
+        } else if (sourceUrl !== normalizedProvenanceUrl) {
+          warnings.push(
+            `candidate source_urls[${index}] will be normalized by registry tooling`,
+          );
+        }
+      }
+    }
+  }
   if (candidate.url && normalizedUrl && candidate.url !== normalizedUrl) {
     warnings.push("candidate url will be normalized by registry tooling");
   }

@@ -86,6 +86,33 @@ describe("Metagraphed submission gate policy", () => {
     );
   });
 
+  test("blocks unsafe candidate provenance URLs", () => {
+    const document = structuredClone(validCandidateDocument);
+    document.candidates[0].source_urls = [
+      "https://docs.all-ways.io/how-it-works.html",
+      "http://169.254.169.254/latest/meta-data/",
+    ];
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/bad-provenance.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "jsonbored",
+    });
+
+    assert.equal(report.public_state, "fix_required");
+    assert.equal(report.blocking, true);
+    assert.equal(
+      report.errors.includes("candidate source_urls[1] is invalid or unsafe"),
+      true,
+    );
+    assert.equal(
+      report.error_categories.includes("private-or-unsafe-url"),
+      true,
+    );
+  });
+
   test("routes auth-required and base-layer endpoint claims to manual review", () => {
     const authDocument = structuredClone(validCandidateDocument);
     authDocument.candidates[0].auth_required = true;
