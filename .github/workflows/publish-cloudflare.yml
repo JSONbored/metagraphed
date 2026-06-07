@@ -16,10 +16,6 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
@@ -61,7 +57,7 @@ jobs:
           npm run kv:publish:dry-run
           npm run worker:deploy:dry-run
         env:
-          METAGRAPH_REQUIRE_KV_BINDING: ${{ env.METAGRAPH_KV_NAMESPACE_ID != '' && '1' || '0' }}
+          METAGRAPH_REQUIRE_KV_BINDING: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID != '' && '1' || '0' }}
 
       - name: Public-safety scan
         run: npm run scan:public-safety
@@ -69,18 +65,44 @@ jobs:
       - name: Validate private boundary
         run: npm run validate:private-boundary
 
+      - name: Check Cloudflare publishing secrets
+        id: cloudflare-secrets
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ] && [ -n "$METAGRAPH_KV_NAMESPACE_ID" ]; then
+            echo "kv_publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "kv_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
+
       - name: Upload artifact history to R2
-        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+        if: steps.cloudflare-secrets.outputs.publish == 'true'
         run: npm run r2:upload
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_ALLOW_R2_UPLOAD: "1"
 
       - name: Publish KV latest pointer
-        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.METAGRAPH_KV_NAMESPACE_ID != ''
+        if: steps.cloudflare-secrets.outputs.kv_publish == 'true'
         run: npm run kv:publish
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           METAGRAPH_ALLOW_KV_WRITE: "1"
 
       - name: Deploy Worker
-        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
-        run: npx --yes wrangler deploy
+        if: steps.cloudflare-secrets.outputs.publish == 'true'
+        run: ./node_modules/.bin/wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

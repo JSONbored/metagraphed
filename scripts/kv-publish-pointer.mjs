@@ -90,11 +90,15 @@ for (const [key, value] of kvEntries) {
 console.log(`Published ${kvEntries.length} KV control record(s).`);
 
 function putKv(key, value) {
+  const wranglerBin = path.join(
+    repoRoot,
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? "wrangler.cmd" : "wrangler",
+  );
   const result = spawnSync(
-    "npx",
+    wranglerBin,
     [
-      "--yes",
-      "wrangler",
       "kv",
       "key",
       "put",

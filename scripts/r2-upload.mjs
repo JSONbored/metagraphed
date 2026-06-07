@@ -54,18 +54,15 @@ function verifyLocalArtifact(localPath, artifact) {
 }
 
 function putObject(localPath, key, bucketName) {
+  const wranglerBin = path.join(
+    repoRoot,
+    "node_modules",
+    ".bin",
+    process.platform === "win32" ? "wrangler.cmd" : "wrangler",
+  );
   const result = spawnSync(
-    "npx",
-    [
-      "--yes",
-      "wrangler",
-      "r2",
-      "object",
-      "put",
-      `${bucketName}/${key}`,
-      "--file",
-      localPath,
-    ],
+    wranglerBin,
+    ["r2", "object", "put", `${bucketName}/${key}`, "--file", localPath],
     {
       encoding: "utf8",
       stdio: "pipe",
