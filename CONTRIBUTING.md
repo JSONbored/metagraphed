@@ -118,10 +118,12 @@ URLs, provider profiles, profile/source corrections, and status reports.
 
 Live PR references:
 
+- AI-merged safe candidate example:
+  https://github.com/JSONbored/metagraphed/pull/87
 - Manual-review direct candidate example:
   https://github.com/JSONbored/metagraphed/pull/84
-- Merged safe candidate and closed duplicate examples will be added after the
-  first public example submissions land through the current AI gate.
+- Closed duplicate/invalid examples will be added after the first public
+  rejection example is intentionally run through the current gate.
 
 Do not include generated `public/metagraph/**` artifacts, native snapshots,
 workflow/script changes, secrets, wallet/PAT material, private URLs, or

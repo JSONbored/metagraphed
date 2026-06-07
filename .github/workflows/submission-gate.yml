@@ -38,9 +38,15 @@ jobs:
       - name: Capture changed files
         env:
           BASE_REF: ${{ github.base_ref || 'main' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
         run: |
-          git fetch origin "$BASE_REF" --depth=1
-          git diff --name-only "origin/$BASE_REF"...HEAD > changed-files.txt
+          if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ]; then
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-files.txt
+          else
+            git fetch origin "$BASE_REF"
+            git diff --name-only "origin/$BASE_REF"...HEAD > changed-files.txt
+          fi
 
       - name: Run public submission preflight
         env:
