@@ -112,6 +112,72 @@
         },
         "additionalProperties": false
       },
+      "ReviewProfileCompletenessEntry": {
+        "type": "object",
+        "required": [
+          "candidate_count",
+          "completeness_score",
+          "confidence",
+          "gap_reasons",
+          "missing_critical_count",
+          "name",
+          "netuid",
+          "priority_score",
+          "profile_level",
+          "slug",
+          "suggested_next_action"
+        ],
+        "properties": {
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completeness_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "confidence": {
+            "enum": ["low", "medium", "high"]
+          },
+          "gap_reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missing_critical_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "suggested_next_action": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "ReviewDecision": {
         "type": "object",
         "required": [
@@ -256,6 +322,55 @@
                 "items": {
                   "$ref": "#/components/schemas/ReviewAdapterCandidate"
                 }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewProfileCompletenessArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["profiles", "summary"],
+            "properties": {
+              "profiles": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewProfileCompletenessEntry"
+                }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "profile_count",
+                  "needs_identity_count",
+                  "needs_operational_count",
+                  "average_completeness_score"
+                ],
+                "properties": {
+                  "profile_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "needs_identity_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "needs_operational_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "average_completeness_score": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": true

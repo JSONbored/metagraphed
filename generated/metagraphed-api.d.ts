@@ -293,6 +293,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List public-safe subnet profiles and completeness scores. */
+        get: operations["profiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/providers": {
         parameters: {
             query?: never;
@@ -336,6 +353,57 @@ export interface paths {
         };
         /** List endpoint resources for one provider or operator. */
         get: operations["providerEndpoints"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/review/adapter-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch subnets worth deeper adapter work. */
+        get: operations["reviewAdapterCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/review/gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch contributor-targeted subnet gap priorities. */
+        get: operations["reviewGaps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/review/profile-completeness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch profile completeness gaps for contributor targeting. */
+        get: operations["reviewProfileCompleteness"];
         put?: never;
         post?: never;
         delete?: never;
@@ -523,6 +591,23 @@ export interface paths {
         };
         /** Fetch health detail for one subnet. */
         get: operations["subnetHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch public-safe profile detail for one subnet. */
+        get: operations["subnetProfile"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1316,6 +1401,32 @@ export interface components {
             surface_count: number;
             verified_candidate_count: number;
         };
+        ReviewProfileCompletenessArtifact: components["schemas"]["ArtifactBase"] & ({
+            profiles: components["schemas"]["ReviewProfileCompletenessEntry"][];
+            summary: {
+                average_completeness_score: number;
+                needs_identity_count: number;
+                needs_operational_count: number;
+                profile_count: number;
+            };
+        } & {
+            [key: string]: unknown;
+        });
+        ReviewProfileCompletenessEntry: {
+            candidate_count: number;
+            completeness_score: number;
+            /** @enum {unknown} */
+            confidence: "low" | "medium" | "high";
+            gap_reasons: string[];
+            missing_critical_count: number;
+            name: string;
+            netuid: number;
+            priority_score: number;
+            /** @enum {unknown} */
+            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            slug: string;
+            suggested_next_action: string;
+        };
         ReviewQueueArtifact: components["schemas"]["CandidatesArtifact"];
         /** @enum {unknown} */
         ReviewState: "unreviewed" | "machine-generated" | "maintainer-reviewed" | "needs-review" | "stale";
@@ -1620,6 +1731,97 @@ export interface components {
             /** Format: uri */
             website_url?: string | null;
         };
+        SubnetProfile: {
+            candidate_count: number;
+            categories: string[];
+            completeness: components["schemas"]["SubnetProfileCompleteness"];
+            completeness_score: number;
+            /** @enum {unknown} */
+            confidence: "low" | "medium" | "high";
+            endpoint_count: number;
+            interface_count?: number;
+            missing_critical_count: number;
+            monitored_endpoint_count: number;
+            name: string;
+            native_name?: string | null;
+            /** @enum {unknown} */
+            native_name_quality?: "chain" | "placeholder" | "empty";
+            netuid: number;
+            operational_interface_count?: number;
+            operational_interface_kinds: components["schemas"]["SurfaceKind"][];
+            primary_app_surface: components["schemas"]["SubnetProfileSurfaceSummary"];
+            primary_links: components["schemas"]["SubnetProfilePrimaryLinks"];
+            /** @enum {unknown} */
+            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            project_name: string;
+            provenance: components["schemas"]["SubnetProfileProvenance"];
+            review_state: components["schemas"]["ReviewState"];
+            slug: string;
+            status: components["schemas"]["SubnetStatus"];
+            subnet_type: components["schemas"]["SubnetType"];
+            supported_interface_kinds: components["schemas"]["SurfaceKind"][];
+            surface_count: number;
+            symbol?: string | null;
+            team: string | null;
+        };
+        SubnetProfileArtifact: components["schemas"]["ArtifactBase"] & ({
+            candidate_surfaces: components["schemas"]["CandidateSurface"][];
+            endpoints: components["schemas"]["EndpointResource"][];
+            gaps: components["schemas"]["Gaps"];
+            profile: components["schemas"]["SubnetProfile"];
+            subnet: components["schemas"]["SubnetDetail"];
+            surfaces: components["schemas"]["Surface"][];
+        } & {
+            [key: string]: unknown;
+        });
+        SubnetProfileCompleteness: {
+            /** @enum {unknown} */
+            confidence: "low" | "medium" | "high";
+            gap_reasons: string[];
+            missing_critical_count: number;
+            missing_operational: components["schemas"]["SurfaceKind"][];
+            missing_required: components["schemas"]["SurfaceKind"][];
+            /** @enum {unknown} */
+            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            score: number;
+        };
+        SubnetProfilePrimaryLinks: {
+            /** Format: uri */
+            dashboard_url: string | null;
+            /** Format: uri */
+            docs_url: string | null;
+            /** Format: uri */
+            source_repo: string | null;
+            /** Format: uri */
+            website_url: string | null;
+        };
+        SubnetProfileProvenance: {
+            curation_level: components["schemas"]["CurationLevel"];
+            identity_source: string;
+            interface_source_count: number;
+            review_state: components["schemas"]["ReviewState"];
+            reviewed_at: string | null;
+            source_urls: string[];
+        };
+        SubnetProfilesArtifact: components["schemas"]["ArtifactBase"] & ({
+            profiles: components["schemas"]["SubnetProfile"][];
+            summary: {
+                average_completeness_score: number;
+                by_confidence: components["schemas"]["CountMap"];
+                by_profile_level: components["schemas"]["CountMap"];
+                profile_count: number;
+            };
+        } & {
+            [key: string]: unknown;
+        });
+        SubnetProfileSurfaceSummary: {
+            id: string;
+            kind: components["schemas"]["SurfaceKind"];
+            name: string;
+            provider: string;
+            /** Format: uri */
+            url: string;
+        } | null;
         SubnetsArtifact: components["schemas"]["ArtifactBase"] & ({
             /** @constant */
             network: "finney";
@@ -3014,6 +3216,86 @@ export interface operations {
             };
         };
     };
+    profiles: {
+        parameters: {
+            query?: {
+                netuid?: number;
+                subnet_type?: "root" | "application";
+                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                review_state?: string;
+                confidence?: "low" | "medium" | "high";
+                profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                q?: string;
+                limit?: number;
+                cursor?: number;
+                sort?: "candidate_count" | "completeness_score" | "curation_level" | "interface_count" | "missing_critical_count" | "name" | "netuid" | "operational_interface_count" | "profile_level" | "review_state";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetProfilesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     providers: {
         parameters: {
             query?: {
@@ -3193,6 +3475,233 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ProviderEndpointsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reviewAdapterCandidates: {
+        parameters: {
+            query?: {
+                netuid?: number;
+                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                limit?: number;
+                cursor?: number;
+                sort?: "candidate_api_count" | "curation_level" | "name" | "netuid" | "operational_surface_count" | "priority_score";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ReviewAdapterCandidatesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reviewGaps: {
+        parameters: {
+            query?: {
+                netuid?: number;
+                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                review_state?: string;
+                limit?: number;
+                cursor?: number;
+                sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ReviewGapPrioritiesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reviewProfileCompleteness: {
+        parameters: {
+            query?: {
+                netuid?: number;
+                profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                confidence?: "low" | "medium" | "high";
+                limit?: number;
+                cursor?: number;
+                sort?: "candidate_count" | "completeness_score" | "missing_critical_count" | "name" | "netuid" | "priority_score" | "profile_level";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ReviewProfileCompletenessArtifact"];
                     };
                 };
             };
@@ -4011,6 +4520,76 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthSubnetArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetProfileArtifact"];
                     };
                 };
             };

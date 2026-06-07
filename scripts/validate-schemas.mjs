@@ -175,6 +175,7 @@ function netuidArtifactDirectories() {
     "endpoints-subnet": "endpoints",
     "health-badge": "health/badges",
     "health-subnet": "health/subnets",
+    "profile-detail": "profiles",
     "subnet-detail": "subnets",
     "surfaces-subnet": "surfaces",
     "verification-subnet": "verification/subnets",

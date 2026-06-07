@@ -244,6 +244,13 @@ const candidateIndex = candidates.map((candidate) => ({
       ?.name || null,
 }));
 
+const profileArtifacts = buildSubnetProfileArtifacts({
+  candidates: candidateIndex,
+  endpoints: endpointResources.endpoints,
+  subnets: mergedSubnets,
+  surfaces,
+});
+
 const reviewQueue = candidateIndex.filter((candidate) =>
   ["schema-valid", "maintainer-review", "stale"].includes(candidate.state),
 );
@@ -301,6 +308,7 @@ await writeJson(artifactFile("subnets.json"), {
 });
 
 await fs.rm(r2ArtifactDir("subnets"), { recursive: true, force: true });
+await fs.rm(r2ArtifactDir("profiles"), { recursive: true, force: true });
 for (const subnet of mergedSubnets) {
   const subnetCandidates = candidatesByNetuid.get(subnet.netuid) || [];
   const subnetSurfaces = surfaces.filter(
@@ -320,7 +328,30 @@ for (const subnet of mergedSubnets) {
     surfaces: subnetSurfaces,
     verified_surfaces: subnetSurfaces,
   });
+  await writeJson(artifactFile(`profiles/${subnet.netuid}.json`), {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    profile: profileArtifacts.byNetuid.get(subnet.netuid),
+    subnet,
+    candidate_surfaces: candidateIndex.filter(
+      (candidate) => candidate.netuid === subnet.netuid,
+    ),
+    endpoints: subnetEndpoints,
+    gaps: subnet.gaps,
+    surfaces: subnetSurfaces,
+  });
 }
+
+await writeJson(artifactFile("profiles.json"), {
+  schema_version: 1,
+  contract_version: contractVersion,
+  generated_at: generatedAt,
+  notes:
+    "Public-safe subnet profiles derived from native chain data, curated overlays, verified surfaces, candidates, and explicit gaps.",
+  summary: profileArtifacts.summary,
+  profiles: profileArtifacts.profiles,
+});
 
 await writeJson(artifactFile("surfaces.json"), {
   schema_version: 1,
@@ -577,6 +608,13 @@ await writeJson(artifactFile("review/gap-priorities.json"), {
   generated_at: generatedAt,
   priorities: curationReview.gap_priorities,
 });
+await writeJson(artifactFile("review/profile-completeness.json"), {
+  schema_version: 1,
+  contract_version: contractVersion,
+  generated_at: generatedAt,
+  profiles: profileArtifacts.reviewProfiles,
+  summary: profileArtifacts.reviewSummary,
+});
 await writeJson(artifactFile("review/adapter-candidates.json"), {
   schema_version: 1,
   contract_version: contractVersion,
@@ -661,6 +699,7 @@ await writeJson(artifactFile("build-summary.json"), {
   candidate_count: candidates.length,
   coverage,
   endpoint_count: endpointResources.endpoints.length,
+  profile_count: profileArtifacts.profiles.length,
   provider_count: providers.length,
   subnet_count: mergedSubnets.length,
   surface_count: surfaces.length,
@@ -820,6 +859,289 @@ function endpointSummary(endpoints) {
     by_publication_state: countBy(endpoints, "publication_state"),
     by_status: countBy(endpoints, "status"),
   };
+}
+
+function buildSubnetProfileArtifacts({
+  subnets,
+  surfaces,
+  endpoints,
+  candidates,
+}) {
+  const surfacesByNetuid = groupByNetuid(surfaces);
+  const endpointsByNetuid = groupByNetuid(endpoints);
+  const candidatesByNetuid = groupByNetuid(candidates);
+  const profiles = subnets
+    .map((subnet) =>
+      buildSubnetProfile({
+        candidates: candidatesByNetuid.get(subnet.netuid) || [],
+        endpoints: endpointsByNetuid.get(subnet.netuid) || [],
+        subnet,
+        surfaces: surfacesByNetuid.get(subnet.netuid) || [],
+      }),
+    )
+    .sort((a, b) => a.netuid - b.netuid);
+  const reviewProfiles = profiles
+    .map((profile) => ({
+      candidate_count: profile.candidate_count,
+      completeness_score: profile.completeness_score,
+      confidence: profile.confidence,
+      gap_reasons: profile.completeness.gap_reasons,
+      missing_critical_count: profile.missing_critical_count,
+      name: profile.name,
+      netuid: profile.netuid,
+      priority_score:
+        100 -
+        profile.completeness_score +
+        profile.missing_critical_count * 5 +
+        Math.min(profile.candidate_count, 25),
+      profile_level: profile.profile_level,
+      slug: profile.slug,
+      suggested_next_action: profileSuggestedNextAction(profile),
+    }))
+    .sort(
+      (a, b) =>
+        b.priority_score - a.priority_score ||
+        a.completeness_score - b.completeness_score ||
+        a.netuid - b.netuid,
+    );
+
+  return {
+    byNetuid: new Map(profiles.map((profile) => [profile.netuid, profile])),
+    profiles,
+    reviewProfiles,
+    reviewSummary: {
+      profile_count: profiles.length,
+      needs_identity_count: profiles.filter(
+        (profile) => profile.completeness.missing_required.length > 0,
+      ).length,
+      needs_operational_count: profiles.filter(
+        (profile) => profile.operational_interface_count === 0,
+      ).length,
+      average_completeness_score: averageScore(profiles),
+    },
+    summary: {
+      profile_count: profiles.length,
+      average_completeness_score: averageScore(profiles),
+      by_profile_level: countBy(profiles, "profile_level"),
+      by_confidence: countBy(profiles, "confidence"),
+    },
+  };
+}
+
+function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
+  const supportedKinds = [...new Set(subnet.gaps.supported_kinds || [])].sort();
+  const operationalKinds = supportedKinds.filter((kind) =>
+    ["openapi", "subnet-api", "sse", "data-artifact"].includes(kind),
+  );
+  const primaryLinks = {
+    website_url: subnet.website_url || firstSurfaceUrl(surfaces, "website"),
+    docs_url: subnet.docs_url || firstSurfaceUrl(surfaces, "docs"),
+    source_repo: subnet.source_repo || firstSurfaceUrl(surfaces, "source-repo"),
+    dashboard_url:
+      subnet.dashboard_url || firstSurfaceUrl(surfaces, "dashboard"),
+  };
+  const completeness = subnetProfileCompleteness({
+    curationLevel: subnet.curation.level,
+    primaryLinks,
+    supportedKinds,
+  });
+  const sourceUrls = profileSourceUrls({ primaryLinks, surfaces });
+  const confidence = profileConfidence(subnet.curation);
+
+  return {
+    netuid: subnet.netuid,
+    slug: subnet.slug,
+    name: subnet.name,
+    native_name: subnet.native_name,
+    native_name_quality: subnet.native_name_quality,
+    subnet_type: subnet.subnet_type,
+    status: subnet.status,
+    symbol: subnet.symbol,
+    project_name: subnet.name,
+    team: null,
+    categories: subnet.categories || [],
+    primary_links: primaryLinks,
+    primary_app_surface: surfaceSummary(primaryAppSurface(surfaces)),
+    supported_interface_kinds: supportedKinds,
+    operational_interface_kinds: operationalKinds,
+    surface_count: surfaces.length,
+    endpoint_count: endpoints.length,
+    monitored_endpoint_count: endpoints.filter(
+      (endpoint) => endpoint.monitoring_status === "monitored",
+    ).length,
+    candidate_count: candidates.length,
+    interface_count: supportedKinds.length,
+    operational_interface_count: operationalKinds.length,
+    completeness,
+    provenance: {
+      identity_source:
+        subnet.provenance?.identity?.display_name_source || "unknown",
+      interface_source_count: sourceUrls.length,
+      review_state: subnet.curation.review_state,
+      curation_level: subnet.curation.level,
+      reviewed_at: subnet.curation.reviewed_at || null,
+      source_urls: sourceUrls,
+    },
+    review_state: subnet.curation.review_state,
+    confidence,
+    profile_level: completeness.profile_level,
+    completeness_score: completeness.score,
+    missing_critical_count: completeness.missing_critical_count,
+  };
+}
+
+function subnetProfileCompleteness({
+  curationLevel,
+  primaryLinks,
+  supportedKinds,
+}) {
+  const kindSet = new Set(supportedKinds);
+  const missingRequired = [
+    ["docs", primaryLinks.docs_url || kindSet.has("docs")],
+    ["source-repo", primaryLinks.source_repo || kindSet.has("source-repo")],
+    ["website", primaryLinks.website_url || kindSet.has("website")],
+  ]
+    .filter(([, present]) => !present)
+    .map(([kind]) => kind);
+  const missingOperational = [
+    "openapi",
+    "subnet-api",
+    "sse",
+    "data-artifact",
+  ].filter((kind) => !kindSet.has(kind));
+  const operationalCount = 4 - missingOperational.length;
+  const score = Math.min(
+    100,
+    (primaryLinks.docs_url || kindSet.has("docs") ? 15 : 0) +
+      (primaryLinks.source_repo || kindSet.has("source-repo") ? 15 : 0) +
+      (primaryLinks.website_url || kindSet.has("website") ? 15 : 0) +
+      (primaryLinks.dashboard_url || kindSet.has("dashboard") ? 5 : 0) +
+      (kindSet.has("openapi") ? 15 : 0) +
+      (kindSet.has("subnet-api") ? 15 : 0) +
+      (kindSet.has("sse") ? 7 : 0) +
+      (kindSet.has("data-artifact") ? 8 : 0) +
+      (curationLevel === "maintainer-reviewed" ? 5 : 0) +
+      (curationLevel === "adapter-backed" ? 10 : 0),
+  );
+  const profileLevel =
+    curationLevel === "adapter-backed"
+      ? "adapter-backed"
+      : operationalCount > 0
+        ? "operational"
+        : missingRequired.length === 0
+          ? "identity-complete"
+          : "directory-only";
+  const gapReasons = [
+    ...missingRequired.map((kind) => `missing-${kind}`),
+    ...missingOperational.map((kind) => `missing-${kind}`),
+  ];
+
+  return {
+    score,
+    profile_level: profileLevel,
+    confidence:
+      curationLevel === "adapter-backed" ||
+      curationLevel === "maintainer-reviewed"
+        ? "high"
+        : curationLevel === "machine-verified"
+          ? "medium"
+          : "low",
+    missing_required: missingRequired,
+    missing_operational: missingOperational,
+    missing_critical_count: missingRequired.length + missingOperational.length,
+    gap_reasons: gapReasons,
+  };
+}
+
+function profileConfidence(curation) {
+  if (
+    curation.review_state === "maintainer-reviewed" ||
+    curation.level === "adapter-backed"
+  ) {
+    return "high";
+  }
+  if (curation.level === "machine-verified") {
+    return "medium";
+  }
+  return "low";
+}
+
+function primaryAppSurface(surfaces) {
+  const priority = [
+    "subnet-api",
+    "openapi",
+    "sse",
+    "data-artifact",
+    "repo-registry",
+    "website",
+    "docs",
+    "dashboard",
+  ];
+  return (
+    [...surfaces].sort(
+      (a, b) =>
+        priorityRank(priority, a.kind) - priorityRank(priority, b.kind) ||
+        a.id.localeCompare(b.id),
+    )[0] || null
+  );
+}
+
+function priorityRank(priority, value) {
+  const index = priority.indexOf(value);
+  return index === -1 ? 999 : index;
+}
+
+function surfaceSummary(surface) {
+  if (!surface) {
+    return null;
+  }
+  return {
+    id: surface.id,
+    kind: surface.kind,
+    name: surface.name,
+    provider: surface.provider,
+    url: surface.url,
+  };
+}
+
+function firstSurfaceUrl(surfaces, kind) {
+  return surfaces.find((surface) => surface.kind === kind)?.url || null;
+}
+
+function profileSourceUrls({ primaryLinks, surfaces }) {
+  const urls = new Set(Object.values(primaryLinks).filter(Boolean).sort());
+  for (const surface of surfaces) {
+    for (const url of surface.source_urls || []) {
+      urls.add(url);
+    }
+  }
+  return [...urls].sort();
+}
+
+function profileSuggestedNextAction(profile) {
+  if (profile.completeness.missing_required.length > 0) {
+    return "submit official docs, website, or source repository evidence";
+  }
+  if (profile.completeness.missing_operational.length > 0) {
+    return "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them";
+  }
+  if (profile.review_state !== "maintainer-reviewed") {
+    return "request maintainer review for promoted machine-verified surfaces";
+  }
+  if (profile.operational_interface_count > 0) {
+    return "evaluate whether a subnet-specific adapter would add useful public metrics";
+  }
+  return "profile is baseline-complete; monitor for drift";
+}
+
+function averageScore(profiles) {
+  if (profiles.length === 0) {
+    return 0;
+  }
+  return Math.round(
+    profiles.reduce((sum, profile) => sum + profile.completeness_score, 0) /
+      profiles.length,
+  );
 }
 
 function groupByNetuid(items) {

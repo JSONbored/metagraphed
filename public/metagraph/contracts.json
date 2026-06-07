@@ -93,6 +93,24 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Public-safe subnet identity and completeness profiles.",
+      "id": "profiles",
+      "path": "/metagraph/profiles.json",
+      "schema_ref": "#/components/schemas/SubnetProfilesArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Per-subnet public-safe profile detail.",
+      "id": "profile-detail",
+      "path": "/metagraph/profiles/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetProfileArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Curated public interface surfaces only.",
       "id": "surfaces",
       "path": "/metagraph/surfaces.json",
@@ -377,6 +395,15 @@
       "path": "/metagraph/review/gap-priorities.json",
       "schema_ref": "#/components/schemas/ReviewGapPrioritiesArtifact",
       "storage_tier": "dual"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Profile completeness and contributor targeting report.",
+      "id": "review-profile-completeness",
+      "path": "/metagraph/review/profile-completeness.json",
+      "schema_ref": "#/components/schemas/ReviewProfileCompletenessArtifact",
+      "storage_tier": "git"
     },
     {
       "content_type": "application/json",

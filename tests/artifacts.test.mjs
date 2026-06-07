@@ -187,6 +187,8 @@ test("public artifacts are internally consistent", () => {
   );
   const rpcEndpoints = readArtifact("rpc-endpoints.json");
   const endpoints = readArtifact("endpoints.json");
+  const profiles = readArtifact("profiles.json");
+  const subnetProfile = readArtifact("profiles/7.json");
   const subnetEndpoints = readArtifact("endpoints/7.json");
   const coverage = readArtifact("coverage.json");
   const contracts = readArtifact("contracts.json");
@@ -206,6 +208,7 @@ test("public artifacts are internally consistent", () => {
   const schemaIndex = readArtifact("schemas/index.json");
   const reviewCuration = readArtifact("review/curation.json");
   const gapPriorities = readArtifact("review/gap-priorities.json");
+  const profileCompleteness = readArtifact("review/profile-completeness.json");
   const adapterCandidates = readArtifact("review/adapter-candidates.json");
   const reviewDecisions = readArtifact("review/maintainer-decisions.json");
 
@@ -228,6 +231,22 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   assert.equal(endpoints.endpoints.length, surfaces.surfaces.length);
+  assert.equal(profiles.profiles.length, native.subnets.length);
+  assert.equal(
+    profiles.profiles.every(
+      (profile) =>
+        Number.isInteger(profile.completeness_score) &&
+        profile.completeness_score >= 0 &&
+        profile.completeness_score <= 100,
+    ),
+    true,
+  );
+  assert.equal(subnetProfile.profile.netuid, 7);
+  assert.equal(subnetProfile.profile.profile_level, "adapter-backed");
+  assert.equal(
+    subnetProfile.profile.operational_interface_kinds.includes("subnet-api"),
+    true,
+  );
   assert.equal(
     endpoints.endpoints.every(
       (endpoint) =>
@@ -365,6 +384,7 @@ test("public artifacts are internally consistent", () => {
   assert.equal(Array.isArray(schemaIndex.schemas), true);
   assert.equal(reviewCuration.summary.subnet_count, native.subnets.length);
   assert.equal(gapPriorities.priorities.length, native.subnets.length);
+  assert.equal(profileCompleteness.profiles.length, native.subnets.length);
   assert.equal(Array.isArray(adapterCandidates.candidates), true);
   assert.equal(Array.isArray(reviewDecisions.decisions), true);
   assert.equal(coverage.probed_count, native.subnets.length);
@@ -410,11 +430,19 @@ test("public artifacts are internally consistent", () => {
       existsSync(artifactFilePath(`endpoints/${subnet.netuid}.json`)),
       true,
     );
+    assert.equal(
+      existsSync(artifactFilePath(`profiles/${subnet.netuid}.json`)),
+      true,
+    );
   }
 });
 
 test("R2-only generated artifacts stay out of the public git tree", () => {
-  for (const relativePath of ["candidates.json", "review-queue.json"]) {
+  for (const relativePath of [
+    "candidates.json",
+    "profiles/7.json",
+    "review-queue.json",
+  ]) {
     assert.equal(
       existsSync(`${publicMetagraphRoot}/${relativePath}`),
       false,

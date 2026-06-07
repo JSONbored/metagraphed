@@ -31,6 +31,8 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/changelog.json`: reviewable generated artifact and subnet-change summary.
 - `/metagraph/subnets.json`: compact all-subnet index.
 - `/metagraph/subnets/{netuid}.json`: per-subnet detail with native data, curated surfaces, candidates, curation, and gaps. R2-backed.
+- `/metagraph/profiles.json`: public-safe subnet identity and completeness profiles.
+- `/metagraph/profiles/{netuid}.json`: per-subnet public-safe profile detail. R2-backed.
 - `/metagraph/surfaces.json`: curated public surfaces only.
 - `/metagraph/surfaces/{netuid}.json`: curated public surfaces for one subnet. R2-backed.
 - `/metagraph/endpoints.json`: generalized endpoint/resource registry derived from curated surfaces and probe observations.
@@ -63,6 +65,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/r2-manifest.json`: compact committed Cloudflare R2 upload manifest. The full upload manifest is generated under `dist/metagraph-r2/metagraph/r2-manifest.json`.
 - `/metagraph/review/curation.json`: maintainer review and adapter candidate report.
 - `/metagraph/review/gap-priorities.json`: prioritized backend curation gaps.
+- `/metagraph/review/profile-completeness.json`: profile completeness and contributor targeting report.
 - `/metagraph/review/adapter-candidates.json`: subnets likely worth custom adapters.
 - `/metagraph/review/maintainer-decisions.json`: public-safe maintainer decision ledger.
 - `/metagraph/build-summary.json`: generated build summary.
@@ -72,6 +75,8 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1`: list backend API routes and response-envelope metadata.
 - `/api/v1/subnets`: list active Finney subnets.
 - `/api/v1/subnets/{netuid}`: fetch per-subnet detail.
+- `/api/v1/profiles`: list public-safe subnet profiles and completeness scores.
+- `/api/v1/subnets/{netuid}/profile`: fetch public-safe profile detail for one subnet.
 - `/api/v1/surfaces`: list curated public surfaces.
 - `/api/v1/subnets/{netuid}/surfaces`: list curated public surfaces for one subnet.
 - `/api/v1/endpoints`: list generalized endpoint resources and monitored public surfaces.
@@ -84,6 +89,9 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/coverage`: fetch registry coverage summary.
 - `/api/v1/curation`: fetch curation states by subnet.
 - `/api/v1/gaps`: fetch interface gap report.
+- `/api/v1/review/gaps`: fetch contributor-targeted subnet gap priorities.
+- `/api/v1/review/profile-completeness`: fetch profile completeness gaps for contributor targeting.
+- `/api/v1/review/adapter-candidates`: fetch subnets worth deeper adapter work.
 - `/api/v1/health`: fetch global health summary.
 - `/api/v1/health/history/{date}`: fetch compact daily health history.
 - `/api/v1/subnets/{netuid}/health`: fetch health detail for one subnet.

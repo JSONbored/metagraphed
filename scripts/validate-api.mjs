@@ -36,6 +36,20 @@ const checks = [
   ],
   ["/api/v1/subnets/7", (body) => assert.equal(body.data.subnet.netuid, 7)],
   [
+    "/api/v1/profiles?profile_level=adapter-backed",
+    (body) =>
+      assert.equal(
+        body.data.profiles.every(
+          (profile) => profile.profile_level === "adapter-backed",
+        ),
+        true,
+      ),
+  ],
+  [
+    "/api/v1/subnets/7/profile",
+    (body) => assert.equal(body.data.profile.netuid, 7),
+  ],
+  [
     "/api/v1/subnets/7/surfaces?kind=subnet-api&limit=3",
     (body) =>
       assert.equal(
@@ -133,6 +147,18 @@ const checks = [
       ),
   ],
   ["/api/v1/gaps", (body) => assert.equal(Array.isArray(body.data.gaps), true)],
+  [
+    "/api/v1/review/gaps?limit=3",
+    (body) => assert.equal(body.data.priorities.length <= 3, true),
+  ],
+  [
+    "/api/v1/review/profile-completeness?limit=3",
+    (body) => assert.equal(body.data.profiles.length <= 3, true),
+  ],
+  [
+    "/api/v1/review/adapter-candidates?limit=3",
+    (body) => assert.equal(body.data.candidates.length <= 3, true),
+  ],
   [
     "/api/v1/health",
     (body) => assert.equal(Array.isArray(body.data.subnets), true),

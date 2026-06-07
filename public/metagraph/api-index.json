@@ -72,6 +72,20 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "profiles",
+      "path": "/metagraph/profiles.json",
+      "schema_ref": "#/components/schemas/SubnetProfilesArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "profile-detail",
+      "path": "/metagraph/profiles/{netuid}.json",
+      "schema_ref": "#/components/schemas/SubnetProfileArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "surfaces",
       "path": "/metagraph/surfaces.json",
       "schema_ref": "#/components/schemas/SurfacesArtifact",
@@ -296,6 +310,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "review-profile-completeness",
+      "path": "/metagraph/review/profile-completeness.json",
+      "schema_ref": "#/components/schemas/ReviewProfileCompletenessArtifact",
+      "storage_tier": "git"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "review-adapter-candidates",
       "path": "/metagraph/review/adapter-candidates.json",
       "schema_ref": "#/components/schemas/ReviewAdapterCandidatesArtifact",
@@ -468,6 +489,145 @@
       "id": "subnet-detail",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/profiles.json",
+      "cache": "standard",
+      "description": "List public-safe subnet profiles and completeness scores.",
+      "id": "profiles",
+      "method": "GET",
+      "path": "/api/v1/profiles",
+      "public": true,
+      "query_collection": "profiles",
+      "query_filter_names": [
+        "netuid",
+        "subnet_type",
+        "curation_level",
+        "review_state",
+        "confidence",
+        "profile_level"
+      ],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "subnet_type",
+          "schema": {
+            "enum": [
+              "root",
+              "application"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "review_state",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "confidence",
+          "schema": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "profile_level",
+          "schema": {
+            "enum": [
+              "directory-only",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "candidate_count",
+              "completeness_score",
+              "curation_level",
+              "interface_count",
+              "missing_critical_count",
+              "name",
+              "netuid",
+              "operational_interface_count",
+              "profile_level",
+              "review_state"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/profiles/{netuid}.json",
+      "cache": "standard",
+      "description": "Fetch public-safe profile detail for one subnet.",
+      "id": "subnet-profile",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/profile",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
@@ -1518,6 +1678,249 @@
               "gap_count",
               "name",
               "netuid"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/review/gap-priorities.json",
+      "cache": "standard",
+      "description": "Fetch contributor-targeted subnet gap priorities.",
+      "id": "review-gaps",
+      "method": "GET",
+      "path": "/api/v1/review/gaps",
+      "public": true,
+      "query_collection": "review-gap-priorities",
+      "query_filter_names": [
+        "netuid",
+        "curation_level",
+        "review_state"
+      ],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "review_state",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "candidate_count",
+              "curation_level",
+              "missing_kinds",
+              "name",
+              "netuid",
+              "priority_score",
+              "surface_count",
+              "verified_candidate_count"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/review/profile-completeness.json",
+      "cache": "standard",
+      "description": "Fetch profile completeness gaps for contributor targeting.",
+      "id": "review-profile-completeness",
+      "method": "GET",
+      "path": "/api/v1/review/profile-completeness",
+      "public": true,
+      "query_collection": "profile-completeness",
+      "query_filter_names": [
+        "netuid",
+        "profile_level",
+        "confidence"
+      ],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "profile_level",
+          "schema": {
+            "enum": [
+              "directory-only",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "confidence",
+          "schema": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "candidate_count",
+              "completeness_score",
+              "missing_critical_count",
+              "name",
+              "netuid",
+              "priority_score",
+              "profile_level"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/review/adapter-candidates.json",
+      "cache": "standard",
+      "description": "Fetch subnets worth deeper adapter work.",
+      "id": "review-adapter-candidates",
+      "method": "GET",
+      "path": "/api/v1/review/adapter-candidates",
+      "public": true,
+      "query_collection": "adapter-candidates",
+      "query_filter_names": [
+        "netuid",
+        "curation_level"
+      ],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "candidate_api_count",
+              "curation_level",
+              "name",
+              "netuid",
+              "operational_surface_count",
+              "priority_score"
             ],
             "type": "string"
           }

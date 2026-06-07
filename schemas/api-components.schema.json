@@ -3049,6 +3049,128 @@
         ],
         "type": "object"
       },
+      "ReviewProfileCompletenessArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "profiles": {
+                "items": {
+                  "$ref": "#/components/schemas/ReviewProfileCompletenessEntry"
+                },
+                "type": "array"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "average_completeness_score": {
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "needs_identity_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "needs_operational_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "profile_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "profile_count",
+                  "needs_identity_count",
+                  "needs_operational_count",
+                  "average_completeness_score"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "profiles",
+              "summary"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ReviewProfileCompletenessEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "completeness_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "confidence": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "gap_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "missing_critical_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "priority_score": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "suggested_next_action": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_count",
+          "completeness_score",
+          "confidence",
+          "gap_reasons",
+          "missing_critical_count",
+          "name",
+          "netuid",
+          "priority_score",
+          "profile_level",
+          "slug",
+          "suggested_next_action"
+        ],
+        "type": "object"
+      },
       "ReviewQueueArtifact": {
         "$ref": "#/components/schemas/CandidatesArtifact"
       },
@@ -4332,6 +4454,429 @@
           "surface_count"
         ],
         "type": "object"
+      },
+      "SubnetProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "completeness": {
+            "$ref": "#/components/schemas/SubnetProfileCompleteness"
+          },
+          "completeness_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "confidence": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "endpoint_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "interface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "missing_critical_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "monitored_endpoint_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "native_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "native_name_quality": {
+            "enum": [
+              "chain",
+              "placeholder",
+              "empty"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "operational_interface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "operational_interface_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "primary_app_surface": {
+            "$ref": "#/components/schemas/SubnetProfileSurfaceSummary"
+          },
+          "primary_links": {
+            "$ref": "#/components/schemas/SubnetProfilePrimaryLinks"
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "project_name": {
+            "type": "string"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/SubnetProfileProvenance"
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SubnetStatus"
+          },
+          "subnet_type": {
+            "$ref": "#/components/schemas/SubnetType"
+          },
+          "supported_interface_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "surface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "symbol": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "team": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "subnet_type",
+          "status",
+          "project_name",
+          "team",
+          "categories",
+          "primary_links",
+          "primary_app_surface",
+          "supported_interface_kinds",
+          "operational_interface_kinds",
+          "surface_count",
+          "endpoint_count",
+          "monitored_endpoint_count",
+          "candidate_count",
+          "completeness",
+          "provenance",
+          "review_state",
+          "confidence",
+          "profile_level",
+          "completeness_score",
+          "missing_critical_count"
+        ],
+        "type": "object"
+      },
+      "SubnetProfileArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "candidate_surfaces": {
+                "items": {
+                  "$ref": "#/components/schemas/CandidateSurface"
+                },
+                "type": "array"
+              },
+              "endpoints": {
+                "items": {
+                  "$ref": "#/components/schemas/EndpointResource"
+                },
+                "type": "array"
+              },
+              "gaps": {
+                "$ref": "#/components/schemas/Gaps"
+              },
+              "profile": {
+                "$ref": "#/components/schemas/SubnetProfile"
+              },
+              "subnet": {
+                "$ref": "#/components/schemas/SubnetDetail"
+              },
+              "surfaces": {
+                "items": {
+                  "$ref": "#/components/schemas/Surface"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "profile",
+              "subnet",
+              "surfaces",
+              "endpoints",
+              "candidate_surfaces",
+              "gaps"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "SubnetProfileCompleteness": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "gap_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "missing_critical_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "missing_operational": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "missing_required": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score",
+          "profile_level",
+          "confidence",
+          "missing_required",
+          "missing_operational",
+          "missing_critical_count",
+          "gap_reasons"
+        ],
+        "type": "object"
+      },
+      "SubnetProfilePrimaryLinks": {
+        "additionalProperties": false,
+        "properties": {
+          "dashboard_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "docs_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_repo": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "website_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "website_url",
+          "docs_url",
+          "source_repo",
+          "dashboard_url"
+        ],
+        "type": "object"
+      },
+      "SubnetProfileProvenance": {
+        "additionalProperties": false,
+        "properties": {
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "identity_source": {
+            "type": "string"
+          },
+          "interface_source_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "reviewed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_urls": {
+            "items": {
+              "format": "uri",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "identity_source",
+          "interface_source_count",
+          "review_state",
+          "curation_level",
+          "reviewed_at",
+          "source_urls"
+        ],
+        "type": "object"
+      },
+      "SubnetProfilesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "profiles": {
+                "items": {
+                  "$ref": "#/components/schemas/SubnetProfile"
+                },
+                "type": "array"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "average_completeness_score": {
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "by_confidence": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_profile_level": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "profile_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "profile_count",
+                  "average_completeness_score",
+                  "by_profile_level",
+                  "by_confidence"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "profiles",
+              "summary"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "SubnetProfileSurfaceSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "provider",
+          "url"
+        ],
+        "type": [
+          "object",
+          "null"
+        ]
       },
       "SubnetsArtifact": {
         "allOf": [
