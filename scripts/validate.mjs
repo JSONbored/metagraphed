@@ -143,7 +143,13 @@ function validateProvider(provider) {
   );
 }
 
-function validateSubnet(subnet, providerIds, surfaceIds, surfaceLocators) {
+function validateSubnet(
+  subnet,
+  providerIds,
+  surfaceIds,
+  surfaceLocators,
+  registryVerificationEvidence,
+) {
   assert(
     subnet.schema_version === 1,
     `${subnet.slug || "subnet"}: schema_version must be 1`,
@@ -249,9 +255,35 @@ function validateSubnet(subnet, providerIds, surfaceIds, surfaceLocators) {
         Array.isArray(surface.source_urls) && surface.source_urls.length > 0,
         `${surfaceKey}: source_urls required`,
       );
-      if (surface.verification !== undefined) {
+      const verificationEvidence =
+        surface.verification ||
+        registryVerificationEvidence.get(
+          registrySurfaceKey({
+            ...surface,
+            netuid: subnet.netuid,
+          }),
+        );
+      assert(
+        verificationEvidence !== undefined,
+        `${surfaceKey}: registry-observed surface requires verification evidence`,
+      );
+      if (verificationEvidence !== undefined) {
+        validateVerification(
+          `${surfaceKey}:verification evidence`,
+          verificationEvidence,
+        );
         assert(
-          ["live", "redirected"].includes(surface.verification?.classification),
+          verificationEvidence.candidate_id === undefined ||
+            verificationEvidence.candidate_id === surface.id,
+          `${surfaceKey}: verification evidence must match surface id`,
+        );
+        assert(
+          verificationEvidence.provider === undefined ||
+            verificationEvidence.provider === surface.provider,
+          `${surfaceKey}: verification evidence must match provider`,
+        );
+        assert(
+          ["live", "redirected"].includes(verificationEvidence.classification),
           `${surfaceKey}: promoted registry-observed surface must be live or redirected`,
         );
       }
@@ -1193,6 +1225,12 @@ const slugs = new Set();
 const surfaceIds = new Set();
 const surfaceLocators = new Set();
 const nativeNetuids = validateNativeSnapshot(nativeSnapshot);
+const registryVerificationEvidence = new Map(
+  (verificationDocument.results || []).map((result) => [
+    registrySurfaceKey(result),
+    result,
+  ]),
+);
 const candidateIds = new Set();
 const candidateLocators = new Set();
 
@@ -1218,7 +1256,13 @@ for (const subnet of subnets) {
   );
   netuids.add(subnet.netuid);
   slugs.add(subnet.slug);
-  validateSubnet(subnet, providerIds, surfaceIds, surfaceLocators);
+  validateSubnet(
+    subnet,
+    providerIds,
+    surfaceIds,
+    surfaceLocators,
+    registryVerificationEvidence,
+  );
 }
 
 for (const nativeNetuid of nativeNetuids) {
