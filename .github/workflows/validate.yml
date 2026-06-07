@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
@@ -30,56 +32,107 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Capture changed files
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+        run: |
+          git fetch origin "$BASE_REF" --depth=1
+          git diff --name-only "origin/$BASE_REF"...HEAD > changed-files.txt
+
+      - name: Capture changed files for full validation
+        if: github.event_name != 'pull_request'
+        run: ": > changed-files.txt"
+
+      - name: Classify validation route
+        id: route
+        run: npm run ci:validate-route -- --changed-files changed-files.txt --out validate-route.json
+
+      - name: Run UGC submission preflight
+        if: steps.route.outputs.mode == 'ugc'
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: npm run submission:pr -- --changed-files changed-files.txt --out submission-report.json
+
+      - name: Validate UGC intake templates
+        if: steps.route.outputs.mode == 'ugc'
+        run: npm run validate:intake
+
+      - name: Public-safety scan for UGC submission
+        if: steps.route.outputs.mode == 'ugc'
+        run: npm run scan:public-safety
+
+      - name: Validate private boundary for UGC submission
+        if: steps.route.outputs.mode == 'ugc'
+        run: npm run validate:private-boundary
+
       - name: Validate registry
+        if: steps.route.outputs.mode == 'full'
         run: npm run validate
 
       - name: Test
+        if: steps.route.outputs.mode == 'full'
         run: npm test
 
       - name: Build artifacts
+        if: steps.route.outputs.mode == 'full'
         run: npm run build
 
       - name: Generate R2 manifest
+        if: steps.route.outputs.mode == 'full'
         run: npm run r2:manifest
 
       - name: Validate JSON schemas
+        if: steps.route.outputs.mode == 'full'
         run: npm run validate:schemas
 
       - name: Validate Worker API
+        if: steps.route.outputs.mode == 'full'
         run: npm run validate:api
 
       - name: Validate OpenAPI
+        if: steps.route.outputs.mode == 'full'
         run: npm run validate:openapi
 
       - name: Validate generated API types
+        if: steps.route.outputs.mode == 'full'
         run: npm run validate:types
 
       - name: Validate artifact size budgets
+        if: steps.route.outputs.mode == 'full'
         run: npm run validate:artifact-budgets
 
       - name: Validate documentation contracts
+        if: steps.route.outputs.mode == 'full'
         run: npm run validate:docs
 
       - name: Validate intake templates
+        if: steps.route.outputs.mode == 'full'
         run: npm run validate:intake
 
       - name: Validate workflows
+        if: steps.route.outputs.mode == 'full'
         run: npm run validate:workflows
 
       - name: Validate Cloudflare config
+        if: steps.route.outputs.mode == 'full'
         run: npm run cloudflare:verify:dry-run
 
       - name: Validate R2 manifest
+        if: steps.route.outputs.mode == 'full'
         run: |
           npm run r2:manifest:dry-run
           npm run r2:download:dry-run
           npm run kv:publish:dry-run
 
       - name: Worker deploy dry-run
+        if: steps.route.outputs.mode == 'full'
         run: npm run worker:deploy:dry-run
 
       - name: Public-safety scan
+        if: steps.route.outputs.mode == 'full'
         run: npm run scan:public-safety
 
       - name: Validate private boundary
+        if: steps.route.outputs.mode == 'full'
         run: npm run validate:private-boundary
