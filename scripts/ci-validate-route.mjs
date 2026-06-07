@@ -8,7 +8,7 @@ const options = parseArgs(process.argv.slice(2));
 const changedFiles = await readChangedFiles(options.changedFiles);
 const classification = classifyPrScope(changedFiles);
 const mode =
-  classification.scope === "direct-candidate" &&
+  ["direct-candidate", "direct-provider"].includes(classification.scope) &&
   classification.errors.length === 0
     ? "ugc"
     : "full";
@@ -19,6 +19,7 @@ const report = {
   scope: classification.scope,
   changed_files: normalizeChangedFiles(changedFiles),
   candidate_files: classification.candidateFiles,
+  provider_files: classification.providerFiles,
   errors: classification.errors,
 };
 

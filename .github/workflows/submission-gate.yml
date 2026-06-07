@@ -48,12 +48,29 @@ jobs:
             git diff --name-only "origin/$BASE_REF"...HEAD > changed-files.txt
           fi
 
+      - name: Classify submission route
+        id: route
+        run: node scripts/ci-validate-route.mjs --changed-files changed-files.txt --out submission-route.json
+
       - name: Run public submission preflight
+        if: steps.route.outputs.mode == 'ugc'
         env:
           GITHUB_ACTOR: ${{ github.actor }}
         run: npm run submission:pr -- --changed-files changed-files.txt --out submission-report.json
 
       - name: Show public preflight report
+        if: steps.route.outputs.mode == 'ugc'
         run: |
           npm run submission:comment -- --report submission-report.json --out submission-comment.md
           cat submission-comment.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Skip normal PR
+        if: steps.route.outputs.mode != 'ugc'
+        run: |
+          {
+            echo "## Metagraphed Submission Gate"
+            echo
+            echo "No exact one-file UGC submission detected."
+            echo
+            echo "Normal backend, docs, data-refresh, and mixed maintenance PRs are ignored by the public submission gate."
+          } >> "$GITHUB_STEP_SUMMARY"
