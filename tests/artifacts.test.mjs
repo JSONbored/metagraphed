@@ -59,7 +59,9 @@ test("artifact build ignores forged committed health observations by default", (
     : null;
   rmSync(cachePath, { force: true });
   const tampered = JSON.parse(original);
-  const target = tampered.surfaces.find((surface) => surface.public_safe === true);
+  const target = tampered.surfaces.find(
+    (surface) => surface.public_safe === true,
+  );
   assert(target, "expected a public-safe health row to tamper");
 
   tampered.source = "live-smoke-probe";

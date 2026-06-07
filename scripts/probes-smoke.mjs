@@ -13,6 +13,7 @@ import {
   loadProviders,
   isUnsafeResolvedUrl,
   loadSubnets,
+  repoRoot,
   writeJson,
 } from "./lib.mjs";
 

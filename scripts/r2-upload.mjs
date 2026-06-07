@@ -85,40 +85,48 @@ for (const artifact of plannedArtifacts) {
     continue;
   }
   changedArtifactCount += 1;
-  uploadJobs.push(uploadJob(
-    localPath,
-    artifact.latest_key,
-    manifest.bucket_name,
-    artifact.content_type,
-    "latest",
-  ));
-  if (uploadHistory) {
-    uploadJobs.push(uploadJob(
+  uploadJobs.push(
+    uploadJob(
       localPath,
-      artifact.key,
+      artifact.latest_key,
       manifest.bucket_name,
       artifact.content_type,
-      "history",
-    ));
+      "latest",
+    ),
+  );
+  if (uploadHistory) {
+    uploadJobs.push(
+      uploadJob(
+        localPath,
+        artifact.key,
+        manifest.bucket_name,
+        artifact.content_type,
+        "history",
+      ),
+    );
   }
 }
 
 for (const controlArtifact of plannedControlArtifacts) {
-  uploadJobs.push(uploadJob(
-    controlArtifact.local_path,
-    controlArtifact.latest_key,
-    manifest.bucket_name,
-    controlArtifact.content_type,
-    "control",
-  ));
-  if (uploadHistory) {
-    uploadJobs.push(uploadJob(
+  uploadJobs.push(
+    uploadJob(
       controlArtifact.local_path,
-      controlArtifact.key,
+      controlArtifact.latest_key,
       manifest.bucket_name,
       controlArtifact.content_type,
-      "history",
-    ));
+      "control",
+    ),
+  );
+  if (uploadHistory) {
+    uploadJobs.push(
+      uploadJob(
+        controlArtifact.local_path,
+        controlArtifact.key,
+        manifest.bucket_name,
+        controlArtifact.content_type,
+        "history",
+      ),
+    );
   }
 }
 
@@ -127,12 +135,15 @@ await putObjects(uploadJobs, {
   progressInterval,
 });
 
-const uploadedLatestCount = uploadJobs.filter((job) => job.kind === "latest")
-  .length;
-const uploadedHistoryCount = uploadJobs.filter((job) => job.kind === "history")
-  .length;
-const uploadedControlCount = uploadJobs.filter((job) => job.kind === "control")
-  .length;
+const uploadedLatestCount = uploadJobs.filter(
+  (job) => job.kind === "latest",
+).length;
+const uploadedHistoryCount = uploadJobs.filter(
+  (job) => job.kind === "history",
+).length;
+const uploadedControlCount = uploadJobs.filter(
+  (job) => job.kind === "control",
+).length;
 
 console.log(
   stableStringify({
