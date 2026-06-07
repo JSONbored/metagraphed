@@ -1166,89 +1166,7 @@ async function loadPreviousHealthArtifact() {
   const artifact = await readOptionalJson(
     path.join(repoRoot, ".cache/metagraphed/health/latest.json"),
   );
-  if (artifact?.source === "live-smoke-probe") {
-    return artifact;
-  }
-  return rebuildPreviousHealthFromEndpointIndex();
-}
-
-async function rebuildPreviousHealthFromEndpointIndex() {
-  const endpointsArtifact = await readOptionalJson(
-    path.join(outputRoot, "endpoints.json"),
-  );
-  if (!Array.isArray(endpointsArtifact?.endpoints)) {
-    return null;
-  }
-
-  const surfaces = endpointsArtifact.endpoints
-    .filter(
-      (endpoint) =>
-        endpoint?.surface_id &&
-        endpoint.health_source === "probe-derived" &&
-        endpoint.monitoring_status === "monitored",
-    )
-    .map(endpointHealthRowFromResource);
-  if (surfaces.length === 0) {
-    return null;
-  }
-
-  const freshness = await readOptionalJson(
-    path.join(outputRoot, "freshness.json"),
-  );
-  const observedTimes = surfaces
-    .flatMap((surface) => [surface.last_checked, surface.verified_at])
-    .filter(Boolean);
-  const probeFinishedAt =
-    freshness?.summary?.health_probe_as_of || latestString(observedTimes);
-
-  return {
-    schema_version: 1,
-    contract_version: endpointsArtifact.contract_version || contractVersion,
-    generated_at: endpointsArtifact.generated_at || generatedAt,
-    source: "live-smoke-probe",
-    probe_started_at: earliestString(observedTimes) || probeFinishedAt || null,
-    probe_finished_at: probeFinishedAt || null,
-    summary: endpointsArtifact.summary || {},
-    surfaces,
-  };
-}
-
-function endpointHealthRowFromResource(endpoint) {
-  const verifiedAt = endpoint.observed_at || endpoint.last_checked || null;
-  const row = {
-    archive_support: endpoint.archive_support ?? null,
-    auth_required: endpoint.auth_required,
-    classification: endpoint.classification || "unknown",
-    error: endpoint.error || null,
-    kind: endpoint.kind,
-    last_checked: endpoint.last_checked || verifiedAt,
-    last_ok: endpoint.last_ok || null,
-    latency_ms: Number.isFinite(endpoint.latency_ms)
-      ? endpoint.latency_ms
-      : null,
-    latest_block: Number.isFinite(endpoint.latest_block)
-      ? endpoint.latest_block
-      : null,
-    method_tested: endpoint.method_tested || "not-configured",
-    netuid: endpoint.netuid,
-    provider: endpoint.provider,
-    public_safe: endpoint.public_safe,
-    rpc_method_count: Number.isFinite(endpoint.rpc_method_count)
-      ? endpoint.rpc_method_count
-      : null,
-    status: endpoint.status || "unknown",
-    subnet_name: endpoint.subnet_name,
-    subnet_slug: endpoint.subnet_slug,
-    surface_id: endpoint.surface_id,
-    uptime_sample_ratio: null,
-    url: endpoint.url,
-    verified_at: verifiedAt,
-  };
-
-  if (Array.isArray(endpoint.method_support)) {
-    row.methods_supported = endpoint.method_support;
-  }
-  return row;
+  return artifact?.source === "live-smoke-probe" ? artifact : null;
 }
 
 function buildSurfaceHealthRows({ surfaces, previousHealthArtifact }) {
@@ -2595,10 +2513,6 @@ function badgeColor(status) {
 
 function latestString(values) {
   return values.filter(Boolean).sort().at(-1) || null;
-}
-
-function earliestString(values) {
-  return values.filter(Boolean).sort().at(0) || null;
 }
 
 function average(values) {

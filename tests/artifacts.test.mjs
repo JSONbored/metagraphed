@@ -209,6 +209,85 @@ test("artifact build ignores forged committed health observations by default", (
   }
 }, 30_000);
 
+test("artifact build does not preserve forged endpoint index health", () => {
+  const endpointsPath = artifactFilePath("endpoints.json");
+  const cachePath = ".cache/metagraphed/health/latest.json";
+  const original = readFileSync(endpointsPath, "utf8");
+  const originalCache = existsSync(cachePath)
+    ? readFileSync(cachePath, "utf8")
+    : null;
+  rmSync(cachePath, { force: true });
+  const tampered = JSON.parse(original);
+  const target = tampered.endpoints.find(
+    (endpoint) => endpoint.public_safe === true,
+  );
+  assert(target, "expected a public-safe endpoint row to tamper");
+
+  target.health_source = "probe-derived";
+  target.monitoring_status = "monitored";
+  target.status = "ok";
+  target.classification = "live";
+  target.last_checked = "2999-01-01T00:00:00.000Z";
+  target.last_ok = "2999-01-01T00:00:00.000Z";
+  target.observed_at = "2999-01-01T00:00:00.000Z";
+  target.latency_ms = 7;
+  target.latest_block = 4242424242;
+  target.archive_support = true;
+
+  try {
+    writeFileSync(endpointsPath, `${JSON.stringify(tampered, null, 2)}\n`);
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: { ...process.env, METAGRAPH_PRESERVE_PROBE_HEALTH: "1" },
+      stdio: "pipe",
+    });
+
+    const rebuilt = JSON.parse(readFileSync(endpointsPath, "utf8"));
+    const rebuiltTarget = rebuilt.endpoints.find(
+      (endpoint) => endpoint.surface_id === target.surface_id,
+    );
+    assert.equal(rebuiltTarget.status, "unknown");
+    assert.equal(rebuiltTarget.classification, "unknown");
+    assert.equal(rebuiltTarget.last_checked, null);
+    assert.equal(rebuiltTarget.latency_ms, null);
+    assert.equal(rebuiltTarget.latest_block, null);
+    assert.equal(rebuiltTarget.archive_support, null);
+    assert.equal(rebuiltTarget.health_source, "missing-probe");
+  } finally {
+    writeFileSync(endpointsPath, original);
+    if (originalCache === null) {
+      rmSync(cachePath, { force: true });
+    } else {
+      writeFileSync(cachePath, originalCache);
+    }
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/generate-types.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/generate-client.mjs", "--write"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+  }
+}, 30_000);
+
 test("public artifacts are internally consistent", () => {
   const native = JSON.parse(
     readFileSync("registry/native/finney-subnets.json", "utf8"),
