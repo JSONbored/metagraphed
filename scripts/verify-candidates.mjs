@@ -3,6 +3,7 @@ import {
   buildTimestamp,
   isHtmlContentType,
   isJsonContentType,
+  isUnsafeProbeUrl,
   isUnsafeUrl,
   loadCandidates,
   repoRoot,
@@ -166,7 +167,7 @@ async function verifyHttpSurface(base, candidate) {
 }
 
 async function probeUrl(url, method, accept, redirectCount = 0) {
-  if (isUnsafeUrl(url)) {
+  if (await isUnsafeProbeUrl(url)) {
     return {
       ok: false,
       error: "unsafe URL",
@@ -197,7 +198,7 @@ async function probeUrl(url, method, accept, redirectCount = 0) {
       redirectCount < 5
     ) {
       const redirectTarget = new URL(location, url).toString();
-      if (isUnsafeUrl(redirectTarget)) {
+      if (await isUnsafeProbeUrl(redirectTarget)) {
         await response.body?.cancel();
         return {
           ok: false,

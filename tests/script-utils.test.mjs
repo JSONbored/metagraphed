@@ -16,6 +16,7 @@ import {
   hashJson,
   isHtmlContentType,
   isJsonContentType,
+  isUnsafeProbeUrl,
   isUnsafeUrl,
   isValidUrl,
   listJsonFiles,
@@ -99,7 +100,7 @@ describe("script utility contracts", () => {
     assert.equal(path.basename(repoRoot), "metagraphed");
   });
 
-  test("normalizes names, URLs, keys, hashes, and slugs deterministically", () => {
+  test("normalizes names, URLs, keys, hashes, and slugs deterministically", async () => {
     assert.deepEqual(classifyNativeName("unknown", 87), {
       raw_name: "unknown",
       quality: "placeholder",
@@ -119,11 +120,13 @@ describe("script utility contracts", () => {
     assert.equal(isValidUrl("ftp://metagraph.sh"), false);
     assert.equal(isValidUrl("not a url"), false);
     assert.equal(isUnsafeUrl("http://127.0.0.1:9944"), true);
+    assert.equal(isUnsafeUrl("http://metadata.localhost"), true);
     assert.equal(isUnsafeUrl("ftp://metagraph.sh"), true);
     assert.equal(isUnsafeUrl("http://172.16.0.1"), true);
     assert.equal(isUnsafeUrl("http://[fd00::1]"), true);
     assert.equal(isUnsafeUrl("not a url"), true);
     assert.equal(isUnsafeUrl("https://metagraph.sh"), false);
+    assert.equal(await isUnsafeProbeUrl("http://localhost:9944"), true);
     assert.equal(
       normalizePublicUrl("metagraph.sh/docs/"),
       "https://metagraph.sh/docs",

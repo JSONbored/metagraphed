@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import { createHash } from "node:crypto";
 import { isIP } from "node:net";
+import { Resolver } from "node:dns/promises";
 import path from "node:path";
 
 export const repoRoot = new URL("..", import.meta.url).pathname;
@@ -185,6 +186,44 @@ export function isValidUrl(value) {
   }
 }
 
+export function isUnsafeHost(hostname) {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host === "localhost.localdomain"
+  ) {
+    return true;
+  }
+
+  return isUnsafeIp(host);
+}
+
+export function isUnsafeIp(host) {
+  const literalIp = isIP(host);
+  if (literalIp === 4) {
+    return (
+      host === "0.0.0.0" ||
+      host.startsWith("10.") ||
+      host.startsWith("127.") ||
+      host.startsWith("169.254.") ||
+      host.startsWith("192.168.") ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+    );
+  }
+  if (literalIp === 6) {
+    const normalized = host.toLowerCase();
+    return (
+      normalized === "::" ||
+      normalized === "::1" ||
+      normalized.startsWith("fc") ||
+      normalized.startsWith("fd") ||
+      normalized.startsWith("fe80")
+    );
+  }
+  return false;
+}
+
 export function isUnsafeUrl(value) {
   try {
     const url = new URL(value);
@@ -192,37 +231,47 @@ export function isUnsafeUrl(value) {
       return true;
     }
 
-    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-    const literalIp = isIP(host);
-    if (
-      host === "localhost" ||
-      host === "0.0.0.0" ||
-      host === "127.0.0.1" ||
-      host === "::1"
-    ) {
-      return true;
-    }
-    if (literalIp === 4) {
-      return (
-        host.startsWith("10.") ||
-        host.startsWith("127.") ||
-        host.startsWith("169.254.") ||
-        host.startsWith("192.168.") ||
-        /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
-      );
-    }
-    if (literalIp === 6) {
-      return (
-        host === "::" ||
-        host.startsWith("fc") ||
-        host.startsWith("fd") ||
-        host.startsWith("fe80")
-      );
-    }
-
-    return false;
+    return isUnsafeHost(url.hostname);
   } catch {
     return true;
+  }
+}
+
+const probeDnsSafetyCache = new Map();
+
+export async function isUnsafeProbeUrl(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return true;
+  }
+
+  if (isUnsafeUrl(url.toString())) {
+    return true;
+  }
+
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (!probeDnsSafetyCache.has(host)) {
+    probeDnsSafetyCache.set(host, resolvesToUnsafeAddress(host));
+  }
+  return probeDnsSafetyCache.get(host);
+}
+
+async function resolvesToUnsafeAddress(host) {
+  const resolver = new Resolver({ timeout: 1000, tries: 1 });
+  try {
+    const results = await Promise.allSettled([
+      resolver.resolve4(host),
+      resolver.resolve6(host),
+    ]);
+    return results.some(
+      (result) =>
+        result.status === "fulfilled" &&
+        result.value.some((address) => isUnsafeIp(address)),
+    );
+  } finally {
+    resolver.cancel();
   }
 }
 

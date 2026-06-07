@@ -5,6 +5,7 @@ import {
   loadNativeSnapshot,
   loadProviders,
   loadSubnets,
+  isUnsafeProbeUrl,
   isValidUrl,
   readJson,
   registrySurfaceKey,
@@ -90,6 +91,7 @@ const reviewDecisions = new Set([
 const slugPattern = /^[a-z0-9][a-z0-9-]*$/;
 
 const errors = [];
+const asyncChecks = [];
 
 function assert(condition, message) {
   if (!condition) {
@@ -190,6 +192,16 @@ function validateSubnet(subnet, providerIds, surfaceIds, surfaceLocators) {
     assert(Boolean(surface.name), `${surfaceKey}: name is required`);
     assert(surfaceKinds.has(surface.kind), `${surfaceKey}: invalid kind`);
     assert(isValidUrl(surface.url), `${surfaceKey}: url must be a URL`);
+    if (surface.probe?.enabled && surface.public_safe) {
+      asyncChecks.push(
+        isUnsafeProbeUrl(surface.url).then((unsafe) =>
+          assert(
+            !unsafe,
+            `${surfaceKey}: probe target resolves to an unsafe URL`,
+          ),
+        ),
+      );
+    }
     assert(
       providerIds.has(surface.provider),
       `${surfaceKey}: unknown provider ${surface.provider}`,
@@ -1014,6 +1026,7 @@ for (const decision of reviewDecisionsDocument.decisions || []) {
   validateReviewDecision(decision, nativeNetuids);
 }
 
+await Promise.all(asyncChecks);
 await validateGeneratedArtifacts(nativeSnapshot, subnets, candidates);
 
 if (errors.length > 0) {
