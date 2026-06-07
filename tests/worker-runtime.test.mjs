@@ -311,7 +311,7 @@ describe("Worker runtime", () => {
     assert.equal((await r2Miss.json()).error.code, "artifact_not_found");
   });
 
-  test("prefers R2 for operational dual artifacts with static fallback", async () => {
+  test("prefers static assets for operational dual artifacts with R2 fallback", async () => {
     const r2KeysRequested = [];
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/endpoints"),
@@ -358,32 +358,38 @@ describe("Worker runtime", () => {
 
     assert.equal(response.status, 200);
     const body = await response.json();
-    assert.equal(body.meta.source, "r2");
-    assert.deepEqual(r2KeysRequested, ["latest/endpoints.json"]);
-    assert.equal(body.data.endpoints[0].id, "endpoint-r2");
-    assert.equal(body.data.endpoints[0].status, "ok");
+    assert.equal(body.meta.source, "static-assets");
+    assert.deepEqual(r2KeysRequested, []);
+    assert.equal(body.data.endpoints[0].id, "endpoint-static");
+    assert.equal(body.data.endpoints[0].status, "unknown");
 
     const fallback = await handleRequest(
       new Request("https://metagraph.sh/api/v1/endpoints"),
       {
         ASSETS: {
           async fetch() {
-            return Response.json({
-              schema_version: 1,
-              generated_at: "1970-01-01T00:00:00.000Z",
-              endpoints: [
-                {
-                  id: "endpoint-static",
-                  status: "unknown",
-                  provider: "static",
-                },
-              ],
-            });
+            return new Response("not found", { status: 404 });
           },
         },
         METAGRAPH_ARCHIVE: {
-          async get() {
-            return null;
+          async get(key) {
+            r2KeysRequested.push(key);
+            assert.equal(key, "latest/endpoints.json");
+            return {
+              async json() {
+                return {
+                  schema_version: 1,
+                  generated_at: "1970-01-01T00:00:00.000Z",
+                  endpoints: [
+                    {
+                      id: "endpoint-r2",
+                      status: "ok",
+                      provider: "r2",
+                    },
+                  ],
+                };
+              },
+            };
           },
         },
       },
@@ -392,8 +398,9 @@ describe("Worker runtime", () => {
 
     assert.equal(fallback.status, 200);
     const fallbackBody = await fallback.json();
-    assert.equal(fallbackBody.meta.source, "static-assets");
-    assert.equal(fallbackBody.data.endpoints[0].id, "endpoint-static");
+    assert.equal(fallbackBody.meta.source, "r2");
+    assert.deepEqual(r2KeysRequested, ["latest/endpoints.json"]);
+    assert.equal(fallbackBody.data.endpoints[0].id, "endpoint-r2");
   });
 
   test("keeps RPC proxy disabled and blocks unsafe methods", async () => {
