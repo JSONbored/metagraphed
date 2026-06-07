@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import { createHash } from "node:crypto";
+import { lookup as dnsLookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import path from "node:path";
 
@@ -192,38 +193,146 @@ export function isUnsafeUrl(value) {
       return true;
     }
 
-    const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-    const literalIp = isIP(host);
-    if (
-      host === "localhost" ||
-      host === "0.0.0.0" ||
-      host === "127.0.0.1" ||
-      host === "::1"
-    ) {
-      return true;
-    }
-    if (literalIp === 4) {
-      return (
-        host.startsWith("10.") ||
-        host.startsWith("127.") ||
-        host.startsWith("169.254.") ||
-        host.startsWith("192.168.") ||
-        /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
-      );
-    }
-    if (literalIp === 6) {
-      return (
-        host === "::" ||
-        host.startsWith("fc") ||
-        host.startsWith("fd") ||
-        host.startsWith("fe80")
-      );
-    }
-
-    return false;
+    return isUnsafeHostname(url.hostname);
   } catch {
     return true;
   }
+}
+
+export async function isUnsafeUrlResolved(value, resolver = dnsLookup) {
+  if (isUnsafeUrl(value)) {
+    return true;
+  }
+
+  try {
+    const url = new URL(value);
+    const host = normalizeHostname(url.hostname);
+    if (isIP(host)) {
+      return false;
+    }
+
+    const records = await resolver(host, { all: true, verbatim: true });
+    return records.some((record) => isUnsafeHostname(record.address));
+  } catch {
+    return false;
+  }
+}
+
+export function isUnsafeHostname(hostname) {
+  const host = normalizeHostname(hostname);
+  const literalIp = isIP(host);
+  if (host === "localhost") {
+    return true;
+  }
+  if (literalIp === 4) {
+    return isUnsafeIpv4(host);
+  }
+  if (literalIp === 6) {
+    return isUnsafeIpv6(host);
+  }
+
+  return false;
+}
+
+function normalizeHostname(hostname) {
+  return String(hostname || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "");
+}
+
+function isUnsafeIpv4(host) {
+  const octets = host.split(".").map((part) => Number(part));
+  const [first, second] = octets;
+  return (
+    first === 0 ||
+    first === 10 ||
+    first === 127 ||
+    (first === 100 && second >= 64 && second <= 127) ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 0) ||
+    (first === 192 && second === 168) ||
+    (first === 198 && (second === 18 || second === 19)) ||
+    first >= 224
+  );
+}
+
+function isUnsafeIpv6(host) {
+  const value = parseIpv6(host);
+  if (value === null) {
+    return true;
+  }
+
+  if (value === 0n || value === 1n) {
+    return true;
+  }
+
+  const mappedPrefix = 0xffffn << 32n;
+  if (value >> 32n === mappedPrefix >> 32n) {
+    return isUnsafeIpv4(bigIntToIpv4(value & 0xffffffffn));
+  }
+
+  return (
+    inIpv6Range(value, 0xfc00n << 112n, 7n) ||
+    inIpv6Range(value, 0xfe80n << 112n, 10n) ||
+    inIpv6Range(value, 0xfec0n << 112n, 10n) ||
+    inIpv6Range(value, 0xff00n << 112n, 8n)
+  );
+}
+
+function inIpv6Range(value, prefix, bits) {
+  return value >> (128n - bits) === prefix >> (128n - bits);
+}
+
+function parseIpv6(host) {
+  const normalized = host.includes(".") ? expandEmbeddedIpv4(host) : host;
+  const parts = normalized.split("::");
+  if (parts.length > 2) {
+    return null;
+  }
+
+  const head = parts[0] ? parts[0].split(":") : [];
+  const tail = parts[1] ? parts[1].split(":") : [];
+  const missing = 8 - head.length - tail.length;
+  if (missing < 0 || (parts.length === 1 && missing !== 0)) {
+    return null;
+  }
+
+  const groups = [...head, ...Array(missing).fill("0"), ...tail];
+  if (groups.length !== 8) {
+    return null;
+  }
+
+  return groups.reduce((accumulator, group) => {
+    if (!/^[0-9a-f]{1,4}$/i.test(group)) {
+      return null;
+    }
+    const parsed = BigInt(`0x${group}`);
+    return accumulator === null ? null : (accumulator << 16n) + parsed;
+  }, 0n);
+}
+
+function expandEmbeddedIpv4(host) {
+  const lastColon = host.lastIndexOf(":");
+  const prefix = host.slice(0, lastColon + 1);
+  const octets = host
+    .slice(lastColon + 1)
+    .split(".")
+    .map((part) => Number(part));
+  if (octets.length !== 4 || octets.some((part) => part < 0 || part > 255)) {
+    return host;
+  }
+
+  const high = (octets[0] << 8) + octets[1];
+  const low = (octets[2] << 8) + octets[3];
+  return `${prefix}${high.toString(16)}:${low.toString(16)}`;
+}
+
+function bigIntToIpv4(value) {
+  return [24n, 16n, 8n, 0n]
+    .map((shift) => Number((value >> shift) & 255n))
+    .join(".");
 }
 
 export function normalizePublicUrl(value) {

@@ -1,6 +1,8 @@
 import path from "node:path";
 import {
   buildTimestamp,
+  isUnsafeHostname,
+  isUnsafeUrlResolved,
   loadNativeSnapshot,
   loadSubnets,
   nativeDisplayName,
@@ -955,16 +957,7 @@ function isBadgeOrAssetUrl(value) {
 }
 
 function isUnsafeHost(hostname) {
-  const host = hostname.toLowerCase();
-  return (
-    host === "localhost" ||
-    host === "0.0.0.0" ||
-    host === "127.0.0.1" ||
-    host === "::1" ||
-    host.startsWith("10.") ||
-    host.startsWith("192.168.") ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
-  );
+  return isUnsafeHostname(hostname);
 }
 
 function isSocialUrl(value) {
@@ -996,6 +989,11 @@ function stripHtml(value) {
 }
 
 async function fetchJson(url, headers = {}) {
+  if (await isUnsafeUrlResolved(url)) {
+    warnings.push(`${url}: unsafe URL`);
+    return null;
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
@@ -1021,6 +1019,13 @@ async function fetchJson(url, headers = {}) {
 }
 
 async function fetchText(url, options = {}) {
+  if (await isUnsafeUrlResolved(url)) {
+    if (options.warn !== false) {
+      warnings.push(`${url}: unsafe URL`);
+    }
+    return null;
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(
     () => controller.abort(),

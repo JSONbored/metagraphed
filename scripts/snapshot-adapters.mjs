@@ -3,7 +3,7 @@ import {
   buildTimestamp,
   hashJson,
   isJsonContentType,
-  isUnsafeUrl,
+  isUnsafeUrlResolved,
   repoRoot,
   stableStringify,
   writeJson,
@@ -159,7 +159,7 @@ async function fetchJsonSummary(url) {
 }
 
 async function fetchJson(url) {
-  if (isUnsafeUrl(url)) {
+  if (await isUnsafeUrlResolved(url)) {
     return {
       ok: false,
       status: "unsafe",
@@ -238,7 +238,7 @@ async function fetchJson(url) {
 }
 
 async function fetchSseSummary(url) {
-  if (isUnsafeUrl(url)) {
+  if (await isUnsafeUrlResolved(url)) {
     return {
       status: "unsafe",
       url,

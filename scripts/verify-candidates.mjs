@@ -3,7 +3,7 @@ import {
   buildTimestamp,
   isHtmlContentType,
   isJsonContentType,
-  isUnsafeUrl,
+  isUnsafeUrlResolved,
   loadCandidates,
   repoRoot,
   stableStringify,
@@ -63,7 +63,7 @@ async function verifyCandidate(candidate) {
     verified_at: new Date().toISOString(),
   };
 
-  if (!candidate.public_safe || isUnsafeUrl(candidate.url)) {
+  if (!candidate.public_safe || (await isUnsafeUrlResolved(candidate.url))) {
     return {
       ...base,
       classification: "unsafe",
@@ -166,7 +166,7 @@ async function verifyHttpSurface(base, candidate) {
 }
 
 async function probeUrl(url, method, accept, redirectCount = 0) {
-  if (isUnsafeUrl(url)) {
+  if (await isUnsafeUrlResolved(url)) {
     return {
       ok: false,
       error: "unsafe URL",
@@ -197,7 +197,7 @@ async function probeUrl(url, method, accept, redirectCount = 0) {
       redirectCount < 5
     ) {
       const redirectTarget = new URL(location, url).toString();
-      if (isUnsafeUrl(redirectTarget)) {
+      if (await isUnsafeUrlResolved(redirectTarget)) {
         await response.body?.cancel();
         return {
           ok: false,

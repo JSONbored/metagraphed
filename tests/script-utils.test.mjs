@@ -16,7 +16,9 @@ import {
   hashJson,
   isHtmlContentType,
   isJsonContentType,
+  isUnsafeHostname,
   isUnsafeUrl,
+  isUnsafeUrlResolved,
   isValidUrl,
   listJsonFiles,
   listJsonFilesRecursive,
@@ -121,7 +123,12 @@ describe("script utility contracts", () => {
     assert.equal(isUnsafeUrl("http://127.0.0.1:9944"), true);
     assert.equal(isUnsafeUrl("ftp://metagraph.sh"), true);
     assert.equal(isUnsafeUrl("http://172.16.0.1"), true);
+    assert.equal(isUnsafeUrl("http://[::1]"), true);
     assert.equal(isUnsafeUrl("http://[fd00::1]"), true);
+    assert.equal(isUnsafeUrl("http://[fe80::1]"), true);
+    assert.equal(isUnsafeUrl("http://[::ffff:127.0.0.1]"), true);
+    assert.equal(isUnsafeHostname("[::1]"), true);
+    assert.equal(isUnsafeHostname("::ffff:7f00:1"), true);
     assert.equal(isUnsafeUrl("not a url"), true);
     assert.equal(isUnsafeUrl("https://metagraph.sh"), false);
     assert.equal(
@@ -155,6 +162,24 @@ describe("script utility contracts", () => {
       "7|docs|https://docs.all-ways.io/",
     );
     assert.equal(slugify("TAO / Metagraph: Build"), "tao-metagraph-build");
+  });
+
+  test("resolves hostnames before treating probe URLs as safe", async () => {
+    const privateResolver = async () => [
+      { address: "192.168.1.10", family: 4 },
+    ];
+    const publicResolver = async () => [
+      { address: "93.184.216.34", family: 4 },
+    ];
+
+    assert.equal(
+      await isUnsafeUrlResolved("https://metadata.example", privateResolver),
+      true,
+    );
+    assert.equal(
+      await isUnsafeUrlResolved("https://metagraph.example", publicResolver),
+      false,
+    );
   });
 
   test("builds RPC endpoint and pool artifacts from surface health", () => {
