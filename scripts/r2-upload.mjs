@@ -71,7 +71,8 @@ const remoteManifestByPath = new Map(
 );
 let changedArtifactCount = 0;
 let skippedArtifactCount = 0;
-const uploadJobs = [];
+const artifactUploadJobs = [];
+const controlUploadJobs = [];
 
 for (const artifact of plannedArtifacts) {
   const localPath = artifactLocalPath(artifact.path);
@@ -85,7 +86,7 @@ for (const artifact of plannedArtifacts) {
     continue;
   }
   changedArtifactCount += 1;
-  uploadJobs.push(
+  artifactUploadJobs.push(
     uploadJob(
       localPath,
       artifact.latest_key,
@@ -95,7 +96,7 @@ for (const artifact of plannedArtifacts) {
     ),
   );
   if (uploadHistory) {
-    uploadJobs.push(
+    artifactUploadJobs.push(
       uploadJob(
         localPath,
         artifact.key,
@@ -108,7 +109,7 @@ for (const artifact of plannedArtifacts) {
 }
 
 for (const controlArtifact of plannedControlArtifacts) {
-  uploadJobs.push(
+  controlUploadJobs.push(
     uploadJob(
       controlArtifact.local_path,
       controlArtifact.latest_key,
@@ -118,7 +119,7 @@ for (const controlArtifact of plannedControlArtifacts) {
     ),
   );
   if (uploadHistory) {
-    uploadJobs.push(
+    controlUploadJobs.push(
       uploadJob(
         controlArtifact.local_path,
         controlArtifact.key,
@@ -130,11 +131,16 @@ for (const controlArtifact of plannedControlArtifacts) {
   }
 }
 
-await putObjects(uploadJobs, {
+await putObjects(artifactUploadJobs, {
+  concurrency: uploadConcurrency,
+  progressInterval,
+});
+await putObjects(controlUploadJobs, {
   concurrency: uploadConcurrency,
   progressInterval,
 });
 
+const uploadJobs = [...artifactUploadJobs, ...controlUploadJobs];
 const uploadedLatestCount = uploadJobs.filter(
   (job) => job.kind === "latest",
 ).length;
