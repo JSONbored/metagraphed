@@ -1,6 +1,7 @@
 import {
   API_QUERY_COLLECTIONS,
   API_ROUTES,
+  PUBLIC_ARTIFACTS,
   CACHE_SECONDS,
   CONTRACT_VERSION,
   artifactPathFromTemplate,
@@ -12,6 +13,13 @@ import {
 } from "../src/artifact-storage.mjs";
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
+
+const RAW_ARTIFACT_ROUTES = PUBLIC_ARTIFACTS.filter((entry) =>
+  entry.path.endsWith(".json"),
+).map((entry) => ({
+  ...entry,
+  pattern: compileRoutePattern(entry.path),
+}));
 
 const ROUTES = API_ROUTES.map((entry) => ({
   ...entry,
@@ -97,6 +105,17 @@ export async function handleRequest(request, env = {}, _ctx = {}) {
 }
 
 async function handleRawArtifactRequest(request, env, url) {
+  if (!matchRawArtifact(url.pathname)) {
+    return errorResponse(
+      "not_found",
+      "No public artifact contract matched this path.",
+      404,
+      {
+        artifact_path: url.pathname,
+      },
+    );
+  }
+
   const artifact = await readArtifact(env, url.pathname);
   if (!artifact.ok) {
     return errorResponse(artifact.code, artifact.message, artifact.status, {
@@ -290,6 +309,12 @@ async function handleRpcProxyRequest(request, env, url) {
     status: upstream.status,
     headers,
   });
+}
+
+function matchRawArtifact(pathname) {
+  return RAW_ARTIFACT_ROUTES.some((candidate) =>
+    candidate.pattern.test(pathname),
+  );
 }
 
 function matchRoute(pathname) {

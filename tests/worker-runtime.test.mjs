@@ -62,6 +62,39 @@ describe("Worker runtime", () => {
     assert.equal(assetMissing.status, 404);
   });
 
+  test("rejects raw artifact paths outside public contracts before R2 lookup", async () => {
+    const r2KeysRequested = [];
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/internal/control.json"),
+      {
+        ASSETS: {
+          async fetch() {
+            return new Response("not found", { status: 404 });
+          },
+        },
+        METAGRAPH_ARCHIVE: {
+          async get(key) {
+            r2KeysRequested.push(key);
+            return {
+              async json() {
+                return { secret_token: "should-not-be-public" };
+              },
+            };
+          },
+        },
+      },
+      {},
+    );
+
+    assert.equal(response.status, 404);
+    assert.equal(response.headers.get("x-metagraph-error-code"), "not_found");
+    assert.deepEqual(r2KeysRequested, []);
+    assert.equal(
+      (await response.json()).meta.artifact_path,
+      "/metagraph/internal/control.json",
+    );
+  });
+
   test("supports HEAD, ETag revalidation, and CORS preflight", async () => {
     const head = await handleRequest(
       new Request("https://metagraph.sh/api/v1/subnets", { method: "HEAD" }),
