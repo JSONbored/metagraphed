@@ -2,6 +2,10 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { mkdir, readFile } from "node:fs/promises";
 import { readJson, repoRoot, sha256Hex, stableStringify } from "./lib.mjs";
+import {
+  R2_STAGING_RELATIVE_ROOT,
+  artifactStorageTierForPath,
+} from "../src/artifact-storage.mjs";
 
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
@@ -18,7 +22,7 @@ const outputDir = outputDirArg
   : "tmp/r2-download";
 const planned = manifest.artifacts.map((artifact) => ({
   key: `${prefix}${artifact.path.replace(/^\/metagraph\//, "")}`,
-  local_path: path.join(outputDir, artifact.path.replace(/^\/metagraph\//, "")),
+  local_path: localArtifactPath(outputDir, artifact.path),
   sha256: artifact.sha256,
   size_bytes: artifact.size_bytes,
 }));
@@ -83,4 +87,13 @@ function getObject(key, localPath, bucketName) {
     console.error(result.stderr);
     throw new Error(`wrangler r2 object get failed for ${key}`);
   }
+}
+
+function localArtifactPath(baseDir, artifactPath) {
+  const relativePath = artifactPath.replace(/^\/metagraph\//, "");
+  const tier = artifactStorageTierForPath(artifactPath);
+  if (tier === "r2") {
+    return path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, relativePath);
+  }
+  return path.join(baseDir, relativePath);
 }

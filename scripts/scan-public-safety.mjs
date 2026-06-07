@@ -8,6 +8,7 @@ const targetRoots = [
   "registry",
   "schemas",
   "public",
+  "dist/metagraph-r2",
   ".github",
   "workers",
   "wrangler.jsonc",

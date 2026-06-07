@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, test } from "vitest";
@@ -14,6 +15,9 @@ import {
   buildRpcEndpointArtifact,
   buildTimestamp,
   classifyNativeName,
+  artifactFilePath,
+  artifactOutputPath,
+  createLocalArtifactEnv,
   flattenSurfaces,
   hashJson,
   isCredentialedUrl,
@@ -39,6 +43,13 @@ import {
   stableStringify,
   writeJson,
 } from "../scripts/lib.mjs";
+import {
+  ARTIFACT_STORAGE_TIERS,
+  artifactRelativePath,
+  artifactStorageTierForPath,
+  artifactStorageTierForRelativePath,
+  isR2OnlyArtifactPath,
+} from "../src/artifact-storage.mjs";
 import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs";
 import {
   buildIssueIntakeReport,
@@ -95,6 +106,85 @@ describe("script utility contracts", () => {
       );
     } finally {
       await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("classifies artifact storage tiers for files and route templates", async () => {
+    assert.equal(
+      artifactRelativePath("/metagraph/subnets/7.json"),
+      "subnets/7.json",
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("subnets/{netuid}.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
+      artifactStorageTierForPath("/metagraph/health/history/{date}.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("schemas/index.json"),
+      ARTIFACT_STORAGE_TIERS.dual,
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("schemas/allways-swagger.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("robots.txt"),
+      ARTIFACT_STORAGE_TIERS.git,
+    );
+    assert.equal(
+      isR2OnlyArtifactPath("/metagraph/verification/latest.json"),
+      true,
+    );
+    assert.equal(isR2OnlyArtifactPath("/metagraph/contracts.json"), false);
+
+    const stagedPath = artifactOutputPath("health/history/2099-01-01.json");
+    try {
+      await writeJson(stagedPath, {
+        schema_version: 1,
+        generated_at: "1970-01-01T00:00:00.000Z",
+        date: "2099-01-01",
+        surfaces: [],
+      });
+      assert.equal(existsSync(stagedPath), true);
+      assert.equal(
+        artifactFilePath("health/history/2099-01-01.json"),
+        stagedPath,
+      );
+      const env = createLocalArtifactEnv();
+      const object = await env.METAGRAPH_ARCHIVE.get(
+        "latest/health/history/2099-01-01.json",
+      );
+      assert.deepEqual(await object.json(), {
+        schema_version: 1,
+        generated_at: "1970-01-01T00:00:00.000Z",
+        date: "2099-01-01",
+        surfaces: [],
+      });
+      assert.equal(
+        await env.METAGRAPH_ARCHIVE.get(
+          "latest/health/history/2099-01-02.json",
+        ),
+        null,
+      );
+      assert.equal(
+        (
+          await env.ASSETS.fetch(
+            new Request("https://assets.local/metagraph/contracts.json"),
+          )
+        ).status,
+        200,
+      );
+      assert.equal(
+        (await readFile(artifactFilePath("contracts.json"), "utf8")).includes(
+          "metagraph.sh",
+        ),
+        true,
+      );
+    } finally {
+      await rm(path.dirname(stagedPath), { recursive: true, force: true });
     }
   });
 
@@ -283,6 +373,25 @@ describe("script utility contracts", () => {
             public_safe: true,
             probe: { enabled: true, method: "chain_getHeader" },
           },
+          {
+            id: "root-degraded-rpc",
+            kind: "subtensor-rpc",
+            url: "https://degraded.example.com",
+            provider: "degraded",
+            authority: "provider-claimed",
+            auth_required: false,
+            public_safe: true,
+            probe: { enabled: true, method: "chain_getHeader" },
+          },
+          {
+            id: "root-private-api",
+            kind: "subnet-api",
+            url: "https://private.example.com",
+            provider: "private",
+            authority: "provider-claimed",
+            auth_required: false,
+            public_safe: false,
+          },
         ],
       },
     ]);
@@ -313,13 +422,20 @@ describe("script utility contracts", () => {
           classification: "dead",
           latency_ms: null,
         },
+        {
+          surface_id: "root-degraded-rpc",
+          status: "degraded",
+          classification: "rate-limited",
+          latency_ms: 1500,
+          methods_supported: ["chain_getHeader"],
+        },
       ],
       generatedAt: "1970-01-01T00:00:00.000Z",
       contractVersion: "test",
       source: "fixture",
     });
 
-    assert.equal(rpc.summary.endpoint_count, 3);
+    assert.equal(rpc.summary.endpoint_count, 4);
     assert.equal(rpc.summary.archive_supported_count, 1);
     assert.equal(rpc.endpoints[0].method_tested, "chain_getHeader");
 
@@ -344,12 +460,20 @@ describe("script utility contracts", () => {
           error: "connection refused",
           verified_at: "1970-01-01T00:00:00.000Z",
         },
+        {
+          surface_id: "root-degraded-rpc",
+          status: "degraded",
+          classification: "rate-limited",
+          latency_ms: 1500,
+          methods_supported: ["chain_getHeader"],
+          verified_at: "1970-01-01T00:00:00.000Z",
+        },
       ],
       generatedAt: "1970-01-01T00:00:00.000Z",
       contractVersion: "test",
       source: "fixture",
     });
-    assert.equal(endpointResources.summary.endpoint_count, 5);
+    assert.equal(endpointResources.summary.endpoint_count, 7);
     assert.equal(
       endpointResources.endpoints.find(
         (endpoint) => endpoint.surface_id === "root-docs",
@@ -378,6 +502,18 @@ describe("script utility contracts", () => {
       endpointResources.endpoints.find(
         (endpoint) => endpoint.surface_id === "root-rpc",
       ).score_reasons.length > 0,
+      true,
+    );
+    assert.equal(
+      endpointResources.endpoints.find(
+        (endpoint) => endpoint.surface_id === "root-private-api",
+      ).publication_state,
+      "disabled",
+    );
+    assert.equal(
+      endpointResources.endpoints
+        .find((endpoint) => endpoint.surface_id === "root-private-api")
+        .pool_eligibility_reasons.includes("not-public-safe"),
       true,
     );
 
@@ -413,18 +549,36 @@ describe("script utility contracts", () => {
         ),
       true,
     );
+    const generalizedPools = buildEndpointPoolArtifact({
+      generatedAt: "1970-01-01T00:00:00.000Z",
+      contractVersion: "test",
+      endpointArtifact: endpointResources,
+    });
+    assert.equal(generalizedPools.source, "endpoint-resource-probes");
+    assert.equal(
+      generalizedPools.provider_scores.some(
+        (provider) => provider.provider === "degraded",
+      ),
+      true,
+    );
 
     const incidents = buildEndpointIncidentArtifact({
       endpointArtifact: endpointResources,
       generatedAt: "1970-01-01T00:00:00.000Z",
       contractVersion: "test",
     });
-    assert.equal(incidents.summary.incident_count, 1);
+    assert.equal(incidents.summary.incident_count, 2);
     assert.equal(
       incidents.incidents[0].endpoint_id,
       "endpoint-root-failed-rpc",
     );
     assert.equal(incidents.incidents[0].severity, "critical");
+    assert.equal(
+      incidents.incidents.find(
+        (incident) => incident.endpoint_id === "endpoint-root-degraded-rpc",
+      ).severity,
+      "warning",
+    );
     assert.equal(incidents.incidents[0].user_reported, false);
     assert.equal(incidents.incidents[0].source, "probe-derived");
   });

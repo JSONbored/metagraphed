@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
-import path from "node:path";
 import {
+  artifactFilePath,
+  artifactOutputPath,
   buildTimestamp,
   flattenSurfaces,
   hashJson,
@@ -8,7 +9,6 @@ import {
   isUnsafeResolvedUrl,
   isUnsafeUrl,
   loadSubnets,
-  repoRoot,
   stableStringify,
   writeJson,
 } from "./lib.mjs";
@@ -22,7 +22,6 @@ const subnets = await loadSubnets();
 const surfaces = flattenSurfaces(subnets).filter(
   (surface) => surface.kind === "openapi" && surface.public_safe,
 );
-const schemaRoot = path.join(repoRoot, "public/metagraph/schemas");
 const existingBySurface = await loadExistingSchemaIndex();
 const results = [];
 
@@ -79,21 +78,17 @@ const drift = {
 };
 
 if (!dryRun) {
-  await fs.mkdir(schemaRoot, { recursive: true });
   for (const result of results) {
     if (result.status !== "captured") {
       continue;
     }
     await writeJson(
-      path.join(schemaRoot, `${result.surface_id}.json`),
+      artifactOutputPath(`schemas/${result.surface_id}.json`),
       result.snapshot,
     );
   }
-  await writeJson(path.join(schemaRoot, "index.json"), index);
-  await writeJson(
-    path.join(repoRoot, "public/metagraph/schema-drift.json"),
-    drift,
-  );
+  await writeJson(artifactOutputPath("schemas/index.json"), index);
+  await writeJson(artifactOutputPath("schema-drift.json"), drift);
 }
 
 console.log(
@@ -321,7 +316,7 @@ function normalizeSchema(value) {
 async function loadExistingSchemaIndex() {
   try {
     const index = JSON.parse(
-      await fs.readFile(path.join(schemaRoot, "index.json"), "utf8"),
+      await fs.readFile(artifactFilePath("schemas/index.json"), "utf8"),
     );
     return new Map(
       (index.schemas || [])

@@ -8,10 +8,11 @@ import {
   buildTimestamp,
   flattenSurfaces,
   isJsonContentType,
+  artifactDirectoryPath,
+  artifactOutputPath,
   loadProviders,
   isUnsafeResolvedUrl,
   loadSubnets,
-  repoRoot,
   writeJson,
 } from "./lib.mjs";
 
@@ -23,7 +24,6 @@ const surfaces = allSurfaces.filter(
   (surface) => surface.probe?.enabled && surface.public_safe,
 );
 const startedAt = Date.now();
-const outputRoot = path.join(repoRoot, "public/metagraph");
 const priorHistory = await loadPriorHistory();
 const subtensorProbeCalls = [
   { key: "chain_getHeader", method: "chain_getHeader", params: [] },
@@ -671,21 +671,18 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
     contractVersion,
     source: "live-smoke-probe",
   });
-  await writeJson(path.join(outputRoot, "health/latest.json"), artifact.latest);
+  await writeJson(artifactOutputPath("health/latest.json"), artifact.latest);
+  await writeJson(artifactOutputPath("health/summary.json"), artifact.summary);
   await writeJson(
-    path.join(outputRoot, "health/summary.json"),
-    artifact.summary,
-  );
-  await writeJson(
-    path.join(outputRoot, "rpc-endpoints.json"),
+    artifactOutputPath("rpc-endpoints.json"),
     rpcEndpointArtifact,
   );
   await writeJson(
-    path.join(outputRoot, "endpoints.json"),
+    artifactOutputPath("endpoints.json"),
     endpointResourceArtifact,
   );
   await writeJson(
-    path.join(outputRoot, "endpoint-incidents.json"),
+    artifactOutputPath("endpoint-incidents.json"),
     buildEndpointIncidentArtifact({
       endpointArtifact: endpointResourceArtifact,
       generatedAt: buildTimestamp(),
@@ -693,7 +690,7 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
     }),
   );
   await writeJson(
-    path.join(outputRoot, "rpc/pools.json"),
+    artifactOutputPath("rpc/pools.json"),
     buildEndpointPoolArtifact({
       generatedAt: buildTimestamp(),
       contractVersion,
@@ -701,22 +698,25 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
     }),
   );
   await writeJson(
-    path.join(outputRoot, "endpoint-pools.json"),
+    artifactOutputPath("endpoint-pools.json"),
     buildEndpointPoolArtifact({
       generatedAt: buildTimestamp(),
       contractVersion,
       endpointArtifact: endpointResourceArtifact,
     }),
   );
-  await fs.rm(path.join(outputRoot, "endpoints"), {
-    recursive: true,
-    force: true,
-  });
+  await fs.rm(
+    artifactOutputPath("endpoints/0.json").replace(/\/0\.json$/, ""),
+    {
+      recursive: true,
+      force: true,
+    },
+  );
   for (const subnet of subnets) {
     const subnetEndpoints = endpointResourceArtifact.endpoints.filter(
       (endpoint) => endpoint.netuid === subnet.netuid,
     );
-    await writeJson(path.join(outputRoot, `endpoints/${subnet.netuid}.json`), {
+    await writeJson(artifactOutputPath(`endpoints/${subnet.netuid}.json`), {
       schema_version: 1,
       contract_version: contractVersion,
       generated_at: buildTimestamp(),
@@ -732,7 +732,7 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
       (endpoint) => endpoint.provider === provider.id,
     );
     await writeJson(
-      path.join(outputRoot, `providers/${provider.id}/endpoints.json`),
+      artifactOutputPath(`providers/${provider.id}/endpoints.json`),
       {
         schema_version: 1,
         contract_version: contractVersion,
@@ -750,28 +750,31 @@ if (process.env.METAGRAPH_WRITE_PROBE_RESULTS === "1") {
   }
   const day = artifact.latest.probe_finished_at.slice(0, 10);
   await writeJson(
-    path.join(outputRoot, `health/history/${day}.json`),
+    artifactOutputPath(`health/history/${day}.json`),
     buildHealthHistoryArtifact(artifact.latest, day),
   );
-  await fs.rm(path.join(outputRoot, "health/subnets"), {
-    recursive: true,
-    force: true,
-  });
-  await fs.rm(path.join(outputRoot, "health/badges"), {
-    recursive: true,
-    force: true,
-  });
+  await fs.rm(
+    artifactOutputPath("health/subnets/0.json").replace(/\/0\.json$/, ""),
+    {
+      recursive: true,
+      force: true,
+    },
+  );
+  await fs.rm(
+    artifactOutputPath("health/badges/0.json").replace(/\/0\.json$/, ""),
+    {
+      recursive: true,
+      force: true,
+    },
+  );
   for (const [netuid, subnetHealth] of artifact.subnets) {
     await writeJson(
-      path.join(outputRoot, `health/subnets/${netuid}.json`),
+      artifactOutputPath(`health/subnets/${netuid}.json`),
       subnetHealth,
     );
   }
   for (const [netuid, badge] of artifact.badges) {
-    await writeJson(
-      path.join(outputRoot, `health/badges/${netuid}.json`),
-      badge,
-    );
+    await writeJson(artifactOutputPath(`health/badges/${netuid}.json`), badge);
   }
 }
 
@@ -977,7 +980,7 @@ function classifySubnetStatus({
 }
 
 async function loadPriorHistory() {
-  const historyRoot = path.join(outputRoot, "health/history");
+  const historyRoot = artifactDirectoryPath("health/history");
   let entries;
   try {
     entries = await fs.readdir(historyRoot, { withFileTypes: true });

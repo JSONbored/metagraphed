@@ -2,7 +2,7 @@
 
 ## Source Of Truth
 
-GitHub-reviewed registry source and generated JSON artifacts are canonical for v1. Cloudflare serves and stores artifacts; it does not become the registry truth source.
+GitHub-reviewed registry source, compact generated indexes, and compact release manifests are canonical for v1. High-churn generated detail is staged under `dist/metagraph-r2/metagraph` and published to R2; Cloudflare serves and stores artifacts, but it does not become the registry truth source.
 
 ## Routine Validation
 
@@ -21,6 +21,8 @@ npm run pipeline:refresh
 ```
 
 This updates native subnet data, candidates, verification, baseline curation, adapter snapshots, generated artifacts, schema snapshots, R2 manifest, and validation outputs.
+
+The refresh keeps Git reviewable: compact artifacts remain in `public/metagraph`, while per-subnet candidates, verification details, health detail/history, adapter snapshots, schema snapshots, and provider detail outputs are staged for R2 and should not be committed.
 
 Live health probes are only written when explicitly enabled:
 
@@ -49,7 +51,7 @@ Actual writes require explicit environment gates:
 - `METAGRAPH_KV_NAMESPACE_ID`
 - Cloudflare account/API credentials
 
-Normal R2 publishes are delta-based. The uploader reads `latest/r2-manifest.json`, compares artifact SHA-256 values, skips unchanged artifact files, and refreshes `latest/r2-manifest.json` plus `latest/build-summary.json` on full uploads so Worker fallback and operator summaries stay current.
+Normal R2 publishes are delta-based. The uploader reads `latest/r2-manifest.json`, compares artifact SHA-256 values, reads R2-tier files from the staging tree, skips unchanged artifact files, and refreshes `latest/r2-manifest.json` plus `latest/build-summary.json` on full uploads so Worker fallback and operator summaries stay current.
 
 ## Restore From R2
 

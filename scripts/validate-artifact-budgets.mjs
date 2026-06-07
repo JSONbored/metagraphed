@@ -2,8 +2,13 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { evaluateArtifactBudgets } from "./artifact-budgets.mjs";
 import { repoRoot, sha256Hex } from "./lib.mjs";
+import {
+  R2_STAGING_RELATIVE_ROOT,
+  artifactStorageTierForRelativePath,
+} from "../src/artifact-storage.mjs";
 
 const artifactRoot = path.join(repoRoot, "public/metagraph");
+const r2ArtifactRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 const artifacts = [];
 
 await walk(artifactRoot, async (filePath) => {
@@ -13,9 +18,26 @@ await walk(artifactRoot, async (filePath) => {
   const relativePath = path
     .relative(artifactRoot, filePath)
     .replace(/\\/g, "/");
+  if (artifactStorageTierForRelativePath(relativePath) === "r2") {
+    return;
+  }
   if (["build-summary.json", "r2-manifest.json"].includes(relativePath)) {
     return;
   }
+  const raw = await fs.readFile(filePath);
+  artifacts.push({
+    path: relativePath,
+    sha256: sha256Hex(raw),
+    size_bytes: raw.byteLength,
+  });
+});
+await walk(r2ArtifactRoot, async (filePath) => {
+  if (!filePath.endsWith(".json")) {
+    return;
+  }
+  const relativePath = path
+    .relative(r2ArtifactRoot, filePath)
+    .replace(/\\/g, "/");
   const raw = await fs.readFile(filePath);
   artifacts.push({
     path: relativePath,

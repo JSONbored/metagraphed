@@ -1,34 +1,8 @@
 import assert from "node:assert/strict";
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { handleRequest } from "../workers/api.mjs";
-import { repoRoot } from "./lib.mjs";
+import { createLocalArtifactEnv } from "./lib.mjs";
 
-const env = {
-  ASSETS: {
-    async fetch(request) {
-      const url = new URL(request.url);
-      const filePath = path.join(
-        repoRoot,
-        "public",
-        url.pathname.replace(/^\/+/, ""),
-      );
-      try {
-        const body = await fs.readFile(filePath);
-        return new Response(body, {
-          status: 200,
-          headers: {
-            "content-type": filePath.endsWith(".json")
-              ? "application/json"
-              : "application/octet-stream",
-          },
-        });
-      } catch {
-        return new Response("not found", { status: 404 });
-      }
-    },
-  },
-};
+const env = createLocalArtifactEnv();
 
 const head = await handleRequest(
   new Request("https://metagraph.sh/api/v1/subnets", { method: "HEAD" }),

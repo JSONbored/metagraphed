@@ -6,6 +6,10 @@ import {
   artifactPathFromTemplate,
   compileRoutePattern,
 } from "../src/contracts.mjs";
+import {
+  artifactStorageTierForPath,
+  ARTIFACT_STORAGE_TIERS,
+} from "../src/artifact-storage.mjs";
 
 const JSON_CONTENT_TYPE = "application/json; charset=utf-8";
 
@@ -74,6 +78,13 @@ export async function handleRequest(request, env = {}, _ctx = {}) {
     return handleApiRequest(request, env, url);
   }
 
+  if (
+    url.pathname.startsWith("/metagraph/") &&
+    url.pathname.endsWith(".json")
+  ) {
+    return handleRawArtifactRequest(request, env, url);
+  }
+
   if (env.ASSETS?.fetch) {
     return env.ASSETS.fetch(request);
   }
@@ -83,6 +94,28 @@ export async function handleRequest(request, env = {}, _ctx = {}) {
     "No static asset binding is configured for this route.",
     404,
   );
+}
+
+async function handleRawArtifactRequest(request, env, url) {
+  const artifact = await readArtifact(env, url.pathname);
+  if (!artifact.ok) {
+    return errorResponse(artifact.code, artifact.message, artifact.status, {
+      artifact_path: url.pathname,
+    });
+  }
+  const body = JSON.stringify(artifact.data);
+  const headers = apiHeaders("standard");
+  headers.set("content-type", JSON_CONTENT_TYPE);
+  headers.set("x-metagraph-artifact-source", artifact.source);
+  headers.set("x-metagraph-storage-tier", artifact.storage_tier);
+  headers.set("etag", await weakEtag(body));
+  if (request.headers.get("if-none-match") === headers.get("etag")) {
+    return new Response(null, { status: 304, headers });
+  }
+  return new Response(request.method === "HEAD" ? null : body, {
+    status: 200,
+    headers,
+  });
 }
 
 async function handleApiRequest(request, env, url) {
@@ -278,12 +311,22 @@ function matchRoute(pathname) {
 }
 
 async function readArtifact(env, artifactPath) {
-  const asset = await readAsset(env, artifactPath);
+  const storageTier = artifactStorageTierForPath(artifactPath);
+
+  if (storageTier === ARTIFACT_STORAGE_TIERS.r2) {
+    const r2 = await readR2(env, artifactPath, storageTier);
+    if (r2.ok || env.METAGRAPH_ALLOW_R2_STATIC_FALLBACK !== "true") {
+      return r2;
+    }
+    return readAsset(env, artifactPath, storageTier);
+  }
+
+  const asset = await readAsset(env, artifactPath, storageTier);
   if (asset.ok) {
     return asset;
   }
 
-  const r2 = await readR2(env, artifactPath);
+  const r2 = await readR2(env, artifactPath, storageTier);
   if (r2.ok) {
     return r2;
   }
@@ -291,7 +334,7 @@ async function readArtifact(env, artifactPath) {
   return asset.status !== 404 ? asset : r2;
 }
 
-async function readAsset(env, artifactPath) {
+async function readAsset(env, artifactPath, storageTier) {
   if (!env.ASSETS?.fetch) {
     return {
       ok: false,
@@ -318,10 +361,11 @@ async function readAsset(env, artifactPath) {
     ok: true,
     data: await response.json(),
     source: "static-assets",
+    storage_tier: storageTier,
   };
 }
 
-async function readR2(env, artifactPath) {
+async function readR2(env, artifactPath, storageTier) {
   if (!env.METAGRAPH_ARCHIVE?.get) {
     return {
       ok: false,
@@ -346,6 +390,7 @@ async function readR2(env, artifactPath) {
     ok: true,
     data: await object.json(),
     source: "r2",
+    storage_tier: storageTier,
   };
 }
 

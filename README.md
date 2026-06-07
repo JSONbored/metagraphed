@@ -71,7 +71,7 @@ Credentialed flows, wallet paths, validator-sensitive internals, private dashboa
 
 ## Artifact Contract
 
-Generated public artifacts live under `public/metagraph`:
+Generated public artifact routes live under `/metagraph/*`. Compact indexes and contracts are checked in under `public/metagraph`; high-churn detail, health, verification, schema, adapter, and per-subnet files are written to the ignored R2 staging tree under `dist/metagraph-r2/metagraph` and uploaded to R2. The Worker keeps the same public paths either way.
 
 - `/metagraph/contracts.json`
 - `/metagraph/providers.json`
@@ -118,7 +118,7 @@ Generated public artifacts live under `public/metagraph`:
 - `/metagraph/review/maintainer-decisions.json`
 - `/metagraph/build-summary.json`
 
-The generated files are deterministic and suitable for static hosting, CI review, and downstream consumption.
+The generated files are deterministic and suitable for static hosting, R2-backed serving, CI review, and downstream consumption. Artifact contracts include `storage_tier` so validators, OpenAPI generation, R2 upload, and Worker loading agree on where each artifact belongs.
 
 ## Contract Source Of Truth
 
@@ -224,7 +224,7 @@ npm run probes:smoke
 
 `probes:smoke` performs read-only checks against public surfaces. It does not submit transactions, mutate subnet state, send wallet data, or use credentials.
 
-`r2:manifest` generates the Cloudflare R2 upload manifest for the current artifact tree. `r2:upload` is delta-based by default, using `latest/r2-manifest.json` to skip unchanged artifacts while refreshing R2 control files on full uploads. Smoke uploads with `METAGRAPH_R2_UPLOAD_LIMIT` upload only the limited artifact subset and intentionally skip control files so `latest/r2-manifest.json` never advertises artifacts that were not uploaded. `r2:upload`, `r2:download`, and `kv:publish` require explicit write flags so local validation cannot accidentally publish or restore.
+`r2:manifest` generates the Cloudflare R2 upload manifest from compact Git artifacts plus the ignored R2 staging tree. `r2:upload` is delta-based by default, using `latest/r2-manifest.json` to skip unchanged artifacts while refreshing R2 control files on full uploads. Smoke uploads with `METAGRAPH_R2_UPLOAD_LIMIT` upload only the limited artifact subset and intentionally skip control files so `latest/r2-manifest.json` never advertises artifacts that were not uploaded. `r2:upload`, `r2:download`, and `kv:publish` require explicit write flags so local validation cannot accidentally publish or restore.
 
 ## Community Submissions
 
@@ -246,7 +246,8 @@ schemas/              public JSON schema contracts
 scripts/              validation, artifact generation, probe, and safety scripts
 generated/            generated TypeScript handoff types and client helpers
 workers/              Cloudflare Worker API routes over static artifacts
-public/metagraph/     generated public JSON artifacts
+public/metagraph/     compact generated JSON artifacts and public contracts
+dist/metagraph-r2/    ignored R2 staging tree for volatile/detail artifacts
 tests/                node test runner checks
 ```
 

@@ -33,6 +33,10 @@ import {
   summarizeArtifactBudgets,
 } from "./artifact-budgets.mjs";
 import { buildCanonicalOpenApiArtifact } from "./openapi-components.mjs";
+import {
+  R2_STAGING_RELATIVE_ROOT,
+  artifactStorageTierForRelativePath,
+} from "../src/artifact-storage.mjs";
 
 const providers = await loadProviders();
 const overlays = await loadSubnets();
@@ -64,9 +68,19 @@ const activeOverlays = overlays.filter((overlay) =>
 );
 const surfaces = flattenSurfaces(activeOverlays);
 const outputRoot = path.join(repoRoot, "public/metagraph");
+const r2OutputRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 const generatedAt = buildTimestamp();
 const contractVersion = CONTRACT_VERSION;
-const previousArtifactDigests = await collectArtifactDigests(outputRoot);
+const previousR2ManifestArtifact = await readOptionalJson(
+  path.join(outputRoot, "r2-manifest.json"),
+);
+await fs.rm(r2OutputRoot, { recursive: true, force: true });
+
+const previousArtifactDigests = await collectArtifactDigests({
+  previousManifest: previousR2ManifestArtifact,
+  publicRoot: outputRoot,
+  r2Root: r2OutputRoot,
+});
 const previousSubnetsArtifact = await readOptionalJson(
   path.join(outputRoot, "subnets.json"),
 );
@@ -260,12 +274,12 @@ const gapsIndex = mergedSubnets.map((subnet) => ({
   slug: subnet.slug,
 }));
 
-await writeJson(path.join(outputRoot, "providers.json"), {
+await writeJson(artifactFile("providers.json"), {
   schema_version: 1,
   generated_at: generatedAt,
   providers,
 });
-await fs.rm(path.join(outputRoot, "providers"), {
+await fs.rm(r2ArtifactDir("providers"), {
   recursive: true,
   force: true,
 });
@@ -273,7 +287,7 @@ for (const provider of providers) {
   const providerEndpoints = endpointResources.endpoints.filter(
     (endpoint) => endpoint.provider === provider.id,
   );
-  await writeJson(path.join(outputRoot, `providers/${provider.id}.json`), {
+  await writeJson(artifactFile(`providers/${provider.id}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: generatedAt,
@@ -282,7 +296,7 @@ for (const provider of providers) {
   });
 }
 
-await writeJson(path.join(outputRoot, "subnets.json"), {
+await writeJson(artifactFile("subnets.json"), {
   schema_version: 1,
   generated_at: generatedAt,
   network: nativeSnapshot.network,
@@ -291,7 +305,7 @@ await writeJson(path.join(outputRoot, "subnets.json"), {
   subnets: subnetIndex,
 });
 
-await fs.rm(path.join(outputRoot, "subnets"), { recursive: true, force: true });
+await fs.rm(r2ArtifactDir("subnets"), { recursive: true, force: true });
 for (const subnet of mergedSubnets) {
   const subnetCandidates = candidatesByNetuid.get(subnet.netuid) || [];
   const subnetSurfaces = surfaces.filter(
@@ -300,7 +314,7 @@ for (const subnet of mergedSubnets) {
   const subnetEndpoints = endpointResources.endpoints.filter(
     (endpoint) => endpoint.netuid === subnet.netuid,
   );
-  await writeJson(path.join(outputRoot, `subnets/${subnet.netuid}.json`), {
+  await writeJson(artifactFile(`subnets/${subnet.netuid}.json`), {
     schema_version: 1,
     generated_at: generatedAt,
     subnet,
@@ -313,19 +327,19 @@ for (const subnet of mergedSubnets) {
   });
 }
 
-await writeJson(path.join(outputRoot, "surfaces.json"), {
+await writeJson(artifactFile("surfaces.json"), {
   schema_version: 1,
   generated_at: generatedAt,
   notes:
     "Curated and verified public interface surfaces only. Native-only subnet stubs do not invent surfaces.",
   surfaces,
 });
-await fs.rm(path.join(outputRoot, "surfaces"), {
+await fs.rm(r2ArtifactDir("surfaces"), {
   recursive: true,
   force: true,
 });
 for (const subnet of mergedSubnets) {
-  await writeJson(path.join(outputRoot, `surfaces/${subnet.netuid}.json`), {
+  await writeJson(artifactFile(`surfaces/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: generatedAt,
@@ -336,19 +350,19 @@ for (const subnet of mergedSubnets) {
   });
 }
 
-await writeJson(path.join(outputRoot, "candidates.json"), {
+await writeJson(artifactFile("candidates.json"), {
   schema_version: 1,
   generated_at: generatedAt,
   notes:
     "Unverified candidate surfaces from public source discovery and community intake. Candidates are not verified registry surfaces.",
   candidates: candidateIndex,
 });
-await fs.rm(path.join(outputRoot, "candidates"), {
+await fs.rm(r2ArtifactDir("candidates"), {
   recursive: true,
   force: true,
 });
 for (const subnet of mergedSubnets) {
-  await writeJson(path.join(outputRoot, `candidates/${subnet.netuid}.json`), {
+  await writeJson(artifactFile(`candidates/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: generatedAt,
@@ -361,7 +375,7 @@ for (const subnet of mergedSubnets) {
   });
 }
 
-await writeJson(path.join(outputRoot, "review-queue.json"), {
+await writeJson(artifactFile("review-queue.json"), {
   schema_version: 1,
   generated_at: generatedAt,
   notes:
@@ -370,14 +384,14 @@ await writeJson(path.join(outputRoot, "review-queue.json"), {
   candidates: reviewQueue,
 });
 
-await writeJson(path.join(outputRoot, "curation.json"), {
+await writeJson(artifactFile("curation.json"), {
   schema_version: 1,
   generated_at: generatedAt,
   notes: "Curation status for every active Finney subnet.",
   curation: curationIndex,
 });
 
-await writeJson(path.join(outputRoot, "gaps.json"), {
+await writeJson(artifactFile("gaps.json"), {
   schema_version: 1,
   generated_at: generatedAt,
   notes:
@@ -385,11 +399,11 @@ await writeJson(path.join(outputRoot, "gaps.json"), {
   gaps: gapsIndex,
 });
 
-await writeJson(path.join(outputRoot, "verification/latest.json"), {
+await writeJson(artifactFile("verification/latest.json"), {
   ...verification,
   generated_at: verification.generated_at || generatedAt,
 });
-await fs.rm(path.join(outputRoot, "verification/subnets"), {
+await fs.rm(r2ArtifactDir("verification/subnets"), {
   recursive: true,
   force: true,
 });
@@ -397,52 +411,40 @@ for (const subnet of mergedSubnets) {
   const results = (verification.results || []).filter(
     (result) => result.netuid === subnet.netuid,
   );
-  await writeJson(
-    path.join(outputRoot, `verification/subnets/${subnet.netuid}.json`),
-    {
-      schema_version: 1,
-      contract_version: contractVersion,
-      generated_at: verification.generated_at || generatedAt,
-      candidate_count: results.length,
-      netuid: subnet.netuid,
-      slug: subnet.slug,
-      name: subnet.name,
-      summary: {
-        by_classification: countBy(
-          results,
-          (result) => result.classification || "unknown",
-        ),
-        by_kind: countBy(results, (result) => result.kind || "unknown"),
-        by_provider: countBy(results, (result) => result.provider || "unknown"),
-      },
-      results,
+  await writeJson(artifactFile(`verification/subnets/${subnet.netuid}.json`), {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: verification.generated_at || generatedAt,
+    candidate_count: results.length,
+    netuid: subnet.netuid,
+    slug: subnet.slug,
+    name: subnet.name,
+    summary: {
+      by_classification: countBy(
+        results,
+        (result) => result.classification || "unknown",
+      ),
+      by_kind: countBy(results, (result) => result.kind || "unknown"),
+      by_provider: countBy(results, (result) => result.provider || "unknown"),
     },
-  );
+    results,
+  });
 }
 
-await writeJson(
-  path.join(outputRoot, "metagraph/latest.json"),
-  metagraphLatest,
-);
-await fs.rm(path.join(outputRoot, "health/subnets"), {
+await writeJson(artifactFile("metagraph/latest.json"), metagraphLatest);
+await fs.rm(r2ArtifactDir("health/subnets"), {
   recursive: true,
   force: true,
 });
-await fs.rm(path.join(outputRoot, "health/badges"), {
+await fs.rm(r2ArtifactDir("health/badges"), {
   recursive: true,
   force: true,
 });
-await writeJson(
-  path.join(outputRoot, "health/latest.json"),
-  healthArtifacts.latest,
-);
-await writeJson(
-  path.join(outputRoot, "health/summary.json"),
-  healthArtifacts.summary,
-);
-await writeJson(path.join(outputRoot, "rpc-endpoints.json"), rpcEndpoints);
-await writeJson(path.join(outputRoot, "endpoints.json"), endpointResources);
-await fs.rm(path.join(outputRoot, "endpoints"), {
+await writeJson(artifactFile("health/latest.json"), healthArtifacts.latest);
+await writeJson(artifactFile("health/summary.json"), healthArtifacts.summary);
+await writeJson(artifactFile("rpc-endpoints.json"), rpcEndpoints);
+await writeJson(artifactFile("endpoints.json"), endpointResources);
+await fs.rm(r2ArtifactDir("endpoints"), {
   recursive: true,
   force: true,
 });
@@ -450,7 +452,7 @@ for (const subnet of mergedSubnets) {
   const subnetEndpoints = endpointResources.endpoints.filter(
     (endpoint) => endpoint.netuid === subnet.netuid,
   );
-  await writeJson(path.join(outputRoot, `endpoints/${subnet.netuid}.json`), {
+  await writeJson(artifactFile(`endpoints/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: generatedAt,
@@ -465,45 +467,39 @@ for (const provider of providers) {
   const providerEndpoints = endpointResources.endpoints.filter(
     (endpoint) => endpoint.provider === provider.id,
   );
-  await writeJson(
-    path.join(outputRoot, `providers/${provider.id}/endpoints.json`),
-    {
-      schema_version: 1,
-      contract_version: contractVersion,
-      generated_at: generatedAt,
-      provider: {
-        id: provider.id,
-        name: provider.name,
-        kind: provider.kind,
-        authority: provider.authority,
-      },
-      summary: endpointSummary(providerEndpoints),
-      endpoints: providerEndpoints,
+  await writeJson(artifactFile(`providers/${provider.id}/endpoints.json`), {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    provider: {
+      id: provider.id,
+      name: provider.name,
+      kind: provider.kind,
+      authority: provider.authority,
     },
-  );
+    summary: endpointSummary(providerEndpoints),
+    endpoints: providerEndpoints,
+  });
 }
 for (const [netuid, subnetHealth] of healthArtifacts.subnets) {
-  await writeJson(
-    path.join(outputRoot, `health/subnets/${netuid}.json`),
-    subnetHealth,
-  );
+  await writeJson(artifactFile(`health/subnets/${netuid}.json`), subnetHealth);
 }
 for (const [netuid, badge] of healthArtifacts.badges) {
-  await writeJson(path.join(outputRoot, `health/badges/${netuid}.json`), badge);
+  await writeJson(artifactFile(`health/badges/${netuid}.json`), badge);
 }
-await writeJson(path.join(outputRoot, "coverage.json"), coverage);
-await writeJson(path.join(outputRoot, "contracts.json"), contracts);
+await writeJson(artifactFile("coverage.json"), coverage);
+await writeJson(artifactFile("contracts.json"), contracts);
 await writeJson(
-  path.join(outputRoot, "api-index.json"),
+  artifactFile("api-index.json"),
   buildApiIndexArtifact(generatedAt, contracts),
 );
-await writeJson(path.join(outputRoot, "openapi.json"), openApi);
+await writeJson(artifactFile("openapi.json"), openApi);
 await writeJson(
-  path.join(outputRoot, "search.json"),
+  artifactFile("search.json"),
   buildSearchIndex(mergedSubnets, surfaces, providers),
 );
 await writeJson(
-  path.join(outputRoot, "freshness.json"),
+  artifactFile("freshness.json"),
   buildFreshnessArtifact({
     adapterSnapshots,
     generatedAt,
@@ -514,7 +510,7 @@ await writeJson(
   }),
 );
 await writeJson(
-  path.join(outputRoot, "source-health.json"),
+  artifactFile("source-health.json"),
   buildSourceHealthArtifact({
     candidates,
     endpointResources,
@@ -524,7 +520,7 @@ await writeJson(
   }),
 );
 await writeJson(
-  path.join(outputRoot, "evidence-ledger.json"),
+  artifactFile("evidence-ledger.json"),
   buildEvidenceLedger({
     candidates,
     generatedAt,
@@ -533,7 +529,7 @@ await writeJson(
   }),
 );
 await writeJson(
-  path.join(outputRoot, "rpc/pools.json"),
+  artifactFile("rpc/pools.json"),
   buildEndpointPoolArtifact({
     generatedAt,
     contractVersion,
@@ -541,19 +537,16 @@ await writeJson(
   }),
 );
 await writeJson(
-  path.join(outputRoot, "endpoint-pools.json"),
+  artifactFile("endpoint-pools.json"),
   buildEndpointPoolArtifact({
     generatedAt,
     contractVersion,
     endpointArtifact: endpointResources,
   }),
 );
+await writeJson(artifactFile("endpoint-incidents.json"), endpointIncidents);
 await writeJson(
-  path.join(outputRoot, "endpoint-incidents.json"),
-  endpointIncidents,
-);
-await writeJson(
-  path.join(outputRoot, "source-snapshots.json"),
+  artifactFile("source-snapshots.json"),
   await buildSourceSnapshots({
     adapterSnapshots,
     candidates,
@@ -565,11 +558,8 @@ await writeJson(
     verification,
   }),
 );
-await writeJson(
-  path.join(outputRoot, "schema-drift.json"),
-  schemaDriftPlaceholder,
-);
-await writeJson(path.join(outputRoot, "schemas/index.json"), {
+await writeJson(artifactFile("schema-drift.json"), schemaDriftPlaceholder);
+await writeJson(artifactFile("schemas/index.json"), {
   schema_version: 1,
   contract_version: contractVersion,
   generated_at: generatedAt,
@@ -578,20 +568,20 @@ await writeJson(path.join(outputRoot, "schemas/index.json"), {
     "Run npm run schemas:snapshot to capture machine-readable OpenAPI/Swagger schema snapshots.",
   schemas: [],
 });
-await writeJson(path.join(outputRoot, "review/curation.json"), curationReview);
-await writeJson(path.join(outputRoot, "review/gap-priorities.json"), {
+await writeJson(artifactFile("review/curation.json"), curationReview);
+await writeJson(artifactFile("review/gap-priorities.json"), {
   schema_version: 1,
   contract_version: contractVersion,
   generated_at: generatedAt,
   priorities: curationReview.gap_priorities,
 });
-await writeJson(path.join(outputRoot, "review/adapter-candidates.json"), {
+await writeJson(artifactFile("review/adapter-candidates.json"), {
   schema_version: 1,
   contract_version: contractVersion,
   generated_at: generatedAt,
   candidates: curationReview.adapter_candidates,
 });
-await writeJson(path.join(outputRoot, "review/maintainer-decisions.json"), {
+await writeJson(artifactFile("review/maintainer-decisions.json"), {
   schema_version: 1,
   contract_version: contractVersion,
   generated_at: generatedAt,
@@ -601,12 +591,15 @@ await writeJson(path.join(outputRoot, "review/maintainer-decisions.json"), {
 });
 
 for (const [slug, artifact] of Object.entries(adapterArtifacts)) {
-  await writeJson(path.join(outputRoot, `adapters/${slug}.json`), artifact);
+  await writeJson(artifactFile(`adapters/${slug}.json`), artifact);
 }
 
-const currentArtifactDigests = await collectArtifactDigests(outputRoot);
+const currentArtifactDigests = await collectArtifactDigests({
+  publicRoot: outputRoot,
+  r2Root: r2OutputRoot,
+});
 await writeJson(
-  path.join(outputRoot, "changelog.json"),
+  artifactFile("changelog.json"),
   buildChangelog({
     currentArtifacts: currentArtifactDigests,
     currentCoverage: coverage,
@@ -618,18 +611,24 @@ await writeJson(
   }),
 );
 
-const artifactSizesBeforeR2 = await collectArtifactSizes(outputRoot);
+const artifactSizesBeforeR2 = await collectArtifactSizes({
+  publicRoot: outputRoot,
+  r2Root: r2OutputRoot,
+});
 await writeJson(
-  path.join(outputRoot, "r2-manifest.json"),
+  artifactFile("r2-manifest.json"),
   buildR2Manifest({
     artifactSizes: artifactSizesBeforeR2,
     generatedAt,
   }),
 );
 
-const artifactSizes = await collectArtifactSizes(outputRoot);
+const artifactSizes = await collectArtifactSizes({
+  publicRoot: outputRoot,
+  r2Root: r2OutputRoot,
+});
 const artifactBudgets = evaluateArtifactBudgets(artifactSizes);
-await writeJson(path.join(outputRoot, "build-summary.json"), {
+await writeJson(artifactFile("build-summary.json"), {
   schema_version: 1,
   contract_version: contractVersion,
   generated_at: generatedAt,
@@ -1484,6 +1483,7 @@ function buildR2Manifest({ artifactSizes, generatedAt: timestamp }) {
     path: `/metagraph/${artifact.path}`,
     sha256: artifact.sha256,
     size_bytes: artifact.size_bytes,
+    storage_tier: artifact.storage_tier,
   }));
   return {
     schema_version: 1,
@@ -1734,32 +1734,56 @@ function delta(before, after) {
   };
 }
 
-async function collectArtifactDigests(root) {
+function artifactFile(relativePath) {
+  const tier = artifactStorageTierForRelativePath(relativePath);
+  return path.join(tier === "r2" ? r2OutputRoot : outputRoot, relativePath);
+}
+
+function r2ArtifactDir(relativePath) {
+  return path.join(r2OutputRoot, relativePath);
+}
+
+async function collectArtifactDigests({
+  previousManifest,
+  publicRoot,
+  r2Root,
+}) {
   const files = [];
-  try {
-    await walk(root, async (filePath) => {
-      if (!filePath.endsWith(".json")) {
-        return;
-      }
-      const relativePath = path.relative(root, filePath).replace(/\\/g, "/");
-      if (
-        ["build-summary.json", "changelog.json", "r2-manifest.json"].includes(
-          relativePath,
-        )
-      ) {
-        return;
-      }
-      const value = await readJson(filePath);
-      files.push({
-        path: relativePath,
-        hash: hashJson(value),
-      });
-    });
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      throw error;
+  await collectArtifactFiles({ publicRoot, r2Root }, async (filePath, root) => {
+    if (!filePath.endsWith(".json")) {
+      return;
     }
+    const relativePath = path.relative(root, filePath).replace(/\\/g, "/");
+    if (
+      ["build-summary.json", "changelog.json", "r2-manifest.json"].includes(
+        relativePath,
+      )
+    ) {
+      return;
+    }
+    const raw = await fs.readFile(filePath);
+    files.push({
+      path: relativePath,
+      hash: sha256Hex(raw),
+    });
+  });
+
+  for (const artifact of previousManifest?.artifacts || []) {
+    const relativePath = artifact.path?.replace(/^\/metagraph\//, "");
+    if (
+      artifact.storage_tier !== "r2" ||
+      !relativePath ||
+      !artifact.sha256 ||
+      files.some((file) => file.path === relativePath)
+    ) {
+      continue;
+    }
+    files.push({
+      path: relativePath,
+      hash: artifact.sha256,
+    });
   }
+
   return files.sort((a, b) => a.path.localeCompare(b.path));
 }
 
@@ -1774,9 +1798,9 @@ async function readOptionalJson(filePath) {
   }
 }
 
-async function collectArtifactSizes(root) {
+async function collectArtifactSizes({ publicRoot, r2Root }) {
   const files = [];
-  await walk(root, async (filePath) => {
+  await collectArtifactFiles({ publicRoot, r2Root }, async (filePath, root) => {
     if (!filePath.endsWith(".json")) {
       return;
     }
@@ -1790,9 +1814,23 @@ async function collectArtifactSizes(root) {
       path: relativePath,
       sha256: sha256Hex(raw),
       size_bytes: stat.size,
+      storage_tier: artifactStorageTierForRelativePath(relativePath),
     });
   });
   return files.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+async function collectArtifactFiles({ publicRoot, r2Root }, onFile) {
+  await walkIfExists(publicRoot, async (filePath) => {
+    const relativePath = path
+      .relative(publicRoot, filePath)
+      .replace(/\\/g, "/");
+    if (artifactStorageTierForRelativePath(relativePath) === "r2") {
+      return;
+    }
+    await onFile(filePath, publicRoot);
+  });
+  await walkIfExists(r2Root, async (filePath) => onFile(filePath, r2Root));
 }
 
 async function loadAdapterSnapshots() {
@@ -1820,12 +1858,20 @@ async function loadReviewDecisions() {
   }
 }
 
-async function walk(dirPath, onFile) {
-  const entries = await fs.readdir(dirPath, { withFileTypes: true });
+async function walkIfExists(dirPath, onFile) {
+  let entries;
+  try {
+    entries = await fs.readdir(dirPath, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
   for (const entry of entries) {
     const entryPath = path.join(dirPath, entry.name);
     if (entry.isDirectory()) {
-      await walk(entryPath, onFile);
+      await walkIfExists(entryPath, onFile);
     } else if (entry.isFile()) {
       await onFile(entryPath);
     }

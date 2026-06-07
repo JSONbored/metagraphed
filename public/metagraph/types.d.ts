@@ -633,6 +633,8 @@ export interface components {
             id: string;
             path: string;
             schema_ref: string | null;
+            /** @enum {unknown} */
+            storage_tier: "dual" | "git" | "r2";
         };
         ArtifactDiffEntry: string | {
             hash?: string;
@@ -1218,6 +1220,8 @@ export interface components {
             path: string;
             sha256: string;
             size_bytes: number;
+            /** @enum {unknown} */
+            storage_tier: "dual" | "git" | "r2";
         };
         ResponseEnvelopeContract: {
             /** @constant */

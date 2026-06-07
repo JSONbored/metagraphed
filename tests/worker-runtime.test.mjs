@@ -1,34 +1,9 @@
 import assert from "node:assert/strict";
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { describe, test } from "vitest";
+import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import worker, { handleRequest } from "../workers/api.mjs";
 
-const env = {
-  ASSETS: {
-    async fetch(request) {
-      const url = new URL(request.url);
-      const filePath = path.join(
-        process.cwd(),
-        "public",
-        url.pathname.replace(/^\/+/, ""),
-      );
-      try {
-        const body = await fs.readFile(filePath);
-        return new Response(body, {
-          status: 200,
-          headers: {
-            "content-type": filePath.endsWith(".json")
-              ? "application/json"
-              : "application/octet-stream",
-          },
-        });
-      } catch {
-        return new Response("not found", { status: 404 });
-      }
-    },
-  },
-};
+const env = createLocalArtifactEnv();
 
 describe("Worker runtime", () => {
   test("default export delegates to handleRequest", async () => {
@@ -55,6 +30,36 @@ describe("Worker runtime", () => {
     const body = await response.json();
     assert.equal(body.ok, true);
     assert.equal(body.data.subnet.netuid, 7);
+  });
+
+  test("serves raw R2-tier artifacts from archive storage", async () => {
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/subnets/7.json"),
+      env,
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-metagraph-artifact-source"), "r2");
+    assert.equal(response.headers.get("x-metagraph-storage-tier"), "r2");
+    assert.equal((await response.json()).subnet.netuid, 7);
+
+    const missingArchive = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/subnets/7.json"),
+      {
+        ASSETS: env.ASSETS,
+      },
+      {},
+    );
+    assert.equal(missingArchive.status, 404);
+    assert.equal(
+      (await missingArchive.json()).error.code,
+      "r2_binding_missing",
+    );
+
+    const assetMissing = await env.ASSETS.fetch(
+      new Request("https://assets.local/metagraph/nope.json"),
+    );
+    assert.equal(assetMissing.status, 404);
   });
 
   test("supports HEAD, ETag revalidation, and CORS preflight", async () => {
@@ -474,6 +479,8 @@ describe("Worker runtime", () => {
 
     try {
       const unsafeOnlyCases = [
+        null,
+        "http://bittensor-finney.api.onfinality.io/public",
         "https://localhost/internal",
         "https://metadata.localhost/internal",
         "https://bittensor-finney.api.onfinality.io.evil.example/public",

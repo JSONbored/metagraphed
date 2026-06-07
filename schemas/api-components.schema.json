@@ -226,13 +226,21 @@
               "string",
               "null"
             ]
+          },
+          "storage_tier": {
+            "enum": [
+              "dual",
+              "git",
+              "r2"
+            ]
           }
         },
         "required": [
           "contract_version",
           "id",
           "path",
-          "schema_ref"
+          "schema_ref",
+          "storage_tier"
         ],
         "type": "object"
       },
@@ -2611,6 +2619,13 @@
           "size_bytes": {
             "minimum": 0,
             "type": "integer"
+          },
+          "storage_tier": {
+            "enum": [
+              "dual",
+              "git",
+              "r2"
+            ]
           }
         },
         "required": [
@@ -2619,7 +2634,8 @@
           "latest_key",
           "path",
           "sha256",
-          "size_bytes"
+          "size_bytes",
+          "storage_tier"
         ],
         "type": "object"
       },

@@ -1,3 +1,5 @@
+import { artifactStorageTierForPath } from "./artifact-storage.mjs";
+
 export const CONTRACT_VERSION = "2026-06-06.1";
 export const SCHEMA_VERSION = 1;
 export const PRIMARY_DOMAIN = "metagraph.sh";
@@ -907,6 +909,7 @@ export function buildContractsArtifact(generatedAt) {
         ? `#/components/schemas/${entry.schema_ref}`
         : null,
       contract_version: CONTRACT_VERSION,
+      storage_tier: entry.storage_tier,
     })),
   };
 }
@@ -945,6 +948,7 @@ export function buildApiIndexArtifact(generatedAt, contractsArtifact) {
       path: entry.path,
       contract_version: entry.contract_version,
       schema_ref: entry.schema_ref,
+      storage_tier: entry.storage_tier,
     })),
   };
 }
@@ -1111,6 +1115,7 @@ function artifact(id, pathValue, description, schemaRef) {
     path: pathValue,
     description,
     schema_ref: schemaRef,
+    storage_tier: artifactStorageTierForPath(pathValue),
   };
 }
 

@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
@@ -16,6 +17,10 @@ import {
   slugify,
   stableStringify,
 } from "./lib.mjs";
+import {
+  R2_STAGING_RELATIVE_ROOT,
+  artifactStorageTierForRelativePath,
+} from "../src/artifact-storage.mjs";
 
 const providerKinds = new Set([
   "subnet-team",
@@ -682,97 +687,66 @@ function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
   };
 }
 
+async function readArtifactJson(relativePath) {
+  return readJson(artifactPathForRelative(relativePath));
+}
+
+function artifactPath(relativePath) {
+  return artifactPathForRelative(relativePath);
+}
+
+function artifactPathForRelative(relativePath) {
+  const tier = artifactStorageTierForRelativePath(relativePath);
+  const r2Path = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, relativePath);
+  if (tier === "r2" && existsSync(r2Path)) {
+    return r2Path;
+  }
+  return path.join(repoRoot, "public/metagraph", relativePath);
+}
+
 async function validateGeneratedArtifacts(
   nativeSnapshot,
   overlays,
   candidates,
 ) {
-  const providersArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/providers.json"),
+  const providersArtifact = await readArtifactJson("providers.json");
+  const subnetsArtifact = await readArtifactJson("subnets.json");
+  const surfacesArtifact = await readArtifactJson("surfaces.json");
+  const candidatesArtifact = await readArtifactJson("candidates.json");
+  const curationArtifact = await readArtifactJson("curation.json");
+  const gapsArtifact = await readArtifactJson("gaps.json");
+  const reviewQueueArtifact = await readArtifactJson("review-queue.json");
+  const verificationArtifact = await readArtifactJson(
+    "verification/latest.json",
   );
-  const subnetsArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/subnets.json"),
+  const coverageArtifact = await readArtifactJson("coverage.json");
+  const contractsArtifact = await readArtifactJson("contracts.json");
+  const apiIndexArtifact = await readArtifactJson("api-index.json");
+  const changelogArtifact = await readArtifactJson("changelog.json");
+  const searchArtifact = await readArtifactJson("search.json");
+  const freshnessArtifact = await readArtifactJson("freshness.json");
+  const sourceHealthArtifact = await readArtifactJson("source-health.json");
+  const sourceSnapshotsArtifact = await readArtifactJson(
+    "source-snapshots.json",
   );
-  const surfacesArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/surfaces.json"),
+  const evidenceLedgerArtifact = await readArtifactJson("evidence-ledger.json");
+  const healthArtifact = await readArtifactJson("health/latest.json");
+  const healthSummaryArtifact = await readArtifactJson("health/summary.json");
+  const rpcEndpointsArtifact = await readArtifactJson("rpc-endpoints.json");
+  const endpointsArtifact = await readArtifactJson("endpoints.json");
+  const endpointPoolsArtifact = await readArtifactJson("rpc/pools.json");
+  const r2ManifestArtifact = await readArtifactJson("r2-manifest.json");
+  const schemaDriftArtifact = await readArtifactJson("schema-drift.json");
+  const schemaIndexArtifact = await readArtifactJson("schemas/index.json");
+  const reviewCurationArtifact = await readArtifactJson("review/curation.json");
+  const reviewGapPrioritiesArtifact = await readArtifactJson(
+    "review/gap-priorities.json",
   );
-  const candidatesArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/candidates.json"),
+  const reviewAdapterCandidatesArtifact = await readArtifactJson(
+    "review/adapter-candidates.json",
   );
-  const curationArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/curation.json"),
-  );
-  const gapsArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/gaps.json"),
-  );
-  const reviewQueueArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/review-queue.json"),
-  );
-  const verificationArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/verification/latest.json"),
-  );
-  const coverageArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/coverage.json"),
-  );
-  const contractsArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/contracts.json"),
-  );
-  const apiIndexArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/api-index.json"),
-  );
-  const changelogArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/changelog.json"),
-  );
-  const searchArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/search.json"),
-  );
-  const freshnessArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/freshness.json"),
-  );
-  const sourceHealthArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/source-health.json"),
-  );
-  const sourceSnapshotsArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/source-snapshots.json"),
-  );
-  const evidenceLedgerArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/evidence-ledger.json"),
-  );
-  const healthArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/health/latest.json"),
-  );
-  const healthSummaryArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/health/summary.json"),
-  );
-  const rpcEndpointsArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/rpc-endpoints.json"),
-  );
-  const endpointsArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/endpoints.json"),
-  );
-  const endpointPoolsArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/rpc/pools.json"),
-  );
-  const r2ManifestArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/r2-manifest.json"),
-  );
-  const schemaDriftArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/schema-drift.json"),
-  );
-  const schemaIndexArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/schemas/index.json"),
-  );
-  const reviewCurationArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/review/curation.json"),
-  );
-  const reviewGapPrioritiesArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/review/gap-priorities.json"),
-  );
-  const reviewAdapterCandidatesArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/review/adapter-candidates.json"),
-  );
-  const reviewDecisionsArtifact = await readJson(
-    path.join(repoRoot, "public/metagraph/review/maintainer-decisions.json"),
+  const reviewDecisionsArtifact = await readArtifactJson(
+    "review/maintainer-decisions.json",
   );
 
   for (const [artifactName, artifact] of [
@@ -833,10 +807,7 @@ async function validateGeneratedArtifacts(
       subnet.coverage_level !== "native-only",
       `generated:${subnet.netuid}: active subnet must be curated`,
     );
-    const detailPath = path.join(
-      repoRoot,
-      `public/metagraph/subnets/${subnet.netuid}.json`,
-    );
+    const detailPath = artifactPath(`subnets/${subnet.netuid}.json`);
     try {
       const detailArtifact = await readJson(detailPath);
       const subnetCandidates = candidatesByNetuid.get(subnet.netuid) || [];
@@ -1128,11 +1099,11 @@ async function validateGeneratedArtifacts(
 
   for (const netuid of nativeNetuids) {
     for (const artifactPath of [
-      `public/metagraph/health/subnets/${netuid}.json`,
-      `public/metagraph/health/badges/${netuid}.json`,
+      `health/subnets/${netuid}.json`,
+      `health/badges/${netuid}.json`,
     ]) {
       try {
-        await fs.access(path.join(repoRoot, artifactPath));
+        await fs.access(artifactPathForRelative(artifactPath));
       } catch {
         assert(false, `${artifactPath}: missing health artifact`);
       }

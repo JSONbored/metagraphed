@@ -12,7 +12,9 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `schemas/components/*.schema.json` is canonical for public API/artifact component schemas.
 - `schemas/api-components.schema.json` is a generated bundle and should not be edited by hand.
 - `/metagraph/openapi.json`, `/metagraph/types.d.ts`, `generated/metagraphed-api.d.ts`, and `generated/metagraphed-client.ts` are generated from the canonical schema and route metadata.
-- `public/metagraph/*` files are generated projections and should not be edited by hand.
+- `public/metagraph/*` files are compact generated projections and should not be edited by hand.
+- `dist/metagraph-r2/metagraph/*` is the ignored staging tree for volatile/detail generated projections that are uploaded to R2.
+- Artifact contracts carry `storage_tier`: `dual` for compact Git-plus-R2 artifacts, `r2` for volatile/detail artifacts, and `git` for local-only generated support artifacts.
 - Health, RPC, adapter, and schema-drift artifacts are operational observations, not protocol authority.
 - No secrets, wallet data, PATs, private dashboards, or validator-sensitive flows belong in any public artifact.
 - Zod is not backend contract authority in v1. Zod helpers can be generated later for frontend consumers, but JSON Schema plus AJV remains canonical.
@@ -21,43 +23,43 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 
 - `/metagraph/contracts.json`: current public artifact contract version and artifact map.
 - `/metagraph/providers.json`: provider/source registry.
-- `/metagraph/providers/{slug}.json`: per-provider detail payload.
-- `/metagraph/providers/{slug}/endpoints.json`: endpoint resources for one provider or operator.
+- `/metagraph/providers/{slug}.json`: per-provider detail payload. R2-backed.
+- `/metagraph/providers/{slug}/endpoints.json`: endpoint resources for one provider or operator. R2-backed.
 - `/metagraph/api-index.json`: Worker API route map and response-envelope contract.
 - `/metagraph/openapi.json`: OpenAPI 3.1 contract for backend API consumers.
 - `/metagraph/types.d.ts`: generated TypeScript definitions for consumers.
 - `/metagraph/changelog.json`: reviewable generated artifact and subnet-change summary.
 - `/metagraph/subnets.json`: compact all-subnet index.
-- `/metagraph/subnets/{netuid}.json`: per-subnet detail with native data, curated surfaces, candidates, curation, and gaps.
+- `/metagraph/subnets/{netuid}.json`: per-subnet detail with native data, curated surfaces, candidates, curation, and gaps. R2-backed.
 - `/metagraph/surfaces.json`: curated public surfaces only.
-- `/metagraph/surfaces/{netuid}.json`: curated public surfaces for one subnet.
+- `/metagraph/surfaces/{netuid}.json`: curated public surfaces for one subnet. R2-backed.
 - `/metagraph/endpoints.json`: generalized endpoint/resource registry derived from curated surfaces and probe observations.
-- `/metagraph/endpoints/{netuid}.json`: generalized endpoint/resource registry for one subnet.
+- `/metagraph/endpoints/{netuid}.json`: generalized endpoint/resource registry for one subnet. R2-backed.
 - `/metagraph/candidates.json`: unpromoted candidate surfaces from public discovery.
-- `/metagraph/candidates/{netuid}.json`: unpromoted candidate surfaces for one subnet.
+- `/metagraph/candidates/{netuid}.json`: unpromoted candidate surfaces for one subnet. R2-backed.
 - `/metagraph/review-queue.json`: candidate surfaces queued for maintainer review.
 - `/metagraph/search.json`: compact search index for subnets, surfaces, and providers.
 - `/metagraph/coverage.json`: count parity and coverage levels.
 - `/metagraph/curation.json`: curation state for every active subnet.
 - `/metagraph/gaps.json`: missing public interface facets by subnet.
-- `/metagraph/verification/latest.json`: latest candidate verification results.
-- `/metagraph/verification/subnets/{netuid}.json`: latest candidate verification results for one subnet.
+- `/metagraph/verification/latest.json`: latest candidate verification results. R2-backed.
+- `/metagraph/verification/subnets/{netuid}.json`: latest candidate verification results for one subnet. R2-backed.
 - `/metagraph/freshness.json`: freshness and staleness metadata for generated backend data.
 - `/metagraph/source-health.json`: source/provider health summary.
-- `/metagraph/source-snapshots.json`: compact hashes and counts for canonical source inputs.
+- `/metagraph/source-snapshots.json`: compact hashes and counts for canonical source inputs. R2-backed.
 - `/metagraph/evidence-ledger.json`: public evidence ledger for material registry claims.
-- `/metagraph/health/latest.json`: latest live or build-time surface health snapshot.
+- `/metagraph/health/latest.json`: latest live or build-time surface health snapshot. R2-backed.
 - `/metagraph/health/summary.json`: global and per-subnet health rollup.
-- `/metagraph/health/history/{date}.json`: compact daily health-history snapshot.
-- `/metagraph/health/subnets/{netuid}.json`: per-subnet health detail.
-- `/metagraph/health/badges/{netuid}.json`: badge data for future metagraph.sh renderers.
+- `/metagraph/health/history/{date}.json`: compact daily health-history snapshot. R2-backed.
+- `/metagraph/health/subnets/{netuid}.json`: per-subnet health detail. R2-backed.
+- `/metagraph/health/badges/{netuid}.json`: badge data for future metagraph.sh renderers. R2-backed.
 - `/metagraph/rpc-endpoints.json`: Bittensor base-layer RPC/WSS endpoint registry and probe status.
 - `/metagraph/rpc/pools.json`: endpoint pool scoring for future read-only routing.
 - `/metagraph/endpoint-pools.json`: generalized endpoint pool scoring for future read-only routing.
 - `/metagraph/endpoint-incidents.json`: probe-derived endpoint incident summary and active endpoint failures.
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
-- `/metagraph/adapters/{slug}.json`: adapter-backed public metrics snapshot.
+- `/metagraph/adapters/{slug}.json`: adapter-backed public metrics snapshot. R2-backed.
 - `/metagraph/r2-manifest.json`: Cloudflare R2 upload manifest for artifact history.
 - `/metagraph/review/curation.json`: maintainer review and adapter candidate report.
 - `/metagraph/review/gap-priorities.json`: prioritized backend curation gaps.

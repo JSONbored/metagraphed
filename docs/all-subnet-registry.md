@@ -96,6 +96,8 @@ Generated artifacts expose review state through:
 
 ## Generated Artifacts
 
+`/metagraph/*` is the public path contract. Compact indexes are checked into `public/metagraph`; volatile detail artifacts are generated into the ignored R2 staging tree and served through the same public paths after upload.
+
 `public/metagraph/subnets.json` lists every active chain subnet.
 
 `public/metagraph/surfaces.json` lists only curated/verified public interface surfaces.
@@ -106,9 +108,9 @@ Generated artifacts expose review state through:
 
 `public/metagraph/endpoints.json` lists generalized endpoint resources derived from curated surfaces plus probe-derived health.
 
-`public/metagraph/endpoints/{netuid}.json` exposes endpoint resources for one subnet.
+`/metagraph/endpoints/{netuid}.json` exposes R2-backed endpoint resources for one subnet.
 
-`public/metagraph/providers/{slug}/endpoints.json` exposes endpoint resources for one provider/operator.
+`/metagraph/providers/{slug}/endpoints.json` exposes R2-backed endpoint resources for one provider/operator.
 
 `public/metagraph/endpoint-pools.json` scores monitored endpoint pools. In v1, only root/system RPC/WSS/archive-capable endpoints are candidates for future routing.
 
@@ -122,18 +124,18 @@ Generated artifacts expose review state through:
 
 `public/metagraph/gaps.json` lists missing docs/repo/site/dashboard/API/OpenAPI/SSE/data-artifact facets by subnet.
 
-`public/metagraph/verification/latest.json` exposes the latest candidate verification snapshot.
+`/metagraph/verification/latest.json` exposes the latest R2-backed candidate verification snapshot.
 
-`public/metagraph/subnets/{netuid}.json` exposes per-subnet static detail artifacts for app and API consumers.
+`/metagraph/subnets/{netuid}.json` exposes R2-backed per-subnet detail artifacts for app and API consumers.
 
-`public/metagraph/health/*` exposes surface health, per-subnet health, history, and badge-input data under `metagraph.sh`.
+`/metagraph/health/*` exposes surface health, per-subnet health, history, and badge-input data under `metagraph.sh`. Health status is probe-derived only; submissions can trigger review or re-probes, not set uptime.
 
-`public/metagraph/adapters/*` exposes safe subnet-specific public metrics for adapter-backed pilots.
+`/metagraph/adapters/*` exposes R2-backed safe subnet-specific public metrics for adapter-backed pilots.
 
 `public/metagraph/search.json` exposes a compact search index for subnets, surfaces, and providers.
 
 `public/metagraph/freshness.json`, `source-health.json`, `source-snapshots.json`, `changelog.json`, and `evidence-ledger.json` expose backend freshness, upstream source health, source-input hashes, generated change summaries, and public evidence records.
 
-`public/metagraph/r2-manifest.json` lists artifacts intended for versioned R2 history upload.
+`public/metagraph/r2-manifest.json` lists compact and R2-backed artifacts intended for latest/history upload.
 
 Worker API routes under `/api/v1/*` wrap these artifacts without replacing them as canonical truth. The Worker reads static assets first, can fall back to R2, and can use an optional KV latest pointer when configured.

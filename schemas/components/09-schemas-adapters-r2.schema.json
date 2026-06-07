@@ -129,7 +129,8 @@
           "latest_key",
           "path",
           "sha256",
-          "size_bytes"
+          "size_bytes",
+          "storage_tier"
         ],
         "properties": {
           "content_type": {
@@ -152,6 +153,9 @@
           "size_bytes": {
             "type": "integer",
             "minimum": 0
+          },
+          "storage_tier": {
+            "enum": ["dual", "git", "r2"]
           }
         },
         "additionalProperties": false

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { test } from "vitest";
+import { artifactFilePath, createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
 function runNode(script) {
@@ -17,7 +18,7 @@ test("registry validates", () => {
 });
 
 test("registry validation rejects tampered per-subnet artifacts", () => {
-  const artifactPath = "public/metagraph/subnets/0.json";
+  const artifactPath = artifactFilePath("subnets/0.json");
   const original = readFileSync(artifactPath, "utf8");
   const tampered = JSON.parse(original);
   tampered.phishing_url = "https://example.invalid/phish";
@@ -43,103 +44,39 @@ test("public artifacts are internally consistent", () => {
   const native = JSON.parse(
     readFileSync("registry/native/finney-subnets.json", "utf8"),
   );
-  const subnets = JSON.parse(
-    readFileSync("public/metagraph/subnets.json", "utf8"),
-  );
-  const surfaces = JSON.parse(
-    readFileSync("public/metagraph/surfaces.json", "utf8"),
-  );
-  const candidates = JSON.parse(
-    readFileSync("public/metagraph/candidates.json", "utf8"),
-  );
-  const curation = JSON.parse(
-    readFileSync("public/metagraph/curation.json", "utf8"),
-  );
-  const gaps = JSON.parse(readFileSync("public/metagraph/gaps.json", "utf8"));
-  const reviewQueue = JSON.parse(
-    readFileSync("public/metagraph/review-queue.json", "utf8"),
-  );
-  const verification = JSON.parse(
-    readFileSync("public/metagraph/verification/latest.json", "utf8"),
-  );
-  const health = JSON.parse(
-    readFileSync("public/metagraph/health/latest.json", "utf8"),
-  );
-  const healthSummary = JSON.parse(
-    readFileSync("public/metagraph/health/summary.json", "utf8"),
-  );
-  const healthHistory = JSON.parse(
-    readFileSync("public/metagraph/health/history/2026-06-06.json", "utf8"),
-  );
-  const rpcEndpoints = JSON.parse(
-    readFileSync("public/metagraph/rpc-endpoints.json", "utf8"),
-  );
-  const endpoints = JSON.parse(
-    readFileSync("public/metagraph/endpoints.json", "utf8"),
-  );
-  const subnetEndpoints = JSON.parse(
-    readFileSync("public/metagraph/endpoints/7.json", "utf8"),
-  );
-  const coverage = JSON.parse(
-    readFileSync("public/metagraph/coverage.json", "utf8"),
-  );
-  const contracts = JSON.parse(
-    readFileSync("public/metagraph/contracts.json", "utf8"),
-  );
-  const apiIndex = JSON.parse(
-    readFileSync("public/metagraph/api-index.json", "utf8"),
-  );
-  const changelog = JSON.parse(
-    readFileSync("public/metagraph/changelog.json", "utf8"),
-  );
-  const search = JSON.parse(
-    readFileSync("public/metagraph/search.json", "utf8"),
-  );
-  const freshness = JSON.parse(
-    readFileSync("public/metagraph/freshness.json", "utf8"),
-  );
-  const sourceHealth = JSON.parse(
-    readFileSync("public/metagraph/source-health.json", "utf8"),
-  );
-  const sourceSnapshots = JSON.parse(
-    readFileSync("public/metagraph/source-snapshots.json", "utf8"),
-  );
-  const evidenceLedger = JSON.parse(
-    readFileSync("public/metagraph/evidence-ledger.json", "utf8"),
-  );
-  const endpointPools = JSON.parse(
-    readFileSync("public/metagraph/endpoint-pools.json", "utf8"),
-  );
-  const endpointIncidents = JSON.parse(
-    readFileSync("public/metagraph/endpoint-incidents.json", "utf8"),
-  );
-  const rpcEndpointPools = JSON.parse(
-    readFileSync("public/metagraph/rpc/pools.json", "utf8"),
-  );
-  const providerEndpoints = JSON.parse(
-    readFileSync("public/metagraph/providers/allways/endpoints.json", "utf8"),
-  );
-  const r2Manifest = JSON.parse(
-    readFileSync("public/metagraph/r2-manifest.json", "utf8"),
-  );
-  const schemaDrift = JSON.parse(
-    readFileSync("public/metagraph/schema-drift.json", "utf8"),
-  );
-  const schemaIndex = JSON.parse(
-    readFileSync("public/metagraph/schemas/index.json", "utf8"),
-  );
-  const reviewCuration = JSON.parse(
-    readFileSync("public/metagraph/review/curation.json", "utf8"),
-  );
-  const gapPriorities = JSON.parse(
-    readFileSync("public/metagraph/review/gap-priorities.json", "utf8"),
-  );
-  const adapterCandidates = JSON.parse(
-    readFileSync("public/metagraph/review/adapter-candidates.json", "utf8"),
-  );
-  const reviewDecisions = JSON.parse(
-    readFileSync("public/metagraph/review/maintainer-decisions.json", "utf8"),
-  );
+  const subnets = readArtifact("subnets.json");
+  const surfaces = readArtifact("surfaces.json");
+  const candidates = readArtifact("candidates.json");
+  const curation = readArtifact("curation.json");
+  const gaps = readArtifact("gaps.json");
+  const reviewQueue = readArtifact("review-queue.json");
+  const verification = readArtifact("verification/latest.json");
+  const health = readArtifact("health/latest.json");
+  const healthSummary = readArtifact("health/summary.json");
+  const healthHistory = readArtifact("health/history/2026-06-06.json");
+  const rpcEndpoints = readArtifact("rpc-endpoints.json");
+  const endpoints = readArtifact("endpoints.json");
+  const subnetEndpoints = readArtifact("endpoints/7.json");
+  const coverage = readArtifact("coverage.json");
+  const contracts = readArtifact("contracts.json");
+  const apiIndex = readArtifact("api-index.json");
+  const changelog = readArtifact("changelog.json");
+  const search = readArtifact("search.json");
+  const freshness = readArtifact("freshness.json");
+  const sourceHealth = readArtifact("source-health.json");
+  const sourceSnapshots = readArtifact("source-snapshots.json");
+  const evidenceLedger = readArtifact("evidence-ledger.json");
+  const endpointPools = readArtifact("endpoint-pools.json");
+  const endpointIncidents = readArtifact("endpoint-incidents.json");
+  const rpcEndpointPools = readArtifact("rpc/pools.json");
+  const providerEndpoints = readArtifact("providers/allways/endpoints.json");
+  const r2Manifest = readArtifact("r2-manifest.json");
+  const schemaDrift = readArtifact("schema-drift.json");
+  const schemaIndex = readArtifact("schemas/index.json");
+  const reviewCuration = readArtifact("review/curation.json");
+  const gapPriorities = readArtifact("review/gap-priorities.json");
+  const adapterCandidates = readArtifact("review/adapter-candidates.json");
+  const reviewDecisions = readArtifact("review/maintainer-decisions.json");
 
   assert.equal(subnets.subnets.length, native.subnets.length);
   assert.equal(surfaces.surfaces.length, coverage.surface_count);
@@ -326,19 +263,19 @@ test("public artifacts are internally consistent", () => {
 
   for (const subnet of native.subnets) {
     assert.equal(
-      existsSync(`public/metagraph/subnets/${subnet.netuid}.json`),
+      existsSync(artifactFilePath(`subnets/${subnet.netuid}.json`)),
       true,
     );
     assert.equal(
-      existsSync(`public/metagraph/health/subnets/${subnet.netuid}.json`),
+      existsSync(artifactFilePath(`health/subnets/${subnet.netuid}.json`)),
       true,
     );
     assert.equal(
-      existsSync(`public/metagraph/health/badges/${subnet.netuid}.json`),
+      existsSync(artifactFilePath(`health/badges/${subnet.netuid}.json`)),
       true,
     );
     assert.equal(
-      existsSync(`public/metagraph/endpoints/${subnet.netuid}.json`),
+      existsSync(artifactFilePath(`endpoints/${subnet.netuid}.json`)),
       true,
     );
   }
@@ -367,23 +304,7 @@ test("limited R2 upload dry run skips control manifests", () => {
 });
 
 test("Worker API serves public artifact envelopes", async () => {
-  const env = {
-    ASSETS: {
-      async fetch(request) {
-        const url = new URL(request.url);
-        const path = `public${url.pathname}`;
-        if (!existsSync(path)) {
-          return new Response("not found", { status: 404 });
-        }
-        return new Response(readFileSync(path), {
-          status: 200,
-          headers: {
-            "content-type": "application/json",
-          },
-        });
-      },
-    },
-  };
+  const env = createLocalArtifactEnv();
 
   const response = await handleRequest(
     new Request("https://metagraph.sh/api/v1/subnets/7"),
@@ -400,3 +321,7 @@ test("Worker API serves public artifact envelopes", async () => {
   assert.equal(body.ok, true);
   assert.equal(body.data.subnet.netuid, 7);
 });
+
+function readArtifact(relativePath) {
+  return JSON.parse(readFileSync(artifactFilePath(relativePath), "utf8"));
+}

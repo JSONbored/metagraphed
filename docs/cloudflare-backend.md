@@ -1,12 +1,12 @@
 # Cloudflare Backend
 
-Metagraphed uses Cloudflare as the serving, cache, and artifact-history layer. GitHub-reviewed registry inputs and generated JSON remain canonical.
+Metagraphed uses Cloudflare as the serving, cache, and artifact-history layer. GitHub-reviewed registry inputs, compact generated indexes, and compact release manifests remain canonical; volatile generated detail is staged locally and published to R2.
 
 ## Runtime Shape
 
-- Workers serve `metagraph.sh/api/v1/*` routes over canonical `/metagraph/*` artifacts.
-- Workers Static Assets serve the checked-in `public/metagraph` artifact tree.
-- R2 stores current artifact copies under `latest/`; versioned artifact history under `runs/{generated_at}/` is opt-in for publish jobs that set `METAGRAPH_R2_UPLOAD_HISTORY=1`.
+- Workers serve `metagraph.sh/api/v1/*` routes over canonical `/metagraph/*` artifact paths.
+- Workers Static Assets serve compact checked-in artifacts from `public/metagraph`.
+- R2 stores high-churn/detail artifacts staged under `dist/metagraph-r2/metagraph`, plus current artifact copies under `latest/`; versioned artifact history under `runs/{generated_at}/` is opt-in for publish jobs that set `METAGRAPH_R2_UPLOAD_HISTORY=1`.
 - KV stores small latest pointers, feature flags, endpoint-pool summaries, and source-freshness summaries when configured.
 - D1 is not used for canonical registry truth in v1.
 - The read-only RPC proxy/load-balancer prototype exists behind `METAGRAPH_ENABLE_RPC_PROXY=false`; write and unsafe RPC methods remain blocked by default.
@@ -52,13 +52,13 @@ Worker responses include CORS, cache-control, ETags, and `x-metagraph-contract-v
 - Optional KV binding: `METAGRAPH_CONTROL`
 - KV keys: `metagraph:latest`, `metagraph:feature-flags`, `metagraph:endpoint-pools`, `metagraph:source-freshness`
 
-If no KV binding is configured, the Worker falls back to `METAGRAPH_R2_LATEST_PREFIX` for R2 reads.
+If no KV binding is configured, the Worker falls back to `METAGRAPH_R2_LATEST_PREFIX` for R2 reads. R2-tier artifacts are read from R2 first; static fallback is only allowed when `METAGRAPH_ALLOW_R2_STATIC_FALLBACK=true` is set for local migration/testing.
 
 ## Local Commands
 
 - `npm run validate:api`: validate Worker API routes against local artifacts.
 - `npm run worker:deploy:dry-run`: validate `wrangler.jsonc` and Worker entrypoint shape.
-- `npm run r2:manifest`: regenerate the R2 upload manifest from `public/metagraph`.
+- `npm run r2:manifest`: regenerate the R2 upload manifest from compact `public/metagraph` artifacts plus the ignored R2 staging tree.
 - `npm run r2:manifest:dry-run`: validate and summarize the current manifest.
 - `npm run r2:upload:dry-run`: summarize the upload without writing to Cloudflare.
 - `npm run r2:download:dry-run`: summarize a restore/download without writing local files.

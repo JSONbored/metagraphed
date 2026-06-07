@@ -2,6 +2,10 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { readJson, repoRoot, sha256Hex, stableStringify } from "./lib.mjs";
+import {
+  R2_STAGING_RELATIVE_ROOT,
+  artifactStorageTierForPath,
+} from "../src/artifact-storage.mjs";
 
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
@@ -68,11 +72,7 @@ let uploadedHistoryCount = 0;
 let uploadedControlCount = 0;
 
 for (const artifact of plannedArtifacts) {
-  const localPath = path.join(
-    repoRoot,
-    "public/metagraph",
-    artifact.path.replace(/^\/metagraph\//, ""),
-  );
+  const localPath = artifactLocalPath(artifact.path);
   verifyLocalArtifact(localPath, artifact);
   const changed =
     forceUpload ||
@@ -164,6 +164,16 @@ function verifyLocalArtifact(localPath, artifact) {
       `local artifact hash mismatch for ${artifact.path}: expected ${artifact.sha256}, got ${actual}`,
     );
   }
+}
+
+function artifactLocalPath(artifactPath) {
+  const relativePath = artifactPath.replace(/^\/metagraph\//, "");
+  const tier = artifactStorageTierForPath(artifactPath);
+  return path.join(
+    repoRoot,
+    tier === "r2" ? R2_STAGING_RELATIVE_ROOT : "public/metagraph",
+    relativePath,
+  );
 }
 
 function buildControlArtifacts(manifest) {

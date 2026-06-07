@@ -7,7 +7,12 @@ import {
   artifactPathFromTemplate,
   CONTRACT_VERSION,
 } from "../src/contracts.mjs";
-import { readJson, repoRoot } from "./lib.mjs";
+import {
+  artifactDirectoryPath,
+  artifactFilePath,
+  readJson,
+  repoRoot,
+} from "./lib.mjs";
 
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
@@ -25,7 +30,7 @@ const errors = [];
 for (const route of API_ROUTES) {
   const artifactPath = await exampleArtifactPath(route.artifact_path);
   const artifact = await readJson(
-    path.join(repoRoot, "public", artifactPath.replace(/^\/+/, "")),
+    artifactFilePath(artifactPath.replace(/^\/metagraph\//, "")),
   );
   const body = {
     ok: true,
@@ -75,9 +80,7 @@ console.log(
 
 async function exampleArtifactPath(template) {
   if (template.includes("{date}")) {
-    const files = await fs.readdir(
-      path.join(repoRoot, "public/metagraph/health/history"),
-    );
+    const files = await fs.readdir(artifactDirectoryPath("health/history"));
     const latest = files
       .filter((file) => /^\d{4}-\d{2}-\d{2}\.json$/.test(file))
       .sort()
@@ -100,12 +103,9 @@ async function exampleArtifactPath(template) {
 
 async function firstProviderSlug(template) {
   if (template.endsWith("/endpoints.json")) {
-    const providers = await fs.readdir(
-      path.join(repoRoot, "public/metagraph/providers"),
-      {
-        withFileTypes: true,
-      },
-    );
+    const providers = await fs.readdir(artifactDirectoryPath("providers"), {
+      withFileTypes: true,
+    });
     return providers
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)

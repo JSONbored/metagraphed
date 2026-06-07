@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { artifactFilePath } from "./lib.mjs";
 
 const files = {
   subnets: "public/metagraph/subnets.json",
@@ -157,10 +158,17 @@ console.log(lines.join("\n"));
 
 function readWorktreeJson(file) {
   try {
-    return JSON.parse(readFileSync(file, "utf8"));
+    return JSON.parse(readFileSync(worktreePath(file), "utf8"));
   } catch {
     return null;
   }
+}
+
+function worktreePath(file) {
+  if (file.startsWith("public/metagraph/")) {
+    return artifactFilePath(file.replace(/^public\/metagraph\//, ""));
+  }
+  return file;
 }
 
 function readHeadJson(file) {

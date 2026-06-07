@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import { promises as fs } from "node:fs";
 import path from "node:path";
 import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
-import { readJson, repoRoot } from "./lib.mjs";
+import { createLocalArtifactEnv, readJson, repoRoot } from "./lib.mjs";
 
 const openapi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
@@ -18,31 +17,7 @@ const ajv = new Ajv2020({
 });
 addFormats(ajv);
 
-const env = {
-  ASSETS: {
-    async fetch(request) {
-      const url = new URL(request.url);
-      const filePath = path.join(
-        repoRoot,
-        "public",
-        url.pathname.replace(/^\/+/, ""),
-      );
-      try {
-        const body = await fs.readFile(filePath);
-        return new Response(body, {
-          status: 200,
-          headers: {
-            "content-type": filePath.endsWith(".json")
-              ? "application/json"
-              : "application/octet-stream",
-          },
-        });
-      } catch {
-        return new Response("not found", { status: 404 });
-      }
-    },
-  },
-};
+const env = createLocalArtifactEnv();
 
 const checks = [
   ["/api/v1", (body) => assert.equal(Array.isArray(body.data.routes), true)],

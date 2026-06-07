@@ -6,7 +6,8 @@
       "description": "Public artifact contract metadata for metagraph.sh consumers.",
       "id": "contracts",
       "path": "/metagraph/contracts.json",
-      "schema_ref": "#/components/schemas/ContractsArtifact"
+      "schema_ref": "#/components/schemas/ContractsArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -14,7 +15,8 @@
       "description": "Provider/source registry.",
       "id": "providers",
       "path": "/metagraph/providers.json",
-      "schema_ref": "#/components/schemas/ProvidersArtifact"
+      "schema_ref": "#/components/schemas/ProvidersArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -22,7 +24,8 @@
       "description": "Per-provider detail payload.",
       "id": "provider-detail",
       "path": "/metagraph/providers/{slug}.json",
-      "schema_ref": "#/components/schemas/ProviderArtifact"
+      "schema_ref": "#/components/schemas/ProviderArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -30,7 +33,8 @@
       "description": "Endpoint resources for one provider or operator.",
       "id": "provider-endpoints",
       "path": "/metagraph/providers/{slug}/endpoints.json",
-      "schema_ref": "#/components/schemas/ProviderEndpointsArtifact"
+      "schema_ref": "#/components/schemas/ProviderEndpointsArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -38,7 +42,8 @@
       "description": "Clean API route index for metagraph.sh consumers.",
       "id": "api-index",
       "path": "/metagraph/api-index.json",
-      "schema_ref": "#/components/schemas/ApiIndexArtifact"
+      "schema_ref": "#/components/schemas/ApiIndexArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -46,7 +51,8 @@
       "description": "OpenAPI 3.1 contract for the metagraph.sh backend API.",
       "id": "openapi",
       "path": "/metagraph/openapi.json",
-      "schema_ref": "#/components/schemas/OpenApiArtifact"
+      "schema_ref": "#/components/schemas/OpenApiArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "text/plain; charset=utf-8",
@@ -54,7 +60,8 @@
       "description": "Generated TypeScript definitions for metagraph.sh backend consumers.",
       "id": "type-definitions",
       "path": "/metagraph/types.d.ts",
-      "schema_ref": null
+      "schema_ref": null,
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -62,7 +69,8 @@
       "description": "Reviewable generated artifact and subnet-change summary.",
       "id": "changelog",
       "path": "/metagraph/changelog.json",
-      "schema_ref": "#/components/schemas/ChangelogArtifact"
+      "schema_ref": "#/components/schemas/ChangelogArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -70,7 +78,8 @@
       "description": "All active Finney subnets with compact registry metadata.",
       "id": "subnets",
       "path": "/metagraph/subnets.json",
-      "schema_ref": "#/components/schemas/SubnetsArtifact"
+      "schema_ref": "#/components/schemas/SubnetsArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -78,7 +87,8 @@
       "description": "Per-subnet detail payload.",
       "id": "subnet-detail",
       "path": "/metagraph/subnets/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetDetailArtifact"
+      "schema_ref": "#/components/schemas/SubnetDetailArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -86,7 +96,8 @@
       "description": "Curated public interface surfaces only.",
       "id": "surfaces",
       "path": "/metagraph/surfaces.json",
-      "schema_ref": "#/components/schemas/SurfacesArtifact"
+      "schema_ref": "#/components/schemas/SurfacesArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -94,7 +105,8 @@
       "description": "Curated public interface surfaces for one subnet.",
       "id": "surfaces-subnet",
       "path": "/metagraph/surfaces/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetSurfacesArtifact"
+      "schema_ref": "#/components/schemas/SubnetSurfacesArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -102,7 +114,8 @@
       "description": "Generalized endpoint/resource registry derived from curated surfaces and probe observations.",
       "id": "endpoints",
       "path": "/metagraph/endpoints.json",
-      "schema_ref": "#/components/schemas/EndpointsArtifact"
+      "schema_ref": "#/components/schemas/EndpointsArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -110,7 +123,8 @@
       "description": "Generalized endpoint/resource registry for one subnet.",
       "id": "endpoints-subnet",
       "path": "/metagraph/endpoints/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetEndpointsArtifact"
+      "schema_ref": "#/components/schemas/SubnetEndpointsArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -118,7 +132,8 @@
       "description": "Unpromoted candidate surfaces from public discovery.",
       "id": "candidates",
       "path": "/metagraph/candidates.json",
-      "schema_ref": "#/components/schemas/CandidatesArtifact"
+      "schema_ref": "#/components/schemas/CandidatesArtifact",
+      "storage_tier": "git"
     },
     {
       "content_type": "application/json",
@@ -126,7 +141,8 @@
       "description": "Unpromoted candidate surfaces for one subnet.",
       "id": "candidates-subnet",
       "path": "/metagraph/candidates/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetCandidatesArtifact"
+      "schema_ref": "#/components/schemas/SubnetCandidatesArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -134,7 +150,8 @@
       "description": "Candidate surfaces queued for maintainer review.",
       "id": "review-queue",
       "path": "/metagraph/review-queue.json",
-      "schema_ref": "#/components/schemas/ReviewQueueArtifact"
+      "schema_ref": "#/components/schemas/ReviewQueueArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -142,7 +159,8 @@
       "description": "Compact search index for subnets, surfaces, and providers.",
       "id": "search",
       "path": "/metagraph/search.json",
-      "schema_ref": "#/components/schemas/SearchArtifact"
+      "schema_ref": "#/components/schemas/SearchArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -150,7 +168,8 @@
       "description": "Registry coverage counts and source precedence.",
       "id": "coverage",
       "path": "/metagraph/coverage.json",
-      "schema_ref": "#/components/schemas/CoverageArtifact"
+      "schema_ref": "#/components/schemas/CoverageArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -158,7 +177,8 @@
       "description": "Curation state and gaps for every active subnet.",
       "id": "curation",
       "path": "/metagraph/curation.json",
-      "schema_ref": "#/components/schemas/CurationArtifact"
+      "schema_ref": "#/components/schemas/CurationArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -166,7 +186,8 @@
       "description": "Missing public interface facets by subnet.",
       "id": "gaps",
       "path": "/metagraph/gaps.json",
-      "schema_ref": "#/components/schemas/GapsArtifact"
+      "schema_ref": "#/components/schemas/GapsArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -174,7 +195,8 @@
       "description": "Latest candidate verification snapshot.",
       "id": "verification",
       "path": "/metagraph/verification/latest.json",
-      "schema_ref": "#/components/schemas/VerificationArtifact"
+      "schema_ref": "#/components/schemas/VerificationArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -182,7 +204,8 @@
       "description": "Latest candidate verification snapshot for one subnet.",
       "id": "verification-subnet",
       "path": "/metagraph/verification/subnets/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetVerificationArtifact"
+      "schema_ref": "#/components/schemas/SubnetVerificationArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -190,7 +213,8 @@
       "description": "Freshness and staleness summary for generated backend data.",
       "id": "freshness",
       "path": "/metagraph/freshness.json",
-      "schema_ref": "#/components/schemas/FreshnessArtifact"
+      "schema_ref": "#/components/schemas/FreshnessArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -198,7 +222,8 @@
       "description": "Upstream source and provider health summary.",
       "id": "source-health",
       "path": "/metagraph/source-health.json",
-      "schema_ref": "#/components/schemas/SourceHealthArtifact"
+      "schema_ref": "#/components/schemas/SourceHealthArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -206,7 +231,8 @@
       "description": "Compact hashes and counts for canonical source inputs.",
       "id": "source-snapshots",
       "path": "/metagraph/source-snapshots.json",
-      "schema_ref": "#/components/schemas/SourceSnapshotsArtifact"
+      "schema_ref": "#/components/schemas/SourceSnapshotsArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -214,7 +240,8 @@
       "description": "Public evidence ledger for subnet and surface claims.",
       "id": "evidence-ledger",
       "path": "/metagraph/evidence-ledger.json",
-      "schema_ref": "#/components/schemas/EvidenceLedgerArtifact"
+      "schema_ref": "#/components/schemas/EvidenceLedgerArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -222,7 +249,8 @@
       "description": "Latest surface health snapshot.",
       "id": "health-latest",
       "path": "/metagraph/health/latest.json",
-      "schema_ref": "#/components/schemas/HealthLatestArtifact"
+      "schema_ref": "#/components/schemas/HealthLatestArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -230,7 +258,8 @@
       "description": "Global and per-subnet health rollup.",
       "id": "health-summary",
       "path": "/metagraph/health/summary.json",
-      "schema_ref": "#/components/schemas/HealthSummaryArtifact"
+      "schema_ref": "#/components/schemas/HealthSummaryArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -238,7 +267,8 @@
       "description": "Compact daily health-history snapshot.",
       "id": "health-history",
       "path": "/metagraph/health/history/{date}.json",
-      "schema_ref": "#/components/schemas/HealthHistoryArtifact"
+      "schema_ref": "#/components/schemas/HealthHistoryArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -246,7 +276,8 @@
       "description": "Per-subnet health payload for metagraph.sh consumers.",
       "id": "health-subnet",
       "path": "/metagraph/health/subnets/{netuid}.json",
-      "schema_ref": "#/components/schemas/HealthSubnetArtifact"
+      "schema_ref": "#/components/schemas/HealthSubnetArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -254,7 +285,8 @@
       "description": "Badge data contract for status rendering.",
       "id": "health-badge",
       "path": "/metagraph/health/badges/{netuid}.json",
-      "schema_ref": "#/components/schemas/HealthBadgeArtifact"
+      "schema_ref": "#/components/schemas/HealthBadgeArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -262,7 +294,8 @@
       "description": "Bittensor base-layer RPC endpoint registry and probe status.",
       "id": "rpc-endpoints",
       "path": "/metagraph/rpc-endpoints.json",
-      "schema_ref": "#/components/schemas/RpcEndpointsArtifact"
+      "schema_ref": "#/components/schemas/RpcEndpointsArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -270,7 +303,8 @@
       "description": "Endpoint pool scoring for future read-only RPC routing.",
       "id": "rpc-pools",
       "path": "/metagraph/rpc/pools.json",
-      "schema_ref": "#/components/schemas/RpcPoolsArtifact"
+      "schema_ref": "#/components/schemas/RpcPoolsArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -278,7 +312,8 @@
       "description": "Generalized endpoint pool scoring for future read-only routing.",
       "id": "endpoint-pools",
       "path": "/metagraph/endpoint-pools.json",
-      "schema_ref": "#/components/schemas/EndpointPoolsArtifact"
+      "schema_ref": "#/components/schemas/EndpointPoolsArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -286,7 +321,8 @@
       "description": "Probe-derived endpoint incident summary and active endpoint failures.",
       "id": "endpoint-incidents",
       "path": "/metagraph/endpoint-incidents.json",
-      "schema_ref": "#/components/schemas/EndpointIncidentsArtifact"
+      "schema_ref": "#/components/schemas/EndpointIncidentsArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -294,7 +330,8 @@
       "description": "OpenAPI schema snapshot/drift status.",
       "id": "schema-drift",
       "path": "/metagraph/schema-drift.json",
-      "schema_ref": "#/components/schemas/SchemaDriftArtifact"
+      "schema_ref": "#/components/schemas/SchemaDriftArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -302,7 +339,8 @@
       "description": "Index of captured machine-readable schemas.",
       "id": "schema-index",
       "path": "/metagraph/schemas/index.json",
-      "schema_ref": "#/components/schemas/SchemaIndexArtifact"
+      "schema_ref": "#/components/schemas/SchemaIndexArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -310,7 +348,8 @@
       "description": "Adapter-backed public metrics by subnet slug.",
       "id": "adapter",
       "path": "/metagraph/adapters/{slug}.json",
-      "schema_ref": "#/components/schemas/AdapterArtifact"
+      "schema_ref": "#/components/schemas/AdapterArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -318,7 +357,8 @@
       "description": "R2 upload manifest for generated artifact history.",
       "id": "r2-manifest",
       "path": "/metagraph/r2-manifest.json",
-      "schema_ref": "#/components/schemas/R2ManifestArtifact"
+      "schema_ref": "#/components/schemas/R2ManifestArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -326,7 +366,8 @@
       "description": "Maintainer curation and adapter candidate report.",
       "id": "review-curation",
       "path": "/metagraph/review/curation.json",
-      "schema_ref": "#/components/schemas/ReviewCurationArtifact"
+      "schema_ref": "#/components/schemas/ReviewCurationArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -334,7 +375,8 @@
       "description": "Subnet interface gap priorities.",
       "id": "review-gap-priorities",
       "path": "/metagraph/review/gap-priorities.json",
-      "schema_ref": "#/components/schemas/ReviewGapPrioritiesArtifact"
+      "schema_ref": "#/components/schemas/ReviewGapPrioritiesArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -342,7 +384,8 @@
       "description": "Subnets worth deeper adapter work.",
       "id": "review-adapter-candidates",
       "path": "/metagraph/review/adapter-candidates.json",
-      "schema_ref": "#/components/schemas/ReviewAdapterCandidatesArtifact"
+      "schema_ref": "#/components/schemas/ReviewAdapterCandidatesArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -350,7 +393,8 @@
       "description": "Public-safe maintainer review decision ledger.",
       "id": "review-decisions",
       "path": "/metagraph/review/maintainer-decisions.json",
-      "schema_ref": "#/components/schemas/ReviewDecisionsArtifact"
+      "schema_ref": "#/components/schemas/ReviewDecisionsArtifact",
+      "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
@@ -358,7 +402,8 @@
       "description": "Generated build summary.",
       "id": "build-summary",
       "path": "/metagraph/build-summary.json",
-      "schema_ref": "#/components/schemas/BuildSummaryArtifact"
+      "schema_ref": "#/components/schemas/BuildSummaryArtifact",
+      "storage_tier": "dual"
     }
   ],
   "base_path": "/metagraph",

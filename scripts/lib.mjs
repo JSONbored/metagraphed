@@ -1,10 +1,19 @@
 import { promises as fs } from "node:fs";
+import { existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import path from "node:path";
+import {
+  ARTIFACT_STORAGE_TIERS,
+  R2_STAGING_RELATIVE_ROOT,
+  artifactRelativePath,
+  artifactStorageTierForRelativePath,
+} from "../src/artifact-storage.mjs";
 
 export const repoRoot = new URL("..", import.meta.url).pathname;
+export const publicMetagraphRoot = path.join(repoRoot, "public/metagraph");
+export const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 
 const credentialedUrlParams = new Set([
   "x-amz-credential",
@@ -44,9 +53,96 @@ export async function readJson(filePath) {
   return JSON.parse(raw);
 }
 
+export async function readArtifactJson(relativePath) {
+  return readJson(artifactFilePath(relativePath));
+}
+
 export async function writeJson(filePath, value) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, `${stableStringify(value)}\n`, "utf8");
+}
+
+export function artifactFilePath(relativePath, options = {}) {
+  const normalized = artifactRelativePath(relativePath);
+  const tier = artifactStorageTierForRelativePath(normalized);
+  if (tier !== ARTIFACT_STORAGE_TIERS.r2) {
+    return path.join(publicMetagraphRoot, normalized);
+  }
+
+  const stagedPath = path.join(r2StagingRoot, normalized);
+  const publicPath = path.join(publicMetagraphRoot, normalized);
+  const allowPublicFallback = options.allowPublicFallback !== false;
+  if (existsSync(stagedPath) || !allowPublicFallback) {
+    return stagedPath;
+  }
+  return publicPath;
+}
+
+export function artifactOutputPath(relativePath) {
+  const normalized = artifactRelativePath(relativePath);
+  const tier = artifactStorageTierForRelativePath(normalized);
+  return path.join(
+    tier === ARTIFACT_STORAGE_TIERS.r2 ? r2StagingRoot : publicMetagraphRoot,
+    normalized,
+  );
+}
+
+export function artifactDirectoryPath(relativePath) {
+  const normalized = artifactRelativePath(relativePath).replace(/\/+$/, "");
+  const stagedPath = path.join(r2StagingRoot, normalized);
+  if (existsSync(stagedPath)) {
+    return stagedPath;
+  }
+  return path.join(publicMetagraphRoot, normalized);
+}
+
+export function createLocalArtifactEnv(overrides = {}) {
+  return {
+    ASSETS: {
+      async fetch(request) {
+        const url = new URL(request.url);
+        const filePath = path.join(
+          repoRoot,
+          "public",
+          url.pathname.replace(/^\/+/, ""),
+        );
+        try {
+          const body = await fs.readFile(filePath);
+          return new Response(body, {
+            status: 200,
+            headers: {
+              "content-type": filePath.endsWith(".json")
+                ? "application/json"
+                : "application/octet-stream",
+            },
+          });
+        } catch {
+          return new Response("not found", { status: 404 });
+        }
+      },
+    },
+    METAGRAPH_R2_LATEST_PREFIX: "latest/",
+    METAGRAPH_ARCHIVE: {
+      async get(key) {
+        const relativePath = String(key).replace(/^latest\//, "");
+        const filePath = artifactFilePath(relativePath);
+        try {
+          const body = await fs.readFile(filePath, "utf8");
+          return {
+            async json() {
+              return JSON.parse(body);
+            },
+            async text() {
+              return body;
+            },
+          };
+        } catch {
+          return null;
+        }
+      },
+    },
+    ...overrides,
+  };
 }
 
 export async function listJsonFiles(dirPath) {

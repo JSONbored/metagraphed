@@ -1,5 +1,6 @@
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { PUBLIC_ARTIFACTS } from "../src/contracts.mjs";
 import {
@@ -11,6 +12,10 @@ import {
   readJson,
   repoRoot,
 } from "./lib.mjs";
+import {
+  R2_STAGING_RELATIVE_ROOT,
+  artifactStorageTierForPath,
+} from "../src/artifact-storage.mjs";
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -128,16 +133,22 @@ async function artifactValidationTargets() {
     }
 
     targets.push({
-      file_path: path.join(
-        repoRoot,
-        "public",
-        artifact.path.replace(/^\/+/, ""),
-      ),
+      file_path: artifactFilePath(artifact.path),
       label: artifact.id,
       schema_ref: artifact.schema_ref,
     });
   }
   return targets.sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function artifactFilePath(artifactPath) {
+  const relativePath = artifactPath.replace(/^\/metagraph\//, "");
+  const tier = artifactStorageTierForPath(artifactPath);
+  const r2Path = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, relativePath);
+  if (tier === "r2" && existsSync(r2Path)) {
+    return r2Path;
+  }
+  return path.join(repoRoot, "public/metagraph", relativePath);
 }
 
 function templatedArtifactDirectory(artifactId) {
@@ -146,7 +157,16 @@ function templatedArtifactDirectory(artifactId) {
     ...slugArtifactDirectories(),
     "health-history": "health/history",
   };
-  return path.join(repoRoot, "public/metagraph", directories[artifactId]);
+  const relativeDir = directories[artifactId];
+  const template = PUBLIC_ARTIFACTS.find(
+    (artifact) => artifact.id === artifactId,
+  )?.path;
+  const tier = artifactStorageTierForPath(template || "");
+  const r2Dir = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, relativeDir);
+  if (tier === "r2" && existsSync(r2Dir)) {
+    return r2Dir;
+  }
+  return path.join(repoRoot, "public/metagraph", relativeDir);
 }
 
 function netuidArtifactDirectories() {
