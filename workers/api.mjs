@@ -32,6 +32,14 @@ const DENIED_RPC_PREFIXES = [
 ];
 const MAX_RPC_BODY_BYTES = 65536;
 const METAGRAPH_LATEST_KEY = "metagraph:latest";
+const TRUSTED_RPC_UPSTREAM_ORIGINS = new Set([
+  "https://bittensor-finney.api.onfinality.io",
+  "https://bittensor-public.nodies.app",
+  "wss://archive.chain.opentensor.ai",
+  "wss://bittensor-finney.api.onfinality.io",
+  "wss://entrypoint-finney.opentensor.ai",
+  "wss://lite.chain.opentensor.ai",
+]);
 
 export default {
   async fetch(request, env, ctx) {
@@ -209,10 +217,19 @@ async function handleRpcProxyRequest(request, env, url) {
   const pool = (poolArtifact.data.pools || []).find(
     (candidate) => candidate.id === poolId,
   );
-  const endpoint = pool?.endpoints?.find(
-    (candidate) => candidate.pool_eligible,
-  );
-  if (!endpoint) {
+  const endpointSelection = selectSafeRpcEndpoint(pool);
+  if (endpointSelection.unsafeEndpoint) {
+    return errorResponse(
+      "rpc_endpoint_unsafe",
+      "Eligible RPC endpoint URL is not allowed by the Worker upstream safety policy.",
+      502,
+      {
+        endpoint_id: endpointSelection.unsafeEndpoint.id || null,
+        pool_id: poolId,
+      },
+    );
+  }
+  if (!endpointSelection.endpoint) {
     return errorResponse(
       "rpc_endpoint_unavailable",
       "No eligible public RPC endpoint is available for proxy routing.",
@@ -223,6 +240,7 @@ async function handleRpcProxyRequest(request, env, url) {
     );
   }
 
+  const endpoint = endpointSelection.endpoint;
   const upstream = await fetch(endpoint.url, {
     method: "POST",
     headers: {
@@ -637,6 +655,87 @@ async function weakEtag(body) {
 
 function contractVersion(env) {
   return env.METAGRAPH_CONTRACT_VERSION || CONTRACT_VERSION;
+}
+
+function selectSafeRpcEndpoint(pool) {
+  let unsafeEndpoint = null;
+  for (const endpoint of pool?.endpoints || []) {
+    if (!endpoint?.pool_eligible) {
+      continue;
+    }
+    if (isSafeRpcEndpointUrl(endpoint.url)) {
+      return { endpoint, unsafeEndpoint: null };
+    }
+    unsafeEndpoint ||= endpoint;
+  }
+
+  return { endpoint: null, unsafeEndpoint };
+}
+
+function isSafeRpcEndpointUrl(value) {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return false;
+  }
+
+  if (!["https:", "wss:"].includes(parsed.protocol)) {
+    return false;
+  }
+
+  if (!TRUSTED_RPC_UPSTREAM_ORIGINS.has(parsed.origin)) {
+    return false;
+  }
+
+  return !isPrivateOrLocalHostname(parsed.hostname);
+}
+
+function isPrivateOrLocalHostname(hostname) {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (host === "localhost" || host.endsWith(".localhost")) {
+    return true;
+  }
+
+  const ipv4 = parseIpv4Address(host);
+  if (ipv4) {
+    const [first, second] = ipv4;
+    return (
+      first === 0 ||
+      first === 10 ||
+      first === 127 ||
+      (first === 169 && second === 254) ||
+      (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && second === 168)
+    );
+  }
+
+  return (
+    host === "::" ||
+    host === "::1" ||
+    host.startsWith("fc") ||
+    host.startsWith("fd") ||
+    host.startsWith("fe80") ||
+    host.startsWith("::ffff:127.") ||
+    host.startsWith("::ffff:10.") ||
+    host.startsWith("::ffff:169.254.") ||
+    host.startsWith("::ffff:192.168.") ||
+    /^::ffff:172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+  );
+}
+
+function parseIpv4Address(host) {
+  const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (!match) {
+    return null;
+  }
+
+  const octets = match.slice(1).map(Number);
+  return octets.every((octet) => octet >= 0 && octet <= 255) ? octets : null;
 }
 
 function isSafeRpcMethod(method) {
