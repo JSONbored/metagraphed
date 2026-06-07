@@ -43,6 +43,7 @@
     "validate:artifact-budgets": "node scripts/validate-artifact-budgets.mjs",
     "validate:docs": "node scripts/validate-docs.mjs",
     "validate:intake": "node scripts/validate-intake.mjs",
+    "validate:private-boundary": "node scripts/validate-private-boundary.mjs",
     "validate:workflows": "node scripts/validate-workflows.mjs",
     "openapi:generate": "node scripts/generate-openapi.mjs --write",
     "openapi:generate:dry-run": "node scripts/generate-openapi.mjs",

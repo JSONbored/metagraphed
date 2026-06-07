@@ -74,6 +74,7 @@ function checkCommands() {
     step("worker:test"),
     step("worker:deploy:dry-run"),
     step("scan:public-safety"),
+    step("validate:private-boundary"),
     step("test"),
   ];
 }
@@ -110,6 +111,7 @@ function refreshCommands() {
     step("worker:test"),
     step("worker:deploy:dry-run"),
     step("scan:public-safety"),
+    step("validate:private-boundary"),
     step("test"),
   ];
 }

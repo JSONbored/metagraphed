@@ -76,6 +76,14 @@ checkIncludes(submissionGateDocs, "submission gate docs", [
   "metagraphed-merged-by-gate",
   "metagraphed-import-approved",
   "<!-- metagraphed-submission-gate -->",
+  "Discord Notifications",
+  "DISCORD_SUBMISSION_WEBHOOK_URL",
+  "last_notification_key",
+  "merged",
+  "closed",
+  "manual-review",
+  "retry-exhausted",
+  "route_away",
 ]);
 
 if (errors.length > 0) {

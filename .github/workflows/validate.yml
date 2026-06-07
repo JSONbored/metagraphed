@@ -80,3 +80,6 @@ jobs:
 
       - name: Public-safety scan
         run: npm run scan:public-safety
+
+      - name: Validate private boundary
+        run: npm run validate:private-boundary

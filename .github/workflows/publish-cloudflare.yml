@@ -66,6 +66,9 @@ jobs:
       - name: Public-safety scan
         run: npm run scan:public-safety
 
+      - name: Validate private boundary
+        run: npm run validate:private-boundary
+
       - name: Upload artifact history to R2
         if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
         run: npm run r2:upload

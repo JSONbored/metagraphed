@@ -12,6 +12,14 @@ import {
   buildPrSubmissionReport,
   classifyPrScope,
 } from "../scripts/submission-policy.mjs";
+import {
+  buildNotificationKey,
+  buildSubmissionDiscordPayload,
+  sanitizeNotificationSummary,
+  shouldNotifySubmissionDecision,
+  truncate,
+  validateDiscordWebhookUrl,
+} from "../scripts/submission-notifications.mjs";
 
 const validCandidateDocument = JSON.parse(
   readFileSync(
@@ -195,5 +203,216 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(report.public_state, "submit_pr");
     assert.equal(report.import_allowed, true);
     assert.equal(report.next_action, "open-import-pr");
+  });
+
+  test("notifies only terminal UGC decisions", () => {
+    assert.equal(
+      shouldNotifySubmissionDecision({
+        public_state: "submit_pr",
+        verdict: "merged",
+      }),
+      false,
+    );
+    assert.equal(
+      shouldNotifySubmissionDecision({
+        public_state: "route_away",
+        verdict: "merged",
+      }),
+      false,
+    );
+    assert.equal(
+      shouldNotifySubmissionDecision({
+        public_state: "manual_review",
+        verdict: "manual-review",
+      }),
+      true,
+    );
+    assert.equal(
+      shouldNotifySubmissionDecision({
+        public_state: "done",
+        verdict: "retry-exhausted",
+      }),
+      true,
+    );
+  });
+
+  test("formats terminal Discord payloads without private marker or secrets", () => {
+    const payload = buildSubmissionDiscordPayload({
+      verdict: "closed",
+      status: "closed",
+      pr_number: 42,
+      pr_url: "https://github.com/JSONbored/metagraphed/pull/42",
+      title: "feat(intake): add Allways docs",
+      submitter: "jsonbored",
+      candidate: {
+        netuid: 7,
+        kind: "docs",
+        source_url: "https://docs.all-ways.io/how-it-works.html",
+      },
+      summary: [
+        "<!-- metagraphed-submission-gate -->",
+        "Summary:",
+        "- Closed because the submitted surface duplicates an existing entry.",
+        "- github_pat_should-not-leak-even-in-test-fixtures",
+      ].join("\n"),
+      now: "1970-01-01T00:00:00.000Z",
+    });
+
+    const serialized = JSON.stringify(payload);
+    assert.equal(payload.username, "Metagraphed Maintainer Agent");
+    assert.equal(payload.embeds[0].title, "#42 closed · Allways docs");
+    assert.equal(payload.embeds[0].color, 0xda3633);
+    assert.equal(payload.embeds[0].timestamp, "1970-01-01T00:00:00.000Z");
+    assert.equal(serialized.includes("metagraphed-submission-gate"), false);
+    assert.equal(serialized.includes("github_pat_should"), false);
+    assert.equal(serialized.includes("private prompt"), false);
+  });
+
+  test("sanitizes notification summaries and preserves code points", () => {
+    assert.equal(
+      sanitizeNotificationSummary(
+        [
+          "Summary:",
+          "- Discord webhook https://discord.com/api/webhooks/redacted",
+          "- Private prompt score must never be exposed.",
+          "- Manual review needed because source evidence conflicts.",
+        ].join("\n"),
+      ),
+      "Manual review needed because source evidence conflicts.",
+    );
+
+    const capped = truncate(`${"a".repeat(12)}😀tail`, 14);
+    assert.equal(capped.includes("�"), false);
+    assert.doesNotThrow(() => encodeURIComponent(capped));
+  });
+
+  test("builds notification keys from target revision and terminal verdict", () => {
+    assert.equal(
+      buildNotificationKey({
+        target: {
+          kind: "pull_request",
+          repo: "JSONbored/metagraphed",
+          number: 42,
+          head_sha: "abc123",
+        },
+        decision: {
+          status: "merged",
+          verdict: "merged",
+        },
+      }),
+      "pull_request:JSONbored/metagraphed:42:abc123:merged:merged",
+    );
+
+    assert.equal(
+      buildNotificationKey({
+        target: {
+          kind: "issue",
+          repo: "JSONbored/metagraphed",
+          number: 7,
+          issue_revision: "edited-1",
+        },
+        decision: {
+          status: "manual",
+          verdict: "manual-review",
+        },
+      }),
+      "issue:JSONbored/metagraphed:7:edited-1:manual:manual-review",
+    );
+
+    assert.equal(
+      buildNotificationKey({}),
+      "submission:unknown-repo:0:unknown-revision:terminal:unknown-verdict",
+    );
+  });
+
+  test("validates Discord webhook URLs and skips non-terminal payloads", () => {
+    assert.equal(buildSubmissionDiscordPayload({ verdict: "closed" }), null);
+    assert.equal(
+      buildSubmissionDiscordPayload({
+        public_state: "fix_required",
+        verdict: "closed",
+      }),
+      null,
+    );
+    assert.equal(validateDiscordWebhookUrl("not a url"), null);
+    assert.equal(
+      validateDiscordWebhookUrl("http://discord.com/api/webhooks/1/token"),
+      null,
+    );
+    assert.equal(
+      validateDiscordWebhookUrl("https://example.com/api/webhooks/1/token"),
+      null,
+    );
+    assert.equal(
+      validateDiscordWebhookUrl("https://discord.com/api/webhooks/redacted"),
+      null,
+    );
+
+    const webhook = [
+      "https://discord.com/api/webhooks",
+      "123456789012345678",
+      "abcdefghijklmnopqrstuvwxyzABCDEF",
+    ].join("/");
+    assert.equal(validateDiscordWebhookUrl(webhook), webhook);
+  });
+
+  test("builds compact issue payloads with fallback descriptions", () => {
+    const payload = buildSubmissionDiscordPayload({
+      public_state: "terminal",
+      verdict: "retry-exhausted",
+      status: "error_retryable",
+      issue_number: 55,
+      issue_url: "https://github.com/JSONbored/metagraphed/issues/55",
+      submitter: "jsonbored",
+      netuid: 12,
+      kind: "openapi",
+      source_url: "https://docs.example.com/openapi.json",
+      summary: "",
+      now: "invalid-date",
+    });
+
+    assert.equal(payload.embeds[0].title, "#55 needs attention · SN12 openapi");
+    assert.equal(payload.embeds[0].color, 0xfb8500);
+    assert.equal(
+      payload.embeds[0].description,
+      "Metagraphed submission gate completed a terminal decision.",
+    );
+    assert.equal(
+      Number.isNaN(new Date(payload.embeds[0].timestamp).getTime()),
+      false,
+    );
+    assert.equal(
+      payload.embeds[0].fields.some(
+        (field) =>
+          field.name === "Source" &&
+          field.value === "https://docs.example.com/openapi.json",
+      ),
+      true,
+    );
+  });
+
+  test("handles notification summary edge cases", () => {
+    const datePayload = buildSubmissionDiscordPayload({
+      public_state: "terminal",
+      verdict: "merged",
+      status: "merged",
+      pr_number: 1,
+      title: "",
+      candidate: {
+        netuid: 7,
+        kind: "docs",
+      },
+      summary: "Useful public source confirmed.",
+      now: new Date("1970-01-01T00:00:00.000Z"),
+    });
+
+    assert.equal(datePayload.embeds[0].title, "#1 merged · SN7 docs");
+    assert.equal(datePayload.embeds[0].timestamp, "1970-01-01T00:00:00.000Z");
+    assert.equal(
+      sanitizeNotificationSummary(
+        "prefix <!-- unterminated comment\nsource review:\nPublic evidence OK.",
+      ),
+      "prefix Public evidence OK.",
+    );
   });
 });

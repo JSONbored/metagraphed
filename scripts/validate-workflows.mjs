@@ -38,6 +38,13 @@ for (const workflow of workflows) {
     "predictable heredoc delimiter in run block",
   );
   check(
+    !/discord(?:app)?\.com\/api\/webhooks|DISCORD_SUBMISSION_WEBHOOK_URL/i.test(
+      content,
+    ),
+    workflow,
+    "Discord notifications must be sent by the private Cloudflare gate, not GitHub Actions",
+  );
+  check(
     /uses:\s+actions\/checkout@/.test(content),
     workflow,
     "missing checkout action",
@@ -115,6 +122,11 @@ for (const workflow of workflows) {
       content.includes("npm run validate:docs"),
       workflow,
       "workflow must validate public documentation contracts",
+    );
+    check(
+      content.includes("npm run validate:private-boundary"),
+      workflow,
+      "workflow must validate private reviewer and notification boundaries",
     );
   }
 }

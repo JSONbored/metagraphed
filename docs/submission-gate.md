@@ -89,3 +89,45 @@ The private `metagraphed-submission-gate` should run on Cloudflare:
 
 The public workflow job `metagraphed-submission-gate` only runs deterministic
 preflight. It must not publish, merge, or expose private review details.
+
+## Discord Notifications
+
+Discord delivery belongs to the private Cloudflare gate runtime, not GitHub
+Actions. The public repo only documents the contract and validates that secrets
+and private reviewer internals are not tracked.
+
+V1 sends one notification for terminal UGC decisions only:
+
+- `merged`: the gate merged a clean direct PR or imported an approved issue.
+- `closed`: the gate closed a hard failure.
+- `manual-review`: the gate persisted a manual-review decision.
+- `retry-exhausted`: automation stopped after retryable reviewer or platform
+  failures exceeded the retry budget.
+
+The gate should not notify for `route_away`, `submit_pr`, `fix_required`, or
+normal backend/code PRs.
+
+The Worker stores a `last_notification_key` in D1. The key must include the
+target, PR head SHA or issue revision, terminal status, and verdict. Repeated
+queue retries for the same head or issue revision must not send duplicate
+Discord messages; a new PR head or edited issue revision may send a new terminal
+notification.
+
+The Discord webhook is configured only as a Worker secret:
+
+```bash
+wrangler secret put DISCORD_SUBMISSION_WEBHOOK_URL
+```
+
+Other private gate secrets are also Worker secrets:
+
+- `GITHUB_WEBHOOK_SECRET`
+- `GITHUB_APP_PRIVATE_KEY`
+- `INTERNAL_SHARED_SECRET`
+- private reviewer service credentials, if used
+
+Discord embeds must be compact and public-safe. They can include the result,
+netuid, interface kind, submitter, source URL, GitHub URL, and a short AI
+rationale. They must strip marker comments, webhook URLs, wallet/PAT-like text,
+private AI prompts, private scoring thresholds, corpus weights, and provider
+model details.

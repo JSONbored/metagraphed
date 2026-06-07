@@ -118,6 +118,9 @@ jobs:
       - name: Public-safety scan
         run: npm run scan:public-safety
 
+      - name: Validate private boundary
+        run: npm run validate:private-boundary
+
       - name: Generate sync summary
         run: npm run sync:summary > "$RUNNER_TEMP/metagraphed-sync-summary.md"
 
