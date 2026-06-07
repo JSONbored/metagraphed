@@ -117,6 +117,10 @@ jobs:
         if: steps.route.outputs.mode == 'ugc'
         run: npm run validate:private-boundary
 
+      - name: Build artifacts
+        if: steps.route.outputs.mode == 'full'
+        run: npm run build
+
       - name: Validate registry
         if: steps.route.outputs.mode == 'full'
         run: npm run validate
@@ -124,10 +128,6 @@ jobs:
       - name: Test
         if: steps.route.outputs.mode == 'full'
         run: npm test
-
-      - name: Build artifacts
-        if: steps.route.outputs.mode == 'full'
-        run: npm run build
 
       - name: Generate R2 manifest
         if: steps.route.outputs.mode == 'full'
