@@ -282,7 +282,8 @@ export function classifyNativeName(value, netuid) {
     Number.isInteger(netuid) && normalized === `subnet ${netuid}`.toLowerCase();
   if (
     genericName ||
-    ["unknown", "none", "null", "n/a", "na", "unnamed"].includes(normalized)
+    ["unknown", "none", "null", "n/a", "na", "unnamed"].includes(normalized) ||
+    !/[\p{L}\p{N}]/u.test(raw)
   ) {
     return { raw_name: raw, quality: "placeholder" };
   }

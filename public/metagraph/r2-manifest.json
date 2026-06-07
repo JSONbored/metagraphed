@@ -1,6 +1,6 @@
 {
   "artifact_count": 967,
-  "artifact_size_bytes": 30984030,
+  "artifact_size_bytes": 30984059,
   "artifacts": [
     {
       "content_type": "application/json",
@@ -4804,8 +4804,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/metagraph/latest.json",
       "latest_key": "latest/metagraph/latest.json",
       "path": "/metagraph/metagraph/latest.json",
-      "sha256": "687da15bd0f8a630f2f2ce06e46cee428d32d25f5c954f635b6dca826c0156e1",
-      "size_bytes": 112301,
+      "sha256": "9d9cf63be2398fb9373546f64ea345ea5240237c53fb0904979bdfe87cbee6ed",
+      "size_bytes": 112307,
       "storage_tier": "git"
     },
     {
@@ -5191,8 +5191,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/subnets.json",
       "latest_key": "latest/subnets.json",
       "path": "/metagraph/subnets.json",
-      "sha256": "f1bc2eba16a205c2b6500b3aea275c6f8a95050785166150a1e5e4ab53ff4a8e",
-      "size_bytes": 112170,
+      "sha256": "23690ddf5e9133bf644d073cc68038397659883f61d08e0080b096192c5bff9d",
+      "size_bytes": 112176,
       "storage_tier": "dual"
     },
     {
@@ -6226,8 +6226,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/subnets/86.json",
       "latest_key": "latest/subnets/86.json",
       "path": "/metagraph/subnets/86.json",
-      "sha256": "c98f9ceaa4c557b90bbb45096d650d4386cc4ca97d3bdc795fb730a632e76519",
-      "size_bytes": 15707,
+      "sha256": "701e00951b75af1aa0261797f936acc07eed29f21e7ded6080ab5f7e1296ba6b",
+      "size_bytes": 15724,
       "storage_tier": "r2"
     },
     {

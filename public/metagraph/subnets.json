@@ -2439,7 +2439,7 @@
       "mechanism_count": 1,
       "name": "⚒",
       "native_name": "⚒",
-      "native_name_quality": "chain",
+      "native_name_quality": "placeholder",
       "netuid": 86,
       "participant_count": 256,
       "probed_surface_count": 2,

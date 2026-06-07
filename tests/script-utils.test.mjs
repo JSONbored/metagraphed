@@ -237,9 +237,14 @@ describe("script utility contracts", () => {
     });
     assert.equal(classifyNativeName("", 1).quality, "empty");
     assert.equal(classifyNativeName("Luminar Network", 87).quality, "chain");
+    assert.equal(classifyNativeName("›", 76).quality, "placeholder");
     assert.equal(
       nativeNameQuality({ raw_name: "Subnet 42", netuid: 42 }),
       "placeholder",
+    );
+    assert.equal(
+      nativeDisplayName({ raw_name: "›", netuid: 76 }, "Byzantium"),
+      "Byzantium",
     );
     assert.equal(
       nativeDisplayName({ raw_name: "unknown", netuid: 87 }, "Luminar Network"),
