@@ -121,6 +121,18 @@ jobs:
         if: steps.route.outputs.mode == 'full'
         run: npm run build
 
+      - name: Verify submitted public artifacts are reproducible
+        if: steps.route.outputs.mode == 'full' && github.event_name == 'pull_request'
+        run: |
+          mapfile -t submitted_artifacts < <(
+            awk '/^public\/metagraph\// { print }' changed-files.txt
+          )
+          if [ "${#submitted_artifacts[@]}" -eq 0 ]; then
+            echo "No submitted public artifacts to verify."
+            exit 0
+          fi
+          git diff --exit-code -- "${submitted_artifacts[@]}"
+
       - name: Validate registry
         if: steps.route.outputs.mode == 'full'
         run: npm run validate
