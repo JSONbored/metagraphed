@@ -1020,6 +1020,21 @@ async function validateGeneratedArtifacts(
     healthSummaryArtifact.subnets.length === nativeSnapshot.subnets.length,
     "health summary: subnet count mismatch",
   );
+  if (requiresProbeHealth()) {
+    assert(
+      healthArtifact.source === "live-smoke-probe",
+      "health artifact: publish requires probe-derived health",
+    );
+    assert(
+      healthSummaryArtifact.source === "live-smoke-probe",
+      "health summary: publish requires probe-derived health",
+    );
+    assert(
+      healthSummaryArtifact.global?.status_counts?.unknown !==
+        healthSummaryArtifact.global?.surface_count,
+      "health summary: publish cannot promote all-unknown health",
+    );
+  }
   assert(
     rpcEndpointsArtifact.endpoints.length ===
       surfacesArtifact.surfaces.filter((surface) =>
@@ -1122,6 +1137,17 @@ async function validateGeneratedArtifacts(
       assert(false, `${schemaPath}: missing JSON schema contract`);
     }
   }
+}
+
+function requiresProbeHealth() {
+  if (process.env.METAGRAPH_REQUIRE_PROBE_HEALTH === "1") {
+    return true;
+  }
+  return (
+    process.env.GITHUB_ACTIONS === "true" &&
+    process.env.GITHUB_WORKFLOW === "Publish Cloudflare Backend" &&
+    process.env.GITHUB_REF === "refs/heads/main"
+  );
 }
 
 const providers = await loadProviders();

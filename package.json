@@ -15,7 +15,7 @@
   },
   "scripts": {
     "validate": "node scripts/validate.mjs",
-    "build": "node scripts/bundle-schemas.mjs --write && node scripts/build-artifacts.mjs && node scripts/generate-types.mjs && node scripts/generate-client.mjs --write && node scripts/r2-manifest.mjs --write",
+    "build": "node scripts/build.mjs",
     "build:artifacts": "node scripts/build-artifacts.mjs",
     "pipeline:check": "node scripts/pipeline.mjs --check",
     "pipeline:refresh": "node scripts/pipeline.mjs --refresh",

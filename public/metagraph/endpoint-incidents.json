@@ -3,34 +3,12 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "incidents": [
     {
-      "classification": "transient",
-      "detected_at": "2026-06-07T10:47:46.560Z",
-      "endpoint_id": "endpoint-nodies-finney-rpc",
-      "id": "incident-endpoint-nodies-finney-rpc",
-      "kind": "subtensor-rpc",
-      "last_checked": "2026-06-07T10:47:46.560Z",
-      "layer": "bittensor-base",
-      "netuid": 0,
-      "operator": "nodies",
-      "pool_eligible": false,
-      "provider": "nodies",
-      "reason": "transient",
-      "severity": "warning",
-      "source": "probe-derived",
-      "state": "active",
-      "status": "degraded",
-      "subnet_name": "root",
-      "subnet_slug": "root",
-      "surface_id": "nodies-finney-rpc",
-      "user_reported": false
-    },
-    {
       "classification": "dead",
-      "detected_at": "2026-06-07T10:47:50.576Z",
+      "detected_at": "2026-06-07T12:30:41.883Z",
       "endpoint_id": "endpoint-sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-9",
       "id": "incident-endpoint-sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-9",
       "kind": "data-artifact",
-      "last_checked": "2026-06-07T10:47:50.576Z",
+      "last_checked": "2026-06-07T12:30:41.883Z",
       "layer": "data-provider",
       "netuid": 33,
       "operator": "taomarketcap",
@@ -48,11 +26,11 @@
     },
     {
       "classification": "dead",
-      "detected_at": "2026-06-07T10:47:56.904Z",
+      "detected_at": "2026-06-07T12:30:48.789Z",
       "endpoint_id": "endpoint-sn-85-website-common-docs",
       "id": "incident-endpoint-sn-85-website-common-docs",
       "kind": "docs",
-      "last_checked": "2026-06-07T10:47:56.904Z",
+      "last_checked": "2026-06-07T12:30:48.789Z",
       "layer": "docs-provider",
       "netuid": 85,
       "operator": "taomarketcap",
@@ -77,27 +55,24 @@
   "schema_version": 1,
   "source": "endpoint-resource-probes",
   "summary": {
-    "active_count": 3,
+    "active_count": 2,
     "by_kind": {
       "data-artifact": 1,
-      "docs": 1,
-      "subtensor-rpc": 1
+      "docs": 1
     },
     "by_layer": {
-      "bittensor-base": 1,
       "data-provider": 1,
       "docs-provider": 1
     },
     "by_provider": {
-      "nodies": 1,
       "taomarketcap": 2
     },
     "by_severity": {
-      "warning": 3
+      "warning": 2
     },
     "by_status": {
-      "degraded": 3
+      "degraded": 2
     },
-    "incident_count": 3
+    "incident_count": 2
   }
 }

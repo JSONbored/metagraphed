@@ -102,8 +102,28 @@ test("artifact build ignores forged committed health observations by default", (
     } else {
       writeFileSync(cachePath, originalCache);
     }
-    execFileSync("git", ["checkout", "--", "public/metagraph"], {
+    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
       cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/generate-types.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/generate-client.mjs", "--write"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
       stdio: "pipe",
     });
   }

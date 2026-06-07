@@ -4,13 +4,12 @@
   "global": {
     "classification_counts": {
       "dead": 2,
-      "live": 666,
-      "redirected": 81,
-      "transient": 1
+      "live": 667,
+      "redirected": 81
     },
     "status_counts": {
-      "degraded": 3,
-      "ok": 747
+      "degraded": 2,
+      "ok": 748
     },
     "surface_count": 750
   },
@@ -18,25 +17,25 @@
   "source": "live-smoke-probe",
   "subnets": [
     {
-      "avg_latency_ms": 693,
-      "degraded_count": 1,
+      "avg_latency_ms": 691,
+      "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:46.774Z",
-      "last_ok": "2026-06-07T10:47:46.774Z",
+      "last_checked": "2026-06-07T12:30:37.919Z",
+      "last_ok": "2026-06-07T12:30:37.919Z",
       "name": "root",
       "netuid": 0,
-      "ok_count": 11,
+      "ok_count": 12,
       "slug": "root",
-      "status": "degraded",
+      "status": "ok",
       "surface_count": 12,
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 364,
+      "avg_latency_ms": 353,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:46.323Z",
-      "last_ok": "2026-06-07T10:47:46.323Z",
+      "last_checked": "2026-06-07T12:30:37.327Z",
+      "last_ok": "2026-06-07T12:30:37.327Z",
       "name": "Apex",
       "netuid": 1,
       "ok_count": 7,
@@ -46,11 +45,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 303,
+      "avg_latency_ms": 317,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:46.725Z",
-      "last_ok": "2026-06-07T10:47:46.725Z",
+      "last_checked": "2026-06-07T12:30:37.757Z",
+      "last_ok": "2026-06-07T12:30:37.757Z",
       "name": "DSperse",
       "netuid": 2,
       "ok_count": 10,
@@ -60,11 +59,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 525,
+      "avg_latency_ms": 597,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:46.972Z",
-      "last_ok": "2026-06-07T10:47:46.972Z",
+      "last_checked": "2026-06-07T12:30:38.024Z",
+      "last_ok": "2026-06-07T12:30:38.024Z",
       "name": "deprecated",
       "netuid": 3,
       "ok_count": 3,
@@ -74,11 +73,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 388,
+      "avg_latency_ms": 438,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:46.998Z",
-      "last_ok": "2026-06-07T10:47:46.998Z",
+      "last_checked": "2026-06-07T12:30:37.900Z",
+      "last_ok": "2026-06-07T12:30:37.900Z",
       "name": "Targon",
       "netuid": 4,
       "ok_count": 8,
@@ -88,11 +87,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 291,
+      "avg_latency_ms": 300,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:47.134Z",
-      "last_ok": "2026-06-07T10:47:47.134Z",
+      "last_checked": "2026-06-07T12:30:38.139Z",
+      "last_ok": "2026-06-07T12:30:38.139Z",
       "name": "Hone",
       "netuid": 5,
       "ok_count": 7,
@@ -102,11 +101,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 306,
+      "avg_latency_ms": 331,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:47.202Z",
-      "last_ok": "2026-06-07T10:47:47.202Z",
+      "last_checked": "2026-06-07T12:30:38.267Z",
+      "last_ok": "2026-06-07T12:30:38.267Z",
       "name": "Numinous",
       "netuid": 6,
       "ok_count": 7,
@@ -116,11 +115,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 181,
+      "avg_latency_ms": 185,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:47.526Z",
-      "last_ok": "2026-06-07T10:47:47.526Z",
+      "last_checked": "2026-06-07T12:30:38.521Z",
+      "last_ok": "2026-06-07T12:30:38.521Z",
       "name": "Allways",
       "netuid": 7,
       "ok_count": 14,
@@ -130,11 +129,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 278,
+      "avg_latency_ms": 401,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:47.409Z",
-      "last_ok": "2026-06-07T10:47:47.409Z",
+      "last_checked": "2026-06-07T12:30:38.640Z",
+      "last_ok": "2026-06-07T12:30:38.640Z",
       "name": "Vanta",
       "netuid": 8,
       "ok_count": 8,
@@ -144,11 +143,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 281,
+      "avg_latency_ms": 327,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:47.605Z",
-      "last_ok": "2026-06-07T10:47:47.605Z",
+      "last_checked": "2026-06-07T12:30:38.791Z",
+      "last_ok": "2026-06-07T12:30:38.791Z",
       "name": "iota",
       "netuid": 9,
       "ok_count": 9,
@@ -158,11 +157,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 289,
+      "avg_latency_ms": 356,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:47.777Z",
-      "last_ok": "2026-06-07T10:47:47.777Z",
+      "last_checked": "2026-06-07T12:30:38.947Z",
+      "last_ok": "2026-06-07T12:30:38.947Z",
       "name": "Swap",
       "netuid": 10,
       "ok_count": 4,
@@ -172,11 +171,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 327,
+      "avg_latency_ms": 396,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:47.810Z",
-      "last_ok": "2026-06-07T10:47:47.810Z",
+      "last_checked": "2026-06-07T12:30:39.139Z",
+      "last_ok": "2026-06-07T12:30:39.139Z",
       "name": "TrajectoryRL",
       "netuid": 11,
       "ok_count": 6,
@@ -186,11 +185,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 318,
+      "avg_latency_ms": 369,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:48.018Z",
-      "last_ok": "2026-06-07T10:47:48.018Z",
+      "last_checked": "2026-06-07T12:30:39.211Z",
+      "last_ok": "2026-06-07T12:30:39.211Z",
       "name": "Compute Horde",
       "netuid": 12,
       "ok_count": 4,
@@ -200,11 +199,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 472,
+      "avg_latency_ms": 506,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:49.361Z",
-      "last_ok": "2026-06-07T10:47:49.361Z",
+      "last_checked": "2026-06-07T12:30:40.379Z",
+      "last_ok": "2026-06-07T12:30:40.379Z",
       "name": "Data Universe",
       "netuid": 13,
       "ok_count": 7,
@@ -214,11 +213,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 276,
+      "avg_latency_ms": 250,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:48.521Z",
-      "last_ok": "2026-06-07T10:47:48.521Z",
+      "last_checked": "2026-06-07T12:30:39.764Z",
+      "last_ok": "2026-06-07T12:30:39.764Z",
       "name": "Cacheon",
       "netuid": 14,
       "ok_count": 10,
@@ -228,11 +227,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 224,
+      "avg_latency_ms": 244,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:48.586Z",
-      "last_ok": "2026-06-07T10:47:48.586Z",
+      "last_checked": "2026-06-07T12:30:39.735Z",
+      "last_ok": "2026-06-07T12:30:39.735Z",
       "name": "ORO",
       "netuid": 15,
       "ok_count": 9,
@@ -242,11 +241,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 567,
+      "avg_latency_ms": 655,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:49.290Z",
-      "last_ok": "2026-06-07T10:47:49.290Z",
+      "last_checked": "2026-06-07T12:30:40.512Z",
+      "last_ok": "2026-06-07T12:30:40.512Z",
       "name": "BitAds",
       "netuid": 16,
       "ok_count": 6,
@@ -256,11 +255,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 432,
+      "avg_latency_ms": 483,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:49.053Z",
-      "last_ok": "2026-06-07T10:47:49.053Z",
+      "last_checked": "2026-06-07T12:30:40.408Z",
+      "last_ok": "2026-06-07T12:30:40.408Z",
       "name": "404—GEN",
       "netuid": 17,
       "ok_count": 6,
@@ -270,11 +269,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 433,
+      "avg_latency_ms": 432,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:49.176Z",
-      "last_ok": "2026-06-07T10:47:49.176Z",
+      "last_checked": "2026-06-07T12:30:40.369Z",
+      "last_ok": "2026-06-07T12:30:40.369Z",
       "name": "Zeus",
       "netuid": 18,
       "ok_count": 6,
@@ -284,11 +283,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 449,
+      "avg_latency_ms": 476,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:49.434Z",
-      "last_ok": "2026-06-07T10:47:49.434Z",
+      "last_checked": "2026-06-07T12:30:40.602Z",
+      "last_ok": "2026-06-07T12:30:40.602Z",
       "name": "blockmachine",
       "netuid": 19,
       "ok_count": 7,
@@ -298,11 +297,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 308,
+      "avg_latency_ms": 330,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:49.430Z",
-      "last_ok": "2026-06-07T10:47:49.430Z",
+      "last_checked": "2026-06-07T12:30:40.560Z",
+      "last_ok": "2026-06-07T12:30:40.560Z",
       "name": "GroundLayer",
       "netuid": 20,
       "ok_count": 3,
@@ -312,11 +311,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 323,
+      "avg_latency_ms": 263,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:49.724Z",
-      "last_ok": "2026-06-07T10:47:49.724Z",
+      "last_checked": "2026-06-07T12:30:40.784Z",
+      "last_ok": "2026-06-07T12:30:40.784Z",
       "name": "AdTAO",
       "netuid": 21,
       "ok_count": 4,
@@ -326,11 +325,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 328,
+      "avg_latency_ms": 354,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:49.690Z",
-      "last_ok": "2026-06-07T10:47:49.690Z",
+      "last_checked": "2026-06-07T12:30:41.083Z",
+      "last_ok": "2026-06-07T12:30:41.083Z",
       "name": "Desearch",
       "netuid": 22,
       "ok_count": 7,
@@ -340,11 +339,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 275,
+      "avg_latency_ms": 288,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:50.070Z",
-      "last_ok": "2026-06-07T10:47:50.070Z",
+      "last_checked": "2026-06-07T12:30:41.227Z",
+      "last_ok": "2026-06-07T12:30:41.227Z",
       "name": "Trishool",
       "netuid": 23,
       "ok_count": 11,
@@ -354,11 +353,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 301,
+      "avg_latency_ms": 304,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:50.291Z",
-      "last_ok": "2026-06-07T10:47:50.291Z",
+      "last_checked": "2026-06-07T12:30:41.300Z",
+      "last_ok": "2026-06-07T12:30:41.300Z",
       "name": "Quasar",
       "netuid": 24,
       "ok_count": 7,
@@ -368,11 +367,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 252,
+      "avg_latency_ms": 303,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:50.098Z",
-      "last_ok": "2026-06-07T10:47:50.098Z",
+      "last_checked": "2026-06-07T12:30:41.598Z",
+      "last_ok": "2026-06-07T12:30:41.598Z",
       "name": "Mainframe",
       "netuid": 25,
       "ok_count": 7,
@@ -382,11 +381,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 248,
+      "avg_latency_ms": 258,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:50.387Z",
-      "last_ok": "2026-06-07T10:47:50.387Z",
+      "last_checked": "2026-06-07T12:30:41.599Z",
+      "last_ok": "2026-06-07T12:30:41.599Z",
       "name": "Perturb",
       "netuid": 26,
       "ok_count": 6,
@@ -396,11 +395,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 266,
+      "avg_latency_ms": 300,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:50.283Z",
-      "last_ok": "2026-06-07T10:47:50.283Z",
+      "last_checked": "2026-06-07T12:30:41.596Z",
+      "last_ok": "2026-06-07T12:30:41.596Z",
       "name": "Nodexo",
       "netuid": 27,
       "ok_count": 2,
@@ -410,11 +409,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 270,
+      "avg_latency_ms": 261,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:50.370Z",
-      "last_ok": "2026-06-07T10:47:50.370Z",
+      "last_checked": "2026-06-07T12:30:41.540Z",
+      "last_ok": "2026-06-07T12:30:41.540Z",
       "name": "gm",
       "netuid": 28,
       "ok_count": 2,
@@ -424,11 +423,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 326,
+      "avg_latency_ms": 345,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:50.586Z",
-      "last_ok": "2026-06-07T10:47:50.586Z",
+      "last_checked": "2026-06-07T12:30:41.931Z",
+      "last_ok": "2026-06-07T12:30:41.931Z",
       "name": "Coldint",
       "netuid": 29,
       "ok_count": 6,
@@ -438,11 +437,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 554,
+      "avg_latency_ms": 546,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:50.968Z",
-      "last_ok": "2026-06-07T10:47:50.968Z",
+      "last_checked": "2026-06-07T12:30:42.169Z",
+      "last_ok": "2026-06-07T12:30:42.169Z",
       "name": "Endure Network",
       "netuid": 30,
       "ok_count": 4,
@@ -452,11 +451,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 271,
+      "avg_latency_ms": 236,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:50.516Z",
-      "last_ok": "2026-06-07T10:47:50.516Z",
+      "last_checked": "2026-06-07T12:30:41.711Z",
+      "last_ok": "2026-06-07T12:30:41.711Z",
       "name": "Recall",
       "netuid": 31,
       "ok_count": 2,
@@ -466,11 +465,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 329,
+      "avg_latency_ms": 373,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:50.831Z",
-      "last_ok": "2026-06-07T10:47:50.831Z",
+      "last_checked": "2026-06-07T12:30:42.139Z",
+      "last_ok": "2026-06-07T12:30:42.139Z",
       "name": "ItsAI",
       "netuid": 32,
       "ok_count": 5,
@@ -480,11 +479,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 257,
+      "avg_latency_ms": 295,
       "degraded_count": 1,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:51.058Z",
-      "last_ok": "2026-06-07T10:47:51.058Z",
+      "last_checked": "2026-06-07T12:30:42.495Z",
+      "last_ok": "2026-06-07T12:30:42.495Z",
       "name": "ReadyAI",
       "netuid": 33,
       "ok_count": 8,
@@ -494,11 +493,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 251,
+      "avg_latency_ms": 280,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:50.893Z",
-      "last_ok": "2026-06-07T10:47:50.893Z",
+      "last_checked": "2026-06-07T12:30:42.198Z",
+      "last_ok": "2026-06-07T12:30:42.198Z",
       "name": "BitMind",
       "netuid": 34,
       "ok_count": 4,
@@ -508,11 +507,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 281,
+      "avg_latency_ms": 344,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:51.108Z",
-      "last_ok": "2026-06-07T10:47:51.108Z",
+      "last_checked": "2026-06-07T12:30:42.454Z",
+      "last_ok": "2026-06-07T12:30:42.454Z",
       "name": "OxMarkets",
       "netuid": 35,
       "ok_count": 6,
@@ -522,11 +521,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 249,
+      "avg_latency_ms": 287,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:51.152Z",
-      "last_ok": "2026-06-07T10:47:51.152Z",
+      "last_checked": "2026-06-07T12:30:42.414Z",
+      "last_ok": "2026-06-07T12:30:42.414Z",
       "name": "Eirel",
       "netuid": 36,
       "ok_count": 6,
@@ -536,11 +535,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 291,
+      "avg_latency_ms": 386,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:51.525Z",
-      "last_ok": "2026-06-07T10:47:51.525Z",
+      "last_checked": "2026-06-07T12:30:42.750Z",
+      "last_ok": "2026-06-07T12:30:42.750Z",
       "name": "Aurelius",
       "netuid": 37,
       "ok_count": 7,
@@ -550,11 +549,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 211,
+      "avg_latency_ms": 340,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:51.266Z",
-      "last_ok": "2026-06-07T10:47:51.266Z",
+      "last_checked": "2026-06-07T12:30:42.790Z",
+      "last_ok": "2026-06-07T12:30:42.790Z",
       "name": "colosseum",
       "netuid": 38,
       "ok_count": 5,
@@ -564,11 +563,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 378,
+      "avg_latency_ms": 547,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:51.706Z",
-      "last_ok": "2026-06-07T10:47:51.706Z",
+      "last_checked": "2026-06-07T12:30:43.110Z",
+      "last_ok": "2026-06-07T12:30:43.110Z",
       "name": "deprecated",
       "netuid": 39,
       "ok_count": 3,
@@ -578,11 +577,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 224,
+      "avg_latency_ms": 387,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:51.382Z",
-      "last_ok": "2026-06-07T10:47:51.382Z",
+      "last_checked": "2026-06-07T12:30:42.834Z",
+      "last_ok": "2026-06-07T12:30:42.834Z",
       "name": "Chunking",
       "netuid": 40,
       "ok_count": 2,
@@ -592,11 +591,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 196,
+      "avg_latency_ms": 249,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:51.717Z",
-      "last_ok": "2026-06-07T10:47:51.717Z",
+      "last_checked": "2026-06-07T12:30:43.175Z",
+      "last_ok": "2026-06-07T12:30:43.175Z",
       "name": "Almanac",
       "netuid": 41,
       "ok_count": 8,
@@ -606,11 +605,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 247,
+      "avg_latency_ms": 362,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:51.531Z",
-      "last_ok": "2026-06-07T10:47:51.531Z",
+      "last_checked": "2026-06-07T12:30:43.156Z",
+      "last_ok": "2026-06-07T12:30:43.156Z",
       "name": "Subnet 42",
       "netuid": 42,
       "ok_count": 2,
@@ -620,11 +619,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 309,
+      "avg_latency_ms": 386,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:51.717Z",
-      "last_ok": "2026-06-07T10:47:51.717Z",
+      "last_checked": "2026-06-07T12:30:43.403Z",
+      "last_ok": "2026-06-07T12:30:43.403Z",
       "name": "Graphite",
       "netuid": 43,
       "ok_count": 3,
@@ -634,11 +633,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 441,
+      "avg_latency_ms": 501,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:51.935Z",
-      "last_ok": "2026-06-07T10:47:51.935Z",
+      "last_checked": "2026-06-07T12:30:43.464Z",
+      "last_ok": "2026-06-07T12:30:43.464Z",
       "name": "Score",
       "netuid": 44,
       "ok_count": 5,
@@ -648,11 +647,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 319,
+      "avg_latency_ms": 281,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:52.198Z",
-      "last_ok": "2026-06-07T10:47:52.198Z",
+      "last_checked": "2026-06-07T12:30:43.443Z",
+      "last_ok": "2026-06-07T12:30:43.443Z",
       "name": "Talisman AI",
       "netuid": 45,
       "ok_count": 7,
@@ -662,11 +661,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 327,
+      "avg_latency_ms": 348,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:52.229Z",
-      "last_ok": "2026-06-07T10:47:52.229Z",
+      "last_checked": "2026-06-07T12:30:43.913Z",
+      "last_ok": "2026-06-07T12:30:43.913Z",
       "name": "Zipcode",
       "netuid": 46,
       "ok_count": 11,
@@ -676,11 +675,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 349,
+      "avg_latency_ms": 362,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:52.514Z",
-      "last_ok": "2026-06-07T10:47:52.514Z",
+      "last_checked": "2026-06-07T12:30:44.025Z",
+      "last_ok": "2026-06-07T12:30:44.025Z",
       "name": "EvolAI",
       "netuid": 47,
       "ok_count": 6,
@@ -690,11 +689,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 349,
+      "avg_latency_ms": 336,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:52.390Z",
-      "last_ok": "2026-06-07T10:47:52.390Z",
+      "last_checked": "2026-06-07T12:30:43.962Z",
+      "last_ok": "2026-06-07T12:30:43.962Z",
       "name": "Quantum Compute",
       "netuid": 48,
       "ok_count": 4,
@@ -704,11 +703,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 341,
+      "avg_latency_ms": 350,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:52.530Z",
-      "last_ok": "2026-06-07T10:47:52.530Z",
+      "last_checked": "2026-06-07T12:30:44.129Z",
+      "last_ok": "2026-06-07T12:30:44.129Z",
       "name": "Nepher Robotics",
       "netuid": 49,
       "ok_count": 4,
@@ -718,11 +717,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 289,
+      "avg_latency_ms": 300,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:52.813Z",
-      "last_ok": "2026-06-07T10:47:52.813Z",
+      "last_checked": "2026-06-07T12:30:44.330Z",
+      "last_ok": "2026-06-07T12:30:44.330Z",
       "name": "Synth",
       "netuid": 50,
       "ok_count": 6,
@@ -732,11 +731,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 525,
+      "avg_latency_ms": 566,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:54.020Z",
-      "last_ok": "2026-06-07T10:47:54.020Z",
+      "last_checked": "2026-06-07T12:30:45.760Z",
+      "last_ok": "2026-06-07T12:30:45.760Z",
       "name": "lium.io",
       "netuid": 51,
       "ok_count": 7,
@@ -746,11 +745,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 370,
+      "avg_latency_ms": 343,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:53.351Z",
-      "last_ok": "2026-06-07T10:47:53.351Z",
+      "last_checked": "2026-06-07T12:30:44.726Z",
+      "last_ok": "2026-06-07T12:30:44.726Z",
       "name": "Dojo",
       "netuid": 52,
       "ok_count": 8,
@@ -760,11 +759,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 285,
+      "avg_latency_ms": 250,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:52.900Z",
-      "last_ok": "2026-06-07T10:47:52.900Z",
+      "last_checked": "2026-06-07T12:30:44.526Z",
+      "last_ok": "2026-06-07T12:30:44.526Z",
       "name": "EfficientFrontier",
       "netuid": 53,
       "ok_count": 2,
@@ -774,11 +773,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 258,
+      "avg_latency_ms": 275,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:53.057Z",
-      "last_ok": "2026-06-07T10:47:53.057Z",
+      "last_checked": "2026-06-07T12:30:44.836Z",
+      "last_ok": "2026-06-07T12:30:44.836Z",
       "name": "Yanez MIID",
       "netuid": 54,
       "ok_count": 5,
@@ -788,11 +787,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 300,
+      "avg_latency_ms": 688,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:53.259Z",
-      "last_ok": "2026-06-07T10:47:53.259Z",
+      "last_checked": "2026-06-07T12:30:45.976Z",
+      "last_ok": "2026-06-07T12:30:45.976Z",
       "name": "NIOME",
       "netuid": 55,
       "ok_count": 4,
@@ -802,11 +801,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 435,
+      "avg_latency_ms": 408,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:53.422Z",
-      "last_ok": "2026-06-07T10:47:53.422Z",
+      "last_checked": "2026-06-07T12:30:44.940Z",
+      "last_ok": "2026-06-07T12:30:44.940Z",
       "name": "Gradients",
       "netuid": 56,
       "ok_count": 8,
@@ -816,11 +815,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 353,
+      "avg_latency_ms": 355,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:53.647Z",
-      "last_ok": "2026-06-07T10:47:53.647Z",
+      "last_checked": "2026-06-07T12:30:45.226Z",
+      "last_ok": "2026-06-07T12:30:45.226Z",
       "name": "gaia",
       "netuid": 57,
       "ok_count": 3,
@@ -830,11 +829,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 261,
+      "avg_latency_ms": 280,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:53.839Z",
-      "last_ok": "2026-06-07T10:47:53.839Z",
+      "last_checked": "2026-06-07T12:30:45.471Z",
+      "last_ok": "2026-06-07T12:30:45.471Z",
       "name": "Pending",
       "netuid": 58,
       "ok_count": 7,
@@ -844,11 +843,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 340,
+      "avg_latency_ms": 378,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:53.822Z",
-      "last_ok": "2026-06-07T10:47:53.822Z",
+      "last_checked": "2026-06-07T12:30:45.454Z",
+      "last_ok": "2026-06-07T12:30:45.454Z",
       "name": "Babelbit",
       "netuid": 59,
       "ok_count": 6,
@@ -858,11 +857,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 282,
+      "avg_latency_ms": 348,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:53.994Z",
-      "last_ok": "2026-06-07T10:47:53.994Z",
+      "last_checked": "2026-06-07T12:30:46.024Z",
+      "last_ok": "2026-06-07T12:30:46.024Z",
       "name": "Bitsec.ai",
       "netuid": 60,
       "ok_count": 10,
@@ -872,11 +871,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 304,
+      "avg_latency_ms": 378,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:54.089Z",
-      "last_ok": "2026-06-07T10:47:54.089Z",
+      "last_checked": "2026-06-07T12:30:45.770Z",
+      "last_ok": "2026-06-07T12:30:45.770Z",
       "name": "RedTeam",
       "netuid": 61,
       "ok_count": 6,
@@ -886,11 +885,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 282,
+      "avg_latency_ms": 319,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:54.077Z",
-      "last_ok": "2026-06-07T10:47:54.077Z",
+      "last_checked": "2026-06-07T12:30:45.801Z",
+      "last_ok": "2026-06-07T12:30:45.801Z",
       "name": "Ridges",
       "netuid": 62,
       "ok_count": 3,
@@ -900,11 +899,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 244,
+      "avg_latency_ms": 276,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:54.218Z",
-      "last_ok": "2026-06-07T10:47:54.218Z",
+      "last_checked": "2026-06-07T12:30:46.086Z",
+      "last_ok": "2026-06-07T12:30:46.086Z",
       "name": "Enigma",
       "netuid": 63,
       "ok_count": 5,
@@ -914,11 +913,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 324,
+      "avg_latency_ms": 405,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:54.696Z",
-      "last_ok": "2026-06-07T10:47:54.696Z",
+      "last_checked": "2026-06-07T12:30:46.606Z",
+      "last_ok": "2026-06-07T12:30:46.606Z",
       "name": "Chutes",
       "netuid": 64,
       "ok_count": 11,
@@ -928,11 +927,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 188,
+      "avg_latency_ms": 205,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:54.578Z",
-      "last_ok": "2026-06-07T10:47:54.578Z",
+      "last_checked": "2026-06-07T12:30:46.469Z",
+      "last_ok": "2026-06-07T12:30:46.469Z",
       "name": "TAO Private Network",
       "netuid": 65,
       "ok_count": 9,
@@ -942,11 +941,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 256,
+      "avg_latency_ms": 263,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:54.738Z",
-      "last_ok": "2026-06-07T10:47:54.738Z",
+      "last_checked": "2026-06-07T12:30:46.555Z",
+      "last_ok": "2026-06-07T12:30:46.555Z",
       "name": "ninja",
       "netuid": 66,
       "ok_count": 9,
@@ -956,11 +955,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 512,
+      "avg_latency_ms": 390,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:55.085Z",
-      "last_ok": "2026-06-07T10:47:55.085Z",
+      "last_checked": "2026-06-07T12:30:46.872Z",
+      "last_ok": "2026-06-07T12:30:46.872Z",
       "name": "Harnyx",
       "netuid": 67,
       "ok_count": 6,
@@ -970,11 +969,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 287,
+      "avg_latency_ms": 267,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:54.882Z",
-      "last_ok": "2026-06-07T10:47:54.882Z",
+      "last_checked": "2026-06-07T12:30:46.834Z",
+      "last_ok": "2026-06-07T12:30:46.834Z",
       "name": "NOVA",
       "netuid": 68,
       "ok_count": 7,
@@ -984,11 +983,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 238,
+      "avg_latency_ms": 274,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:54.934Z",
-      "last_ok": "2026-06-07T10:47:54.934Z",
+      "last_checked": "2026-06-07T12:30:46.897Z",
+      "last_ok": "2026-06-07T12:30:46.897Z",
       "name": "ain",
       "netuid": 69,
       "ok_count": 2,
@@ -998,11 +997,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 362,
+      "avg_latency_ms": 402,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:55.341Z",
-      "last_ok": "2026-06-07T10:47:55.341Z",
+      "last_checked": "2026-06-07T12:30:47.190Z",
+      "last_ok": "2026-06-07T12:30:47.190Z",
       "name": "NexisGen",
       "netuid": 70,
       "ok_count": 6,
@@ -1012,11 +1011,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 414,
+      "avg_latency_ms": 419,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:55.359Z",
-      "last_ok": "2026-06-07T10:47:55.359Z",
+      "last_checked": "2026-06-07T12:30:47.218Z",
+      "last_ok": "2026-06-07T12:30:47.218Z",
       "name": "Leadpoet",
       "netuid": 71,
       "ok_count": 6,
@@ -1026,11 +1025,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 246,
+      "avg_latency_ms": 255,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:55.429Z",
-      "last_ok": "2026-06-07T10:47:55.429Z",
+      "last_checked": "2026-06-07T12:30:47.374Z",
+      "last_ok": "2026-06-07T12:30:47.374Z",
       "name": "StreetVision by NATIX",
       "netuid": 72,
       "ok_count": 6,
@@ -1040,11 +1039,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 270,
+      "avg_latency_ms": 266,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:55.454Z",
-      "last_ok": "2026-06-07T10:47:55.454Z",
+      "last_checked": "2026-06-07T12:30:47.278Z",
+      "last_ok": "2026-06-07T12:30:47.278Z",
       "name": "Parked",
       "netuid": 73,
       "ok_count": 2,
@@ -1054,11 +1053,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 258,
+      "avg_latency_ms": 246,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:55.871Z",
-      "last_ok": "2026-06-07T10:47:55.871Z",
+      "last_checked": "2026-06-07T12:30:47.565Z",
+      "last_ok": "2026-06-07T12:30:47.565Z",
       "name": "Gittensor",
       "netuid": 74,
       "ok_count": 7,
@@ -1068,11 +1067,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 467,
+      "avg_latency_ms": 534,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:56.071Z",
-      "last_ok": "2026-06-07T10:47:56.071Z",
+      "last_checked": "2026-06-07T12:30:47.845Z",
+      "last_ok": "2026-06-07T12:30:47.845Z",
       "name": "Hippius",
       "netuid": 75,
       "ok_count": 7,
@@ -1082,11 +1081,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 264,
+      "avg_latency_ms": 248,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:55.723Z",
-      "last_ok": "2026-06-07T10:47:55.723Z",
+      "last_checked": "2026-06-07T12:30:47.546Z",
+      "last_ok": "2026-06-07T12:30:47.546Z",
       "name": "Byzantium",
       "netuid": 76,
       "ok_count": 2,
@@ -1096,11 +1095,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 272,
+      "avg_latency_ms": 329,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:56.018Z",
-      "last_ok": "2026-06-07T10:47:56.018Z",
+      "last_checked": "2026-06-07T12:30:47.976Z",
+      "last_ok": "2026-06-07T12:30:47.976Z",
       "name": "Liquidity",
       "netuid": 77,
       "ok_count": 6,
@@ -1110,11 +1109,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 304,
+      "avg_latency_ms": 377,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:56.190Z",
-      "last_ok": "2026-06-07T10:47:56.190Z",
+      "last_checked": "2026-06-07T12:30:48.126Z",
+      "last_ok": "2026-06-07T12:30:48.126Z",
       "name": "Vocence",
       "netuid": 78,
       "ok_count": 8,
@@ -1124,11 +1123,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 386,
+      "avg_latency_ms": 378,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:56.397Z",
-      "last_ok": "2026-06-07T10:47:56.397Z",
+      "last_checked": "2026-06-07T12:30:48.360Z",
+      "last_ok": "2026-06-07T12:30:48.360Z",
       "name": "MVTRX",
       "netuid": 79,
       "ok_count": 5,
@@ -1138,11 +1137,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 294,
+      "avg_latency_ms": 302,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:56.632Z",
-      "last_ok": "2026-06-07T10:47:56.632Z",
+      "last_checked": "2026-06-07T12:30:48.584Z",
+      "last_ok": "2026-06-07T12:30:48.584Z",
       "name": "dogelayer",
       "netuid": 80,
       "ok_count": 9,
@@ -1152,11 +1151,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 390,
+      "avg_latency_ms": 440,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:56.677Z",
-      "last_ok": "2026-06-07T10:47:56.677Z",
+      "last_checked": "2026-06-07T12:30:48.659Z",
+      "last_ok": "2026-06-07T12:30:48.659Z",
       "name": "deprecated",
       "netuid": 81,
       "ok_count": 3,
@@ -1166,11 +1165,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 364,
+      "avg_latency_ms": 357,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:56.738Z",
-      "last_ok": "2026-06-07T10:47:56.738Z",
+      "last_checked": "2026-06-07T12:30:48.866Z",
+      "last_ok": "2026-06-07T12:30:48.866Z",
       "name": "Compelle",
       "netuid": 82,
       "ok_count": 7,
@@ -1180,11 +1179,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 492,
+      "avg_latency_ms": 376,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:57.291Z",
-      "last_ok": "2026-06-07T10:47:57.291Z",
+      "last_checked": "2026-06-07T12:30:48.719Z",
+      "last_ok": "2026-06-07T12:30:48.719Z",
       "name": "CliqueAI",
       "netuid": 83,
       "ok_count": 6,
@@ -1194,11 +1193,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 349,
+      "avg_latency_ms": 384,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:57.099Z",
-      "last_ok": "2026-06-07T10:47:57.099Z",
+      "last_checked": "2026-06-07T12:30:49.038Z",
+      "last_ok": "2026-06-07T12:30:49.038Z",
       "name": "ansuz",
       "netuid": 84,
       "ok_count": 5,
@@ -1208,11 +1207,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 302,
+      "avg_latency_ms": 293,
       "degraded_count": 1,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:57.203Z",
-      "last_ok": "2026-06-07T10:47:57.203Z",
+      "last_checked": "2026-06-07T12:30:49.034Z",
+      "last_ok": "2026-06-07T12:30:49.034Z",
       "name": "Vidaio",
       "netuid": 85,
       "ok_count": 8,
@@ -1222,11 +1221,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 232,
+      "avg_latency_ms": 309,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:57.025Z",
-      "last_ok": "2026-06-07T10:47:57.025Z",
+      "last_checked": "2026-06-07T12:30:49.107Z",
+      "last_ok": "2026-06-07T12:30:49.107Z",
       "name": "⚒",
       "netuid": 86,
       "ok_count": 2,
@@ -1236,11 +1235,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 249,
+      "avg_latency_ms": 263,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:57.079Z",
-      "last_ok": "2026-06-07T10:47:57.079Z",
+      "last_checked": "2026-06-07T12:30:49.054Z",
+      "last_ok": "2026-06-07T12:30:49.054Z",
       "name": "Luminar Network",
       "netuid": 87,
       "ok_count": 2,
@@ -1250,11 +1249,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 259,
+      "avg_latency_ms": 262,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:57.317Z",
-      "last_ok": "2026-06-07T10:47:57.317Z",
+      "last_checked": "2026-06-07T12:30:49.485Z",
+      "last_ok": "2026-06-07T12:30:49.485Z",
       "name": "Investing",
       "netuid": 88,
       "ok_count": 8,
@@ -1264,11 +1263,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 279,
+      "avg_latency_ms": 293,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:57.516Z",
-      "last_ok": "2026-06-07T10:47:57.516Z",
+      "last_checked": "2026-06-07T12:30:49.459Z",
+      "last_ok": "2026-06-07T12:30:49.459Z",
       "name": "InfiniteHash",
       "netuid": 89,
       "ok_count": 6,
@@ -1278,11 +1277,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 286,
+      "avg_latency_ms": 248,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:57.431Z",
-      "last_ok": "2026-06-07T10:47:57.431Z",
+      "last_checked": "2026-06-07T12:30:49.413Z",
+      "last_ok": "2026-06-07T12:30:49.413Z",
       "name": "ogham",
       "netuid": 90,
       "ok_count": 2,
@@ -1292,11 +1291,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 612,
+      "avg_latency_ms": 611,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:58.567Z",
-      "last_ok": "2026-06-07T10:47:58.567Z",
+      "last_checked": "2026-06-07T12:30:50.469Z",
+      "last_ok": "2026-06-07T12:30:50.469Z",
       "name": "Bitstarter #1",
       "netuid": 91,
       "ok_count": 3,
@@ -1306,11 +1305,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 330,
+      "avg_latency_ms": 372,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:57.696Z",
-      "last_ok": "2026-06-07T10:47:57.696Z",
+      "last_checked": "2026-06-07T12:30:49.694Z",
+      "last_ok": "2026-06-07T12:30:49.694Z",
       "name": "luis",
       "netuid": 92,
       "ok_count": 3,
@@ -1320,11 +1319,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 506,
+      "avg_latency_ms": 514,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:58.183Z",
-      "last_ok": "2026-06-07T10:47:58.183Z",
+      "last_checked": "2026-06-07T12:30:50.144Z",
+      "last_ok": "2026-06-07T12:30:50.144Z",
       "name": "Bitcast",
       "netuid": 93,
       "ok_count": 8,
@@ -1334,11 +1333,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 488,
+      "avg_latency_ms": 505,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:58.126Z",
-      "last_ok": "2026-06-07T10:47:58.126Z",
+      "last_checked": "2026-06-07T12:30:50.117Z",
+      "last_ok": "2026-06-07T12:30:50.117Z",
       "name": "Bitsota",
       "netuid": 94,
       "ok_count": 6,
@@ -1348,11 +1347,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 246,
+      "avg_latency_ms": 320,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:58.007Z",
-      "last_ok": "2026-06-07T10:47:58.007Z",
+      "last_checked": "2026-06-07T12:30:49.996Z",
+      "last_ok": "2026-06-07T12:30:49.996Z",
       "name": "Actual",
       "netuid": 95,
       "ok_count": 5,
@@ -1362,11 +1361,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 501,
+      "avg_latency_ms": 528,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:58.937Z",
-      "last_ok": "2026-06-07T10:47:58.937Z",
+      "last_checked": "2026-06-07T12:30:50.925Z",
+      "last_ok": "2026-06-07T12:30:50.925Z",
       "name": "Verathos",
       "netuid": 96,
       "ok_count": 9,
@@ -1376,11 +1375,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 342,
+      "avg_latency_ms": 357,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:58.862Z",
-      "last_ok": "2026-06-07T10:47:58.862Z",
+      "last_checked": "2026-06-07T12:30:50.786Z",
+      "last_ok": "2026-06-07T12:30:50.786Z",
       "name": "Albedo",
       "netuid": 97,
       "ok_count": 10,
@@ -1390,11 +1389,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 289,
+      "avg_latency_ms": 313,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:58.823Z",
-      "last_ok": "2026-06-07T10:47:58.823Z",
+      "last_checked": "2026-06-07T12:30:50.830Z",
+      "last_ok": "2026-06-07T12:30:50.830Z",
       "name": "ForeverMoney",
       "netuid": 98,
       "ok_count": 7,
@@ -1404,11 +1403,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 244,
+      "avg_latency_ms": 248,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:59.279Z",
-      "last_ok": "2026-06-07T10:47:59.279Z",
+      "last_checked": "2026-06-07T12:30:51.237Z",
+      "last_ok": "2026-06-07T12:30:51.237Z",
       "name": "Leoma",
       "netuid": 99,
       "ok_count": 10,
@@ -1418,11 +1417,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 359,
+      "avg_latency_ms": 466,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:59.258Z",
-      "last_ok": "2026-06-07T10:47:59.258Z",
+      "last_checked": "2026-06-07T12:30:51.494Z",
+      "last_ok": "2026-06-07T12:30:51.494Z",
       "name": "Plaτform",
       "netuid": 100,
       "ok_count": 7,
@@ -1432,11 +1431,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 227,
+      "avg_latency_ms": 271,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:59.159Z",
-      "last_ok": "2026-06-07T10:47:59.159Z",
+      "last_checked": "2026-06-07T12:30:51.223Z",
+      "last_ok": "2026-06-07T12:30:51.223Z",
       "name": "eni",
       "netuid": 101,
       "ok_count": 2,
@@ -1446,11 +1445,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 215,
+      "avg_latency_ms": 233,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:59.371Z",
-      "last_ok": "2026-06-07T10:47:59.371Z",
+      "last_checked": "2026-06-07T12:30:51.378Z",
+      "last_ok": "2026-06-07T12:30:51.378Z",
       "name": "ConnitoAI",
       "netuid": 102,
       "ok_count": 7,
@@ -1460,11 +1459,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 308,
+      "avg_latency_ms": 357,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:59.538Z",
-      "last_ok": "2026-06-07T10:47:59.538Z",
+      "last_checked": "2026-06-07T12:30:51.872Z",
+      "last_ok": "2026-06-07T12:30:51.872Z",
       "name": "Djinn",
       "netuid": 103,
       "ok_count": 7,
@@ -1474,11 +1473,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 276,
+      "avg_latency_ms": 239,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:59.547Z",
-      "last_ok": "2026-06-07T10:47:59.547Z",
+      "last_checked": "2026-06-07T12:30:51.533Z",
+      "last_ok": "2026-06-07T12:30:51.533Z",
       "name": "for sale (burn to uid1)",
       "netuid": 104,
       "ok_count": 2,
@@ -1488,11 +1487,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 297,
+      "avg_latency_ms": 293,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:59.591Z",
-      "last_ok": "2026-06-07T10:47:59.591Z",
+      "last_checked": "2026-06-07T12:30:51.699Z",
+      "last_ok": "2026-06-07T12:30:51.699Z",
       "name": "Beam",
       "netuid": 105,
       "ok_count": 6,
@@ -1502,11 +1501,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 460,
+      "avg_latency_ms": 403,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:47:59.974Z",
-      "last_ok": "2026-06-07T10:47:59.974Z",
+      "last_checked": "2026-06-07T12:30:52.045Z",
+      "last_ok": "2026-06-07T12:30:52.045Z",
       "name": "VoidAI",
       "netuid": 106,
       "ok_count": 5,
@@ -1516,11 +1515,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 301,
+      "avg_latency_ms": 321,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:00.101Z",
-      "last_ok": "2026-06-07T10:48:00.101Z",
+      "last_checked": "2026-06-07T12:30:52.378Z",
+      "last_ok": "2026-06-07T12:30:52.378Z",
       "name": "Minos",
       "netuid": 107,
       "ok_count": 11,
@@ -1530,11 +1529,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 382,
+      "avg_latency_ms": 432,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:00.287Z",
-      "last_ok": "2026-06-07T10:48:00.287Z",
+      "last_checked": "2026-06-07T12:30:52.364Z",
+      "last_ok": "2026-06-07T12:30:52.364Z",
       "name": "TalkHead",
       "netuid": 108,
       "ok_count": 4,
@@ -1544,11 +1543,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 312,
+      "avg_latency_ms": 366,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:00.196Z",
-      "last_ok": "2026-06-07T10:48:00.196Z",
+      "last_checked": "2026-06-07T12:30:52.470Z",
+      "last_ok": "2026-06-07T12:30:52.470Z",
       "name": "Academia",
       "netuid": 109,
       "ok_count": 3,
@@ -1558,11 +1557,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 272,
+      "avg_latency_ms": 305,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:00.287Z",
-      "last_ok": "2026-06-07T10:48:00.287Z",
+      "last_checked": "2026-06-07T12:30:52.450Z",
+      "last_ok": "2026-06-07T12:30:52.450Z",
       "name": "Green Compute",
       "netuid": 110,
       "ok_count": 7,
@@ -1572,11 +1571,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 436,
+      "avg_latency_ms": 339,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:00.665Z",
-      "last_ok": "2026-06-07T10:48:00.665Z",
+      "last_checked": "2026-06-07T12:30:52.575Z",
+      "last_ok": "2026-06-07T12:30:52.575Z",
       "name": "oneoneone",
       "netuid": 111,
       "ok_count": 3,
@@ -1586,11 +1585,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 310,
+      "avg_latency_ms": 270,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:00.707Z",
-      "last_ok": "2026-06-07T10:48:00.707Z",
+      "last_checked": "2026-06-07T12:30:52.679Z",
+      "last_ok": "2026-06-07T12:30:52.679Z",
       "name": "minotaur",
       "netuid": 112,
       "ok_count": 5,
@@ -1600,11 +1599,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 295,
+      "avg_latency_ms": 385,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:00.719Z",
-      "last_ok": "2026-06-07T10:48:00.719Z",
+      "last_checked": "2026-06-07T12:30:52.946Z",
+      "last_ok": "2026-06-07T12:30:52.946Z",
       "name": "TensorUSD",
       "netuid": 113,
       "ok_count": 7,
@@ -1614,11 +1613,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 384,
+      "avg_latency_ms": 409,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:00.951Z",
-      "last_ok": "2026-06-07T10:48:00.951Z",
+      "last_checked": "2026-06-07T12:30:53.000Z",
+      "last_ok": "2026-06-07T12:30:53.000Z",
       "name": "SOMA",
       "netuid": 114,
       "ok_count": 7,
@@ -1628,11 +1627,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 366,
+      "avg_latency_ms": 520,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:00.843Z",
-      "last_ok": "2026-06-07T10:48:00.843Z",
+      "last_checked": "2026-06-07T12:30:53.297Z",
+      "last_ok": "2026-06-07T12:30:53.297Z",
       "name": "HashiChain",
       "netuid": 115,
       "ok_count": 3,
@@ -1642,11 +1641,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 290,
+      "avg_latency_ms": 325,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:00.891Z",
-      "last_ok": "2026-06-07T10:48:00.891Z",
+      "last_checked": "2026-06-07T12:30:53.070Z",
+      "last_ok": "2026-06-07T12:30:53.070Z",
       "name": "hard_sign",
       "netuid": 116,
       "ok_count": 2,
@@ -1656,11 +1655,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 469,
+      "avg_latency_ms": 489,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:01.233Z",
-      "last_ok": "2026-06-07T10:48:01.233Z",
+      "last_checked": "2026-06-07T12:30:53.442Z",
+      "last_ok": "2026-06-07T12:30:53.442Z",
       "name": "Subnet 117",
       "netuid": 117,
       "ok_count": 4,
@@ -1670,11 +1669,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 251,
+      "avg_latency_ms": 249,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:01.365Z",
-      "last_ok": "2026-06-07T10:48:01.365Z",
+      "last_checked": "2026-06-07T12:30:53.326Z",
+      "last_ok": "2026-06-07T12:30:53.326Z",
       "name": "Ditto",
       "netuid": 118,
       "ok_count": 8,
@@ -1684,11 +1683,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 247,
+      "avg_latency_ms": 277,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:01.080Z",
-      "last_ok": "2026-06-07T10:48:01.080Z",
+      "last_checked": "2026-06-07T12:30:53.358Z",
+      "last_ok": "2026-06-07T12:30:53.358Z",
       "name": "Satori",
       "netuid": 119,
       "ok_count": 2,
@@ -1698,11 +1697,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 289,
+      "avg_latency_ms": 265,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:01.607Z",
-      "last_ok": "2026-06-07T10:48:01.607Z",
+      "last_checked": "2026-06-07T12:30:53.526Z",
+      "last_ok": "2026-06-07T12:30:53.526Z",
       "name": "Affine",
       "netuid": 120,
       "ok_count": 5,
@@ -1712,11 +1711,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 324,
+      "avg_latency_ms": 485,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:01.359Z",
-      "last_ok": "2026-06-07T10:48:01.359Z",
+      "last_checked": "2026-06-07T12:30:55.881Z",
+      "last_ok": "2026-06-07T12:30:55.881Z",
       "name": "sundae_bar",
       "netuid": 121,
       "ok_count": 4,
@@ -1726,11 +1725,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 478,
+      "avg_latency_ms": 480,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:01.824Z",
-      "last_ok": "2026-06-07T10:48:01.824Z",
+      "last_checked": "2026-06-07T12:30:54.123Z",
+      "last_ok": "2026-06-07T12:30:54.123Z",
       "name": "gamma_small",
       "netuid": 122,
       "ok_count": 3,
@@ -1740,11 +1739,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 382,
+      "avg_latency_ms": 365,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:01.511Z",
-      "last_ok": "2026-06-07T10:48:01.511Z",
+      "last_checked": "2026-06-07T12:30:53.810Z",
+      "last_ok": "2026-06-07T12:30:53.810Z",
       "name": "MANTIS",
       "netuid": 123,
       "ok_count": 3,
@@ -1754,11 +1753,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 689,
+      "avg_latency_ms": 660,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:02.255Z",
-      "last_ok": "2026-06-07T10:48:02.255Z",
+      "last_checked": "2026-06-07T12:30:54.642Z",
+      "last_ok": "2026-06-07T12:30:54.642Z",
       "name": "Swarm",
       "netuid": 124,
       "ok_count": 7,
@@ -1768,11 +1767,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 308,
+      "avg_latency_ms": 296,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:01.759Z",
-      "last_ok": "2026-06-07T10:48:01.759Z",
+      "last_checked": "2026-06-07T12:30:53.955Z",
+      "last_ok": "2026-06-07T12:30:53.955Z",
       "name": "8 Ball",
       "netuid": 125,
       "ok_count": 2,
@@ -1782,11 +1781,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 565,
+      "avg_latency_ms": 412,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:02.654Z",
-      "last_ok": "2026-06-07T10:48:02.654Z",
+      "last_checked": "2026-06-07T12:30:54.312Z",
+      "last_ok": "2026-06-07T12:30:54.312Z",
       "name": "Poker44",
       "netuid": 126,
       "ok_count": 5,
@@ -1796,11 +1795,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 486,
+      "avg_latency_ms": 346,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:02.562Z",
-      "last_ok": "2026-06-07T10:48:02.562Z",
+      "last_checked": "2026-06-07T12:30:54.417Z",
+      "last_ok": "2026-06-07T12:30:54.417Z",
       "name": "Astrid",
       "netuid": 127,
       "ok_count": 5,
@@ -1810,11 +1809,11 @@
       "unknown_count": 0
     },
     {
-      "avg_latency_ms": 496,
+      "avg_latency_ms": 507,
       "degraded_count": 0,
       "failed_count": 0,
-      "last_checked": "2026-06-07T10:48:02.454Z",
-      "last_ok": "2026-06-07T10:48:02.454Z",
+      "last_checked": "2026-06-07T12:30:54.792Z",
+      "last_ok": "2026-06-07T12:30:54.792Z",
       "name": "ByteLeap",
       "netuid": 128,
       "ok_count": 7,
