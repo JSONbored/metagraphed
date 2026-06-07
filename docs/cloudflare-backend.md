@@ -6,7 +6,7 @@ Metagraphed uses Cloudflare as the serving, cache, and artifact-history layer. G
 
 - Workers serve `metagraph.sh/api/v1/*` routes over canonical `/metagraph/*` artifacts.
 - Workers Static Assets serve the checked-in `public/metagraph` artifact tree.
-- R2 stores versioned artifact history under `runs/{generated_at}/` and current copies under `latest/`.
+- R2 stores current artifact copies under `latest/`; versioned artifact history under `runs/{generated_at}/` is opt-in for publish jobs that set `METAGRAPH_R2_UPLOAD_HISTORY=1`.
 - KV stores small latest pointers, feature flags, endpoint-pool summaries, and source-freshness summaries when configured.
 - D1 is not used for canonical registry truth in v1.
 - The read-only RPC proxy/load-balancer prototype exists behind `METAGRAPH_ENABLE_RPC_PROXY=false`; write and unsafe RPC methods remain blocked by default.
@@ -66,6 +66,8 @@ If no KV binding is configured, the Worker falls back to `METAGRAPH_R2_LATEST_PR
 Write operations require explicit environment flags:
 
 - `METAGRAPH_ALLOW_R2_UPLOAD=1 npm run r2:upload`
+- `METAGRAPH_ALLOW_R2_UPLOAD=1 METAGRAPH_R2_UPLOAD_HISTORY=1 npm run r2:upload` also writes the manifest run-prefix copies.
+- `METAGRAPH_ALLOW_R2_UPLOAD=1 METAGRAPH_R2_UPLOAD_LIMIT=5 npm run r2:upload` can be used for a remote permission smoke.
 - `METAGRAPH_ALLOW_R2_DOWNLOAD=1 npm run r2:download`
 - `METAGRAPH_ALLOW_KV_WRITE=1 METAGRAPH_KV_NAMESPACE_ID=... npm run kv:publish`
 

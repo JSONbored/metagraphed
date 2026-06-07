@@ -9,6 +9,8 @@ export default [
       "registry/subnets/generated/**",
       "registry/verification/**",
       "registry/adapters/latest/**",
+      "private/**",
+      "ops/private/**",
       "tmp/**",
     ],
   },

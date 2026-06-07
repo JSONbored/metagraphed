@@ -19,6 +19,18 @@
     "METAGRAPH_ENABLE_RPC_PROXY": "false",
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",
   },
+  "routes": [
+    {
+      "pattern": "metagraph.sh",
+      "custom_domain": true,
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "METAGRAPH_CONTROL",
+      "id": "9c5577a3454d4830b2ffd2f83775efb1",
+    },
+  ],
   "r2_buckets": [
     {
       "binding": "METAGRAPH_ARCHIVE",

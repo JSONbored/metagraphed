@@ -1,6 +1,7 @@
 node_modules
 public/metagraph
 generated
+schemas/api-components.schema.json
 registry/native
 registry/candidates/generated
 registry/subnets/generated

@@ -106,6 +106,7 @@ function putKv(key, value) {
       JSON.stringify(value),
       "--namespace-id",
       process.env.METAGRAPH_KV_NAMESPACE_ID,
+      "--remote",
     ],
     {
       encoding: "utf8",

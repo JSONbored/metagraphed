@@ -42,6 +42,8 @@ npm run worker:deploy:dry-run
 Actual writes require explicit environment gates:
 
 - `METAGRAPH_ALLOW_R2_UPLOAD=1`
+- `METAGRAPH_R2_UPLOAD_HISTORY=1` when the publish job should also write run-prefix history copies.
+- `METAGRAPH_R2_UPLOAD_LIMIT` for smoke-only uploads against a small artifact subset.
 - `METAGRAPH_ALLOW_KV_WRITE=1`
 - `METAGRAPH_KV_NAMESPACE_ID`
 - Cloudflare account/API credentials
@@ -71,5 +73,3 @@ Rollback is pointer-first:
 ## Known Non-Blocking Drift
 
 `sync:subnets:dry-run` can report chain metadata changes, such as subnet names. These should become reviewed sync PRs, not silent direct pushes.
-
-Current known drift from the live dry run: SN92 reports `TensorClaw -> luis` and SN95 reports `nion -> Actual`. The endpoint registry PR intentionally did not refresh native subnet identity data; handle this as a separate reviewed registry-data PR.
