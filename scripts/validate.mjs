@@ -1,14 +1,19 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import {
+  flattenSurfaces,
   loadCandidates,
   loadNativeSnapshot,
   loadProviders,
   loadSubnets,
   isValidUrl,
+  nativeDisplayName,
+  nativeNameQuality,
   readJson,
   registrySurfaceKey,
   repoRoot,
+  slugify,
+  stableStringify,
 } from "./lib.mjs";
 
 const providerKinds = new Set([
@@ -530,6 +535,126 @@ function validateReviewDecision(decision, nativeNetuids) {
   );
 }
 
+function buildGeneratedArtifactGaps(surfaces, overlay) {
+  const kinds = new Set(surfaces.map((surface) => surface.kind));
+  if (overlay?.docs_url) {
+    kinds.add("docs");
+  }
+  if (overlay?.source_repo) {
+    kinds.add("source-repo");
+  }
+  if (overlay?.website_url) {
+    kinds.add("website");
+  }
+  if (overlay?.dashboard_url) {
+    kinds.add("dashboard");
+  }
+  const expectedKinds = [
+    "docs",
+    "source-repo",
+    "website",
+    "dashboard",
+    "openapi",
+    "subnet-api",
+    "sse",
+    "data-artifact",
+  ];
+  return {
+    missing_kinds: expectedKinds.filter((kind) => !kinds.has(kind)),
+    supported_kinds: [...kinds].sort(),
+    gap_notes: overlay?.curation?.gap_notes || [],
+  };
+}
+
+function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
+  const surfaceCount = overlay?.surfaces?.length || 0;
+  const probedSurfaceCount =
+    overlay?.surfaces?.filter((surface) => surface.probe?.enabled).length || 0;
+  const coverageLevel =
+    surfaceCount === 0
+      ? "native-only"
+      : probedSurfaceCount > 0
+        ? "probed"
+        : "manifested";
+  const nativeSubnet = nativeSnapshot.subnet;
+  const slug = overlay?.slug || `sn-${nativeSubnet.netuid}`;
+  const nameQuality = nativeNameQuality(nativeSubnet);
+  const nativeName =
+    typeof nativeSubnet.raw_name === "string"
+      ? nativeSubnet.raw_name
+      : nativeSubnet.name || null;
+  const displayName =
+    overlay?.name ||
+    nativeDisplayName(nativeSubnet, `Subnet ${nativeSubnet.netuid}`);
+  const nativeSlug =
+    nameQuality === "chain" && nativeName
+      ? slugify(nativeName)
+      : nativeSubnet.netuid === 0
+        ? "root"
+        : `sn-${nativeSubnet.netuid}`;
+
+  return {
+    block: nativeSubnet.block,
+    candidate_count: candidateCount,
+    categories:
+      overlay?.categories ||
+      (nativeSubnet.netuid === 0 ? ["root", "system"] : ["native-only"]),
+    coverage_level: coverageLevel,
+    curation_level:
+      overlay?.curation?.level || (overlay ? "candidate-discovered" : "native"),
+    dashboard_url: overlay?.dashboard_url || null,
+    docs_url: overlay?.docs_url || null,
+    gaps: buildGeneratedArtifactGaps(overlay?.surfaces || [], overlay),
+    mechanism_count: nativeSubnet.mechanism_count,
+    name: displayName,
+    native_name: nativeName,
+    native_name_quality: nameQuality,
+    native_slug: nativeSlug,
+    netuid: nativeSubnet.netuid,
+    notes: overlay?.notes || null,
+    participant_count: nativeSubnet.participant_count,
+    probed_surface_count: probedSurfaceCount,
+    provenance: {
+      existence: {
+        authority: "native-chain",
+        captured_at: nativeSnapshot.capturedAt,
+        method: nativeSnapshot.source.method,
+        network: nativeSnapshot.network,
+        source_kind: nativeSnapshot.source.kind,
+      },
+      identity: {
+        display_name_source: overlay?.name
+          ? "curated-overlay"
+          : nameQuality === "chain"
+            ? "native-chain"
+            : "fallback",
+        native_name_quality: nameQuality,
+      },
+      interface_metadata: overlay
+        ? overlay.curation?.level || "curated-overlay"
+        : "none",
+    },
+    registered_at_block: nativeSubnet.registered_at_block,
+    slug,
+    source_repo: overlay?.source_repo || null,
+    status: nativeSubnet.status,
+    subnet_type: nativeSubnet.subnet_type,
+    surface_count: surfaceCount,
+    symbol: nativeSubnet.symbol,
+    tempo: nativeSubnet.tempo,
+    website_url: overlay?.website_url || null,
+    curation: overlay?.curation || {
+      level: overlay ? "candidate-discovered" : "native",
+      review_state: "unreviewed",
+      reviewed_at: null,
+      verified_at: null,
+      source_count: 0,
+      gap_notes: [],
+    },
+    links: overlay?.links || [],
+  };
+}
+
 async function validateGeneratedArtifacts(
   nativeSnapshot,
   overlays,
@@ -629,6 +754,34 @@ async function validateGeneratedArtifacts(
     "generated subnets.json must have count/key parity with native snapshot",
   );
 
+  const overlayByNetuid = new Map(
+    overlays.map((overlay) => [overlay.netuid, overlay]),
+  );
+  const candidatesByNetuid = Map.groupBy(
+    candidates,
+    (candidate) => candidate.netuid,
+  );
+  const activeNetuids = new Set(nativeNetuids);
+  const activeOverlays = overlays.filter((overlay) =>
+    activeNetuids.has(overlay.netuid),
+  );
+  const surfaces = flattenSurfaces(activeOverlays);
+  const expectedSubnetsByNetuid = new Map(
+    nativeSnapshot.subnets.map((nativeSubnet) => [
+      nativeSubnet.netuid,
+      buildExpectedGeneratedSubnet(
+        {
+          capturedAt: nativeSnapshot.captured_at,
+          network: nativeSnapshot.network,
+          source: nativeSnapshot.source,
+          subnet: nativeSubnet,
+        },
+        overlayByNetuid.get(nativeSubnet.netuid),
+        candidatesByNetuid.get(nativeSubnet.netuid)?.length || 0,
+      ),
+    ]),
+  );
+
   for (const subnet of subnetsArtifact.subnets) {
     assert(
       coverageLevels.has(subnet.coverage_level),
@@ -643,12 +796,35 @@ async function validateGeneratedArtifacts(
       `public/metagraph/subnets/${subnet.netuid}.json`,
     );
     try {
-      await fs.access(detailPath);
-    } catch {
-      assert(
-        false,
-        `generated:${subnet.netuid}: missing per-subnet detail artifact`,
+      const detailArtifact = await readJson(detailPath);
+      const subnetCandidates = candidatesByNetuid.get(subnet.netuid) || [];
+      const subnetSurfaces = surfaces.filter(
+        (surface) => surface.netuid === subnet.netuid,
       );
+      const expectedDetailArtifact = {
+        schema_version: 1,
+        generated_at: subnetsArtifact.generated_at,
+        subnet: expectedSubnetsByNetuid.get(subnet.netuid),
+        candidate_surfaces: subnetCandidates,
+        candidates: subnetCandidates,
+        gaps: expectedSubnetsByNetuid.get(subnet.netuid)?.gaps,
+        surfaces: subnetSurfaces,
+        verified_surfaces: subnetSurfaces,
+      };
+      assert(
+        stableStringify(detailArtifact) ===
+          stableStringify(expectedDetailArtifact),
+        `generated:${subnet.netuid}: per-subnet detail artifact is not reproducible from registry inputs`,
+      );
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        assert(
+          false,
+          `generated:${subnet.netuid}: missing per-subnet detail artifact`,
+        );
+        continue;
+      }
+      throw error;
     }
   }
 

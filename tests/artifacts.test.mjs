@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
 
@@ -14,6 +14,29 @@ function runNode(script) {
 
 test("registry validates", () => {
   runNode("scripts/validate.mjs");
+});
+
+test("registry validation rejects tampered per-subnet artifacts", () => {
+  const artifactPath = "public/metagraph/subnets/0.json";
+  const original = readFileSync(artifactPath, "utf8");
+  const tampered = JSON.parse(original);
+  tampered.phishing_url = "https://example.invalid/phish";
+
+  let failure;
+  try {
+    writeFileSync(artifactPath, `${JSON.stringify(tampered, null, 2)}\n`);
+    runNode("scripts/validate.mjs");
+  } catch (error) {
+    failure = error;
+  } finally {
+    writeFileSync(artifactPath, original);
+  }
+
+  assert(failure, "expected validation to reject tampered subnet artifact");
+  assert.match(
+    `${failure.stdout || ""}\n${failure.stderr || ""}`,
+    /per-subnet detail artifact is not reproducible from registry inputs/,
+  );
 });
 
 test("public artifacts are internally consistent", () => {
