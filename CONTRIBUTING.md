@@ -122,8 +122,8 @@ Live PR references:
   https://github.com/JSONbored/metagraphed/pull/87
 - Manual-review direct candidate example:
   https://github.com/JSONbored/metagraphed/pull/84
-- Closed duplicate/invalid examples will be added after the first public
-  rejection example is intentionally run through the current gate.
+- Closed duplicate candidate example:
+  https://github.com/JSONbored/metagraphed/pull/90
 
 Do not include generated `public/metagraph/**` artifacts, native snapshots,
 workflow/script changes, secrets, wallet/PAT material, private URLs, or

@@ -219,8 +219,8 @@ Reference PRs:
   https://github.com/JSONbored/metagraphed/pull/87
 - Manual-review direct candidate example:
   https://github.com/JSONbored/metagraphed/pull/84
-- Closed duplicate/invalid examples should be linked here after the first public
-  rejection example is intentionally run through the current gate.
+- Closed duplicate candidate example:
+  https://github.com/JSONbored/metagraphed/pull/90
 
 The Worker stores a `last_notification_key` in D1. The key must include the
 target, PR head SHA or issue revision, terminal status, and verdict. Repeated
