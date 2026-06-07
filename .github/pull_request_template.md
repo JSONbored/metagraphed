@@ -12,6 +12,7 @@
 - [ ] Generated artifacts came from repo scripts, not hand-edited public JSON.
 - [ ] Direct community submissions change exactly one `registry/candidates/community/*.json` file and no generated artifacts.
 - [ ] Community-submitted interfaces pass public preflight before private gate review.
+- [ ] Direct community submission files were generated with `npm run candidate:new` or match `docs/examples/submissions/direct-candidate.json`.
 
 ## Validation
 

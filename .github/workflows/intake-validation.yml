@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   validate:
-    if: contains(github.event.issue.labels.*.name, 'interface-submission')
+    if: contains(github.event.issue.labels.*.name, 'interface-submission') || contains(github.event.issue.labels.*.name, 'endpoint-submission') || contains(github.event.issue.labels.*.name, 'provider-submission') || contains(github.event.issue.labels.*.name, 'status-report')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,18 +47,9 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const report = JSON.parse(fs.readFileSync('intake-report.json', 'utf8'));
-            const body = [
-              '## Metagraphed intake dry-run',
-              '',
-              `State: \`${report.state}\``,
-              `Next action: \`${report.next_action}\``,
-              `Publish allowed: \`${report.publish_allowed}\``,
-              '',
-              report.errors.length > 0
-                ? `Errors:\n${report.errors.map((error) => `- ${error}`).join('\n')}`
-                : 'Candidate parsed successfully. Private gate review is still required before promotion.'
-            ].join('\n');
+            const { execFileSync } = require('child_process');
+            execFileSync('npm', ['run', 'submission:comment', '--', '--report', 'intake-report.json', '--out', 'intake-comment.md'], { stdio: 'inherit' });
+            const body = fs.readFileSync('intake-comment.md', 'utf8');
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

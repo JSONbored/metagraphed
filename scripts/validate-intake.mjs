@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { repoRoot } from "./lib.mjs";
+import { readJson, repoRoot } from "./lib.mjs";
 
 const templateRoot = path.join(repoRoot, ".github/ISSUE_TEMPLATE");
 const interfaceTemplate = await fs.readFile(
@@ -26,6 +26,15 @@ const pullRequestTemplate = await fs.readFile(
 const submissionGateDocs = await fs.readFile(
   path.join(repoRoot, "docs/submission-gate.md"),
   "utf8",
+);
+const candidateExample = await readJson(
+  path.join(repoRoot, "docs/examples/submissions/direct-candidate.json"),
+);
+const providerExample = await readJson(
+  path.join(repoRoot, "docs/examples/submissions/provider-profile.json"),
+);
+const statusReportExample = await readJson(
+  path.join(repoRoot, "docs/examples/submissions/status-report.json"),
 );
 const errors = [];
 
@@ -130,6 +139,10 @@ checkIncludes(submissionGateDocs, "submission gate docs", [
   "route_away",
 ]);
 
+checkExampleCandidate(candidateExample);
+checkExampleProvider(providerExample);
+checkExampleStatusReport(statusReportExample);
+
 if (errors.length > 0) {
   console.error(`Intake validation failed with ${errors.length} issue(s):`);
   for (const error of errors) {
@@ -144,6 +157,57 @@ function checkIncludes(content, label, needles) {
   for (const needle of needles) {
     if (!content.includes(needle)) {
       errors.push(`${label}: missing ${needle}`);
+    }
+  }
+}
+
+function checkExampleCandidate(document) {
+  const candidate = document?.candidates?.[0];
+  if (document?.schema_version !== 1 || !candidate) {
+    errors.push(
+      "direct candidate example: missing schema_version or candidate",
+    );
+    return;
+  }
+  for (const field of [
+    "id",
+    "netuid",
+    "kind",
+    "url",
+    "source_url",
+    "provider",
+    "public_safe",
+  ]) {
+    if (candidate[field] === undefined || candidate[field] === "") {
+      errors.push(`direct candidate example: missing ${field}`);
+    }
+  }
+}
+
+function checkExampleProvider(provider) {
+  for (const field of [
+    "schema_version",
+    "id",
+    "name",
+    "kind",
+    "website_url",
+    "authority",
+  ]) {
+    if (provider?.[field] === undefined || provider?.[field] === "") {
+      errors.push(`provider example: missing ${field}`);
+    }
+  }
+}
+
+function checkExampleStatusReport(report) {
+  if (report?.affects_observed_health !== false) {
+    errors.push(
+      "status report example: affects_observed_health must remain false",
+    );
+  }
+  for (const field of ["schema_version", "netuid", "surface", "issue_type"]) {
+    if (report?.[field] === undefined || report?.[field] === "") {
+      errors.push(`status report example: missing ${field}`);
     }
   }
 }

@@ -39,6 +39,8 @@ import {
 import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs";
 import {
   buildIssueIntakeReport,
+  buildEndpointStatusReportIntakeReport,
+  buildProviderProfileIntakeReport,
   classifyPrScope,
   extractSingleCandidate,
   issueLabels,
@@ -455,6 +457,36 @@ describe("submission policy helpers", () => {
       "jsonbored",
     );
     assert.deepEqual(normalizeChangedFiles("b\n./a\n"), ["a", "b"]);
+  });
+
+  test("builds provider and status-report intake reports", () => {
+    const providerReport = buildProviderProfileIntakeReport({
+      fields: {
+        "provider slug": "example-operator",
+        "provider name": "Example Operator",
+        "provider kind": "infrastructure-provider",
+        "website url": "https://example.com",
+        "docs url": "https://docs.example.com",
+      },
+      providers,
+    });
+    assert.equal(providerReport.state, "schema-valid");
+    assert.equal(providerReport.public_state, "manual_review");
+    assert.equal(providerReport.provider.id, "example-operator");
+    assert.equal(providerReport.provider.authority, "community");
+
+    const statusReport = buildEndpointStatusReportIntakeReport({
+      fields: {
+        netuid: "7",
+        "surface id or url": "allways-api-health",
+        "issue type": "degraded",
+        evidence: "Public endpoint returned HTTP 503 during a read-only check.",
+      },
+      native,
+    });
+    assert.equal(statusReport.state, "schema-valid");
+    assert.equal(statusReport.report.affects_observed_health, false);
+    assert.equal(statusReport.next_action, "manual-review");
   });
 
   test("flags invalid candidate documents and unsafe submission text", () => {

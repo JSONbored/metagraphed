@@ -48,6 +48,17 @@ two supported paths:
   document and no other files.
 - Issue-first: submit an `interface-submission` issue and let the import
   workflow create the candidate PR after approval.
+- Endpoint/provider/status issues: submit endpoint resources, provider profiles,
+  or status reports through the matching issue template. These create review or
+  re-probe work; they do not directly change observed health.
+
+You can generate a direct candidate PR file locally:
+
+```bash
+npm run candidate:new -- --netuid 7 --kind docs --url https://docs.all-ways.io/community-submission-example --source-url https://docs.all-ways.io/how-it-works.html --provider allways --submitted-by <github-login> --write
+```
+
+Example payloads live under `docs/examples/submissions`.
 
 Do not include generated `public/metagraph/**` artifacts, native snapshots,
 workflow/script changes, secrets, wallet/PAT material, private URLs, or
@@ -69,6 +80,10 @@ private reviewer may merge/import clean submissions, close hard failures, or
 route rare edge cases to manual review. Public comments expose broad reason
 categories only; private scoring prompts, thresholds, and corpus weights are not
 part of the public repo.
+
+Status reports never set uptime, latency, health status, incident state, or pool
+eligibility. They can only trigger review or a future re-probe; operational state
+comes from Metagraphed probes and adapters.
 
 The issue import flow is:
 

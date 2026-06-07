@@ -14,8 +14,29 @@ export const SUBMISSION_LABELS = {
   mergedByGate: "metagraphed-merged-by-gate",
   importApproved: "metagraphed-import-approved",
   interfaceSubmission: "interface-submission",
+  endpointSubmission: "endpoint-submission",
+  providerSubmission: "provider-submission",
   statusReport: "status-report",
 };
+
+const PROVIDER_KINDS = new Set([
+  "infrastructure-provider",
+  "subnet-team",
+  "data-provider",
+  "docs-provider",
+  "registry",
+]);
+
+const STATUS_REPORT_TYPES = new Set([
+  "down",
+  "degraded",
+  "stale",
+  "wrong-auth-label",
+  "wrong-rate-limit-label",
+  "unsafe-or-private",
+  "wrong-subnet",
+  "other",
+]);
 
 export const PUBLIC_PREFLIGHT_STATES = new Set([
   "submit_pr",
@@ -70,6 +91,26 @@ export function buildIssueIntakeReport({
   const fields = parseIssueFields(issue?.body || "");
   const fieldErrors = issueFieldParseErrors(fields);
   const labels = issueLabels(issue);
+  if (labels.includes(SUBMISSION_LABELS.providerSubmission)) {
+    return buildProviderProfileIntakeReport({
+      fields,
+      fieldErrors,
+      generatedAt,
+      issue,
+      labels,
+      providers,
+    });
+  }
+  if (labels.includes(SUBMISSION_LABELS.statusReport)) {
+    return buildEndpointStatusReportIntakeReport({
+      fields,
+      fieldErrors,
+      generatedAt,
+      issue,
+      labels,
+      native,
+    });
+  }
   const providerIds = new Set(providers.map((provider) => provider.id));
   const importApproved = labels.includes(SUBMISSION_LABELS.importApproved);
   const errors = [...fieldErrors];
@@ -212,6 +253,178 @@ export function buildIssueIntakeReport({
           ? "manual-review"
           : "private-review",
   };
+}
+
+export function buildProviderProfileIntakeReport({
+  fields,
+  fieldErrors = [],
+  generatedAt = new Date().toISOString(),
+  issue = null,
+  labels = [],
+  providers = [],
+}) {
+  const errors = [...fieldErrors];
+  const manual_reasons = ["provider profile submissions require review"];
+  const id = slugify(fields["provider slug"] || fields.provider_slug || "");
+  const name = String(
+    fields["provider name"] || fields.provider_name || "",
+  ).trim();
+  const kind = String(
+    fields["provider kind"] || fields.provider_kind || "",
+  ).trim();
+  const websiteUrl = normalizePublicUrl(
+    fields["website url"] || fields.website_url,
+  );
+  const docsUrl = normalizePublicUrl(fields["docs url"] || fields.docs_url);
+  const githubUrl = normalizePublicUrl(
+    fields["github org or repo url"] || fields.github_url,
+  );
+  const contactUrl = normalizePublicUrl(
+    fields["public contact url"] || fields.contact_url,
+  );
+  const providerExists = providers.some((provider) => provider.id === id);
+
+  if (!id)
+    errors.push("provider slug is required and must be a lowercase slug");
+  if (!name) errors.push("provider name is required");
+  if (!PROVIDER_KINDS.has(kind)) errors.push("provider kind is unsupported");
+  if (!websiteUrl) errors.push("website URL is missing, invalid, or unsafe");
+  if ((fields["docs url"] || fields.docs_url) && !docsUrl) {
+    errors.push("docs URL is invalid or unsafe");
+  }
+  if ((fields["github org or repo url"] || fields.github_url) && !githubUrl) {
+    errors.push("GitHub URL is invalid or unsafe");
+  }
+  if ((fields["public contact url"] || fields.contact_url) && !contactUrl) {
+    errors.push("public contact URL is invalid or unsafe");
+  }
+  errors.push(
+    ...unsafeTextReasons(
+      [
+        fields["public notes"],
+        fields.public_notes,
+        fields["website url"],
+        fields["docs url"],
+        fields["github org or repo url"],
+        fields["public contact url"],
+      ].join("\n"),
+    ).map((error) => error.message),
+  );
+
+  const schemaValid = errors.length === 0;
+  return {
+    schema_version: 1,
+    generated_at: generatedAt,
+    source: "github-provider-intake",
+    issue: issueSummary(issue),
+    state: schemaValid ? "schema-valid" : "schema-invalid",
+    public_state: schemaValid ? "manual_review" : "fix_required",
+    labels,
+    errors,
+    manual_reasons,
+    provider: schemaValid
+      ? {
+          schema_version: 1,
+          id,
+          name,
+          kind,
+          website_url: websiteUrl,
+          ...(docsUrl ? { docs_url: docsUrl } : {}),
+          ...(githubUrl ? { github_url: githubUrl } : {}),
+          ...(contactUrl ? { contact_url: contactUrl } : {}),
+          authority: providerExists ? "provider-claimed" : "community",
+          public_notes: fields["public notes"] || fields.public_notes || "",
+        }
+      : null,
+    publish_allowed: false,
+    import_allowed: false,
+    review_marker: SUBMISSION_REVIEW_MARKER,
+    next_action: schemaValid ? "manual-review" : "resubmission-needed",
+  };
+}
+
+export function buildEndpointStatusReportIntakeReport({
+  fields,
+  fieldErrors = [],
+  generatedAt = new Date().toISOString(),
+  issue = null,
+  labels = [],
+  native,
+}) {
+  const errors = [...fieldErrors];
+  const manual_reasons = [
+    "status reports trigger review or re-probes and cannot set observed health",
+  ];
+  const netuid = Number(fields.netuid);
+  const activeNetuid = native.subnets.some(
+    (subnet) => subnet.netuid === netuid,
+  );
+  const surface = String(
+    fields["surface id or url"] || fields.surface_id || "",
+  ).trim();
+  const issueType = String(
+    fields["issue type"] || fields.issue_type || "",
+  ).trim();
+  const evidence = String(fields.evidence || "").trim();
+
+  if (!Number.isInteger(netuid) || !activeNetuid) {
+    errors.push("netuid must be an active Finney netuid");
+  }
+  if (!surface) {
+    errors.push("surface ID or URL is required");
+  } else if (surface.includes("://") && !normalizePublicUrl(surface)) {
+    errors.push("surface URL is invalid or unsafe");
+  }
+  if (!STATUS_REPORT_TYPES.has(issueType)) {
+    errors.push("issue type is unsupported");
+  }
+  if (!evidence) {
+    errors.push("public evidence is required");
+  }
+  errors.push(
+    ...unsafeTextReasons([surface, evidence].join("\n")).map(
+      (error) => error.message,
+    ),
+  );
+
+  const schemaValid = errors.length === 0;
+  return {
+    schema_version: 1,
+    generated_at: generatedAt,
+    source: "github-status-report-intake",
+    issue: issueSummary(issue),
+    state: schemaValid ? "schema-valid" : "schema-invalid",
+    public_state: schemaValid ? "manual_review" : "fix_required",
+    labels,
+    errors,
+    manual_reasons,
+    report: schemaValid
+      ? {
+          schema_version: 1,
+          netuid,
+          surface,
+          issue_type: issueType,
+          evidence,
+          source: "community-status-report",
+          affects_observed_health: false,
+          next_action: "review-or-reprobe",
+        }
+      : null,
+    publish_allowed: false,
+    import_allowed: false,
+    review_marker: SUBMISSION_REVIEW_MARKER,
+    next_action: schemaValid ? "manual-review" : "resubmission-needed",
+  };
+}
+
+function issueSummary(issue) {
+  return issue
+    ? {
+        number: issue.number || null,
+        title: issue.title || null,
+        author: issue.user?.login || null,
+      }
+    : null;
 }
 
 export function buildPrSubmissionReport({

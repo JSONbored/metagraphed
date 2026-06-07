@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "netuid": 7,
+  "surface": "allways-api-health",
+  "issue_type": "degraded",
+  "evidence": "Public endpoint returned HTTP 503 during a read-only check.",
+  "source": "community-status-report",
+  "affects_observed_health": false,
+  "next_action": "review-or-reprobe"
+}

@@ -48,4 +48,6 @@ jobs:
         run: npm run submission:pr -- --changed-files changed-files.txt --out submission-report.json
 
       - name: Show public preflight report
-        run: node -e "const fs=require('fs'); const report=JSON.parse(fs.readFileSync('submission-report.json','utf8')); console.log(JSON.stringify({public_state:report.public_state,next_action:report.next_action,blocking:report.blocking,error_categories:report.error_categories,manual_reasons:report.manual_reasons},null,2));"
+        run: |
+          npm run submission:comment -- --report submission-report.json --out submission-comment.md
+          cat submission-comment.md >> "$GITHUB_STEP_SUMMARY"

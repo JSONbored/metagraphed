@@ -281,6 +281,217 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(report.next_action, "open-import-pr");
   });
 
+  test("routes provider profile issue submissions to manual review", () => {
+    const body = [
+      "### Provider slug",
+      "allways",
+      "### Provider name",
+      "Allways",
+      "### Provider kind",
+      "subnet-team",
+      "### Website URL",
+      "https://all-ways.io",
+      "### Docs URL",
+      "https://docs.all-ways.io/how-it-works.html",
+      "### GitHub org or repo URL",
+      "https://github.com/Ent-Rho/allways-subnet",
+      "### Public contact URL",
+      "https://docs.all-ways.io/how-it-works.html",
+      "### Public notes",
+      "Public subnet team profile update.",
+    ].join("\n\n");
+    const report = buildIssueIntakeReport({
+      issue: {
+        number: 50,
+        title: "provider: allways",
+        user: { login: "jsonbored" },
+        labels: [{ name: SUBMISSION_LABELS.providerSubmission }],
+        body,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+
+    assert.equal(report.source, "github-provider-intake");
+    assert.equal(report.state, "schema-valid");
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(report.provider.id, "allways");
+    assert.equal(report.provider.authority, "provider-claimed");
+    assert.equal(
+      report.provider.docs_url,
+      "https://docs.all-ways.io/how-it-works.html",
+    );
+    assert.equal(
+      report.provider.github_url,
+      "https://github.com/Ent-Rho/allways-subnet",
+    );
+    assert.equal(report.next_action, "manual-review");
+  });
+
+  test("rejects malformed provider profile issue submissions", () => {
+    const body = [
+      "### Provider slug",
+      "",
+      "### Provider name",
+      "",
+      "### Provider kind",
+      "paid-promo",
+      "### Website URL",
+      "http://127.0.0.1",
+      "### Docs URL",
+      "http://10.0.0.5/docs",
+      "### GitHub org or repo URL",
+      "not a url",
+      "### Public contact URL",
+      "http://169.254.169.254/latest/meta-data/",
+      "### Public notes",
+      "github_pat_abcdefghijklmnopqrstuvwxyz123456 should fail",
+    ].join("\n\n");
+    const report = buildIssueIntakeReport({
+      issue: {
+        number: 51,
+        title: "provider: unsafe",
+        user: { login: "jsonbored" },
+        labels: [{ name: SUBMISSION_LABELS.providerSubmission }],
+        body,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+
+    assert.equal(report.source, "github-provider-intake");
+    assert.equal(report.state, "schema-invalid");
+    assert.equal(report.public_state, "fix_required");
+    assert.equal(report.provider, null);
+    assert.equal(report.errors.includes("provider kind is unsupported"), true);
+    assert.equal(
+      report.errors.includes("website URL is missing, invalid, or unsafe"),
+      true,
+    );
+    assert.equal(report.errors.includes("docs URL is invalid or unsafe"), true);
+    assert.equal(
+      report.errors.includes("GitHub URL is invalid or unsafe"),
+      true,
+    );
+    assert.equal(
+      report.errors.includes("public contact URL is invalid or unsafe"),
+      true,
+    );
+    assert.equal(
+      report.errors.includes(
+        "submission appears to include wallet, PAT, token, or private credential material",
+      ),
+      true,
+    );
+  });
+
+  test("routes endpoint status reports without mutating observed health", () => {
+    const body = [
+      "### Netuid",
+      "7",
+      "### Surface ID or URL",
+      "https://api.all-ways.io/health",
+      "### Issue type",
+      "stale",
+      "### Evidence",
+      "Public health response looked stale during a read-only check.",
+    ].join("\n\n");
+    const report = buildIssueIntakeReport({
+      issue: {
+        number: 52,
+        title: "status: allways api stale",
+        user: { login: "jsonbored" },
+        labels: [{ name: SUBMISSION_LABELS.statusReport }],
+        body,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+
+    assert.equal(report.source, "github-status-report-intake");
+    assert.equal(report.state, "schema-valid");
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(report.report.affects_observed_health, false);
+    assert.equal(report.report.next_action, "review-or-reprobe");
+  });
+
+  test("rejects malformed endpoint status reports", () => {
+    const body = [
+      "### Netuid",
+      "999",
+      "### Surface ID or URL",
+      "http://127.0.0.1:9944",
+      "### Issue type",
+      "please-rank-this",
+      "### Evidence",
+      "",
+    ].join("\n\n");
+    const report = buildIssueIntakeReport({
+      issue: {
+        number: 53,
+        title: "status: unsafe",
+        user: { login: "jsonbored" },
+        labels: [{ name: SUBMISSION_LABELS.statusReport }],
+        body,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+
+    assert.equal(report.source, "github-status-report-intake");
+    assert.equal(report.state, "schema-invalid");
+    assert.equal(report.public_state, "fix_required");
+    assert.equal(report.report, null);
+    assert.equal(
+      report.errors.includes("netuid must be an active Finney netuid"),
+      true,
+    );
+    assert.equal(
+      report.errors.includes("surface URL is invalid or unsafe"),
+      true,
+    );
+    assert.equal(report.errors.includes("issue type is unsupported"), true);
+    assert.equal(report.errors.includes("public evidence is required"), true);
+  });
+
+  test("rejects blank status surfaces and credential-like evidence", () => {
+    const body = [
+      "### Netuid",
+      "7",
+      "### Surface ID or URL",
+      "",
+      "### Issue type",
+      "down",
+      "### Evidence",
+      "github_pat_abcdefghijklmnopqrstuvwxyz123456 token should not pass.",
+    ].join("\n\n");
+    const report = buildIssueIntakeReport({
+      issue: {
+        number: 54,
+        title: "status: secret",
+        user: { login: "jsonbored" },
+        labels: [{ name: SUBMISSION_LABELS.statusReport }],
+        body,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+
+    assert.equal(report.state, "schema-invalid");
+    assert.equal(report.errors.includes("surface ID or URL is required"), true);
+    assert.equal(
+      report.errors.includes(
+        "submission appears to include wallet, PAT, token, or private credential material",
+      ),
+      true,
+    );
+  });
+
   test("notifies only terminal UGC decisions", () => {
     assert.equal(
       shouldNotifySubmissionDecision({

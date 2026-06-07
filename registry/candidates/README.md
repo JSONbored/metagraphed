@@ -13,6 +13,15 @@ Candidate entries are not published as verified registry surfaces. They must sta
 Generated public-source candidates live in `generated/public-sources.json`.
 Community-submitted direct PR candidates live in `community/*.json`.
 
+Use the helper to generate the direct PR file shape:
+
+```bash
+npm run candidate:new -- --netuid 7 --kind docs --url https://docs.all-ways.io/community-submission-example --source-url https://docs.all-ways.io/how-it-works.html --provider allways --submitted-by <github-login> --write
+```
+
+Schema-backed examples live under `docs/examples/submissions` so they do not get
+ingested as registry data.
+
 Direct PR submissions must:
 
 - change exactly one `registry/candidates/community/*.json` file;
