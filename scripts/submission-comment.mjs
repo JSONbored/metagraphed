@@ -12,13 +12,15 @@ export function buildSubmissionMarkdown(report) {
   const lines = [
     "## Metagraphed Submission Preflight",
     "",
-    `State: \`${report.public_state || report.state || "unknown"}\``,
-    `Next action: \`${report.next_action || "unknown"}\``,
-    `Blocking: \`${Boolean(report.blocking)}\``,
+    `State: ${formatMarkdownValue(report.public_state || report.state || "unknown")}`,
+    `Next action: ${formatMarkdownValue(report.next_action || "unknown")}`,
+    `Blocking: ${formatMarkdownValue(Boolean(report.blocking))}`,
   ];
 
   if (report.direct_candidate_file) {
-    lines.push(`Candidate file: \`${report.direct_candidate_file}\``);
+    lines.push(
+      `Candidate file: ${formatMarkdownValue(report.direct_candidate_file)}`,
+    );
   }
 
   lines.push("");
@@ -29,24 +31,28 @@ export function buildSubmissionMarkdown(report) {
   const candidate = report.candidate || report.candidates?.[0] || null;
   if (candidate) {
     lines.push("Candidate:", "");
-    lines.push(`- netuid: \`${candidate.netuid}\``);
-    lines.push(`- kind: \`${candidate.kind}\``);
-    lines.push(`- provider: \`${candidate.provider}\``);
-    lines.push(`- url: ${candidate.url}`);
-    lines.push(`- source: ${candidate.source_url}`);
+    lines.push(`- netuid: ${formatMarkdownValue(candidate.netuid)}`);
+    lines.push(`- kind: ${formatMarkdownValue(candidate.kind)}`);
+    lines.push(`- provider: ${formatMarkdownValue(candidate.provider)}`);
+    lines.push(`- url: ${formatMarkdownValue(candidate.url)}`);
+    lines.push(`- source: ${formatMarkdownValue(candidate.source_url)}`);
   }
 
   if (report.provider) {
     lines.push("Provider:", "");
-    lines.push(`- id: \`${report.provider.id}\``);
-    lines.push(`- kind: \`${report.provider.kind}\``);
-    lines.push(`- website: ${report.provider.website_url}`);
+    lines.push(`- id: ${formatMarkdownValue(report.provider.id)}`);
+    lines.push(`- kind: ${formatMarkdownValue(report.provider.kind)}`);
+    lines.push(
+      `- website: ${formatMarkdownValue(report.provider.website_url)}`,
+    );
   }
 
   if (report.report) {
     lines.push("Status report:", "");
-    lines.push(`- netuid: \`${report.report.netuid}\``);
-    lines.push(`- issue_type: \`${report.report.issue_type}\``);
+    lines.push(`- netuid: ${formatMarkdownValue(report.report.netuid)}`);
+    lines.push(
+      `- issue_type: ${formatMarkdownValue(report.report.issue_type)}`,
+    );
     lines.push("- observed health remains probe-derived");
   }
 
@@ -84,9 +90,33 @@ function appendList(lines, title, values = []) {
   lines.push(`${title}:`);
   lines.push("");
   for (const value of values) {
-    lines.push(`- ${String(value)}`);
+    lines.push(`- ${formatMarkdownValue(value)}`);
   }
   lines.push("");
+}
+
+function formatMarkdownValue(value) {
+  const markdownCharacters = new Set("\\&<>{}[]()#*_`|.!+-");
+  let safeValue = "";
+
+  for (const char of String(value)) {
+    const codePoint = char.codePointAt(0);
+    if (char === "\r") {
+      safeValue += "\\r";
+    } else if (char === "\n") {
+      safeValue += "\\n";
+    } else if (char === "\t") {
+      safeValue += "\\t";
+    } else if (codePoint < 0x20 || codePoint === 0x7f) {
+      safeValue += `\\u${codePoint.toString(16).padStart(4, "0")}`;
+    } else if (markdownCharacters.has(char)) {
+      safeValue += `\\${char}`;
+    } else {
+      safeValue += char;
+    }
+  }
+
+  return safeValue;
 }
 
 function valueAfter(args, flag) {
