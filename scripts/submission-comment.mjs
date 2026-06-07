@@ -72,6 +72,51 @@ export function buildSubmissionMarkdown(report) {
   return lines.join("\n");
 }
 
+export async function findSubmissionComment(
+  github,
+  {
+    owner,
+    repo,
+    issueNumber,
+    marker = SUBMISSION_REVIEW_MARKER,
+    botLogin = "github-actions[bot]",
+    maxPages = 2,
+    perPage = 100,
+  },
+) {
+  const pagesToScan = Math.max(1, maxPages);
+  const commentsPerPage = Math.min(100, Math.max(1, perPage));
+  let pagesScanned = 0;
+
+  for await (const page of github.paginate.iterator(
+    github.rest.issues.listComments,
+    {
+      owner,
+      repo,
+      issue_number: issueNumber,
+      per_page: commentsPerPage,
+    },
+  )) {
+    pagesScanned += 1;
+    const existing = page.data.find(
+      (comment) =>
+        comment.user?.type === "Bot" &&
+        comment.user?.login === botLogin &&
+        comment.body?.includes(marker),
+    );
+
+    if (existing) {
+      return existing;
+    }
+
+    if (pagesScanned >= pagesToScan) {
+      break;
+    }
+  }
+
+  return null;
+}
+
 async function main(args) {
   const reportPath = valueAfter(args, "--report");
   const outPath = valueAfter(args, "--out");
