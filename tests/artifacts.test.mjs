@@ -403,6 +403,25 @@ test("public artifacts are internally consistent", () => {
     native.captured_at,
   );
   assert.equal(freshness.summary.native_data_as_of, native.captured_at);
+  const candidateDiscovery = JSON.parse(
+    readFileSync("registry/candidates/generated/public-sources.json", "utf8"),
+  );
+  const candidateDiscoveryAsOf =
+    candidateDiscovery.generated_at === "1970-01-01T00:00:00.000Z"
+      ? null
+      : candidateDiscovery.generated_at;
+  const candidateDiscoverySource = freshness.sources.find(
+    (source) => source.id === "candidate-discovery",
+  );
+  assert.equal(
+    freshness.summary.candidate_discovery_as_of,
+    candidateDiscoveryAsOf,
+  );
+  assert.equal(candidateDiscoverySource.as_of, candidateDiscoveryAsOf);
+  assert.equal(
+    candidateDiscoverySource.status,
+    candidateDiscoveryAsOf ? "captured" : "missing",
+  );
   assert.equal(
     freshness.summary.blocking_source_count,
     freshness.sources.filter((source) => source.stale_behavior === "block")

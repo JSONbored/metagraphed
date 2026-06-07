@@ -7,7 +7,7 @@
   },
   "artifact_budgets": [],
   "artifact_count": 29,
-  "artifact_size_bytes": 4999655,
+  "artifact_size_bytes": 4999689,
   "artifacts": [
     {
       "path": "api-index.json",
@@ -65,8 +65,8 @@
     },
     {
       "path": "freshness.json",
-      "sha256": "7c15331678e90ae61a9883a1016223c7b37dba5f457f8abaed1b756e27cc0fc2",
-      "size_bytes": 4366,
+      "sha256": "7a1e9809021e514c17e1e795dae4a95da8d5467464a090c7acddaf5c5a5375af",
+      "size_bytes": 4400,
       "storage_tier": "dual"
     },
     {
@@ -223,7 +223,7 @@
   },
   "endpoint_count": 853,
   "full_artifact_count": 1097,
-  "full_artifact_size_bytes": 38510137,
+  "full_artifact_size_bytes": 38510171,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profile_count": 129,
   "provider_count": 14,
@@ -238,7 +238,7 @@
     "r2": 1068
   },
   "storage_tier_size_bytes": {
-    "dual": 4815953,
+    "dual": 4815987,
     "git": 183702,
     "r2": 33510482
   },

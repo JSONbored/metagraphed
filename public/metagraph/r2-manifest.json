@@ -1,6 +1,6 @@
 {
   "artifact_count": 30,
-  "artifact_size_bytes": 5173915,
+  "artifact_size_bytes": 5173949,
   "artifacts": [
     {
       "content_type": "application/json",
@@ -88,8 +88,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/freshness.json",
       "latest_key": "latest/freshness.json",
       "path": "/metagraph/freshness.json",
-      "sha256": "7c15331678e90ae61a9883a1016223c7b37dba5f457f8abaed1b756e27cc0fc2",
-      "size_bytes": 4366,
+      "sha256": "7a1e9809021e514c17e1e795dae4a95da8d5467464a090c7acddaf5c5a5375af",
+      "size_bytes": 4400,
       "storage_tier": "dual"
     },
     {
@@ -277,7 +277,7 @@
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
   "full_artifact_count": 1098,
-  "full_artifact_size_bytes": 38684397,
+  "full_artifact_size_bytes": 38684431,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/1970-01-01T00-00-00-000Z/r2-manifest.json",
   "generated_at": "1970-01-01T00:00:00.000Z",
@@ -299,7 +299,7 @@
     "r2": 1068
   },
   "storage_tier_size_bytes": {
-    "dual": 4990213,
+    "dual": 4990247,
     "git": 183702,
     "r2": 33510482
   }
