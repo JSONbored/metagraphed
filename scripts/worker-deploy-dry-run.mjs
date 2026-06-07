@@ -4,8 +4,10 @@ import { repoRoot } from "./lib.mjs";
 
 const configPath = path.join(repoRoot, "wrangler.jsonc");
 const workerPath = path.join(repoRoot, "workers/api.mjs");
+const assetsIgnorePath = path.join(repoRoot, "public/.assetsignore");
 const rawConfig = await fs.readFile(configPath, "utf8");
 const config = JSON.parse(stripJsonComments(rawConfig));
+const assetsIgnore = await fs.readFile(assetsIgnorePath, "utf8");
 const errors = [];
 
 check(config.name === "metagraphed", "wrangler name must be metagraphed");
@@ -36,6 +38,10 @@ check(
   Array.isArray(config.assets?.run_worker_first) &&
     config.assets.run_worker_first.includes("/rpc/*"),
   "RPC proxy routes must run Worker first",
+);
+check(
+  assetsIgnore.includes(".DS_Store") && assetsIgnore.includes("Thumbs.db"),
+  "public/.assetsignore must block OS metadata uploads",
 );
 check(
   config.vars?.METAGRAPH_ENABLE_RPC_PROXY === "false",

@@ -3,8 +3,10 @@ import path from "node:path";
 import { readJson, repoRoot, stableStringify } from "./lib.mjs";
 
 const configPath = path.join(repoRoot, "wrangler.jsonc");
+const assetsIgnorePath = path.join(repoRoot, "public/.assetsignore");
 const rawConfig = await fs.readFile(configPath, "utf8");
 const config = JSON.parse(stripJsonComments(rawConfig));
+const assetsIgnore = await fs.readFile(assetsIgnorePath, "utf8");
 const manifest = await readJson(
   path.join(repoRoot, "public/metagraph/r2-manifest.json"),
 );
@@ -50,6 +52,10 @@ check(
   Array.isArray(config.assets?.run_worker_first) &&
     config.assets.run_worker_first.includes("/rpc/*"),
   "RPC routes must run Worker first",
+);
+check(
+  assetsIgnore.includes(".DS_Store") && assetsIgnore.includes("Thumbs.db"),
+  "public/.assetsignore must block OS metadata uploads",
 );
 check(
   config.vars?.METAGRAPH_ENABLE_RPC_PROXY === "false",
