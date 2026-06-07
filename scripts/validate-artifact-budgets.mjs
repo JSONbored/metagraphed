@@ -38,6 +38,9 @@ await walk(r2ArtifactRoot, async (filePath) => {
   const relativePath = path
     .relative(r2ArtifactRoot, filePath)
     .replace(/\\/g, "/");
+  if (relativePath === "r2-manifest.json") {
+    return;
+  }
   const raw = await fs.readFile(filePath);
   artifacts.push({
     path: relativePath,

@@ -12,7 +12,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `schemas/components/*.schema.json` is canonical for public API/artifact component schemas.
 - `schemas/api-components.schema.json` is a generated bundle and should not be edited by hand.
 - `/metagraph/openapi.json`, `/metagraph/types.d.ts`, `generated/metagraphed-api.d.ts`, and `generated/metagraphed-client.ts` are generated from the canonical schema and route metadata.
-- `public/metagraph/*` files are compact generated projections and should not be edited by hand.
+- `public/metagraph/*` files are compact generated projections and should not be edited by hand. R2-only artifacts must not be committed there.
 - `dist/metagraph-r2/metagraph/*` is the ignored staging tree for volatile/detail generated projections that are uploaded to R2.
 - Artifact contracts carry `storage_tier`: `dual` for compact Git-plus-R2 artifacts, `r2` for volatile/detail artifacts, and `git` for local-only generated support artifacts.
 - Health, RPC, adapter, and schema-drift artifacts are operational observations, not protocol authority.
@@ -35,9 +35,9 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/surfaces/{netuid}.json`: curated public surfaces for one subnet. R2-backed.
 - `/metagraph/endpoints.json`: generalized endpoint/resource registry derived from curated surfaces and probe observations.
 - `/metagraph/endpoints/{netuid}.json`: generalized endpoint/resource registry for one subnet. R2-backed.
-- `/metagraph/candidates.json`: unpromoted candidate surfaces from public discovery.
+- `/metagraph/candidates.json`: unpromoted candidate surfaces from public discovery. R2-backed.
 - `/metagraph/candidates/{netuid}.json`: unpromoted candidate surfaces for one subnet. R2-backed.
-- `/metagraph/review-queue.json`: candidate surfaces queued for maintainer review.
+- `/metagraph/review-queue.json`: candidate surfaces queued for maintainer review. R2-backed.
 - `/metagraph/search.json`: compact search index for subnets, surfaces, and providers.
 - `/metagraph/coverage.json`: count parity and coverage levels.
 - `/metagraph/curation.json`: curation state for every active subnet.
@@ -60,7 +60,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
 - `/metagraph/adapters/{slug}.json`: adapter-backed public metrics snapshot. R2-backed.
-- `/metagraph/r2-manifest.json`: Cloudflare R2 upload manifest for artifact history.
+- `/metagraph/r2-manifest.json`: compact committed Cloudflare R2 upload manifest. The full upload manifest is generated under `dist/metagraph-r2/metagraph/r2-manifest.json`.
 - `/metagraph/review/curation.json`: maintainer review and adapter candidate report.
 - `/metagraph/review/gap-priorities.json`: prioritized backend curation gaps.
 - `/metagraph/review/adapter-candidates.json`: subnets likely worth custom adapters.

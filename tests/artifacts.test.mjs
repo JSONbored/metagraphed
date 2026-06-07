@@ -12,6 +12,8 @@ import {
   artifactDirectoryPath,
   artifactFilePath,
   createLocalArtifactEnv,
+  publicMetagraphRoot,
+  r2StagingRoot,
 } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
@@ -373,6 +375,21 @@ test("public artifacts are internally consistent", () => {
   }
 });
 
+test("R2-only generated artifacts stay out of the public git tree", () => {
+  for (const relativePath of ["candidates.json", "review-queue.json"]) {
+    assert.equal(
+      existsSync(`${publicMetagraphRoot}/${relativePath}`),
+      false,
+      `${relativePath} should not be committed under public/metagraph`,
+    );
+    assert.equal(
+      existsSync(`${r2StagingRoot}/${relativePath}`),
+      true,
+      `${relativePath} should be generated into the R2 staging tree`,
+    );
+  }
+});
+
 test("limited R2 upload dry run skips control manifests", () => {
   const output = execFileSync(
     process.execPath,
@@ -391,7 +408,7 @@ test("limited R2 upload dry run skips control manifests", () => {
 
   assert.equal(summary.limited_artifact_count, 5);
   assert.equal(summary.control_artifact_count, 0);
-  assert.equal(summary.skipped_control_artifact_count, 2);
+  assert.equal(summary.skipped_control_artifact_count, 3);
   assert.equal(summary.planned_object_count, 5);
 });
 

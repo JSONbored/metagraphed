@@ -103,7 +103,7 @@
       "id": "candidates",
       "path": "/metagraph/candidates.json",
       "schema_ref": "#/components/schemas/CandidatesArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -117,7 +117,7 @@
       "id": "review-queue",
       "path": "/metagraph/review-queue.json",
       "schema_ref": "#/components/schemas/ReviewQueueArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",

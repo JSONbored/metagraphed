@@ -38,529 +38,222 @@
   ],
   "pools": [
     {
-      "best_endpoint_id": "endpoint-onfinality-finney-rpc",
-      "eligible_count": 2,
+      "best_endpoint_id": null,
+      "eligible_count": 0,
       "endpoint_count": 2,
       "endpoints": [
         {
-          "archive_support": true,
-          "id": "endpoint-onfinality-finney-rpc",
-          "kind": "subtensor-rpc",
-          "latency_ms": 665,
-          "latest_block": 8354749,
-          "layer": "bittensor-base",
-          "pool_eligibility_reasons": [
-            "eligible"
-          ],
-          "pool_eligible": true,
-          "provider": "onfinality",
-          "score": 88,
-          "score_reasons": [
-            {
-              "points": 50,
-              "reason": "status-ok"
-            },
-            {
-              "points": 15,
-              "reason": "archive-support"
-            },
-            {
-              "points": 10,
-              "reason": "latest-block-observed"
-            },
-            {
-              "points": 13,
-              "reason": "latency"
-            }
-          ],
-          "status": "ok",
-          "url": "https://bittensor-finney.api.onfinality.io/public"
-        },
-        {
-          "archive_support": true,
+          "archive_support": null,
           "id": "endpoint-nodies-finney-rpc",
           "kind": "subtensor-rpc",
-          "latency_ms": 1536,
-          "latest_block": 8354749,
+          "latency_ms": null,
+          "latest_block": null,
           "layer": "bittensor-base",
           "pool_eligibility_reasons": [
-            "eligible"
+            "status-unknown"
           ],
-          "pool_eligible": true,
+          "pool_eligible": false,
           "provider": "nodies",
-          "score": 80,
-          "score_reasons": [
-            {
-              "points": 50,
-              "reason": "status-ok"
-            },
-            {
-              "points": 15,
-              "reason": "archive-support"
-            },
-            {
-              "points": 10,
-              "reason": "latest-block-observed"
-            },
-            {
-              "points": 5,
-              "reason": "latency"
-            }
-          ],
-          "status": "ok",
+          "score": 0,
+          "score_reasons": [],
+          "status": "unknown",
           "url": "https://bittensor-public.nodies.app"
+        },
+        {
+          "archive_support": null,
+          "id": "endpoint-onfinality-finney-rpc",
+          "kind": "subtensor-rpc",
+          "latency_ms": null,
+          "latest_block": null,
+          "layer": "bittensor-base",
+          "pool_eligibility_reasons": [
+            "status-unknown"
+          ],
+          "pool_eligible": false,
+          "provider": "onfinality",
+          "score": 0,
+          "score_reasons": [],
+          "status": "unknown",
+          "url": "https://bittensor-finney.api.onfinality.io/public"
         }
       ],
       "id": "finney-rpc",
       "kind": "subtensor-rpc"
     },
     {
-      "best_endpoint_id": "endpoint-opentensor-lite-wss",
-      "eligible_count": 4,
+      "best_endpoint_id": null,
+      "eligible_count": 0,
       "endpoint_count": 4,
       "endpoints": [
         {
-          "archive_support": true,
-          "id": "endpoint-opentensor-lite-wss",
-          "kind": "subtensor-wss",
-          "latency_ms": 502,
-          "latest_block": 8354749,
-          "layer": "bittensor-base",
-          "pool_eligibility_reasons": [
-            "eligible"
-          ],
-          "pool_eligible": true,
-          "provider": "opentensor",
-          "score": 90,
-          "score_reasons": [
-            {
-              "points": 50,
-              "reason": "status-ok"
-            },
-            {
-              "points": 15,
-              "reason": "archive-support"
-            },
-            {
-              "points": 10,
-              "reason": "latest-block-observed"
-            },
-            {
-              "points": 15,
-              "reason": "latency"
-            }
-          ],
-          "status": "ok",
-          "url": "wss://lite.chain.opentensor.ai:443"
-        },
-        {
-          "archive_support": true,
-          "id": "endpoint-opentensor-finney-wss",
-          "kind": "subtensor-wss",
-          "latency_ms": 504,
-          "latest_block": 8354749,
-          "layer": "bittensor-base",
-          "pool_eligibility_reasons": [
-            "eligible"
-          ],
-          "pool_eligible": true,
-          "provider": "opentensor",
-          "score": 90,
-          "score_reasons": [
-            {
-              "points": 50,
-              "reason": "status-ok"
-            },
-            {
-              "points": 15,
-              "reason": "archive-support"
-            },
-            {
-              "points": 10,
-              "reason": "latest-block-observed"
-            },
-            {
-              "points": 15,
-              "reason": "latency"
-            }
-          ],
-          "status": "ok",
-          "url": "wss://entrypoint-finney.opentensor.ai:443"
-        },
-        {
-          "archive_support": true,
+          "archive_support": null,
           "id": "endpoint-onfinality-finney-wss",
           "kind": "subtensor-wss",
-          "latency_ms": 770,
-          "latest_block": 8354749,
+          "latency_ms": null,
+          "latest_block": null,
           "layer": "bittensor-base",
           "pool_eligibility_reasons": [
-            "eligible"
+            "status-unknown"
           ],
-          "pool_eligible": true,
+          "pool_eligible": false,
           "provider": "onfinality",
-          "score": 87,
-          "score_reasons": [
-            {
-              "points": 50,
-              "reason": "status-ok"
-            },
-            {
-              "points": 15,
-              "reason": "archive-support"
-            },
-            {
-              "points": 10,
-              "reason": "latest-block-observed"
-            },
-            {
-              "points": 12,
-              "reason": "latency"
-            }
-          ],
-          "status": "ok",
+          "score": 0,
+          "score_reasons": [],
+          "status": "unknown",
           "url": "wss://bittensor-finney.api.onfinality.io/public-ws"
         },
         {
-          "archive_support": true,
+          "archive_support": null,
           "id": "endpoint-opentensor-archive-wss",
           "kind": "subtensor-wss",
-          "latency_ms": 1108,
-          "latest_block": 8354750,
+          "latency_ms": null,
+          "latest_block": null,
           "layer": "bittensor-base",
           "pool_eligibility_reasons": [
-            "eligible"
+            "status-unknown"
           ],
-          "pool_eligible": true,
+          "pool_eligible": false,
           "provider": "opentensor",
-          "score": 84,
-          "score_reasons": [
-            {
-              "points": 50,
-              "reason": "status-ok"
-            },
-            {
-              "points": 15,
-              "reason": "archive-support"
-            },
-            {
-              "points": 10,
-              "reason": "latest-block-observed"
-            },
-            {
-              "points": 9,
-              "reason": "latency"
-            }
-          ],
-          "status": "ok",
+          "score": 0,
+          "score_reasons": [],
+          "status": "unknown",
           "url": "wss://archive.chain.opentensor.ai:443"
+        },
+        {
+          "archive_support": null,
+          "id": "endpoint-opentensor-finney-wss",
+          "kind": "subtensor-wss",
+          "latency_ms": null,
+          "latest_block": null,
+          "layer": "bittensor-base",
+          "pool_eligibility_reasons": [
+            "status-unknown"
+          ],
+          "pool_eligible": false,
+          "provider": "opentensor",
+          "score": 0,
+          "score_reasons": [],
+          "status": "unknown",
+          "url": "wss://entrypoint-finney.opentensor.ai:443"
+        },
+        {
+          "archive_support": null,
+          "id": "endpoint-opentensor-lite-wss",
+          "kind": "subtensor-wss",
+          "latency_ms": null,
+          "latest_block": null,
+          "layer": "bittensor-base",
+          "pool_eligibility_reasons": [
+            "status-unknown"
+          ],
+          "pool_eligible": false,
+          "provider": "opentensor",
+          "score": 0,
+          "score_reasons": [],
+          "status": "unknown",
+          "url": "wss://lite.chain.opentensor.ai:443"
         }
       ],
       "id": "finney-wss",
       "kind": "subtensor-wss"
     },
     {
-      "best_endpoint_id": "endpoint-opentensor-lite-wss",
-      "eligible_count": 6,
-      "endpoint_count": 6,
-      "endpoints": [
-        {
-          "archive_support": true,
-          "id": "endpoint-opentensor-lite-wss",
-          "kind": "subtensor-wss",
-          "latency_ms": 502,
-          "latest_block": 8354749,
-          "layer": "bittensor-base",
-          "pool_eligibility_reasons": [
-            "eligible"
-          ],
-          "pool_eligible": true,
-          "provider": "opentensor",
-          "score": 90,
-          "score_reasons": [
-            {
-              "points": 50,
-              "reason": "status-ok"
-            },
-            {
-              "points": 15,
-              "reason": "archive-support"
-            },
-            {
-              "points": 10,
-              "reason": "latest-block-observed"
-            },
-            {
-              "points": 15,
-              "reason": "latency"
-            }
-          ],
-          "status": "ok",
-          "url": "wss://lite.chain.opentensor.ai:443"
-        },
-        {
-          "archive_support": true,
-          "id": "endpoint-opentensor-finney-wss",
-          "kind": "subtensor-wss",
-          "latency_ms": 504,
-          "latest_block": 8354749,
-          "layer": "bittensor-base",
-          "pool_eligibility_reasons": [
-            "eligible"
-          ],
-          "pool_eligible": true,
-          "provider": "opentensor",
-          "score": 90,
-          "score_reasons": [
-            {
-              "points": 50,
-              "reason": "status-ok"
-            },
-            {
-              "points": 15,
-              "reason": "archive-support"
-            },
-            {
-              "points": 10,
-              "reason": "latest-block-observed"
-            },
-            {
-              "points": 15,
-              "reason": "latency"
-            }
-          ],
-          "status": "ok",
-          "url": "wss://entrypoint-finney.opentensor.ai:443"
-        },
-        {
-          "archive_support": true,
-          "id": "endpoint-onfinality-finney-rpc",
-          "kind": "subtensor-rpc",
-          "latency_ms": 665,
-          "latest_block": 8354749,
-          "layer": "bittensor-base",
-          "pool_eligibility_reasons": [
-            "eligible"
-          ],
-          "pool_eligible": true,
-          "provider": "onfinality",
-          "score": 88,
-          "score_reasons": [
-            {
-              "points": 50,
-              "reason": "status-ok"
-            },
-            {
-              "points": 15,
-              "reason": "archive-support"
-            },
-            {
-              "points": 10,
-              "reason": "latest-block-observed"
-            },
-            {
-              "points": 13,
-              "reason": "latency"
-            }
-          ],
-          "status": "ok",
-          "url": "https://bittensor-finney.api.onfinality.io/public"
-        },
-        {
-          "archive_support": true,
-          "id": "endpoint-onfinality-finney-wss",
-          "kind": "subtensor-wss",
-          "latency_ms": 770,
-          "latest_block": 8354749,
-          "layer": "bittensor-base",
-          "pool_eligibility_reasons": [
-            "eligible"
-          ],
-          "pool_eligible": true,
-          "provider": "onfinality",
-          "score": 87,
-          "score_reasons": [
-            {
-              "points": 50,
-              "reason": "status-ok"
-            },
-            {
-              "points": 15,
-              "reason": "archive-support"
-            },
-            {
-              "points": 10,
-              "reason": "latest-block-observed"
-            },
-            {
-              "points": 12,
-              "reason": "latency"
-            }
-          ],
-          "status": "ok",
-          "url": "wss://bittensor-finney.api.onfinality.io/public-ws"
-        },
-        {
-          "archive_support": true,
-          "id": "endpoint-opentensor-archive-wss",
-          "kind": "subtensor-wss",
-          "latency_ms": 1108,
-          "latest_block": 8354750,
-          "layer": "bittensor-base",
-          "pool_eligibility_reasons": [
-            "eligible"
-          ],
-          "pool_eligible": true,
-          "provider": "opentensor",
-          "score": 84,
-          "score_reasons": [
-            {
-              "points": 50,
-              "reason": "status-ok"
-            },
-            {
-              "points": 15,
-              "reason": "archive-support"
-            },
-            {
-              "points": 10,
-              "reason": "latest-block-observed"
-            },
-            {
-              "points": 9,
-              "reason": "latency"
-            }
-          ],
-          "status": "ok",
-          "url": "wss://archive.chain.opentensor.ai:443"
-        },
-        {
-          "archive_support": true,
-          "id": "endpoint-nodies-finney-rpc",
-          "kind": "subtensor-rpc",
-          "latency_ms": 1536,
-          "latest_block": 8354749,
-          "layer": "bittensor-base",
-          "pool_eligibility_reasons": [
-            "eligible"
-          ],
-          "pool_eligible": true,
-          "provider": "nodies",
-          "score": 80,
-          "score_reasons": [
-            {
-              "points": 50,
-              "reason": "status-ok"
-            },
-            {
-              "points": 15,
-              "reason": "archive-support"
-            },
-            {
-              "points": 10,
-              "reason": "latest-block-observed"
-            },
-            {
-              "points": 5,
-              "reason": "latency"
-            }
-          ],
-          "status": "ok",
-          "url": "https://bittensor-public.nodies.app"
-        }
-      ],
+      "best_endpoint_id": null,
+      "eligible_count": 0,
+      "endpoint_count": 0,
+      "endpoints": [],
       "id": "finney-archive",
       "kind": "archive"
     }
   ],
   "provider_scores": [
     {
-      "average_score": 88,
-      "degraded_count": 0,
-      "endpoint_count": 2,
-      "failed_count": 0,
-      "monitored_count": 2,
-      "ok_count": 2,
-      "operational_score": 90,
-      "pool_eligible_count": 2,
-      "provider": "onfinality"
-    },
-    {
-      "average_score": 80,
-      "degraded_count": 0,
-      "endpoint_count": 1,
-      "failed_count": 0,
-      "monitored_count": 1,
-      "ok_count": 1,
-      "operational_score": 90,
-      "pool_eligible_count": 1,
-      "provider": "nodies"
-    },
-    {
-      "average_score": 75,
-      "degraded_count": 0,
-      "endpoint_count": 7,
-      "failed_count": 0,
-      "monitored_count": 7,
-      "ok_count": 7,
-      "operational_score": 79,
-      "pool_eligible_count": 3,
-      "provider": "opentensor"
-    },
-    {
-      "average_score": 67,
-      "degraded_count": 0,
-      "endpoint_count": 7,
-      "failed_count": 0,
-      "monitored_count": 7,
-      "ok_count": 7,
-      "operational_score": 70,
-      "pool_eligible_count": 0,
-      "provider": "gittensor"
-    },
-    {
-      "average_score": 66,
-      "degraded_count": 2,
-      "endpoint_count": 524,
-      "failed_count": 0,
-      "monitored_count": 524,
-      "ok_count": 522,
-      "operational_score": 70,
-      "pool_eligible_count": 0,
-      "provider": "taomarketcap"
-    },
-    {
-      "average_score": 66,
-      "degraded_count": 0,
-      "endpoint_count": 189,
-      "failed_count": 0,
-      "monitored_count": 189,
-      "ok_count": 189,
-      "operational_score": 70,
-      "pool_eligible_count": 0,
-      "provider": "tensorplex-subnet-docs"
-    },
-    {
-      "average_score": 65,
-      "degraded_count": 0,
-      "endpoint_count": 6,
-      "failed_count": 0,
-      "monitored_count": 6,
-      "ok_count": 6,
-      "operational_score": 70,
-      "pool_eligible_count": 0,
-      "provider": "taopedia-articles"
-    },
-    {
-      "average_score": 64,
+      "average_score": 0,
       "degraded_count": 0,
       "endpoint_count": 15,
       "failed_count": 0,
       "monitored_count": 14,
-      "ok_count": 14,
-      "operational_score": 65,
+      "ok_count": 0,
+      "operational_score": 0,
       "pool_eligible_count": 0,
       "provider": "allways"
+    },
+    {
+      "average_score": 0,
+      "degraded_count": 0,
+      "endpoint_count": 7,
+      "failed_count": 0,
+      "monitored_count": 7,
+      "ok_count": 0,
+      "operational_score": 0,
+      "pool_eligible_count": 0,
+      "provider": "gittensor"
+    },
+    {
+      "average_score": 0,
+      "degraded_count": 0,
+      "endpoint_count": 1,
+      "failed_count": 0,
+      "monitored_count": 1,
+      "ok_count": 0,
+      "operational_score": 0,
+      "pool_eligible_count": 0,
+      "provider": "nodies"
+    },
+    {
+      "average_score": 0,
+      "degraded_count": 0,
+      "endpoint_count": 2,
+      "failed_count": 0,
+      "monitored_count": 2,
+      "ok_count": 0,
+      "operational_score": 0,
+      "pool_eligible_count": 0,
+      "provider": "onfinality"
+    },
+    {
+      "average_score": 0,
+      "degraded_count": 0,
+      "endpoint_count": 7,
+      "failed_count": 0,
+      "monitored_count": 7,
+      "ok_count": 0,
+      "operational_score": 0,
+      "pool_eligible_count": 0,
+      "provider": "opentensor"
+    },
+    {
+      "average_score": 0,
+      "degraded_count": 0,
+      "endpoint_count": 524,
+      "failed_count": 0,
+      "monitored_count": 524,
+      "ok_count": 0,
+      "operational_score": 0,
+      "pool_eligible_count": 0,
+      "provider": "taomarketcap"
+    },
+    {
+      "average_score": 0,
+      "degraded_count": 0,
+      "endpoint_count": 6,
+      "failed_count": 0,
+      "monitored_count": 6,
+      "ok_count": 0,
+      "operational_score": 0,
+      "pool_eligible_count": 0,
+      "provider": "taopedia-articles"
+    },
+    {
+      "average_score": 0,
+      "degraded_count": 0,
+      "endpoint_count": 189,
+      "failed_count": 0,
+      "monitored_count": 189,
+      "ok_count": 0,
+      "operational_score": 0,
+      "pool_eligible_count": 0,
+      "provider": "tensorplex-subnet-docs"
     }
   ],
   "schema_version": 1,

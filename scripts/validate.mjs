@@ -11,6 +11,8 @@ import {
   isValidUrl,
   nativeDisplayName,
   nativeNameQuality,
+  listJsonFilesRecursive,
+  publicMetagraphRoot,
   readJson,
   registrySurfaceKey,
   repoRoot,
@@ -649,7 +651,7 @@ function buildExpectedGeneratedSubnet(nativeSnapshot, overlay, candidateCount) {
     provenance: {
       existence: {
         authority: "native-chain",
-        captured_at: nativeSnapshot.capturedAt,
+        captured_at: nativeSnapshot.captured_at,
         method: nativeSnapshot.source.method,
         network: nativeSnapshot.network,
         source_kind: nativeSnapshot.source.kind,
@@ -704,11 +706,26 @@ function artifactPathForRelative(relativePath) {
   return path.join(repoRoot, "public/metagraph", relativePath);
 }
 
+async function validateR2OnlyArtifactsStayOutOfPublicGit() {
+  const files = await listJsonFilesRecursive(publicMetagraphRoot);
+  for (const filePath of files) {
+    const relativePath = path
+      .relative(publicMetagraphRoot, filePath)
+      .replace(/\\/g, "/");
+    assert(
+      artifactStorageTierForRelativePath(relativePath) !== "r2",
+      `${relativePath}: R2-only artifact must be staged under ${R2_STAGING_RELATIVE_ROOT}, not public/metagraph`,
+    );
+  }
+}
+
 async function validateGeneratedArtifacts(
   nativeSnapshot,
   overlays,
   candidates,
 ) {
+  await validateR2OnlyArtifactsStayOutOfPublicGit();
+
   const providersArtifact = await readArtifactJson("providers.json");
   const subnetsArtifact = await readArtifactJson("subnets.json");
   const surfacesArtifact = await readArtifactJson("surfaces.json");
@@ -787,7 +804,7 @@ async function validateGeneratedArtifacts(
       nativeSubnet.netuid,
       buildExpectedGeneratedSubnet(
         {
-          capturedAt: nativeSnapshot.captured_at,
+          captured_at: nativeSnapshot.captured_at,
           network: nativeSnapshot.network,
           source: nativeSnapshot.source,
           subnet: nativeSubnet,
@@ -1056,7 +1073,12 @@ async function validateGeneratedArtifacts(
   );
   assert(
     r2ManifestArtifact.artifact_count === r2ManifestArtifact.artifacts.length,
-    "R2 manifest: artifact count mismatch",
+    "R2 manifest: compact artifact count mismatch",
+  );
+  assert(
+    (r2ManifestArtifact.full_artifact_count ||
+      r2ManifestArtifact.artifact_count) >= r2ManifestArtifact.artifact_count,
+    "R2 manifest: full artifact count must include compact artifacts",
   );
   assert(
     r2ManifestArtifact.bucket_binding === "METAGRAPH_ARCHIVE",
@@ -1069,17 +1091,23 @@ async function validateGeneratedArtifacts(
     "R2 manifest: changelog must be uploaded",
   );
   assert(
-    r2ManifestArtifact.artifacts.some(
-      (artifact) => artifact.path === "/metagraph/source-snapshots.json",
-    ),
+    r2ManifestArtifact.required_artifact_paths?.includes(
+      "/metagraph/source-snapshots.json",
+    ) ||
+      r2ManifestArtifact.artifacts.some(
+        (artifact) => artifact.path === "/metagraph/source-snapshots.json",
+      ),
     "R2 manifest: source snapshots must be uploaded",
   );
   assert(
-    r2ManifestArtifact.artifacts.some(
-      (artifact) =>
-        artifact.path === "/metagraph/types.d.ts" &&
-        artifact.content_type === "text/plain; charset=utf-8",
-    ),
+    r2ManifestArtifact.required_artifact_paths?.includes(
+      "/metagraph/types.d.ts",
+    ) ||
+      r2ManifestArtifact.artifacts.some(
+        (artifact) =>
+          artifact.path === "/metagraph/types.d.ts" &&
+          artifact.content_type === "text/plain; charset=utf-8",
+      ),
     "R2 manifest: generated type definitions must be uploaded",
   );
   assert(

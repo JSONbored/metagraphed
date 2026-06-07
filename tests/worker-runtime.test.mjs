@@ -43,6 +43,26 @@ describe("Worker runtime", () => {
     assert.equal(response.headers.get("x-metagraph-storage-tier"), "r2");
     assert.equal((await response.json()).subnet.netuid, 7);
 
+    const candidates = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/candidates.json"),
+      env,
+      {},
+    );
+    assert.equal(candidates.status, 200);
+    assert.equal(candidates.headers.get("x-metagraph-artifact-source"), "r2");
+    assert.equal(candidates.headers.get("x-metagraph-storage-tier"), "r2");
+    assert.equal(Array.isArray((await candidates.json()).candidates), true);
+
+    const reviewQueue = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/review-queue.json"),
+      env,
+      {},
+    );
+    assert.equal(reviewQueue.status, 200);
+    assert.equal(reviewQueue.headers.get("x-metagraph-artifact-source"), "r2");
+    assert.equal(reviewQueue.headers.get("x-metagraph-storage-tier"), "r2");
+    assert.equal(Array.isArray((await reviewQueue.json()).candidates), true);
+
     const missingArchive = await handleRequest(
       new Request("https://metagraph.sh/metagraph/subnets/7.json"),
       {

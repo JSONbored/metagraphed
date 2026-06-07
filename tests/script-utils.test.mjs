@@ -131,6 +131,14 @@ describe("script utility contracts", () => {
       ARTIFACT_STORAGE_TIERS.r2,
     );
     assert.equal(
+      artifactStorageTierForRelativePath("candidates.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("review-queue.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
+    );
+    assert.equal(
       artifactStorageTierForRelativePath("robots.txt"),
       ARTIFACT_STORAGE_TIERS.git,
     );
@@ -227,7 +235,7 @@ describe("script utility contracts", () => {
 
     assert.equal(candidates.length > 0, true);
     assert.equal(verification.schema_version, 1);
-    assert.equal(path.basename(repoRoot), "metagraphed");
+    assert.equal(existsSync(path.join(repoRoot, "package.json")), true);
   });
 
   test("normalizes names, URLs, keys, hashes, and slugs deterministically", () => {

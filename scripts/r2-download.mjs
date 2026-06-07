@@ -10,7 +10,7 @@ import {
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
 const manifest = await readJson(
-  path.join(repoRoot, "public/metagraph/r2-manifest.json"),
+  path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, "r2-manifest.json"),
 );
 const prefixArg = process.argv.find((arg) => arg.startsWith("--prefix="));
 const prefix = prefixArg

@@ -69,6 +69,9 @@ function productionSteps() {
     nodeStep(
       "build-artifacts-with-probe-health",
       "scripts/build-artifacts.mjs",
+      {
+        METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
+      },
     ),
     nodeStep("generate-types", "scripts/generate-types.mjs"),
     nodeStep("generate-client", "scripts/generate-client.mjs", "--write"),

@@ -116,9 +116,9 @@ Generated artifacts expose review state through:
 
 `public/metagraph/coverage.json` summarizes chain coverage, curated overlays, native-only stubs, probed subnets, surfaces, and candidate counts.
 
-`public/metagraph/candidates.json` lists unverified candidate surfaces with source provenance.
+`/metagraph/candidates.json` lists unverified candidate surfaces with source provenance. It is R2-backed because candidate discovery is high-churn generated data.
 
-`public/metagraph/review-queue.json` lists candidate surfaces that need maintainer review.
+`/metagraph/review-queue.json` lists candidate surfaces that need maintainer review. It is R2-backed for the same reason and should not be committed under `public/metagraph`.
 
 `public/metagraph/curation.json` lists curation level, review state, source count, and gaps for every active subnet.
 
@@ -136,6 +136,6 @@ Generated artifacts expose review state through:
 
 `public/metagraph/freshness.json`, `source-health.json`, `source-snapshots.json`, `changelog.json`, and `evidence-ledger.json` expose backend freshness, upstream source health, source-input hashes, generated change summaries, and public evidence records.
 
-`public/metagraph/r2-manifest.json` lists compact and R2-backed artifacts intended for latest/history upload.
+`public/metagraph/r2-manifest.json` is the compact committed upload manifest. The full manifest for R2-only detail artifacts is generated under `dist/metagraph-r2/metagraph/r2-manifest.json` and uploaded to R2.
 
 Worker API routes under `/api/v1/*` wrap these artifacts without replacing them as canonical truth. The Worker reads static assets first, can fall back to R2, and can use an optional KV latest pointer when configured.

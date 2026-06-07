@@ -1,5 +1,5 @@
 import path from "node:path";
-import { readFile, readdir, stat } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import {
   buildTimestamp,
   readJson,
@@ -16,22 +16,37 @@ import {
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
 const manifestPath = path.join(repoRoot, "public/metagraph/r2-manifest.json");
-const manifest = write ? await buildManifest() : await readJson(manifestPath);
+const fullManifestPath = path.join(
+  repoRoot,
+  R2_STAGING_RELATIVE_ROOT,
+  "r2-manifest.json",
+);
+const fullManifest = write
+  ? await buildManifest()
+  : await readJson(fullManifestPath).catch(() => null);
+const manifest = write
+  ? buildCompactManifest(fullManifest)
+  : await readJson(manifestPath);
+const validationManifest = fullManifest || manifest;
 
 const summary = {
   artifact_count: manifest.artifact_count,
   artifact_size_bytes: manifest.artifact_size_bytes,
   bucket_binding: manifest.bucket_binding,
   bucket_name: manifest.bucket_name,
+  full_artifact_count: manifest.full_artifact_count || manifest.artifact_count,
+  manifest_kind: manifest.manifest_kind || "full",
   latest_prefix: manifest.latest_prefix,
   run_prefix: manifest.run_prefix,
 };
 
 if (write) {
+  await mkdir(path.dirname(fullManifestPath), { recursive: true });
+  await writeJson(fullManifestPath, fullManifest);
   await writeJson(manifestPath, manifest);
 }
 
-for (const artifact of manifest.artifacts) {
+for (const artifact of validationManifest.artifacts) {
   if (
     !artifact.key ||
     !artifact.latest_key ||
@@ -88,6 +103,51 @@ async function buildManifest() {
     ),
     artifacts,
   };
+}
+
+function buildCompactManifest(fullManifest) {
+  const compactArtifacts = fullManifest.artifacts.filter(
+    (artifact) => artifact.storage_tier !== "r2",
+  );
+  return {
+    ...fullManifest,
+    manifest_kind: "compact",
+    full_manifest_key: `${fullManifest.latest_prefix}r2-manifest.json`,
+    full_manifest_run_key: `${fullManifest.run_prefix}r2-manifest.json`,
+    full_artifact_count: fullManifest.artifact_count,
+    full_artifact_size_bytes: fullManifest.artifact_size_bytes,
+    artifact_count: compactArtifacts.length,
+    artifact_size_bytes: compactArtifacts.reduce(
+      (sum, artifact) => sum + artifact.size_bytes,
+      0,
+    ),
+    required_artifact_paths: [
+      "/metagraph/candidates.json",
+      "/metagraph/health/latest.json",
+      "/metagraph/review-queue.json",
+      "/metagraph/source-snapshots.json",
+      "/metagraph/types.d.ts",
+      "/metagraph/verification/latest.json",
+    ],
+    storage_tier_counts: countByStorageTier(fullManifest.artifacts),
+    storage_tier_size_bytes: sumBytesByStorageTier(fullManifest.artifacts),
+    artifacts: compactArtifacts,
+  };
+}
+
+function countByStorageTier(artifacts) {
+  return artifacts.reduce((counts, artifact) => {
+    counts[artifact.storage_tier] = (counts[artifact.storage_tier] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function sumBytesByStorageTier(artifacts) {
+  return artifacts.reduce((counts, artifact) => {
+    counts[artifact.storage_tier] =
+      (counts[artifact.storage_tier] || 0) + artifact.size_bytes;
+    return counts;
+  }, {});
 }
 
 async function listManifestArtifactFiles({ publicRoot, r2Root }) {

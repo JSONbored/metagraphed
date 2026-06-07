@@ -125,7 +125,12 @@ jobs:
         if: steps.route.outputs.mode == 'full' && github.event_name == 'pull_request'
         run: |
           mapfile -t submitted_artifacts < <(
-            awk '/^public\/metagraph\// { print }' changed-files.txt
+            awk '
+              /^public\/metagraph\// &&
+              $0 != "public/metagraph/build-summary.json" &&
+              $0 != "public/metagraph/changelog.json" &&
+              $0 != "public/metagraph/r2-manifest.json" { print }
+            ' changed-files.txt
           )
           if [ "${#submitted_artifacts[@]}" -eq 0 ]; then
             echo "No submitted public artifacts to verify."

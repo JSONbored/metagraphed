@@ -8,6 +8,7 @@ export const R2_STAGING_RELATIVE_ROOT = "dist/metagraph-r2/metagraph";
 
 const R2_ONLY_PATTERNS = [
   /^adapters\/[^/]+\.json$/,
+  /^candidates\.json$/,
   /^candidates\/(?:\d+|\{netuid\})\.json$/,
   /^endpoints\/(?:\d+|\{netuid\})\.json$/,
   /^health\/badges\/(?:\d+|\{netuid\})\.json$/,
@@ -17,6 +18,7 @@ const R2_ONLY_PATTERNS = [
   /^metagraph\/latest\.json$/,
   /^providers\/[^/]+\.json$/,
   /^providers\/[^/]+\/endpoints\.json$/,
+  /^review-queue\.json$/,
   /^schemas\/(?!index\.json$).+\.json$/,
   /^source-snapshots\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\.json$/,
@@ -46,7 +48,6 @@ const DUAL_PATTERNS = [
   /^review\/curation\.json$/,
   /^review\/gap-priorities\.json$/,
   /^review\/maintainer-decisions\.json$/,
-  /^review-queue\.json$/,
   /^rpc\/pools\.json$/,
   /^rpc-endpoints\.json$/,
   /^schema-drift\.json$/,

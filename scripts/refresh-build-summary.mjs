@@ -78,6 +78,9 @@ async function collectArtifactSizes({ publicRoot, r2Root }) {
       return;
     }
     const relativePath = path.relative(r2Root, filePath).replace(/\\/g, "/");
+    if (relativePath === "r2-manifest.json") {
+      return;
+    }
     const raw = await fs.readFile(filePath);
     const stat = await fs.stat(filePath);
     files.push({

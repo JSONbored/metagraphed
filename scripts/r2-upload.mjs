@@ -17,7 +17,7 @@ const uploadConcurrency =
 const progressInterval =
   parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_PROGRESS_INTERVAL) || 25;
 const manifest = await readJson(
-  path.join(repoRoot, "public/metagraph/r2-manifest.json"),
+  path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, "r2-manifest.json"),
 );
 const plannedArtifacts = uploadLimit
   ? manifest.artifacts.slice(0, uploadLimit)
@@ -214,8 +214,19 @@ function buildControlArtifacts(manifest) {
       content_type: "application/json; charset=utf-8",
       key: `${manifest.run_prefix}r2-manifest.json`,
       latest_key: "latest/r2-manifest.json",
-      local_path: path.join(repoRoot, "public/metagraph/r2-manifest.json"),
+      local_path: path.join(
+        repoRoot,
+        R2_STAGING_RELATIVE_ROOT,
+        "r2-manifest.json",
+      ),
       path: "/metagraph/r2-manifest.json",
+    },
+    {
+      content_type: "application/json; charset=utf-8",
+      key: `${manifest.run_prefix}r2-manifest.compact.json`,
+      latest_key: "latest/r2-manifest.compact.json",
+      local_path: path.join(repoRoot, "public/metagraph/r2-manifest.json"),
+      path: "/metagraph/r2-manifest.compact.json",
     },
     {
       content_type: "application/json; charset=utf-8",

@@ -1,52 +1,7 @@
 {
   "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
-  "incidents": [
-    {
-      "classification": "dead",
-      "detected_at": "2026-06-07T12:30:41.883Z",
-      "endpoint_id": "endpoint-sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-9",
-      "id": "incident-endpoint-sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-9",
-      "kind": "data-artifact",
-      "last_checked": "2026-06-07T12:30:41.883Z",
-      "layer": "data-provider",
-      "netuid": 33,
-      "operator": "taomarketcap",
-      "pool_eligible": false,
-      "provider": "taomarketcap",
-      "reason": "dead",
-      "severity": "warning",
-      "source": "probe-derived",
-      "state": "active",
-      "status": "degraded",
-      "subnet_name": "ReadyAI",
-      "subnet_slug": "sn-33",
-      "surface_id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-9",
-      "user_reported": false
-    },
-    {
-      "classification": "dead",
-      "detected_at": "2026-06-07T12:30:48.789Z",
-      "endpoint_id": "endpoint-sn-85-website-common-docs",
-      "id": "incident-endpoint-sn-85-website-common-docs",
-      "kind": "docs",
-      "last_checked": "2026-06-07T12:30:48.789Z",
-      "layer": "docs-provider",
-      "netuid": 85,
-      "operator": "taomarketcap",
-      "pool_eligible": false,
-      "provider": "taomarketcap",
-      "reason": "dead",
-      "severity": "warning",
-      "source": "probe-derived",
-      "state": "active",
-      "status": "degraded",
-      "subnet_name": "Vidaio",
-      "subnet_slug": "sn-85",
-      "surface_id": "sn-85-website-common-docs",
-      "user_reported": false
-    }
-  ],
+  "incidents": [],
   "notes": [
     "Endpoint incidents are generated from observed probe state only.",
     "Contributor reports can create review or re-probe work, but cannot set uptime, latency, health, or pool eligibility.",
@@ -55,24 +10,12 @@
   "schema_version": 1,
   "source": "endpoint-resource-probes",
   "summary": {
-    "active_count": 2,
-    "by_kind": {
-      "data-artifact": 1,
-      "docs": 1
-    },
-    "by_layer": {
-      "data-provider": 1,
-      "docs-provider": 1
-    },
-    "by_provider": {
-      "taomarketcap": 2
-    },
-    "by_severity": {
-      "warning": 2
-    },
-    "by_status": {
-      "degraded": 2
-    },
-    "incident_count": 2
+    "active_count": 0,
+    "by_kind": {},
+    "by_layer": {},
+    "by_provider": {},
+    "by_severity": {},
+    "by_status": {},
+    "incident_count": 0
   }
 }

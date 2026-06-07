@@ -75,6 +75,7 @@ const previousR2ManifestArtifact = await readOptionalJson(
   path.join(outputRoot, "r2-manifest.json"),
 );
 const previousArtifactDigests = await collectArtifactDigests({
+  includeR2Root: false,
   previousManifest: previousR2ManifestArtifact,
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
@@ -825,6 +826,9 @@ function groupByNetuid(items) {
 }
 
 async function loadPreviousHealthArtifact() {
+  if (process.env.METAGRAPH_PRESERVE_PROBE_HEALTH !== "1") {
+    return null;
+  }
   const artifact = await readOptionalJson(
     path.join(repoRoot, ".cache/metagraphed/health/latest.json"),
   );
@@ -1789,29 +1793,33 @@ function r2ArtifactDir(relativePath) {
 }
 
 async function collectArtifactDigests({
+  includeR2Root = true,
   previousManifest,
   publicRoot,
   r2Root,
 }) {
   const files = [];
-  await collectArtifactFiles({ publicRoot, r2Root }, async (filePath, root) => {
-    if (!filePath.endsWith(".json")) {
-      return;
-    }
-    const relativePath = path.relative(root, filePath).replace(/\\/g, "/");
-    if (
-      ["build-summary.json", "changelog.json", "r2-manifest.json"].includes(
-        relativePath,
-      )
-    ) {
-      return;
-    }
-    const raw = await fs.readFile(filePath);
-    files.push({
-      path: relativePath,
-      hash: sha256Hex(raw),
-    });
-  });
+  await collectArtifactFiles(
+    { includeR2Root, publicRoot, r2Root },
+    async (filePath, root) => {
+      if (!filePath.endsWith(".json")) {
+        return;
+      }
+      const relativePath = path.relative(root, filePath).replace(/\\/g, "/");
+      if (
+        ["build-summary.json", "changelog.json", "r2-manifest.json"].includes(
+          relativePath,
+        )
+      ) {
+        return;
+      }
+      const raw = await fs.readFile(filePath);
+      files.push({
+        path: relativePath,
+        hash: sha256Hex(raw),
+      });
+    },
+  );
 
   for (const artifact of previousManifest?.artifacts || []) {
     const relativePath = artifact.path?.replace(/^\/metagraph\//, "");
@@ -1865,7 +1873,10 @@ async function collectArtifactSizes({ publicRoot, r2Root }) {
   return files.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-async function collectArtifactFiles({ publicRoot, r2Root }, onFile) {
+async function collectArtifactFiles(
+  { includeR2Root = true, publicRoot, r2Root },
+  onFile,
+) {
   await walkIfExists(publicRoot, async (filePath) => {
     const relativePath = path
       .relative(publicRoot, filePath)
@@ -1875,7 +1886,9 @@ async function collectArtifactFiles({ publicRoot, r2Root }, onFile) {
     }
     await onFile(filePath, publicRoot);
   });
-  await walkIfExists(r2Root, async (filePath) => onFile(filePath, r2Root));
+  if (includeR2Root) {
+    await walkIfExists(r2Root, async (filePath) => onFile(filePath, r2Root));
+  }
 }
 
 async function loadAdapterSnapshots() {
