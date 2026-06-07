@@ -6,8 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: sync-subnets
@@ -16,9 +15,15 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      has_changes: ${{ steps.changes.outputs.has_changes }}
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
@@ -122,13 +127,87 @@ jobs:
         run: npm run validate:private-boundary
 
       - name: Generate sync summary
-        run: npm run sync:summary > "$RUNNER_TEMP/metagraphed-sync-summary.md"
+        run: |
+          mkdir -p "$RUNNER_TEMP/sync-output"
+          npm run sync:summary > "$RUNNER_TEMP/sync-output/metagraphed-sync-summary.md"
+
+      - name: Capture generated changes
+        id: changes
+        run: |
+          allowed_paths=(
+            public/metagraph
+            registry/candidates/generated
+            registry/candidates/verification
+            registry/native/finney-subnets.json
+            registry/subnets
+          )
+          git ls-files --others --exclude-standard > "$RUNNER_TEMP/sync-output/untracked-files.txt"
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            case "$file" in
+              public/metagraph/*|registry/candidates/generated/*|registry/candidates/verification/*|registry/native/finney-subnets.json|registry/subnets/*) ;;
+              *)
+                echo "Unexpected untracked file outside the sync allowlist: $file" >&2
+                exit 1
+                ;;
+            esac
+          done < "$RUNNER_TEMP/sync-output/untracked-files.txt"
+          git add -N -- "${allowed_paths[@]}"
+          git diff --name-only > "$RUNNER_TEMP/sync-output/changed-files.txt"
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            case "$file" in
+              public/metagraph/*|registry/candidates/generated/*|registry/candidates/verification/*|registry/native/finney-subnets.json|registry/subnets/*) ;;
+              *)
+                echo "Unexpected generated change outside the sync allowlist: $file" >&2
+                exit 1
+                ;;
+            esac
+          done < "$RUNNER_TEMP/sync-output/changed-files.txt"
+          git diff --binary -- "${allowed_paths[@]}" > "$RUNNER_TEMP/sync-output/subnet-registry.patch"
+          if git diff --quiet -- "${allowed_paths[@]}"; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload generated changes
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: subnet-registry-sync
+          path: ${{ runner.temp }}/sync-output
+          if-no-files-found: error
+          retention-days: 1
+
+  pull-request:
+    runs-on: ubuntu-latest
+    needs: sync
+    if: needs.sync.outputs.has_changes == 'true'
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
+
+      - name: Download generated changes
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: subnet-registry-sync
+          path: ${{ runner.temp }}/sync-output
+
+      - name: Apply generated changes
+        run: git apply --index --whitespace=nowarn "$RUNNER_TEMP/sync-output/subnet-registry.patch"
 
       - name: Open sync pull request
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           branch: codex/sync-subnets
           delete-branch: true
           title: "chore(sync): refresh subnet registry data"
           commit-message: "chore(sync): refresh subnet registry data"
-          body-path: ${{ runner.temp }}/metagraphed-sync-summary.md
+          body-path: ${{ runner.temp }}/sync-output/metagraphed-sync-summary.md
