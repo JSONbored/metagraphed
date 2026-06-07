@@ -23,15 +23,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install
-        run: npm ci
-
       - name: Capture changed files
         if: github.event_name == 'pull_request'
         env:
@@ -46,7 +37,67 @@ jobs:
 
       - name: Classify validation route
         id: route
-        run: npm run ci:validate-route -- --changed-files changed-files.txt --out validate-route.json
+        run: |
+          python3 <<'VALIDATE_ROUTE_PY'
+          import json
+          import os
+          import pathlib
+          import re
+
+          changed_files = sorted(
+              file.strip().replace("\\", "/").removeprefix("./")
+              for file in pathlib.Path("changed-files.txt").read_text(encoding="utf-8").splitlines()
+              if file.strip()
+          )
+          candidate_pattern = re.compile(r"^registry/candidates/community/[a-z0-9][a-z0-9-]*\.json$")
+          candidate_files = [file for file in changed_files if candidate_pattern.fullmatch(file)]
+          touched_community = [
+              file for file in changed_files if file.startswith("registry/candidates/community/")
+          ]
+          errors = []
+          if not candidate_files and not touched_community:
+              scope = "normal-pr"
+          else:
+              scope = "direct-candidate"
+              if len(candidate_files) != 1:
+                  errors.append({
+                      "category": "unsupported-shape",
+                      "message": "direct submissions must change exactly one registry/candidates/community/*.json file",
+                  })
+              unrelated = [file for file in changed_files if not candidate_pattern.fullmatch(file)]
+              if unrelated:
+                  errors.append({
+                      "category": "generated-artifact-tampering",
+                      "message": "direct submissions cannot change other files: " + ", ".join(unrelated),
+                  })
+          mode = "ugc" if scope == "direct-candidate" and not errors else "full"
+          report = {
+              "schema_version": 1,
+              "mode": mode,
+              "scope": scope,
+              "changed_files": changed_files,
+              "candidate_files": candidate_files,
+              "errors": errors,
+          }
+          pathlib.Path("validate-route.json").write_text(
+              json.dumps(report, indent=2) + "\n", encoding="utf-8"
+          )
+          output_path = os.environ.get("GITHUB_OUTPUT")
+          if output_path:
+              with open(output_path, "a", encoding="utf-8") as output:
+                  output.write(f"mode={mode}\n")
+                  output.write(f"scope={scope}\n")
+          print(json.dumps(report, indent=2))
+          VALIDATE_ROUTE_PY
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
 
       - name: Run UGC submission preflight
         if: steps.route.outputs.mode == 'ugc'
