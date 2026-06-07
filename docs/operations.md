@@ -53,6 +53,14 @@ Actual writes require explicit environment gates:
 
 Normal R2 publishes are delta-based. The uploader reads `latest/r2-manifest.json`, compares artifact SHA-256 values, reads R2-tier files from the staging tree, skips unchanged artifact files, and refreshes `latest/r2-manifest.json` plus `latest/build-summary.json` on full uploads so Worker fallback and operator summaries stay current.
 
+After the Worker is deployed, run the live smoke gate:
+
+```bash
+npm run smoke:live
+```
+
+The live smoke checks `metagraph.sh` API envelopes, Worker-mediated raw artifact routes, CORS/cache headers, R2-backed detail routes, invalid-query errors, and verifies the v1 RPC proxy still returns `rpc_proxy_disabled`.
+
 ## Restore From R2
 
 Dry-run:

@@ -40,6 +40,11 @@ check(
   "RPC proxy routes must run Worker first",
 );
 check(
+  Array.isArray(config.assets?.run_worker_first) &&
+    config.assets.run_worker_first.includes("/metagraph/*"),
+  "Metagraph artifact routes must run Worker first",
+);
+check(
   assetsIgnore.includes(".DS_Store") && assetsIgnore.includes("Thumbs.db"),
   "public/.assetsignore must block OS metadata uploads",
 );

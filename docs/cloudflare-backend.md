@@ -4,7 +4,7 @@ Metagraphed uses Cloudflare as the serving, cache, and artifact-history layer. G
 
 ## Runtime Shape
 
-- Workers serve `metagraph.sh/api/v1/*` routes over canonical `/metagraph/*` artifact paths.
+- Workers serve `metagraph.sh/api/v1/*` and `metagraph.sh/metagraph/*.json` routes over canonical artifact paths so API consumers get consistent CORS, cache headers, storage-tier headers, and R2 fallback.
 - Workers Static Assets serve compact checked-in artifacts from `public/metagraph`.
 - R2 stores high-churn/detail artifacts staged under `dist/metagraph-r2/metagraph`, plus current artifact copies under `latest/`; versioned artifact history under `runs/{generated_at}/` is opt-in for publish jobs that set `METAGRAPH_R2_UPLOAD_HISTORY=1`.
 - KV stores small latest pointers, feature flags, endpoint-pool summaries, and source-freshness summaries when configured.
