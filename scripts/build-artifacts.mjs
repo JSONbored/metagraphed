@@ -45,7 +45,10 @@ const candidates = await loadCandidates();
 const candidateDiscovery = await readOptionalJson(
   path.join(repoRoot, "registry/candidates/generated/public-sources.json"),
 );
-const verification = redactCredentialedUrls(await loadVerification());
+const verification = redactCredentialedUrls(
+  await loadVerification({ preferDetailed: false }),
+);
+const detailedVerification = redactCredentialedUrls(await loadVerification());
 const adapterSnapshots = await loadAdapterSnapshots();
 const reviewDecisions = await loadReviewDecisions();
 const nativeSnapshot = await loadNativeSnapshot();
@@ -72,7 +75,7 @@ const outputRoot = path.join(repoRoot, "public/metagraph");
 const r2OutputRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 const generatedAt = buildTimestamp();
 const contractVersion = CONTRACT_VERSION;
-const fullVerification = buildFullVerificationArtifact(verification, {
+const fullVerification = buildFullVerificationArtifact(detailedVerification, {
   contractVersion,
   generatedAt,
 });
@@ -81,6 +84,9 @@ const fullVerificationByCandidate = new Map(
     result.candidate_id,
     result,
   ]),
+);
+const canonicalVerificationByCandidate = new Map(
+  (verification.results || []).map((result) => [result.candidate_id, result]),
 );
 const previousArtifactDigests = await collectArtifactDigests({
   includeR2Root: false,
@@ -295,9 +301,18 @@ const candidateIndex = candidates.map((candidate) => ({
     nativeSnapshot.subnets.find((subnet) => subnet.netuid === candidate.netuid)
       ?.name || null,
 }));
+const canonicalCandidateIndex = candidates.map((candidate) => ({
+  ...candidate,
+  verification:
+    canonicalVerificationByCandidate.get(candidate.id) ||
+    fullVerificationResultOrNull(candidate.verification),
+  subnet_name:
+    nativeSnapshot.subnets.find((subnet) => subnet.netuid === candidate.netuid)
+      ?.name || null,
+}));
 
 const profileArtifacts = buildSubnetProfileArtifacts({
-  candidates: candidateIndex,
+  candidates: canonicalCandidateIndex,
   endpoints: endpointResources.endpoints,
   nativeIdentitiesByNetuid: new Map(
     chainSubnets.map((subnet) => [
@@ -309,7 +324,7 @@ const profileArtifacts = buildSubnetProfileArtifacts({
   surfaces,
 });
 const enrichmentArtifacts = buildEnrichmentQueueArtifacts({
-  candidates: candidateIndex,
+  candidates: canonicalCandidateIndex,
   curationReview,
   profiles: profileArtifacts.profiles,
   reviewProfiles: profileArtifacts.reviewProfiles,
