@@ -44,9 +44,9 @@ export function ProfileTabs({
                   })
                 }
                 className={classNames(
-                  "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12px] font-medium whitespace-nowrap transition-colors",
+                  "relative inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12px] font-medium whitespace-nowrap transition-colors",
                   isActive
-                    ? "bg-surface text-ink-strong"
+                    ? "bg-surface text-ink-strong after:absolute after:left-2 after:right-2 after:-bottom-[7px] after:h-[2px] after:rounded-full after:bg-accent after:content-['']"
                     : "text-ink-muted hover:text-ink-strong hover:bg-surface/60",
                 )}
                 aria-current={isActive ? "page" : undefined}
