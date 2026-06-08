@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { AlertCircle, RefreshCw } from "lucide-react";
 import { classNames } from "@/lib/metagraphed/format";
+import { Skeleton } from "./states";
 
 /**
  * Shared responsive shell for list/table routes.
@@ -19,6 +21,7 @@ export function ListShell({
   footer,
   empty,
   isEmpty,
+  isStale,
 }: {
   filters: ReactNode;
   cards?: ReactNode;
@@ -26,6 +29,8 @@ export function ListShell({
   footer?: ReactNode;
   empty?: ReactNode;
   isEmpty?: boolean;
+  /** Subtly dim loaded content while a background refetch is in flight. */
+  isStale?: boolean;
 }) {
   return (
     <div>
@@ -44,7 +49,7 @@ export function ListShell({
       {isEmpty ? (
         empty
       ) : (
-        <>
+        <div className={isStale ? "opacity-70 transition-opacity" : undefined}>
           {cards ? <div className="md:hidden space-y-2">{cards}</div> : null}
           <div className={cards ? "hidden md:block" : undefined}>
             <div className="rounded border border-border bg-card overflow-hidden">
@@ -55,7 +60,7 @@ export function ListShell({
           {cards && footer ? (
             <div className="md:hidden mt-3">{footer}</div>
           ) : null}
-        </>
+        </div>
       )}
     </div>
   );
@@ -90,20 +95,74 @@ export function ListCard({
   );
 }
 
-/** Cursor-pagination "Load more" affordance. */
+/**
+ * Cursor-pagination "Load more" affordance with skeletons during fetch and
+ * an inline retry strip on error. Keeps already-loaded rows visible.
+ */
 export function LoadMore({
   hasMore,
   isLoading,
   onLoadMore,
   shown,
   total,
+  error,
+  cursorInvalid,
 }: {
   hasMore: boolean;
   isLoading: boolean;
   onLoadMore: () => void;
   shown: number;
   total?: number;
+  /** Network / API error from the most recent fetchNextPage. */
+  error?: Error | null;
+  /** API returned a next_cursor we couldn't trust — stop and inform. */
+  cursorInvalid?: boolean;
 }) {
+  // Skeleton "incoming rows" while a fetch is in flight.
+  if (isLoading) {
+    return (
+      <div className="border-t border-border bg-surface/30 p-3 space-y-1.5" aria-live="polite" aria-busy="true">
+        <span className="sr-only">Loading more results…</span>
+        <Skeleton className="h-7 w-full" />
+        <Skeleton className="h-7 w-full" />
+        <Skeleton className="h-7 w-3/4" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-between gap-3 border-t border-health-down/30 bg-health-down/5 px-4 py-2 text-[11px]">
+        <span className="inline-flex items-center gap-1.5 text-health-down">
+          <AlertCircle className="size-3" />
+          Couldn&rsquo;t load more — {error.message || "network error"}.
+        </span>
+        <button
+          type="button"
+          onClick={onLoadMore}
+          className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 font-medium hover:border-ink/30 min-h-9"
+        >
+          <RefreshCw className="size-3" /> Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (cursorInvalid) {
+    return (
+      <div className="flex items-center justify-between gap-3 border-t border-health-warn/30 bg-health-warn/5 px-4 py-2 text-[11px] text-health-warn">
+        <span className="inline-flex items-center gap-1.5">
+          <AlertCircle className="size-3" />
+          Pagination stopped — the server returned an invalid next cursor.
+        </span>
+        <span className="font-mono text-ink-muted">
+          {shown}
+          {total != null ? ` / ${total}` : ""}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 text-[11px] font-mono text-ink-muted">
       <span>
@@ -114,10 +173,9 @@ export function LoadMore({
         <button
           type="button"
           onClick={onLoadMore}
-          disabled={isLoading}
-          className="inline-flex items-center rounded border border-border bg-card px-3 py-1.5 text-[11px] font-medium hover:border-ink/30 disabled:opacity-40 min-h-9"
+          className="inline-flex items-center rounded border border-border bg-card px-3 py-1.5 text-[11px] font-medium hover:border-ink/30 min-h-9"
         >
-          {isLoading ? "Loading…" : "Load more"}
+          Load more
         </button>
       ) : (
         <span className="opacity-60">end of list</span>
