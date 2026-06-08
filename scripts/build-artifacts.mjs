@@ -907,18 +907,26 @@ function buildSubnetProfileArtifacts({
       candidate_count: profile.candidate_count,
       completeness_score: profile.completeness_score,
       confidence: profile.confidence,
+      curation_level: profile.curation_level,
       gap_reasons: profile.completeness.gap_reasons,
       missing_critical_count: profile.missing_critical_count,
+      missing_operational: profile.completeness.missing_operational,
+      missing_required: profile.completeness.missing_required,
       name: profile.name,
+      native_name_quality: profile.native_name_quality,
       netuid: profile.netuid,
+      operational_interface_count: profile.operational_interface_count,
       priority_score:
         100 -
         profile.completeness_score +
         profile.missing_critical_count * 5 +
         Math.min(profile.candidate_count, 25),
       profile_level: profile.profile_level,
+      review_state: profile.review_state,
       slug: profile.slug,
+      source_count: profile.provenance.interface_source_count,
       suggested_next_action: profileSuggestedNextAction(profile),
+      supported_interface_kinds: profile.supported_interface_kinds,
     }))
     .sort(
       (a, b) =>

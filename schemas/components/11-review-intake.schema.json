@@ -118,13 +118,21 @@
           "candidate_count",
           "completeness_score",
           "confidence",
+          "curation_level",
           "gap_reasons",
           "missing_critical_count",
+          "missing_operational",
+          "missing_required",
           "name",
+          "native_name_quality",
           "netuid",
+          "operational_interface_count",
           "priority_score",
           "profile_level",
+          "review_state",
           "slug",
+          "source_count",
+          "supported_interface_kinds",
           "suggested_next_action"
         ],
         "properties": {
@@ -140,6 +148,9 @@
           "confidence": {
             "enum": ["low", "medium", "high"]
           },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
           "gap_reasons": {
             "type": "array",
             "items": {
@@ -150,10 +161,29 @@
             "type": "integer",
             "minimum": 0
           },
+          "missing_operational": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "missing_required": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
           "name": {
             "type": "string"
           },
+          "native_name_quality": {
+            "enum": ["chain", "placeholder", "empty"]
+          },
           "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operational_interface_count": {
             "type": "integer",
             "minimum": 0
           },
@@ -169,8 +199,21 @@
               "adapter-backed"
             ]
           },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
           "slug": {
             "type": "string"
+          },
+          "source_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "supported_interface_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
           },
           "suggested_next_action": {
             "type": "string"

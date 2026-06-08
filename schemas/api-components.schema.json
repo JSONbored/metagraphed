@@ -3712,6 +3712,9 @@
               "high"
             ]
           },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
           "gap_reasons": {
             "items": {
               "type": "string"
@@ -3722,10 +3725,33 @@
             "minimum": 0,
             "type": "integer"
           },
+          "missing_operational": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "missing_required": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
           "name": {
             "type": "string"
           },
+          "native_name_quality": {
+            "enum": [
+              "chain",
+              "placeholder",
+              "empty"
+            ]
+          },
           "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "operational_interface_count": {
             "minimum": 0,
             "type": "integer"
           },
@@ -3741,24 +3767,45 @@
               "adapter-backed"
             ]
           },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
           "slug": {
             "type": "string"
           },
+          "source_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "suggested_next_action": {
             "type": "string"
+          },
+          "supported_interface_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
           }
         },
         "required": [
           "candidate_count",
           "completeness_score",
           "confidence",
+          "curation_level",
           "gap_reasons",
           "missing_critical_count",
+          "missing_operational",
+          "missing_required",
           "name",
+          "native_name_quality",
           "netuid",
+          "operational_interface_count",
           "priority_score",
           "profile_level",
+          "review_state",
           "slug",
+          "source_count",
+          "supported_interface_kinds",
           "suggested_next_action"
         ],
         "type": "object"

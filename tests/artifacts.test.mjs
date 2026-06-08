@@ -422,6 +422,20 @@ test("public artifacts are internally consistent", () => {
     ),
     true,
   );
+  assert.equal(
+    profileCompleteness.profiles.every(
+      (profile) =>
+        Array.isArray(profile.missing_required) &&
+        Array.isArray(profile.missing_operational) &&
+        Array.isArray(profile.supported_interface_kinds) &&
+        Number.isInteger(profile.source_count) &&
+        Number.isInteger(profile.operational_interface_count) &&
+        typeof profile.curation_level === "string" &&
+        typeof profile.review_state === "string" &&
+        ["chain", "placeholder", "empty"].includes(profile.native_name_quality),
+    ),
+    true,
+  );
   assert.equal(subnetProfile.profile.netuid, 7);
   assert.equal(subnetProfile.profile.profile_level, "adapter-backed");
   assert.equal(

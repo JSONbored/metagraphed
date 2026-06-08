@@ -1572,15 +1572,24 @@ export interface components {
             completeness_score: number;
             /** @enum {unknown} */
             confidence: "low" | "medium" | "high";
+            curation_level: components["schemas"]["CurationLevel"];
             gap_reasons: string[];
             missing_critical_count: number;
+            missing_operational: components["schemas"]["SurfaceKind"][];
+            missing_required: components["schemas"]["SurfaceKind"][];
             name: string;
+            /** @enum {unknown} */
+            native_name_quality: "chain" | "placeholder" | "empty";
             netuid: number;
+            operational_interface_count: number;
             priority_score: number;
             /** @enum {unknown} */
             profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            review_state: components["schemas"]["ReviewState"];
             slug: string;
+            source_count: number;
             suggested_next_action: string;
+            supported_interface_kinds: components["schemas"]["SurfaceKind"][];
         };
         ReviewQueueArtifact: components["schemas"]["CandidatesArtifact"];
         /** @enum {unknown} */

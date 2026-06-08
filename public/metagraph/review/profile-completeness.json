@@ -6,6 +6,7 @@
       "candidate_count": 11,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -15,17 +16,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "Nodexo",
+      "native_name_quality": "chain",
       "netuid": 27,
+      "operational_interface_count": 0,
       "priority_score": 121,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-27",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 21,
       "completeness_score": 25,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-website",
         "missing-docs",
@@ -35,17 +55,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "name": "Mainframe",
+      "native_name_quality": "chain",
       "netuid": 25,
+      "operational_interface_count": 0,
       "priority_score": 121,
       "profile_level": "directory-only",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-25",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 2,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo"
+      ]
     },
     {
       "candidate_count": 15,
       "completeness_score": 25,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-source-repo",
         "missing-docs",
@@ -55,17 +93,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "name": "Bitstarter #1",
+      "native_name_quality": "chain",
       "netuid": 91,
+      "operational_interface_count": 0,
       "priority_score": 115,
       "profile_level": "directory-only",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-91",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 3,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "website"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -75,17 +131,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "Chunking",
+      "native_name_quality": "chain",
       "netuid": 40,
+      "operational_interface_count": 0,
       "priority_score": 114,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-40",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -95,17 +170,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "EfficientFrontier",
+      "native_name_quality": "chain",
       "netuid": 53,
+      "operational_interface_count": 0,
       "priority_score": 114,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-53",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -115,17 +209,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "Parked",
+      "native_name_quality": "chain",
       "netuid": 73,
+      "operational_interface_count": 0,
       "priority_score": 114,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-73",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -135,17 +248,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "luis",
+      "native_name_quality": "chain",
       "netuid": 92,
+      "operational_interface_count": 0,
       "priority_score": 114,
       "profile_level": "directory-only",
+      "review_state": "stale",
       "slug": "sn-92",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -155,17 +287,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "hard_sign",
+      "native_name_quality": "chain",
       "netuid": 116,
+      "operational_interface_count": 0,
       "priority_score": 114,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-116",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -175,17 +326,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "Satori",
+      "native_name_quality": "chain",
       "netuid": 119,
+      "operational_interface_count": 0,
       "priority_score": 114,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-119",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 3,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -195,17 +365,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "gm",
+      "native_name_quality": "chain",
       "netuid": 28,
+      "operational_interface_count": 0,
       "priority_score": 113,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-28",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 3,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -215,17 +404,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "Recall",
+      "native_name_quality": "chain",
       "netuid": 31,
+      "operational_interface_count": 0,
       "priority_score": 113,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-31",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 3,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -235,17 +443,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "ain",
+      "native_name_quality": "chain",
       "netuid": 69,
+      "operational_interface_count": 0,
       "priority_score": 113,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-69",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 3,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -255,17 +482,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "Subnet 86",
+      "native_name_quality": "placeholder",
       "netuid": 86,
+      "operational_interface_count": 0,
       "priority_score": 113,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-86",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 3,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -275,17 +521,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "ogham",
+      "native_name_quality": "chain",
       "netuid": 90,
+      "operational_interface_count": 0,
       "priority_score": 113,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-90",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 3,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -295,17 +560,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "eni",
+      "native_name_quality": "chain",
       "netuid": 101,
+      "operational_interface_count": 0,
       "priority_score": 113,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-101",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 3,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -315,17 +599,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "for sale (burn to uid1)",
+      "native_name_quality": "chain",
       "netuid": 104,
+      "operational_interface_count": 0,
       "priority_score": 113,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-104",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 3,
       "completeness_score": 20,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-website",
@@ -335,17 +638,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "name": "8 Ball",
+      "native_name_quality": "chain",
       "netuid": 125,
+      "operational_interface_count": 0,
       "priority_score": 113,
       "profile_level": "directory-only",
+      "review_state": "machine-generated",
       "slug": "sn-125",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
     },
     {
       "candidate_count": 13,
       "completeness_score": 25,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-source-repo",
         "missing-docs",
@@ -355,17 +677,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "name": "GroundLayer",
+      "native_name_quality": "chain",
       "netuid": 20,
+      "operational_interface_count": 0,
       "priority_score": 113,
       "profile_level": "directory-only",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-20",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 3,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "website"
+      ]
     },
     {
       "candidate_count": 11,
       "completeness_score": 25,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-source-repo",
         "missing-docs",
@@ -375,17 +715,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "name": "Byzantium",
+      "native_name_quality": "chain",
       "netuid": 76,
+      "operational_interface_count": 0,
       "priority_score": 111,
       "profile_level": "directory-only",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-76",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 2,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "website"
+      ]
     },
     {
       "candidate_count": 11,
       "completeness_score": 25,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-website",
         "missing-docs",
@@ -395,17 +753,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "name": "InfiniteHash",
+      "native_name_quality": "chain",
       "netuid": 89,
+      "operational_interface_count": 0,
       "priority_score": 111,
       "profile_level": "directory-only",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-89",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 2,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo"
+      ]
     },
     {
       "candidate_count": 5,
       "completeness_score": 25,
       "confidence": "low",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-website",
         "missing-docs",
@@ -415,17 +791,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "name": "Grail",
+      "native_name_quality": "chain",
       "netuid": 81,
+      "operational_interface_count": 0,
       "priority_score": 105,
       "profile_level": "directory-only",
+      "review_state": "needs-review",
       "slug": "sn-81",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 3,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 25,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-website",
         "missing-docs",
@@ -435,17 +829,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "name": "Academia",
+      "native_name_quality": "chain",
       "netuid": 109,
+      "operational_interface_count": 0,
       "priority_score": 104,
       "profile_level": "directory-only",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-109",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 3,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 25,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-website",
         "missing-docs",
@@ -455,17 +867,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "name": "HashiChain",
+      "native_name_quality": "chain",
       "netuid": 115,
+      "operational_interface_count": 0,
       "priority_score": 104,
       "profile_level": "directory-only",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-115",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 3,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 25,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-website",
         "missing-docs",
@@ -475,17 +905,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "name": "MANTIS",
+      "native_name_quality": "chain",
       "netuid": 123,
+      "operational_interface_count": 0,
       "priority_score": 104,
       "profile_level": "directory-only",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-123",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 3,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo"
+      ]
     },
     {
       "candidate_count": 22,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -494,17 +942,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Targon",
+      "native_name_quality": "chain",
       "netuid": 4,
+      "operational_interface_count": 0,
       "priority_score": 102,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-4",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 22,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -513,17 +978,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Compelle",
+      "native_name_quality": "chain",
       "netuid": 82,
+      "operational_interface_count": 0,
       "priority_score": 102,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-82",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 21,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -532,17 +1014,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "iota",
+      "native_name_quality": "chain",
       "netuid": 9,
+      "operational_interface_count": 0,
       "priority_score": 101,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-9",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 21,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -551,17 +1050,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "AdTAO",
+      "native_name_quality": "chain",
       "netuid": 21,
+      "operational_interface_count": 0,
       "priority_score": 101,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-21",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 21,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -570,17 +1086,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "ItsAI",
+      "native_name_quality": "chain",
       "netuid": 32,
+      "operational_interface_count": 0,
       "priority_score": 101,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-32",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 21,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -589,17 +1122,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Talisman AI",
+      "native_name_quality": "chain",
       "netuid": 45,
+      "operational_interface_count": 0,
       "priority_score": 101,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-45",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 21,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -608,17 +1158,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Quantum Compute",
+      "native_name_quality": "chain",
       "netuid": 48,
+      "operational_interface_count": 0,
       "priority_score": 101,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-48",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 21,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -627,17 +1194,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Enigma",
+      "native_name_quality": "chain",
       "netuid": 63,
+      "operational_interface_count": 0,
       "priority_score": 101,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-63",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 21,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -646,17 +1230,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "sundae_bar",
+      "native_name_quality": "chain",
       "netuid": 121,
+      "operational_interface_count": 0,
       "priority_score": 101,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-121",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 20,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -665,17 +1266,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Djinn",
+      "native_name_quality": "chain",
       "netuid": 103,
+      "operational_interface_count": 0,
       "priority_score": 100,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-103",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 19,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -684,17 +1302,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "ForeverMoney",
+      "native_name_quality": "chain",
       "netuid": 98,
+      "operational_interface_count": 0,
       "priority_score": 99,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-98",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 18,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -703,17 +1338,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Vidaio",
+      "native_name_quality": "chain",
       "netuid": 85,
+      "operational_interface_count": 0,
       "priority_score": 98,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-85",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 12,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-source-repo",
         "missing-openapi",
@@ -722,17 +1374,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "name": "Endure Network",
+      "native_name_quality": "chain",
       "netuid": 30,
+      "operational_interface_count": 0,
       "priority_score": 97,
       "profile_level": "directory-only",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-30",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 3,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "website"
+      ]
     },
     {
       "candidate_count": 16,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -741,17 +1412,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "ConnitoAI",
+      "native_name_quality": "chain",
       "netuid": 102,
+      "operational_interface_count": 0,
       "priority_score": 96,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-102",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 6,
       "completeness_score": 33,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-website",
         "missing-docs",
@@ -760,17 +1448,35 @@
         "missing-sse"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "name": "EvolAI",
+      "native_name_quality": "chain",
       "netuid": 47,
+      "operational_interface_count": 1,
       "priority_score": 93,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-47",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 3,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "source-repo"
+      ]
     },
     {
       "candidate_count": 22,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -778,17 +1484,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Ditto",
+      "native_name_quality": "chain",
       "netuid": 118,
+      "operational_interface_count": 0,
       "priority_score": 92,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-118",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 11,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -797,17 +1521,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Ridges",
+      "native_name_quality": "chain",
       "netuid": 62,
+      "operational_interface_count": 0,
       "priority_score": 91,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-62",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 3,
       "completeness_score": 40,
       "confidence": "low",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-website",
         "missing-openapi",
@@ -816,17 +1557,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "name": "Gopher",
+      "native_name_quality": "placeholder",
       "netuid": 42,
+      "operational_interface_count": 0,
       "priority_score": 88,
       "profile_level": "directory-only",
+      "review_state": "needs-review",
       "slug": "sn-42",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 4,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo"
+      ]
     },
     {
       "candidate_count": 3,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-source-repo",
         "missing-openapi",
@@ -835,17 +1595,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "name": "Luminar Network",
+      "native_name_quality": "placeholder",
       "netuid": 87,
+      "operational_interface_count": 0,
       "priority_score": 88,
       "profile_level": "directory-only",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-87",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 7,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "website"
+      ]
     },
     {
       "candidate_count": 23,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -853,17 +1632,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Hippius",
+      "native_name_quality": "chain",
       "netuid": 75,
+      "operational_interface_count": 0,
       "priority_score": 88,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-75",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 17,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -871,17 +1668,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Cacheon",
+      "native_name_quality": "chain",
       "netuid": 14,
+      "operational_interface_count": 0,
       "priority_score": 87,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-14",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 8,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 17,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -889,17 +1704,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "404—GEN",
+      "native_name_quality": "chain",
       "netuid": 17,
+      "operational_interface_count": 0,
       "priority_score": 87,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-17",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 17,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -907,17 +1740,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Plaτform",
+      "native_name_quality": "chain",
       "netuid": 100,
+      "operational_interface_count": 0,
       "priority_score": 87,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-100",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 17,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -925,17 +1776,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "TalkHead",
+      "native_name_quality": "chain",
       "netuid": 108,
+      "operational_interface_count": 0,
       "priority_score": 87,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-108",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 16,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -943,17 +1812,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Numinous",
+      "native_name_quality": "chain",
       "netuid": 6,
+      "operational_interface_count": 0,
       "priority_score": 86,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-6",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 16,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -961,17 +1848,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Zeus",
+      "native_name_quality": "chain",
       "netuid": 18,
+      "operational_interface_count": 0,
       "priority_score": 86,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-18",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 16,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -979,17 +1884,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Aurelius",
+      "native_name_quality": "chain",
       "netuid": 37,
+      "operational_interface_count": 0,
       "priority_score": 86,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-37",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 21,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -997,17 +1920,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "blockmachine",
+      "native_name_quality": "chain",
       "netuid": 19,
+      "operational_interface_count": 0,
       "priority_score": 86,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-19",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 5,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -1016,17 +1957,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Compute Horde",
+      "native_name_quality": "chain",
       "netuid": 12,
+      "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-12",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 5,
       "completeness_score": 40,
       "confidence": "low",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -1035,17 +1993,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Basilica",
+      "native_name_quality": "chain",
       "netuid": 39,
+      "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
+      "review_state": "needs-review",
       "slug": "sn-39",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 5,
       "completeness_score": 40,
       "confidence": "low",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -1054,17 +2029,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "BrainPlay",
+      "native_name_quality": "placeholder",
       "netuid": 117,
+      "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
+      "review_state": "needs-review",
       "slug": "sn-117",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 15,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1072,17 +2064,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "TrajectoryRL",
+      "native_name_quality": "chain",
       "netuid": 11,
+      "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-11",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 15,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1090,17 +2100,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Perturb",
+      "native_name_quality": "chain",
       "netuid": 26,
+      "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-26",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 15,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1108,17 +2136,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Eirel",
+      "native_name_quality": "chain",
       "netuid": 36,
+      "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-36",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 15,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1126,17 +2172,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "NIOME",
+      "native_name_quality": "chain",
       "netuid": 55,
+      "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-55",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 15,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1144,17 +2208,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Poker44",
+      "native_name_quality": "chain",
       "netuid": 126,
+      "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-126",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 20,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1162,17 +2244,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Data Universe",
+      "native_name_quality": "chain",
       "netuid": 13,
+      "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-13",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 10,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -1181,17 +2281,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Graphite",
+      "native_name_quality": "chain",
       "netuid": 43,
+      "operational_interface_count": 0,
       "priority_score": 84,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-43",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -1200,17 +2317,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Sparket",
+      "native_name_quality": "chain",
       "netuid": 57,
+      "operational_interface_count": 0,
       "priority_score": 84,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-57",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 40,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -1219,17 +2353,34 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "oneoneone",
+      "native_name_quality": "chain",
       "netuid": 111,
+      "operational_interface_count": 0,
       "priority_score": 84,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-111",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 14,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1237,17 +2388,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Hone",
+      "native_name_quality": "chain",
       "netuid": 5,
+      "operational_interface_count": 0,
       "priority_score": 84,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-5",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 14,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1255,17 +2424,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Vanta",
+      "native_name_quality": "chain",
       "netuid": 8,
+      "operational_interface_count": 0,
       "priority_score": 84,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-8",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 14,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1273,17 +2460,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Yanez MIID",
+      "native_name_quality": "chain",
       "netuid": 54,
+      "operational_interface_count": 0,
       "priority_score": 84,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-54",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 14,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1291,17 +2496,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Harnyx",
+      "native_name_quality": "chain",
       "netuid": 67,
+      "operational_interface_count": 0,
       "priority_score": 84,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-67",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 14,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1309,17 +2532,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Bitsota",
+      "native_name_quality": "chain",
       "netuid": 94,
+      "operational_interface_count": 0,
       "priority_score": 84,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-94",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 14,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1327,17 +2568,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Astrid",
+      "native_name_quality": "chain",
       "netuid": 127,
+      "operational_interface_count": 0,
       "priority_score": 84,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-127",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 19,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1345,17 +2604,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "ORO",
+      "native_name_quality": "chain",
       "netuid": 15,
+      "operational_interface_count": 0,
       "priority_score": 84,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-15",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 16,
       "completeness_score": 48,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -1363,17 +2640,34 @@
         "missing-sse"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "name": "Investing",
+      "native_name_quality": "chain",
       "netuid": 88,
+      "operational_interface_count": 1,
       "priority_score": 83,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-88",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 13,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1381,17 +2675,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Score",
+      "native_name_quality": "chain",
       "netuid": 44,
+      "operational_interface_count": 0,
       "priority_score": 83,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-44",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 13,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-source-repo",
         "missing-subnet-api",
@@ -1399,17 +2711,36 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "name": "Actual",
+      "native_name_quality": "chain",
       "netuid": 95,
+      "operational_interface_count": 1,
       "priority_score": 83,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-95",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
+      "source_count": 5,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "website"
+      ]
     },
     {
       "candidate_count": 18,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1417,17 +2748,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Apex",
+      "native_name_quality": "chain",
       "netuid": 1,
+      "operational_interface_count": 0,
       "priority_score": 83,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-1",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 12,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1435,17 +2784,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "OxMarkets",
+      "native_name_quality": "chain",
       "netuid": 35,
+      "operational_interface_count": 0,
       "priority_score": 82,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-35",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 12,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1453,17 +2820,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "minotaur",
+      "native_name_quality": "chain",
       "netuid": 112,
+      "operational_interface_count": 0,
       "priority_score": 82,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-112",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 12,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1471,17 +2856,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Affine",
+      "native_name_quality": "chain",
       "netuid": 120,
+      "operational_interface_count": 0,
       "priority_score": 82,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-120",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 17,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1489,17 +2892,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "TensorUSD",
+      "native_name_quality": "chain",
       "netuid": 113,
+      "operational_interface_count": 0,
       "priority_score": 82,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-113",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 11,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1507,17 +2928,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Swap",
+      "native_name_quality": "chain",
       "netuid": 10,
+      "operational_interface_count": 0,
       "priority_score": 81,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-10",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 11,
       "completeness_score": 50,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1525,34 +2964,69 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "VoidAI",
+      "native_name_quality": "chain",
       "netuid": 106,
+      "operational_interface_count": 0,
       "priority_score": 81,
       "profile_level": "identity-complete",
+      "review_state": "machine-generated",
       "slug": "sn-106",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 22,
       "completeness_score": 58,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "name": "StreetVision by NATIX",
+      "native_name_quality": "chain",
       "netuid": 72,
+      "operational_interface_count": 1,
       "priority_score": 79,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-72",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "data-artifact",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 13,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1560,17 +3034,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "RedTeam",
+      "native_name_quality": "chain",
       "netuid": 61,
+      "operational_interface_count": 0,
       "priority_score": 78,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-61",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 16,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
         "missing-openapi",
@@ -1578,51 +3070,104 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Trishool",
+      "native_name_quality": "chain",
       "netuid": 23,
+      "operational_interface_count": 1,
       "priority_score": 76,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-23",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
     },
     {
       "candidate_count": 19,
       "completeness_score": 58,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "name": "SOMA",
+      "native_name_quality": "chain",
       "netuid": 114,
+      "operational_interface_count": 1,
       "priority_score": 76,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-114",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 22,
       "completeness_score": 63,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "name": "MVTRX",
+      "native_name_quality": "chain",
       "netuid": 79,
+      "operational_interface_count": 1,
       "priority_score": 74,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-79",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 8,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1630,85 +3175,175 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Dojo",
+      "native_name_quality": "chain",
       "netuid": 52,
+      "operational_interface_count": 0,
       "priority_score": 73,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-52",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 16,
       "completeness_score": 58,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "name": "NOVA",
+      "native_name_quality": "chain",
       "netuid": 68,
+      "operational_interface_count": 1,
       "priority_score": 73,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-68",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 16,
       "completeness_score": 58,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "name": "NexisGen",
+      "native_name_quality": "chain",
       "netuid": 70,
+      "operational_interface_count": 1,
       "priority_score": 73,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-70",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 22,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "lium.io",
+      "native_name_quality": "chain",
       "netuid": 51,
+      "operational_interface_count": 1,
       "priority_score": 72,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-51",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 8,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
     },
     {
       "candidate_count": 21,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Zipcode",
+      "native_name_quality": "chain",
       "netuid": 46,
+      "operational_interface_count": 1,
       "priority_score": 71,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-46",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 5,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1716,34 +3351,70 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "ansuz",
+      "native_name_quality": "chain",
       "netuid": 84,
+      "operational_interface_count": 0,
       "priority_score": 70,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-84",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 26,
       "completeness_score": 70,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Chutes",
+      "native_name_quality": "chain",
       "netuid": 64,
+      "operational_interface_count": 1,
       "priority_score": 70,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-64",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 10,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 55,
       "confidence": "low",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1751,17 +3422,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Templar",
+      "native_name_quality": "chain",
       "netuid": 3,
+      "operational_interface_count": 0,
       "priority_score": 69,
       "profile_level": "identity-complete",
+      "review_state": "needs-review",
       "slug": "sn-3",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1769,17 +3458,35 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "BitMind",
+      "native_name_quality": "chain",
       "netuid": 34,
+      "operational_interface_count": 0,
       "priority_score": 69,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-34",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 4,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1787,34 +3494,70 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Bitrecs",
+      "native_name_quality": "chain",
       "netuid": 122,
+      "operational_interface_count": 0,
       "priority_score": 69,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-122",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 18,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Minos",
+      "native_name_quality": "chain",
       "netuid": 107,
+      "operational_interface_count": 1,
       "priority_score": 68,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-107",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
     },
     {
       "candidate_count": 2,
       "completeness_score": 55,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1822,531 +3565,1106 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "root",
+      "native_name_quality": "chain",
       "netuid": 0,
+      "operational_interface_count": 0,
       "priority_score": 67,
       "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
       "slug": "root",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 10,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "subtensor-rpc",
+        "subtensor-wss",
+        "website"
+      ]
     },
     {
       "candidate_count": 15,
       "completeness_score": 63,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "name": "Quasar",
+      "native_name_quality": "chain",
       "netuid": 24,
+      "operational_interface_count": 1,
       "priority_score": 67,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-24",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 17,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "TAO Private Network",
+      "native_name_quality": "chain",
       "netuid": 65,
+      "operational_interface_count": 1,
       "priority_score": 67,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-65",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 17,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Bitcast",
+      "native_name_quality": "chain",
       "netuid": 93,
+      "operational_interface_count": 1,
       "priority_score": 67,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-93",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 14,
       "completeness_score": 63,
       "confidence": "high",
+      "curation_level": "adapter-backed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "name": "Gittensor",
+      "native_name_quality": "chain",
       "netuid": 74,
+      "operational_interface_count": 1,
       "priority_score": 66,
       "profile_level": "adapter-backed",
+      "review_state": "maintainer-reviewed",
       "slug": "gittensor",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "data-artifact",
+        "docs",
+        "repo-registry",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 16,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-openapi",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Babelbit",
+      "native_name_quality": "chain",
       "netuid": 59,
+      "operational_interface_count": 1,
       "priority_score": 66,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-59",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
     },
     {
       "candidate_count": 15,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Albedo",
+      "native_name_quality": "chain",
       "netuid": 97,
+      "operational_interface_count": 1,
       "priority_score": 65,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-97",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 8,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 14,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "DSperse",
+      "native_name_quality": "chain",
       "netuid": 2,
+      "operational_interface_count": 1,
       "priority_score": 64,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-2",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 8,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 14,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Leoma",
+      "native_name_quality": "chain",
       "netuid": 99,
+      "operational_interface_count": 1,
       "priority_score": 64,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-99",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 6,
       "completeness_score": 58,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "name": "ReadyAI",
+      "native_name_quality": "chain",
       "netuid": 33,
+      "operational_interface_count": 1,
       "priority_score": 63,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-33",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "data-artifact",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 13,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Bitsec.ai",
+      "native_name_quality": "chain",
       "netuid": 60,
+      "operational_interface_count": 1,
       "priority_score": 63,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-60",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 13,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Vocence",
+      "native_name_quality": "chain",
       "netuid": 78,
+      "operational_interface_count": 1,
       "priority_score": 63,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-78",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 13,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "dogelayer",
+      "native_name_quality": "chain",
       "netuid": 80,
+      "operational_interface_count": 1,
       "priority_score": 63,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-80",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 12,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Almanac",
+      "native_name_quality": "chain",
       "netuid": 41,
+      "operational_interface_count": 1,
       "priority_score": 62,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-41",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 12,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Synth",
+      "native_name_quality": "chain",
       "netuid": 50,
+      "operational_interface_count": 1,
       "priority_score": 62,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-50",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 12,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Swarm",
+      "native_name_quality": "chain",
       "netuid": 124,
+      "operational_interface_count": 1,
       "priority_score": 62,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-124",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 12,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "ByteLeap",
+      "native_name_quality": "chain",
       "netuid": 128,
+      "operational_interface_count": 1,
       "priority_score": 62,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-128",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 11,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "BitAds",
+      "native_name_quality": "chain",
       "netuid": 16,
+      "operational_interface_count": 1,
       "priority_score": 61,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-16",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 11,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "colosseum",
+      "native_name_quality": "chain",
       "netuid": 38,
+      "operational_interface_count": 1,
       "priority_score": 61,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-38",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 11,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Leadpoet",
+      "native_name_quality": "chain",
       "netuid": 71,
+      "operational_interface_count": 1,
       "priority_score": 61,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-71",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 11,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Liquidity",
+      "native_name_quality": "chain",
       "netuid": 77,
+      "operational_interface_count": 1,
       "priority_score": 61,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-77",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 11,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "CliqueAI",
+      "native_name_quality": "chain",
       "netuid": 83,
+      "operational_interface_count": 1,
       "priority_score": 61,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-83",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 11,
       "completeness_score": 65,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Beam",
+      "native_name_quality": "chain",
       "netuid": 105,
+      "operational_interface_count": 1,
       "priority_score": 61,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-105",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 14,
       "completeness_score": 70,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "ninja",
+      "native_name_quality": "chain",
       "netuid": 66,
+      "operational_interface_count": 1,
       "priority_score": 59,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-66",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 9,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
     },
     {
       "candidate_count": 22,
       "completeness_score": 73,
       "confidence": "medium",
+      "curation_level": "machine-verified",
       "gap_reasons": [
         "missing-subnet-api",
         "missing-sse"
       ],
       "missing_critical_count": 2,
+      "missing_operational": [
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "name": "Gradients",
+      "native_name_quality": "chain",
       "netuid": 56,
+      "operational_interface_count": 2,
       "priority_score": 59,
       "profile_level": "operational",
+      "review_state": "machine-generated",
       "slug": "sn-56",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 5,
       "completeness_score": 63,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse"
       ],
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "name": "Coldint",
+      "native_name_quality": "chain",
       "netuid": 29,
+      "operational_interface_count": 1,
       "priority_score": 57,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-29",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "docs",
+        "source-repo",
+        "website"
+      ]
     },
     {
       "candidate_count": 21,
       "completeness_score": 78,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-openapi",
         "missing-sse"
       ],
       "missing_critical_count": 2,
+      "missing_operational": [
+        "openapi",
+        "sse"
+      ],
+      "missing_required": [],
       "name": "Green Compute",
+      "native_name_quality": "chain",
       "netuid": 110,
+      "operational_interface_count": 2,
       "priority_score": 53,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-110",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "docs",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
     },
     {
       "candidate_count": 13,
       "completeness_score": 85,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 2,
+      "missing_operational": [
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Nepher Robotics",
+      "native_name_quality": "chain",
       "netuid": 49,
+      "operational_interface_count": 2,
       "priority_score": 38,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-49",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 9,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
     },
     {
       "candidate_count": 13,
       "completeness_score": 85,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 2,
+      "missing_operational": [
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Verathos",
+      "native_name_quality": "chain",
       "netuid": 96,
+      "operational_interface_count": 2,
       "priority_score": 38,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-96",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 9,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
     },
     {
       "candidate_count": 11,
       "completeness_score": 85,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 2,
+      "missing_operational": [
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Desearch",
+      "native_name_quality": "chain",
       "netuid": 22,
+      "operational_interface_count": 2,
       "priority_score": 36,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-22",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 9,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
     },
     {
       "candidate_count": 6,
       "completeness_score": 85,
       "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-sse",
         "missing-data-artifact"
       ],
       "missing_critical_count": 2,
+      "missing_operational": [
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Handshake58",
+      "native_name_quality": "chain",
       "netuid": 58,
+      "operational_interface_count": 2,
       "priority_score": 31,
       "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-58",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 10,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
     },
     {
       "candidate_count": 12,
       "completeness_score": 92,
       "confidence": "high",
+      "curation_level": "adapter-backed",
       "gap_reasons": [
         "missing-data-artifact"
       ],
       "missing_critical_count": 1,
+      "missing_operational": [
+        "data-artifact"
+      ],
+      "missing_required": [],
       "name": "Allways",
+      "native_name_quality": "chain",
       "netuid": 7,
+      "operational_interface_count": 3,
       "priority_score": 25,
       "profile_level": "adapter-backed",
+      "review_state": "maintainer-reviewed",
       "slug": "allways",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "docs",
+        "openapi",
+        "source-repo",
+        "sse",
+        "subnet-api",
+        "website"
+      ]
     }
   ],
   "schema_version": 1,
