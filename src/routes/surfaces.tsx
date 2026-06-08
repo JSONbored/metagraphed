@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CurationChip } from "@/components/metagraphed/chips";
@@ -10,7 +10,8 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import {
-  ResetLink,
+  PageSizeSelect,
+  ResetFiltersButton,
   SearchInput,
   SelectFilter,
   SortHeader,
@@ -33,13 +34,27 @@ export const Route = createFileRoute("/surfaces")({
 });
 
 function SurfacesPage() {
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const filtersActive =
+    !!search.q || !!search.sort || !!search.kind || !!search.provider || !!search.cursor;
+  const onReset = () =>
+    navigate({
+      search: { limit: search.limit } as never,
+      replace: true,
+    });
   return (
     <AppShell>
       <PageHeading
         eyebrow="Registry"
         title="Surfaces"
         description="Verified public interfaces across subnets — filter by kind, provider, and netuid."
-        right={<><ShareButton /><ResetLink to="/surfaces" /></>}
+        right={
+          <>
+            <ResetFiltersButton active={filtersActive} onReset={onReset} />
+            <ShareButton />
+          </>
+        }
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
@@ -74,10 +89,28 @@ function SurfacesTable() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useSuspenseInfiniteQuery(surfacesInfiniteQuery(baseParams));
+    isFetchNextPageError,
+    error,
+    isFetching,
+  } = useSuspenseInfiniteQuery(surfacesInfiniteQuery(baseParams, search.cursor));
 
-  const all = data.pages.flatMap((p) => (p.data ?? []) as Surface[]);
-  const total = data.pages[0]?.meta?.pagination?.total ?? data.pages[0]?.meta?.total;
+  const pages = data.pages as Array<
+    (typeof data.pages)[number] & { cursorInvalid?: boolean }
+  >;
+  const cursorInvalid = !!pages[pages.length - 1]?.cursorInvalid;
+  const all = pages.flatMap((p) => (p.data ?? []) as Surface[]);
+  const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
+
+  const lastPageParam = (data.pageParams[data.pageParams.length - 1] ?? "") as string;
+  useEffect(() => {
+    if (lastPageParam !== search.cursor) {
+      navigate({
+        search: (prev: Record<string, unknown>) =>
+          ({ ...prev, cursor: lastPageParam }) as never,
+        replace: true,
+      });
+    }
+  }, [lastPageParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const kindOptions = useMemo(() => {
     const set = new Set<string>();
@@ -124,6 +157,7 @@ function SurfacesTable() {
       <SearchInput value={search.q} onChange={(v) => setSearch({ q: v })} placeholder="Search by name, URL, provider, or netuid" />
       <SelectFilter label="kind" value={search.kind} onChange={(v) => setSearch({ kind: v })} options={kindOptions} />
       <SelectFilter label="provider" value={search.provider} onChange={(v) => setSearch({ provider: v })} options={providerOptions} />
+      <PageSizeSelect value={search.limit} onChange={(n) => setSearch({ limit: n })} />
     </>
   );
 
@@ -131,6 +165,7 @@ function SurfacesTable() {
     <ListShell
       filters={filters}
       isEmpty={rows.length === 0}
+      isStale={isFetching && !isFetchingNextPage}
       empty={<EmptyState title="No matching surfaces" />}
       cards={rows.map((s) => (
         <div key={s.id} className="rounded border border-border bg-card p-3 min-h-11">
@@ -205,6 +240,8 @@ function SurfacesTable() {
           hasMore={!!hasNextPage}
           isLoading={isFetchingNextPage}
           onLoadMore={() => fetchNextPage()}
+          error={isFetchNextPageError ? (error as Error) : null}
+          cursorInvalid={cursorInvalid}
         />
       }
     />
