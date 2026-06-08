@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
@@ -308,6 +309,29 @@ describe("script utility contracts", () => {
 
     assert.match(source, /METAGRAPH_DISCOVERY_OBSERVED_AT:\s*refreshTimestamp/);
     assert.match(source, /METAGRAPH_PERSIST_DISCOVERY_OBSERVED_AT:\s*"1"/);
+  });
+
+  test("native subnet sync reports missing uvx without masking the error", () => {
+    const result = spawnSync(
+      process.execPath,
+      ["scripts/sync-subnets.mjs", "--dry-run"],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: "/nonexistent",
+        },
+      },
+    );
+
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.stderr,
+      /Failed to fetch native Bittensor subnet snapshot/,
+    );
+    assert.match(result.stderr, /spawn error:/);
+    assert.doesNotMatch(result.stderr, /Cannot read properties of undefined/);
   });
 
   test("classifies artifact storage tiers for files and route templates", async () => {

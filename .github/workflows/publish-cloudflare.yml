@@ -29,6 +29,13 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Install uv runtime
+        run: |
+          set -euo pipefail
+          python3 -m pip install --user uv==0.11.19
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/uvx" --version
+
       - name: Refresh publish artifacts
         run: npm run pipeline:refresh
         env:

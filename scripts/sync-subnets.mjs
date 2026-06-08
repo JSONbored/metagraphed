@@ -61,12 +61,20 @@ function fetchNativeSnapshot() {
   );
 
   if (result.status !== 0) {
+    const errorMessage = result.error?.message
+      ? `spawn error: ${result.error.message}`
+      : null;
+    const stderr =
+      typeof result.stderr === "string" ? result.stderr.trim() : "";
+    const stdout =
+      typeof result.stdout === "string" ? result.stdout.trim() : "";
     throw new Error(
       [
         "Failed to fetch native Bittensor subnet snapshot.",
         "Install uv or run the Bittensor SDK helper manually.",
-        result.stderr.trim(),
-        result.stdout.trim(),
+        errorMessage,
+        stderr,
+        stdout,
       ]
         .filter(Boolean)
         .join("\n"),
