@@ -2,7 +2,21 @@
 // Frontend is NOT contract authority — these are pragmatic shapes for what we
 // render. Unknown extra fields are preserved via index signature.
 
+export interface ApiPagination {
+  collection?: string;
+  total?: number;
+  returned?: number;
+  limit?: number;
+  cursor?: number;
+  next_cursor?: number;
+  sort?: string | null;
+  order?: "asc" | "desc";
+}
+
 export interface ApiMeta {
+  artifact_path?: string;
+  cache?: string;
+  contract_version?: string;
   generated_at?: string;
   source?: string;
   stale?: boolean;
@@ -11,8 +25,10 @@ export interface ApiMeta {
   prev_cursor?: string | null;
   count?: number;
   total?: number;
+  pagination?: ApiPagination;
   [key: string]: unknown;
 }
+
 
 export interface ApiEnvelope<T> {
   ok: boolean;
