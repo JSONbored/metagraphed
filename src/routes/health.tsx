@@ -291,34 +291,53 @@ function SourceHealth({ interval }: { interval: number | false }) {
   );
 }
 
+function durationLabel(start?: string | null, end?: string | null): string {
+  if (!start) return "—";
+  const s = new Date(start).getTime();
+  const e = end ? new Date(end).getTime() : Date.now();
+  const sec = Math.max(0, Math.round((e - s) / 1000));
+  if (sec < 60) return `${sec}s`;
+  if (sec < 3600) return `${Math.round(sec / 60)}m`;
+  if (sec < 86400) return `${(sec / 3600).toFixed(1)}h`;
+  return `${(sec / 86400).toFixed(1)}d`;
+}
+
 function Incidents({ interval }: { interval: number | false }) {
   const { data } = useSuspenseQuery({ ...endpointIncidentsQuery(), refetchInterval: interval });
   const rows = (data.data ?? []) as EndpointIncident[];
   if (rows.length === 0) return <EmptyState title="No recent incidents" />;
   return (
-    <div className="rounded border border-border bg-card overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-surface/50 text-[10px] font-mono uppercase tracking-widest text-ink-muted">
-          <tr>
-            <th className="px-3 py-2 text-left">Endpoint</th>
-            <th className="px-3 py-2">State</th>
-            <th className="px-3 py-2 text-left">Message</th>
-            <th className="px-3 py-2 text-right">Started</th>
-            <th className="px-3 py-2 text-right">Ended</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {rows.map((i) => (
-            <tr key={i.id}>
-              <td className="px-3 py-2 font-mono text-[11px]">{i.endpoint_id ?? "—"}</td>
-              <td className="px-3 py-2"><HealthPill state={i.state} /></td>
-              <td className="px-3 py-2 text-[12px] text-ink-muted">{i.message ?? "—"}</td>
-              <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">{formatRelative(i.started_at)}</td>
-              <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">{i.ended_at ? formatRelative(i.ended_at) : "ongoing"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <ul className="grid gap-2 md:grid-cols-2">
+      {rows.map((i) => {
+        const ongoing = !i.ended_at;
+        return (
+          <li
+            key={i.id}
+            className="rounded border border-border bg-card p-3 flex flex-col gap-1.5"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <HealthPill state={i.state} />
+                <span className="font-mono text-[11px] text-ink-strong truncate">
+                  {i.endpoint_id ?? "—"}
+                </span>
+              </div>
+              <span
+                className={`font-mono text-[10px] uppercase tracking-widest ${ongoing ? "text-health-down" : "text-ink-muted"}`}
+              >
+                {ongoing ? "ongoing" : "resolved"} · {durationLabel(i.started_at, i.ended_at)}
+              </span>
+            </div>
+            {i.message ? (
+              <p className="text-[12px] text-ink-muted line-clamp-2">{i.message}</p>
+            ) : null}
+            <div className="flex items-center justify-between font-mono text-[10px] text-ink-muted">
+              <span>started {formatRelative(i.started_at)}</span>
+              <span>{i.ended_at ? `ended ${formatRelative(i.ended_at)}` : "—"}</span>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
