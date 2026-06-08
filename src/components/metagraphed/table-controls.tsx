@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowUp, ArrowDown, X } from "lucide-react";
 import { classNames } from "@/lib/metagraphed/format";
 
 export function SortHeader({
