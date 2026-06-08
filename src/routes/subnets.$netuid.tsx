@@ -345,7 +345,7 @@ function LiveHealthPanel({ netuid }: { netuid: number }) {
           />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-surface/30 px-3 py-2 text-[11px]">
-          <FreshnessIndicator generatedAt={meta?.generated_at ?? h?.generated_at} />
+          <FreshnessIndicator at={meta?.generated_at ?? h?.generated_at} />
           <span className="font-mono text-ink-muted">
             {total} endpoint{total === 1 ? "" : "s"} tracked
           </span>
