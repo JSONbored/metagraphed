@@ -59,16 +59,16 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* ============ LIGHT (default) ============ */
+/* ============ LIGHT (default) — Charcoal & Ember ============ */
 :root {
   --radius: 0.5rem;
 
-  --paper:      oklch(0.985 0.003 250);
-  --surface:    oklch(0.965 0.005 250);
-  --ink:        oklch(0.25  0.02  250);
-  --ink-strong: oklch(0.12  0.02  250);
-  --ink-muted:  oklch(0.50  0.02  250);
-  --ink-subtle: oklch(0.70  0.01  250);
+  --paper:      oklch(0.985 0.004 60);
+  --surface:    oklch(0.965 0.005 60);
+  --ink:        oklch(0.28 0.008 40);
+  --ink-strong: oklch(0.16 0.008 40);
+  --ink-muted:  oklch(0.50 0.008 40);
+  --ink-subtle: oklch(0.70 0.006 40);
 
   --background: var(--paper);
   --foreground: var(--ink-strong);
@@ -84,45 +84,45 @@
   --secondary-foreground: var(--ink-strong);
   --muted:                var(--surface);
   --muted-foreground:     var(--ink-muted);
-  --accent:               oklch(0.55 0.13 200);  /* teal/cyan */
-  --accent-foreground:    oklch(0.99 0.01 200);
+  --accent:               oklch(0.58 0.16 38);   /* ember */
+  --accent-foreground:    oklch(0.99 0.01 60);
 
-  --destructive:            oklch(0.55 0.22 25);
+  --destructive:            oklch(0.55 0.22 28);
   --destructive-foreground: oklch(1 0 0);
 
   --border: color-mix(in oklab, var(--ink-strong) 10%, transparent);
   --input:  color-mix(in oklab, var(--ink-strong) 14%, transparent);
   --ring:   color-mix(in oklab, var(--accent) 45%, transparent);
 
-  /* Status — traffic-light, kept saturated for legibility on light bg */
+  /* Status — traffic-light, warmed slightly to live next to ember */
   --health-ok:      oklch(0.55 0.18 150);
-  --health-warn:    oklch(0.65 0.16 70);
-  --health-down:    oklch(0.55 0.22 25);
-  --health-unknown: oklch(0.60 0.02 250);
+  --health-warn:    oklch(0.65 0.16 65);
+  --health-down:    oklch(0.55 0.22 28);
+  --health-unknown: oklch(0.60 0.008 40);
 
-  /* Curation */
+  /* Curation — charcoal/ember family */
   --curation-native:    var(--ink-strong);
-  --curation-verified:  oklch(0.48 0.18 255);
+  --curation-verified:  oklch(0.50 0.14 45);
   --curation-pilot:     oklch(0.55 0.18 150);
   --curation-candidate: var(--ink-muted);
-  --curation-machine:   oklch(0.50 0.18 295);
+  --curation-machine:   oklch(0.50 0.10 280);
 }
 
-/* ============ DARK ============ */
+/* ============ DARK — Charcoal & Ember ============ */
 .dark {
-  --paper:      oklch(0.16 0.018 250);
-  --surface:    oklch(0.20 0.020 250);
-  --ink:        oklch(0.92 0.010 250);
-  --ink-strong: oklch(0.98 0.005 250);
-  --ink-muted:  oklch(0.68 0.018 250);
-  --ink-subtle: oklch(0.45 0.018 250);
+  --paper:      oklch(0.16 0.004 40);
+  --surface:    oklch(0.20 0.004 40);
+  --ink:        oklch(0.90 0.004 40);
+  --ink-strong: oklch(0.985 0.003 40);
+  --ink-muted:  oklch(0.66 0.006 40);
+  --ink-subtle: oklch(0.45 0.006 40);
 
   --background: var(--paper);
   --foreground: var(--ink-strong);
 
-  --card:               oklch(0.22 0.020 250);
+  --card:               oklch(0.235 0.005 40);
   --card-foreground:    var(--ink-strong);
-  --popover:            oklch(0.22 0.020 250);
+  --popover:            oklch(0.235 0.005 40);
   --popover-foreground: var(--ink-strong);
 
   --primary:              var(--ink-strong);
@@ -131,27 +131,27 @@
   --secondary-foreground: var(--ink-strong);
   --muted:                var(--surface);
   --muted-foreground:     var(--ink-muted);
-  --accent:               oklch(0.78 0.14 195);  /* electric teal */
-  --accent-foreground:    oklch(0.16 0.02 250);
+  --accent:               oklch(0.68 0.13 38);  /* muted ember */
+  --accent-foreground:    oklch(0.14 0.01 40);
 
-  --destructive:            oklch(0.70 0.20 25);
-  --destructive-foreground: oklch(0.16 0.02 250);
+  --destructive:            oklch(0.70 0.20 28);
+  --destructive-foreground: oklch(0.16 0.004 40);
 
-  --border: color-mix(in oklab, var(--ink-strong) 14%, transparent);
-  --input:  color-mix(in oklab, var(--ink-strong) 18%, transparent);
-  --ring:   color-mix(in oklab, var(--accent) 50%, transparent);
+  --border: color-mix(in oklab, var(--ink-strong) 12%, transparent);
+  --input:  color-mix(in oklab, var(--ink-strong) 16%, transparent);
+  --ring:   color-mix(in oklab, var(--accent) 45%, transparent);
 
   /* Status — traffic-light, brightened for dark bg */
   --health-ok:      oklch(0.72 0.16 150);
-  --health-warn:    oklch(0.80 0.14 80);
-  --health-down:    oklch(0.70 0.20 25);
-  --health-unknown: oklch(0.55 0.02 250);
+  --health-warn:    oklch(0.80 0.14 75);
+  --health-down:    oklch(0.70 0.20 28);
+  --health-unknown: oklch(0.55 0.008 40);
 
   --curation-native:    var(--ink-strong);
-  --curation-verified:  oklch(0.72 0.15 255);
+  --curation-verified:  oklch(0.74 0.13 45);
   --curation-pilot:     oklch(0.78 0.15 150);
   --curation-candidate: var(--ink-muted);
-  --curation-machine:   oklch(0.72 0.15 295);
+  --curation-machine:   oklch(0.72 0.10 280);
 }
 
 @layer base {
