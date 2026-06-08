@@ -16,6 +16,7 @@ export interface ProfileHeroProps {
   links?: ReactNode;
   stats?: StatItem[];
   banner?: ReactNode;
+  icon?: ReactNode;
 }
 
 /**
@@ -33,6 +34,7 @@ export function ProfileHero({
   links,
   stats,
   banner,
+  icon,
 }: ProfileHeroProps) {
   const visibleStats = (stats ?? []).filter(
     (s) => s.value !== undefined && s.value !== null && s.value !== "",
@@ -42,23 +44,26 @@ export function ProfileHero({
     <header className="mb-4">
       {banner ? <div className="mb-3">{banner}</div> : null}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div className="min-w-0">
-          {eyebrow ? (
-            <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
-              {eyebrow}
+        <div className="flex items-start gap-3 min-w-0">
+          {icon ? <div className="shrink-0 mt-0.5">{icon}</div> : null}
+          <div className="min-w-0">
+            {eyebrow ? (
+              <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
+                {eyebrow}
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-strong">
+                {title}
+              </h1>
+              {subtitle ? (
+                <span className="font-mono text-xs text-ink-muted">{subtitle}</span>
+              ) : null}
             </div>
-          ) : null}
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-strong">
-              {title}
-            </h1>
-            {subtitle ? (
-              <span className="font-mono text-xs text-ink-muted">{subtitle}</span>
+            {description ? (
+              <p className="mt-1 text-sm text-ink-muted max-w-3xl">{description}</p>
             ) : null}
           </div>
-          {description ? (
-            <p className="mt-1 text-sm text-ink-muted max-w-3xl">{description}</p>
-          ) : null}
         </div>
         {chips ? <div className="flex items-center gap-2 shrink-0">{chips}</div> : null}
       </div>
