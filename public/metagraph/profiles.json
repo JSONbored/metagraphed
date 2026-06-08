@@ -2842,36 +2842,39 @@
     {
       "candidate_count": 4,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "deepfake-detection",
+        "identity-reviewed",
+        "official-app",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-website",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 5,
+        "missing_critical_count": 4,
         "missing_operational": [
           "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [
-          "website"
-        ],
-        "profile_level": "directory-only",
-        "score": 35
+        "missing_required": [],
+        "profile_level": "identity-complete",
+        "score": 55
       },
-      "completeness_score": 35,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 4,
-      "interface_count": 3,
-      "missing_critical_count": 5,
+      "interface_count": 4,
+      "missing_critical_count": 4,
       "monitored_endpoint_count": 4,
       "name": "BitMind",
       "native_name": "BitMind",
@@ -2880,42 +2883,43 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-34-taopedia-article",
-        "kind": "docs",
-        "name": "BitMind Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_34/index.mdx"
+        "id": "sn-34-bitmind-website",
+        "kind": "website",
+        "name": "BitMind website",
+        "provider": "bitmind",
+        "url": "https://bitmind.ai/"
       },
       "primary_links": {
-        "dashboard_url": "https://taomarketcap.com/subnets/34",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_34/index.mdx",
+        "dashboard_url": "https://app.bitmind.ai/",
+        "docs_url": "https://docs.bitmind.ai/",
         "source_repo": "https://github.com/BitMind-AI/bitmind-subnet",
-        "website_url": null
+        "website_url": "https://bitmind.ai/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-complete",
       "project_name": "BitMind",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:35:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/34",
-          "https://github.com/BitMind-AI/bitmind-subnet",
-          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_34/index.mdx",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/34/subnet.json",
-          "https://taomarketcap.com/subnets/34"
+          "https://api.github.com/repos/BitMind-AI/bitmind-subnet",
+          "https://app.bitmind.ai/",
+          "https://bitmind.ai/",
+          "https://docs.bitmind.ai/",
+          "https://github.com/BitMind-AI/bitmind-subnet"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-34",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "source-repo"
+        "source-repo",
+        "website"
       ],
       "surface_count": 4,
       "symbol": "י",
@@ -3577,37 +3581,40 @@
     {
       "candidate_count": 4,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "identity-reviewed",
+        "official-source-repo",
+        "official-website",
+        "optimization",
+        "research"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-website",
+          "missing-docs",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 5,
+        "missing_critical_count": 4,
         "missing_operational": [
           "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [
-          "website"
-        ],
-        "profile_level": "directory-only",
-        "score": 35
+        "missing_required": [],
+        "profile_level": "identity-complete",
+        "score": 40
       },
-      "completeness_score": 35,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 4,
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 2,
       "interface_count": 3,
-      "missing_critical_count": 5,
-      "monitored_endpoint_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 2,
       "name": "Graphite",
       "native_name": "Graphite",
       "native_name_quality": "chain",
@@ -3615,44 +3622,43 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-43-taopedia-article",
-        "kind": "docs",
-        "name": "Graphite Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_43/index.mdx"
+        "id": "sn-43-graphite-website",
+        "kind": "website",
+        "name": "Graphite website",
+        "provider": "graphite-ai",
+        "url": "https://graphite-ai.net/"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/43",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_43/index.mdx",
+        "docs_url": null,
         "source_repo": "https://github.com/GraphiteAI/Graphite-Subnet",
-        "website_url": null
+        "website_url": "https://graphite-ai.net/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-complete",
       "project_name": "Graphite",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 4,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:35:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/43",
           "https://github.com/GraphiteAI/Graphite-Subnet",
-          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_43/index.mdx",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/43/subnet.json",
+          "https://graphite-ai.net/",
+          "https://learnbittensor.org/subnets/43",
           "https://taomarketcap.com/subnets/43"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-43",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs",
-        "source-repo"
+        "source-repo",
+        "website"
       ],
-      "surface_count": 4,
+      "surface_count": 2,
       "symbol": "ע",
       "team": null
     },
@@ -4743,82 +4749,84 @@
     {
       "candidate_count": 4,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "identity-reviewed",
+        "official-source-repo",
+        "official-website",
+        "prediction-market",
+        "sports"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-website",
+          "missing-docs",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 5,
+        "missing_critical_count": 4,
         "missing_operational": [
           "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [
-          "website"
-        ],
-        "profile_level": "directory-only",
-        "score": 35
+        "missing_required": [],
+        "profile_level": "identity-complete",
+        "score": 40
       },
-      "completeness_score": 35,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 4,
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 2,
       "interface_count": 3,
-      "missing_critical_count": 5,
-      "monitored_endpoint_count": 4,
-      "name": "gaia",
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 2,
+      "name": "Sparket",
       "native_name": "gaia",
       "native_name_quality": "chain",
       "netuid": 57,
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-57-taopedia-article",
-        "kind": "docs",
-        "name": "gaia Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_57/index.mdx"
+        "id": "sn-57-sparket-website",
+        "kind": "website",
+        "name": "Sparket website",
+        "provider": "sparket",
+        "url": "https://sparket.ai/"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/57",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_57/index.mdx",
+        "docs_url": null,
         "source_repo": "https://github.com/sparket-ai/sparket-ai",
-        "website_url": null
+        "website_url": "https://sparket.ai/"
       },
-      "profile_level": "directory-only",
-      "project_name": "gaia",
+      "profile_level": "identity-complete",
+      "project_name": "Sparket",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 4,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:35:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/57",
-          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_57/index.mdx",
+          "https://api.github.com/repos/sparket-ai/sparket-ai",
           "https://github.com/sparket-ai/sparket-ai",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/57/subnet.json",
+          "https://sparket.ai/",
           "https://taomarketcap.com/subnets/57"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-57",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs",
-        "source-repo"
+        "source-repo",
+        "website"
       ],
-      "surface_count": 4,
+      "surface_count": 2,
       "symbol": "ح",
       "team": null
     },
@@ -7258,7 +7266,7 @@
         "video-intelligence"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
           "missing-openapi",
@@ -7277,11 +7285,11 @@
           "source-repo"
         ],
         "profile_level": "directory-only",
-        "score": 35
+        "score": 40
       },
-      "completeness_score": 35,
+      "completeness_score": 40,
       "confidence": "high",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 6,
       "interface_count": 3,
       "missing_critical_count": 5,
@@ -7308,7 +7316,7 @@
       "profile_level": "directory-only",
       "project_name": "Luminar Network",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 7,
         "review_state": "maintainer-reviewed",
@@ -9241,37 +9249,40 @@
     {
       "candidate_count": 4,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "data",
+        "identity-reviewed",
+        "official-source-repo",
+        "official-website",
+        "ugc"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-website",
+          "missing-docs",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 5,
+        "missing_critical_count": 4,
         "missing_operational": [
           "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [
-          "website"
-        ],
-        "profile_level": "directory-only",
-        "score": 35
+        "missing_required": [],
+        "profile_level": "identity-complete",
+        "score": 40
       },
-      "completeness_score": 35,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 4,
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 2,
       "interface_count": 3,
-      "missing_critical_count": 5,
-      "monitored_endpoint_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 2,
       "name": "oneoneone",
       "native_name": "oneoneone",
       "native_name_quality": "chain",
@@ -9279,44 +9290,43 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-111-taopedia-article",
-        "kind": "docs",
-        "name": "oneoneone Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_111/index.mdx"
+        "id": "sn-111-oneoneone-website",
+        "kind": "website",
+        "name": "oneoneone website",
+        "provider": "oneoneone",
+        "url": "https://oneoneone.io/"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/111",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_111/index.mdx",
+        "docs_url": null,
         "source_repo": "https://github.com/oneoneone-io/subnet-111",
-        "website_url": null
+        "website_url": "https://oneoneone.io/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-complete",
       "project_name": "oneoneone",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 4,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:35:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/111",
-          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_111/index.mdx",
+          "https://api.github.com/repos/oneoneone-io/subnet-111",
           "https://github.com/oneoneone-io/subnet-111",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/111/subnet.json",
+          "https://oneoneone.io/",
           "https://taomarketcap.com/subnets/111"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-111",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs",
-        "source-repo"
+        "source-repo",
+        "website"
       ],
-      "surface_count": 4,
+      "surface_count": 2,
       "symbol": "Ё",
       "team": null
     },
@@ -10142,82 +10152,85 @@
     {
       "candidate_count": 4,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "identity-reviewed",
+        "official-docs",
+        "official-source-repo",
+        "official-website",
+        "recommendations"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-website",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 5,
+        "missing_critical_count": 4,
         "missing_operational": [
           "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [
-          "website"
-        ],
-        "profile_level": "directory-only",
-        "score": 35
+        "missing_required": [],
+        "profile_level": "identity-complete",
+        "score": 55
       },
-      "completeness_score": 35,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 4,
-      "interface_count": 3,
-      "missing_critical_count": 5,
-      "monitored_endpoint_count": 4,
-      "name": "gamma_small",
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 3,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 3,
+      "name": "Bitrecs",
       "native_name": "gamma_small",
       "native_name_quality": "chain",
       "netuid": 122,
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-122-taopedia-article",
-        "kind": "docs",
-        "name": "gamma_small Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_122/index.mdx"
+        "id": "sn-122-bitrecs-website",
+        "kind": "website",
+        "name": "Bitrecs website",
+        "provider": "bitrecs",
+        "url": "https://www.bitrecs.ai/"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/122",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_122/index.mdx",
+        "docs_url": "https://bitrecs.gitbook.io/bitrecs-docs/",
         "source_repo": "https://github.com/bitrecs/bitrecs-subnet",
-        "website_url": null
+        "website_url": "https://www.bitrecs.ai/"
       },
-      "profile_level": "directory-only",
-      "project_name": "gamma_small",
+      "profile_level": "identity-complete",
+      "project_name": "Bitrecs",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:35:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/122",
+          "https://api.github.com/repos/bitrecs/bitrecs-subnet",
+          "https://bitrecs.gitbook.io/bitrecs-docs/",
           "https://github.com/bitrecs/bitrecs-subnet",
-          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_122/index.mdx",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/122/subnet.json",
-          "https://taomarketcap.com/subnets/122"
+          "https://taomarketcap.com/subnets/122",
+          "https://www.bitrecs.ai/"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-122",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "source-repo"
+        "source-repo",
+        "website"
       ],
-      "surface_count": 4,
+      "surface_count": 3,
       "symbol": "ⲅ",
       "team": null
     },
@@ -10715,15 +10728,15 @@
   ],
   "schema_version": 1,
   "summary": {
-    "average_completeness_score": 48,
+    "average_completeness_score": 49,
     "by_confidence": {
-      "high": 45,
-      "medium": 84
+      "high": 50,
+      "medium": 79
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "directory-only": 36,
-      "identity-complete": 48,
+      "directory-only": 31,
+      "identity-complete": 53,
       "operational": 43
     },
     "profile_count": 129

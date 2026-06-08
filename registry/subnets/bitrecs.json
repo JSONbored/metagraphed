@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "netuid": 122,
+  "name": "Bitrecs",
+  "slug": "sn-122",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website",
+    "recommendations"
+  ],
+  "website_url": "https://www.bitrecs.ai/",
+  "docs_url": "https://bitrecs.gitbook.io/bitrecs-docs/",
+  "source_repo": "https://github.com/bitrecs/bitrecs-subnet",
+  "dashboard_url": "https://taomarketcap.com/subnets/122",
+  "notes": "Reviewed overlay for SN122 using the official Bitrecs website, docs, and source repository. No machine-readable OpenAPI schema or unauthenticated public subnet API endpoint is promoted yet.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:35:00.000Z",
+    "verified_at": "2026-06-08T10:35:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified unauthenticated public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-122-bitrecs-website",
+      "name": "Bitrecs website",
+      "kind": "website",
+      "url": "https://www.bitrecs.ai/",
+      "provider": "bitrecs",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://www.bitrecs.ai/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Bitrecs website."
+    },
+    {
+      "id": "sn-122-bitrecs-docs",
+      "name": "Bitrecs documentation",
+      "kind": "docs",
+      "url": "https://bitrecs.gitbook.io/bitrecs-docs/",
+      "provider": "bitrecs",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://www.bitrecs.ai/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Bitrecs documentation linked from the official website."
+    },
+    {
+      "id": "sn-122-bitrecs-source",
+      "name": "Bitrecs source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/bitrecs/bitrecs-subnet",
+      "provider": "bitrecs",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://api.github.com/repos/bitrecs/bitrecs-subnet",
+        "https://github.com/bitrecs/bitrecs-subnet"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Bitrecs source repository."
+    }
+  ]
+}

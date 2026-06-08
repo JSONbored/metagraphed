@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 881,
+  "document_count": 879,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -30,6 +30,34 @@
       ],
       "type": "provider",
       "url": "https://all-ways.io"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:bitmind",
+      "subtitle": "subnet-team",
+      "title": "BitMind",
+      "tokens": [
+        "bitmind",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://bitmind.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:bitrecs",
+      "subtitle": "subnet-team",
+      "title": "Bitrecs",
+      "tokens": [
+        "bitrecs",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://www.bitrecs.ai/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -259,6 +287,21 @@
     },
     {
       "artifact_path": "/metagraph/providers.json",
+      "id": "provider:graphite-ai",
+      "subtitle": "subnet-team",
+      "title": "Graphite AI",
+      "tokens": [
+        "ai",
+        "graphite",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://graphite-ai.net/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
       "id": "provider:green-compute",
       "subtitle": "subnet-team",
       "title": "Green Compute",
@@ -433,6 +476,20 @@
     },
     {
       "artifact_path": "/metagraph/providers.json",
+      "id": "provider:oneoneone",
+      "subtitle": "subnet-team",
+      "title": "oneoneone",
+      "tokens": [
+        "official",
+        "oneoneone",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://oneoneone.io/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
       "id": "provider:onfinality",
       "subtitle": "infrastructure-provider",
       "title": "OnFinality",
@@ -544,6 +601,20 @@
       ],
       "type": "provider",
       "url": "https://silxinc.com/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:sparket",
+      "subtitle": "subnet-team",
+      "title": "Sparket",
+      "tokens": [
+        "official",
+        "sparket",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://sparket.ai/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -1064,13 +1135,48 @@
       "title": "BitMind",
       "tokens": [
         "34",
+        "app",
         "baseline",
         "bitmind",
         "curated",
-        "sn"
+        "deepfake",
+        "detection",
+        "docs",
+        "identity",
+        "official",
+        "repo",
+        "reviewed",
+        "sn",
+        "source",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/34"
+    },
+    {
+      "artifact_path": "/metagraph/subnets/122.json",
+      "id": "subnet:122",
+      "netuid": 122,
+      "slug": "sn-122",
+      "subtitle": "SN122 ⲅ",
+      "title": "Bitrecs",
+      "tokens": [
+        "122",
+        "baseline",
+        "bitrecs",
+        "curated",
+        "docs",
+        "identity",
+        "official",
+        "recommendations",
+        "repo",
+        "reviewed",
+        "sn",
+        "source",
+        "website"
+      ],
+      "type": "subnet",
+      "url": "/subnets/122"
     },
     {
       "artifact_path": "/metagraph/subnets/60.json",
@@ -1751,41 +1857,6 @@
       "url": "/subnets/98"
     },
     {
-      "artifact_path": "/metagraph/subnets/57.json",
-      "id": "subnet:57",
-      "netuid": 57,
-      "slug": "sn-57",
-      "subtitle": "SN57 ح",
-      "title": "gaia",
-      "tokens": [
-        "57",
-        "baseline",
-        "curated",
-        "gaia",
-        "sn"
-      ],
-      "type": "subnet",
-      "url": "/subnets/57"
-    },
-    {
-      "artifact_path": "/metagraph/subnets/122.json",
-      "id": "subnet:122",
-      "netuid": 122,
-      "slug": "sn-122",
-      "subtitle": "SN122 ⲅ",
-      "title": "gamma_small",
-      "tokens": [
-        "122",
-        "baseline",
-        "curated",
-        "gamma",
-        "small",
-        "sn"
-      ],
-      "type": "subnet",
-      "url": "/subnets/122"
-    },
-    {
       "artifact_path": "/metagraph/subnets/74.json",
       "id": "subnet:74",
       "netuid": 74,
@@ -1848,7 +1919,15 @@
         "baseline",
         "curated",
         "graphite",
-        "sn"
+        "identity",
+        "official",
+        "optimization",
+        "repo",
+        "research",
+        "reviewed",
+        "sn",
+        "source",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/43"
@@ -2494,8 +2573,16 @@
         "111",
         "baseline",
         "curated",
+        "data",
+        "identity",
+        "official",
         "oneoneone",
-        "sn"
+        "repo",
+        "reviewed",
+        "sn",
+        "source",
+        "ugc",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/111"
@@ -2820,6 +2907,32 @@
       ],
       "type": "subnet",
       "url": "/subnets/114"
+    },
+    {
+      "artifact_path": "/metagraph/subnets/57.json",
+      "id": "subnet:57",
+      "netuid": 57,
+      "slug": "sn-57",
+      "subtitle": "SN57 ح",
+      "title": "Sparket",
+      "tokens": [
+        "57",
+        "baseline",
+        "curated",
+        "identity",
+        "market",
+        "official",
+        "prediction",
+        "repo",
+        "reviewed",
+        "sn",
+        "source",
+        "sparket",
+        "sports",
+        "website"
+      ],
+      "type": "subnet",
+      "url": "/subnets/57"
     },
     {
       "artifact_path": "/metagraph/subnets/72.json",
@@ -5269,11 +5382,45 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-34-taomarketcap-source-repo",
+      "id": "surface:sn-34-bitmind-app",
       "netuid": 34,
       "slug": "sn-34",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "BitMind source repository",
+      "subtitle": "dashboard / bitmind",
+      "title": "BitMind app",
+      "tokens": [
+        "34",
+        "app",
+        "bitmind",
+        "dashboard",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://app.bitmind.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-34-bitmind-docs",
+      "netuid": 34,
+      "slug": "sn-34",
+      "subtitle": "docs / bitmind",
+      "title": "BitMind documentation",
+      "tokens": [
+        "34",
+        "bitmind",
+        "docs",
+        "documentation",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://docs.bitmind.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-34-bitmind-source",
+      "netuid": 34,
+      "slug": "sn-34",
+      "subtitle": "source-repo / bitmind",
+      "title": "BitMind subnet source repository",
       "tokens": [
         "34",
         "bitmind",
@@ -5281,64 +5428,77 @@
         "repository",
         "sn",
         "source",
-        "taomarketcap"
+        "subnet"
       ],
       "type": "surface",
       "url": "https://github.com/BitMind-AI/bitmind-subnet"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-34-taomarketcap-dashboard",
+      "id": "surface:sn-34-bitmind-website",
       "netuid": 34,
       "slug": "sn-34",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "BitMind TaoMarketCap dashboard",
+      "subtitle": "website / bitmind",
+      "title": "BitMind website",
       "tokens": [
         "34",
         "bitmind",
-        "dashboard",
         "sn",
-        "taomarketcap"
+        "website"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/34"
+      "url": "https://bitmind.ai/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-34-taopedia-article",
-      "netuid": 34,
-      "slug": "sn-34",
-      "subtitle": "docs / taopedia-articles",
-      "title": "BitMind Taopedia article",
+      "id": "surface:sn-122-bitrecs-docs",
+      "netuid": 122,
+      "slug": "sn-122",
+      "subtitle": "docs / bitrecs",
+      "title": "Bitrecs documentation",
       "tokens": [
-        "34",
-        "article",
-        "articles",
-        "bitmind",
+        "122",
+        "bitrecs",
         "docs",
-        "sn",
-        "taopedia"
+        "documentation",
+        "sn"
       ],
       "type": "surface",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_34/index.mdx"
+      "url": "https://bitrecs.gitbook.io/bitrecs-docs/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-34-tensorplex-docs",
-      "netuid": 34,
-      "slug": "sn-34",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "BitMind Tensorplex subnet docs",
+      "id": "surface:sn-122-bitrecs-source",
+      "netuid": 122,
+      "slug": "sn-122",
+      "subtitle": "source-repo / bitrecs",
+      "title": "Bitrecs source repository",
       "tokens": [
-        "34",
-        "bitmind",
-        "docs",
+        "122",
+        "bitrecs",
+        "repo",
+        "repository",
         "sn",
-        "subnet",
-        "tensorplex"
+        "source"
       ],
       "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/34"
+      "url": "https://github.com/bitrecs/bitrecs-subnet"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-122-bitrecs-website",
+      "netuid": 122,
+      "slug": "sn-122",
+      "subtitle": "website / bitrecs",
+      "title": "Bitrecs website",
+      "tokens": [
+        "122",
+        "bitrecs",
+        "sn",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://www.bitrecs.ai/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8343,160 +8503,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-57-tensorplex-source-repo-1",
-      "netuid": 57,
-      "slug": "sn-57",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "gaia source repository",
-      "tokens": [
-        "57",
-        "docs",
-        "gaia",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/sparket-ai/sparket-ai"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-57-taomarketcap-dashboard",
-      "netuid": 57,
-      "slug": "sn-57",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "gaia TaoMarketCap dashboard",
-      "tokens": [
-        "57",
-        "dashboard",
-        "gaia",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://taomarketcap.com/subnets/57"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-57-taopedia-article",
-      "netuid": 57,
-      "slug": "sn-57",
-      "subtitle": "docs / taopedia-articles",
-      "title": "gaia Taopedia article",
-      "tokens": [
-        "57",
-        "article",
-        "articles",
-        "docs",
-        "gaia",
-        "sn",
-        "taopedia"
-      ],
-      "type": "surface",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_57/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-57-tensorplex-docs",
-      "netuid": 57,
-      "slug": "sn-57",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "gaia Tensorplex subnet docs",
-      "tokens": [
-        "57",
-        "docs",
-        "gaia",
-        "sn",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/57"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-122-tensorplex-source-repo-1",
-      "netuid": 122,
-      "slug": "sn-122",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "gamma_small source repository",
-      "tokens": [
-        "122",
-        "docs",
-        "gamma",
-        "repo",
-        "repository",
-        "small",
-        "sn",
-        "source",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/bitrecs/bitrecs-subnet"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-122-taomarketcap-dashboard",
-      "netuid": 122,
-      "slug": "sn-122",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "gamma_small TaoMarketCap dashboard",
-      "tokens": [
-        "122",
-        "dashboard",
-        "gamma",
-        "small",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://taomarketcap.com/subnets/122"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-122-taopedia-article",
-      "netuid": 122,
-      "slug": "sn-122",
-      "subtitle": "docs / taopedia-articles",
-      "title": "gamma_small Taopedia article",
-      "tokens": [
-        "122",
-        "article",
-        "articles",
-        "docs",
-        "gamma",
-        "small",
-        "sn",
-        "taopedia"
-      ],
-      "type": "surface",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_122/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-122-tensorplex-docs",
-      "netuid": 122,
-      "slug": "sn-122",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "gamma_small Tensorplex subnet docs",
-      "tokens": [
-        "122",
-        "docs",
-        "gamma",
-        "small",
-        "sn",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/122"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:gittensor-docs",
       "netuid": 74,
       "slug": "gittensor",
@@ -8827,76 +8833,39 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-43-taomarketcap-source-repo",
+      "id": "surface:sn-43-graphite-source",
       "netuid": 43,
       "slug": "sn-43",
-      "subtitle": "source-repo / taomarketcap",
+      "subtitle": "source-repo / graphite-ai",
       "title": "Graphite source repository",
       "tokens": [
         "43",
+        "ai",
         "graphite",
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/GraphiteAI/Graphite-Subnet"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-43-taomarketcap-dashboard",
+      "id": "surface:sn-43-graphite-website",
       "netuid": 43,
       "slug": "sn-43",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Graphite TaoMarketCap dashboard",
+      "subtitle": "website / graphite-ai",
+      "title": "Graphite website",
       "tokens": [
         "43",
-        "dashboard",
+        "ai",
         "graphite",
         "sn",
-        "taomarketcap"
+        "website"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/43"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-43-taopedia-article",
-      "netuid": 43,
-      "slug": "sn-43",
-      "subtitle": "docs / taopedia-articles",
-      "title": "Graphite Taopedia article",
-      "tokens": [
-        "43",
-        "article",
-        "articles",
-        "docs",
-        "graphite",
-        "sn",
-        "taopedia"
-      ],
-      "type": "surface",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_43/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-43-tensorplex-docs",
-      "netuid": 43,
-      "slug": "sn-43",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "Graphite Tensorplex subnet docs",
-      "tokens": [
-        "43",
-        "docs",
-        "graphite",
-        "sn",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/43"
+      "url": "https://graphite-ai.net/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12087,10 +12056,10 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-111-taomarketcap-source-repo",
+      "id": "surface:sn-111-oneoneone-source",
       "netuid": 111,
       "slug": "sn-111",
-      "subtitle": "source-repo / taomarketcap",
+      "subtitle": "source-repo / oneoneone",
       "title": "oneoneone source repository",
       "tokens": [
         "111",
@@ -12098,65 +12067,26 @@
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/oneoneone-io/subnet-111"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-111-taomarketcap-dashboard",
+      "id": "surface:sn-111-oneoneone-website",
       "netuid": 111,
       "slug": "sn-111",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "oneoneone TaoMarketCap dashboard",
+      "subtitle": "website / oneoneone",
+      "title": "oneoneone website",
       "tokens": [
         "111",
-        "dashboard",
         "oneoneone",
         "sn",
-        "taomarketcap"
+        "website"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/111"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-111-taopedia-article",
-      "netuid": 111,
-      "slug": "sn-111",
-      "subtitle": "docs / taopedia-articles",
-      "title": "oneoneone Taopedia article",
-      "tokens": [
-        "111",
-        "article",
-        "articles",
-        "docs",
-        "oneoneone",
-        "sn",
-        "taopedia"
-      ],
-      "type": "surface",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_111/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-111-tensorplex-docs",
-      "netuid": 111,
-      "slug": "sn-111",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "oneoneone Tensorplex subnet docs",
-      "tokens": [
-        "111",
-        "docs",
-        "oneoneone",
-        "sn",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/111"
+      "url": "https://oneoneone.io/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13616,6 +13546,40 @@
       ],
       "type": "surface",
       "url": "https://thesoma.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-57-sparket-source",
+      "netuid": 57,
+      "slug": "sn-57",
+      "subtitle": "source-repo / sparket",
+      "title": "Sparket source repository",
+      "tokens": [
+        "57",
+        "repo",
+        "repository",
+        "sn",
+        "source",
+        "sparket"
+      ],
+      "type": "surface",
+      "url": "https://github.com/sparket-ai/sparket-ai"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-57-sparket-website",
+      "netuid": 57,
+      "slug": "sn-57",
+      "subtitle": "website / sparket",
+      "title": "Sparket website",
+      "tokens": [
+        "57",
+        "sn",
+        "sparket",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://sparket.ai/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

@@ -1803,63 +1803,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "BitMind",
-      "netuid": 34,
-      "priority_score": 60,
-      "review_state": "machine-generated",
-      "slug": "sn-34",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "candidate_count": 4,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Graphite",
-      "netuid": 43,
-      "priority_score": 60,
-      "review_state": "machine-generated",
-      "slug": "sn-43",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "candidate_count": 4,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "gaia",
-      "netuid": 57,
-      "priority_score": 60,
-      "review_state": "machine-generated",
-      "slug": "sn-57",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "candidate_count": 4,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "luis",
       "netuid": 92,
       "priority_score": 60,
@@ -1898,49 +1841,11 @@
         "sse",
         "data-artifact"
       ],
-      "name": "oneoneone",
-      "netuid": 111,
-      "priority_score": 60,
-      "review_state": "machine-generated",
-      "slug": "sn-111",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "candidate_count": 4,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "HashiChain",
       "netuid": 115,
       "priority_score": 60,
       "review_state": "machine-generated",
       "slug": "sn-115",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "candidate_count": 4,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "gamma_small",
-      "netuid": 122,
-      "priority_score": 60,
-      "review_state": "machine-generated",
-      "slug": "sn-122",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 4,
       "verified_candidate_count": 4
@@ -3258,8 +3163,65 @@
       "verified_candidate_count": 5
     },
     {
+      "candidate_count": 4,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Graphite",
+      "netuid": 43,
+      "priority_score": 15,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-43",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 2,
+      "verified_candidate_count": 4
+    },
+    {
+      "candidate_count": 4,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Sparket",
+      "netuid": 57,
+      "priority_score": 15,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-57",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 2,
+      "verified_candidate_count": 4
+    },
+    {
+      "candidate_count": 4,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "oneoneone",
+      "netuid": 111,
+      "priority_score": 15,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-111",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 2,
+      "verified_candidate_count": 4
+    },
+    {
       "candidate_count": 3,
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "missing_kinds": [
         "source-repo",
         "openapi",
@@ -3395,6 +3357,42 @@
       "verified_candidate_count": 11
     },
     {
+      "candidate_count": 4,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "BitMind",
+      "netuid": 34,
+      "priority_score": 3,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-34",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 4,
+      "verified_candidate_count": 4
+    },
+    {
+      "candidate_count": 4,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Bitrecs",
+      "netuid": 122,
+      "priority_score": 3,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-122",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 3,
+      "verified_candidate_count": 4
+    },
+    {
       "candidate_count": 11,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -3478,15 +3476,15 @@
     "gap_kind_counts": {
       "dashboard": 4,
       "data-artifact": 116,
-      "docs": 21,
+      "docs": 24,
       "openapi": 102,
       "source-repo": 21,
       "sse": 128,
       "subnet-api": 117,
-      "website": 32
+      "website": 27
     },
     "maintainer_decision_count": 3,
-    "needs_maintainer_review_count": 84,
+    "needs_maintainer_review_count": 79,
     "subnet_count": 129
   }
 }

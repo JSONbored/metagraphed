@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "bitmind",
+  "name": "BitMind",
+  "kind": "subnet-team",
+  "website_url": "https://bitmind.ai/",
+  "docs_url": "https://docs.bitmind.ai/",
+  "github_url": "https://github.com/BitMind-AI",
+  "authority": "official",
+  "notes": "Provider entry for BitMind SN34 official website, documentation, application, and source repository."
+}

@@ -23,6 +23,28 @@
     },
     {
       "authority": "official",
+      "docs_url": "https://docs.bitmind.ai/",
+      "github_url": "https://github.com/BitMind-AI",
+      "id": "bitmind",
+      "kind": "subnet-team",
+      "name": "BitMind",
+      "notes": "Provider entry for BitMind SN34 official website, documentation, application, and source repository.",
+      "schema_version": 1,
+      "website_url": "https://bitmind.ai/"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://bitrecs.gitbook.io/bitrecs-docs/",
+      "github_url": "https://github.com/bitrecs/bitrecs-subnet",
+      "id": "bitrecs",
+      "kind": "subnet-team",
+      "name": "Bitrecs",
+      "notes": "Provider entry for Bitrecs SN122 official website, documentation, and source repository.",
+      "schema_version": 1,
+      "website_url": "https://www.bitrecs.ai/"
+    },
+    {
+      "authority": "official",
       "id": "bitstarter",
       "kind": "subnet-team",
       "name": "Bitstarter",
@@ -183,6 +205,16 @@
     },
     {
       "authority": "official",
+      "github_url": "https://github.com/GraphiteAI/Graphite-Subnet",
+      "id": "graphite-ai",
+      "kind": "subnet-team",
+      "name": "Graphite AI",
+      "notes": "Provider entry for Graphite SN43 official website and source repository.",
+      "schema_version": 1,
+      "website_url": "https://graphite-ai.net/"
+    },
+    {
+      "authority": "official",
       "id": "green-compute",
       "kind": "subnet-team",
       "name": "Green Compute",
@@ -306,6 +338,16 @@
       "website_url": "https://nodies.app"
     },
     {
+      "authority": "official",
+      "github_url": "https://github.com/oneoneone-io/subnet-111",
+      "id": "oneoneone",
+      "kind": "subnet-team",
+      "name": "oneoneone",
+      "notes": "Provider entry for oneoneone SN111 official website and source repository.",
+      "schema_version": 1,
+      "website_url": "https://oneoneone.io/"
+    },
+    {
       "authority": "provider-claimed",
       "docs_url": "https://onfinality.io/en/networks/bittensor-finney",
       "id": "onfinality",
@@ -386,6 +428,16 @@
       "notes": "Provider entry for the SILX Labs Quasar SN24 website, source repository, and public model artifacts.",
       "schema_version": 1,
       "website_url": "https://silxinc.com/"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/sparket-ai/sparket-ai",
+      "id": "sparket",
+      "kind": "subnet-team",
+      "name": "Sparket",
+      "notes": "Provider entry for Sparket SN57 official website and source repository.",
+      "schema_version": 1,
+      "website_url": "https://sparket.ai/"
     },
     {
       "authority": "official",

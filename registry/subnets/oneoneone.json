@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "netuid": 111,
+  "name": "oneoneone",
+  "slug": "sn-111",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "data",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "ugc"
+  ],
+  "website_url": "https://oneoneone.io/",
+  "source_repo": "https://github.com/oneoneone-io/subnet-111",
+  "dashboard_url": "https://taomarketcap.com/subnets/111",
+  "notes": "Reviewed overlay for SN111 using the official oneoneone website and source repository. No official docs/API/OpenAPI surface is verified yet.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:35:00.000Z",
+    "verified_at": "2026-06-08T10:35:00.000Z",
+    "source_count": 4,
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-111-oneoneone-website",
+      "name": "oneoneone website",
+      "kind": "website",
+      "url": "https://oneoneone.io/",
+      "provider": "oneoneone",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://oneoneone.io/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official oneoneone website."
+    },
+    {
+      "id": "sn-111-oneoneone-source",
+      "name": "oneoneone source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/oneoneone-io/subnet-111",
+      "provider": "oneoneone",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://api.github.com/repos/oneoneone-io/subnet-111",
+        "https://github.com/oneoneone-io/subnet-111"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official oneoneone source repository."
+    }
+  ]
+}

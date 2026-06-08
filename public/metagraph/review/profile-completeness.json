@@ -755,63 +755,6 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
-      "name": "BitMind",
-      "netuid": 34,
-      "priority_score": 94,
-      "profile_level": "directory-only",
-      "slug": "sn-34",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 4,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "Graphite",
-      "netuid": 43,
-      "priority_score": 94,
-      "profile_level": "directory-only",
-      "slug": "sn-43",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 4,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "gaia",
-      "netuid": 57,
-      "priority_score": 94,
-      "profile_level": "directory-only",
-      "slug": "sn-57",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 4,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
       "name": "luis",
       "netuid": 92,
       "priority_score": 94,
@@ -850,49 +793,11 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 5,
-      "name": "oneoneone",
-      "netuid": 111,
-      "priority_score": 94,
-      "profile_level": "directory-only",
-      "slug": "sn-111",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 4,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
       "name": "HashiChain",
       "netuid": 115,
       "priority_score": 94,
       "profile_level": "directory-only",
       "slug": "sn-115",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 4,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "gamma_small",
-      "netuid": 122,
-      "priority_score": 94,
-      "profile_level": "directory-only",
-      "slug": "sn-122",
       "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
@@ -934,25 +839,6 @@
       "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
-      "candidate_count": 3,
-      "completeness_score": 35,
-      "confidence": "high",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "Luminar Network",
-      "netuid": 87,
-      "priority_score": 93,
-      "profile_level": "directory-only",
-      "slug": "sn-87",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
       "candidate_count": 22,
       "completeness_score": 50,
       "confidence": "medium",
@@ -988,6 +874,25 @@
       "profile_level": "identity-complete",
       "slug": "sn-62",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 3,
+      "completeness_score": 40,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 5,
+      "name": "Luminar Network",
+      "netuid": 87,
+      "priority_score": 88,
+      "profile_level": "directory-only",
+      "slug": "sn-87",
+      "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
       "candidate_count": 23,
@@ -1276,6 +1181,63 @@
       "priority_score": 85,
       "profile_level": "identity-complete",
       "slug": "sn-13",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 4,
+      "completeness_score": 40,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "name": "Graphite",
+      "netuid": 43,
+      "priority_score": 84,
+      "profile_level": "identity-complete",
+      "slug": "sn-43",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 4,
+      "completeness_score": 40,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "name": "Sparket",
+      "netuid": 57,
+      "priority_score": 84,
+      "profile_level": "identity-complete",
+      "slug": "sn-57",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 4,
+      "completeness_score": 40,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "name": "oneoneone",
+      "netuid": 111,
+      "priority_score": 84,
+      "profile_level": "identity-complete",
+      "slug": "sn-111",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
@@ -1772,6 +1734,42 @@
       "priority_score": 70,
       "profile_level": "operational",
       "slug": "sn-64",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 4,
+      "completeness_score": 55,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "name": "BitMind",
+      "netuid": 34,
+      "priority_score": 69,
+      "profile_level": "identity-complete",
+      "slug": "sn-34",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 4,
+      "completeness_score": 55,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "name": "Bitrecs",
+      "netuid": 122,
+      "priority_score": 69,
+      "profile_level": "identity-complete",
+      "slug": "sn-122",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
@@ -2348,27 +2346,27 @@
   ],
   "schema_version": 1,
   "summary": {
-    "average_completeness_score": 48,
+    "average_completeness_score": 49,
     "by_confidence": {
-      "high": 45,
-      "medium": 84
+      "high": 50,
+      "medium": 79
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "directory-only": 36,
-      "identity-complete": 48,
+      "directory-only": 31,
+      "identity-complete": 53,
       "operational": 43
     },
     "critical_gap_counts": {
       "missing-data-artifact": 116,
-      "missing-docs": 21,
+      "missing-docs": 24,
       "missing-openapi": 102,
       "missing-source-repo": 21,
       "missing-sse": 128,
       "missing-subnet-api": 117,
-      "missing-website": 32
+      "missing-website": 27
     },
-    "needs_identity_count": 38,
+    "needs_identity_count": 33,
     "needs_operational_count": 84,
     "profile_count": 129
   }

@@ -15,7 +15,7 @@
       "No verified SSE/event stream yet.",
       "No verified data artifact yet."
     ],
-    "level": "machine-verified",
+    "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-07T00:00:00.000Z",
     "source_count": 6,
