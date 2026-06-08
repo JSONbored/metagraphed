@@ -1424,6 +1424,9 @@ export interface components {
             profiles: components["schemas"]["ReviewProfileCompletenessEntry"][];
             summary: {
                 average_completeness_score: number;
+                by_confidence: components["schemas"]["CountMap"];
+                by_profile_level: components["schemas"]["CountMap"];
+                critical_gap_counts: components["schemas"]["CountMap"];
                 needs_identity_count: number;
                 needs_operational_count: number;
                 profile_count: number;

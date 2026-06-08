@@ -2333,6 +2333,24 @@
   "schema_version": 1,
   "summary": {
     "average_completeness_score": 49,
+    "by_confidence": {
+      "high": 4,
+      "medium": 125
+    },
+    "by_profile_level": {
+      "adapter-backed": 2,
+      "directory-only": 38,
+      "identity-complete": 43,
+      "operational": 46
+    },
+    "critical_gap_counts": {
+      "missing-data-artifact": 113,
+      "missing-openapi": 103,
+      "missing-source-repo": 21,
+      "missing-sse": 128,
+      "missing-subnet-api": 117,
+      "missing-website": 39
+    },
     "needs_identity_count": 44,
     "needs_operational_count": 81,
     "profile_count": 129

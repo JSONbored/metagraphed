@@ -927,6 +927,9 @@ function buildSubnetProfileArtifacts({
         (profile) => profile.operational_interface_count === 0,
       ).length,
       average_completeness_score: averageScore(profiles),
+      by_profile_level: countBy(profiles, "profile_level"),
+      by_confidence: countBy(profiles, "confidence"),
+      critical_gap_counts: countGapReasons(reviewProfiles),
     },
     summary: {
       profile_count: profiles.length,
@@ -935,6 +938,19 @@ function buildSubnetProfileArtifacts({
       by_confidence: countBy(profiles, "confidence"),
     },
   };
+}
+
+function countGapReasons(profiles) {
+  return Object.fromEntries(
+    Object.entries(
+      profiles.reduce((accumulator, profile) => {
+        for (const reason of profile.gap_reasons || []) {
+          accumulator[reason] = (accumulator[reason] || 0) + 1;
+        }
+        return accumulator;
+      }, {}),
+    ).sort(([left], [right]) => left.localeCompare(right)),
+  );
 }
 
 function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {

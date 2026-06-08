@@ -349,7 +349,10 @@
                   "profile_count",
                   "needs_identity_count",
                   "needs_operational_count",
-                  "average_completeness_score"
+                  "average_completeness_score",
+                  "by_profile_level",
+                  "by_confidence",
+                  "critical_gap_counts"
                 ],
                 "properties": {
                   "profile_count": {
@@ -368,6 +371,15 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100
+                  },
+                  "by_profile_level": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_confidence": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "critical_gap_counts": {
+                    "$ref": "#/components/schemas/CountMap"
                   }
                 },
                 "additionalProperties": false

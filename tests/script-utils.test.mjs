@@ -173,6 +173,14 @@ describe("script utility contracts", () => {
       },
       profile_summary: {
         average_completeness_score: 49,
+        by_level: {
+          "directory-only": 38,
+          operational: 46,
+        },
+        critical_gap_counts: {
+          "missing-openapi": 81,
+          "missing-source-repo": 44,
+        },
       },
       lowest_completeness: [
         {
@@ -207,6 +215,11 @@ describe("script utility contracts", () => {
 
     assert.match(brief, /Metagraphed Curation Brief/);
     assert.match(brief, /Active Finney netuids: 129/);
+    assert.match(brief, /Profile levels: directory-only 38, operational 46/);
+    assert.match(
+      brief,
+      /Critical gaps: missing-openapi 81, missing-source-repo 44/,
+    );
     assert.match(brief, /SN27 Nodexo - score 20/);
     assert.match(brief, /SN33 ReadyAI - priority 93/);
     assert.match(brief, /SN64 Chutes - score 72/);

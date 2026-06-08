@@ -3178,6 +3178,15 @@
                     "minimum": 0,
                     "type": "integer"
                   },
+                  "by_confidence": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_profile_level": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "critical_gap_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
                   "needs_identity_count": {
                     "minimum": 0,
                     "type": "integer"
@@ -3195,7 +3204,10 @@
                   "profile_count",
                   "needs_identity_count",
                   "needs_operational_count",
-                  "average_completeness_score"
+                  "average_completeness_score",
+                  "by_profile_level",
+                  "by_confidence",
+                  "critical_gap_counts"
                 ],
                 "type": "object"
               }

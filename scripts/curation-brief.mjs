@@ -94,6 +94,8 @@ export function renderCurationBrief(snapshot) {
     `- Probed surfaces: ${snapshot.coverage.probed_surfaces}`,
     `- Candidate surfaces: ${snapshot.coverage.candidates}`,
     `- Average profile completeness: ${snapshot.profile_summary.average_completeness_score ?? "unknown"}`,
+    `- Profile levels: ${formatCounts(snapshot.profile_summary.by_level)}`,
+    `- Critical gaps: ${formatCounts(snapshot.profile_summary.critical_gap_counts)}`,
     "",
     "## Best Direct PR Targets",
     "",
@@ -183,6 +185,14 @@ function numberedRows(rows, formatter) {
     return ["No rows available."];
   }
   return rows.map((row, index) => `${index + 1}. ${formatter(row)}`);
+}
+
+function formatCounts(counts) {
+  const entries = Object.entries(counts || {});
+  if (entries.length === 0) {
+    return "none";
+  }
+  return entries.map(([key, value]) => `${key} ${value}`).join(", ");
 }
 
 async function readArtifact(relativePath) {
