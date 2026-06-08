@@ -5,6 +5,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      publish_mode:
+        description: "Use publish for real R2/KV/Worker deployment; use dry-run for validation only."
+        required: true
+        default: publish
+        type: choice
+        options:
+          - publish
+          - dry-run
 
 permissions:
   contents: read
@@ -75,6 +84,13 @@ jobs:
       - name: Check Cloudflare publishing secrets
         id: cloudflare-secrets
         run: |
+          set -euo pipefail
+          publish_mode="${PUBLISH_MODE:-publish}"
+          dry_run="false"
+          if [ "$publish_mode" = "dry-run" ]; then
+            dry_run="true"
+          fi
+
           if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
           else
@@ -85,13 +101,21 @@ jobs:
           else
             echo "kv_publish=false" >> "$GITHUB_OUTPUT"
           fi
+
+          echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
+
+          if [ "$dry_run" != "true" ] && { [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; }; then
+            echo "::error::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required for main publish runs. Use workflow_dispatch publish_mode=dry-run for validation-only runs."
+            exit 1
+          fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
+          PUBLISH_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_mode || 'publish' }}
 
       - name: Upload artifact history to R2
-        if: steps.cloudflare-secrets.outputs.publish == 'true'
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
         run: npm run r2:upload
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -100,7 +124,7 @@ jobs:
           METAGRAPH_R2_UPLOAD_HISTORY: "1"
 
       - name: Publish KV latest pointer
-        if: steps.cloudflare-secrets.outputs.kv_publish == 'true'
+        if: steps.cloudflare-secrets.outputs.kv_publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
         run: npm run kv:publish
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -109,14 +133,14 @@ jobs:
           METAGRAPH_ALLOW_KV_WRITE: "1"
 
       - name: Deploy Worker
-        if: steps.cloudflare-secrets.outputs.publish == 'true'
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
         run: ./node_modules/.bin/wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Smoke deployed API
-        if: steps.cloudflare-secrets.outputs.publish == 'true'
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
         run: npm run smoke:live
         env:
           METAGRAPH_LIVE_BASE_URL: https://metagraph.sh

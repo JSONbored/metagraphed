@@ -137,6 +137,24 @@ for (const workflow of workflows) {
       workflow,
       "publish workflow must upload versioned R2 history objects",
     );
+    check(
+      content.includes("publish_mode:") &&
+        content.includes("Use workflow_dispatch publish_mode=dry-run"),
+      workflow,
+      "publish workflow must expose an explicit validation-only dry-run mode",
+    );
+    check(
+      content.includes(
+        "CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required for main publish runs",
+      ),
+      workflow,
+      "publish workflow must fail closed when Cloudflare publishing secrets are missing",
+    );
+    check(
+      content.includes("steps.cloudflare-secrets.outputs.dry_run != 'true'"),
+      workflow,
+      "publish workflow must skip deploy/upload steps only in explicit dry-run mode",
+    );
   }
 }
 

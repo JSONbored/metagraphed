@@ -53,6 +53,13 @@ METAGRAPH_WRITE_PROBE_RESULTS=1 npm run pipeline:refresh
 
 ## Cloudflare Publish
 
+The `Publish Cloudflare Backend` workflow is fail-closed for `main` pushes:
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` must be configured as
+GitHub Actions secrets or the publish run fails before any upload/deploy step.
+Manual `workflow_dispatch` runs can choose `publish_mode=dry-run` for
+validation-only checks; dry-run mode must not upload to R2, publish KV, deploy
+the Worker, or claim a production publish.
+
 Before publishing:
 
 ```bash
