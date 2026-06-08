@@ -1393,16 +1393,34 @@ export interface components {
         };
         ReviewAdapterCandidate: {
             candidate_api_count: number;
+            candidate_api_ids: string[];
+            candidate_api_kinds: components["schemas"]["SurfaceKind"][];
             curation_level: components["schemas"]["CurationLevel"];
             name: string;
             netuid: number;
             operational_kinds: components["schemas"]["SurfaceKind"][];
             operational_surface_count: number;
+            operational_surface_ids: string[];
             priority_score: number;
+            reason_codes: string[];
+            /** @enum {unknown} */
+            recommended_adapter_kind: "custom-adapter" | "data-artifact-adapter" | "generic-openapi-or-custom" | "stream-adapter";
             slug: string;
+            suggested_next_action: string;
         };
         ReviewAdapterCandidatesArtifact: components["schemas"]["ArtifactBase"] & ({
             candidates: components["schemas"]["ReviewAdapterCandidate"][];
+            summary: {
+                adapter_backed_count: number;
+                by_curation_level: components["schemas"]["CountMap"];
+                by_recommended_adapter_kind: components["schemas"]["CountMap"];
+                candidate_api_kind_counts: components["schemas"]["CountMap"];
+                candidate_count: number;
+                data_artifact_backed_count: number;
+                openapi_backed_count: number;
+                operational_kind_counts: components["schemas"]["CountMap"];
+                sse_backed_count: number;
+            };
         } & {
             [key: string]: unknown;
         });

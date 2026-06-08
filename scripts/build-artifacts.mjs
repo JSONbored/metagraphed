@@ -669,6 +669,7 @@ await writeJson(artifactFile("review/adapter-candidates.json"), {
   schema_version: 1,
   contract_version: contractVersion,
   generated_at: generatedAt,
+  summary: adapterCandidateSummary(curationReview.adapter_candidates),
   candidates: curationReview.adapter_candidates,
 });
 await writeJson(artifactFile("review/enrichment-queue.json"), enrichmentQueue);
@@ -2180,27 +2181,54 @@ function buildCurationReview(
   const adapterCandidates = subnets
     .map((subnet) => {
       const subnetSurfaces = surfacesByNetuid.get(subnet.netuid) || [];
+      const subnetCandidates = candidatesByNetuid.get(subnet.netuid) || [];
       const operationalKinds = subnetSurfaces.filter((surface) =>
         ["openapi", "subnet-api", "sse", "data-artifact"].includes(
           surface.kind,
         ),
       );
+      const apiCandidates = subnetCandidates.filter((candidate) =>
+        ["openapi", "subnet-api", "sse", "data-artifact"].includes(
+          candidate.kind,
+        ),
+      );
+      const operationalSurfaceIds = operationalKinds
+        .map((surface) => surface.id)
+        .sort();
+      const apiCandidateIds = apiCandidates
+        .map((candidate) => candidate.id)
+        .sort();
+      const operationalKindValues = [
+        ...new Set(operationalKinds.map((surface) => surface.kind)),
+      ].sort();
       return {
         netuid: subnet.netuid,
         slug: subnet.slug,
         name: subnet.name,
         curation_level: subnet.curation.level,
         operational_surface_count: operationalKinds.length,
-        operational_kinds: [
-          ...new Set(operationalKinds.map((surface) => surface.kind)),
+        operational_kinds: operationalKindValues,
+        operational_surface_ids: operationalSurfaceIds.slice(0, 12),
+        candidate_api_count: apiCandidates.length,
+        candidate_api_kinds: [
+          ...new Set(apiCandidates.map((candidate) => candidate.kind)),
         ].sort(),
-        candidate_api_count: (
-          candidatesByNetuid.get(subnet.netuid) || []
-        ).filter((candidate) =>
-          ["openapi", "subnet-api", "sse", "data-artifact"].includes(
-            candidate.kind,
-          ),
-        ).length,
+        candidate_api_ids: apiCandidateIds.slice(0, 12),
+        recommended_adapter_kind: recommendedAdapterKind(
+          subnet,
+          operationalKindValues,
+        ),
+        reason_codes: adapterCandidateReasonCodes({
+          apiCandidates,
+          operationalKinds: operationalKindValues,
+          subnet,
+        }),
+        suggested_next_action: adapterCandidateNextAction({
+          apiCandidateCount: apiCandidates.length,
+          curationLevel: subnet.curation.level,
+          operationalKinds: operationalKindValues,
+          operationalSurfaceCount: operationalKinds.length,
+        }),
         priority_score: operationalKinds.length * 20 + subnet.surface_count,
       };
     })
@@ -2230,6 +2258,99 @@ function buildCurationReview(
     adapter_candidates: adapterCandidates,
     review_decisions: reviewDecisionsDocument.decisions || [],
   };
+}
+
+function adapterCandidateSummary(candidates) {
+  return {
+    candidate_count: candidates.length,
+    by_curation_level: countBy(candidates, "curation_level"),
+    by_recommended_adapter_kind: countBy(
+      candidates,
+      "recommended_adapter_kind",
+    ),
+    operational_kind_counts: countArrayValues(candidates, "operational_kinds"),
+    candidate_api_kind_counts: countArrayValues(
+      candidates,
+      "candidate_api_kinds",
+    ),
+    adapter_backed_count: candidates.filter(
+      (candidate) => candidate.curation_level === "adapter-backed",
+    ).length,
+    openapi_backed_count: candidates.filter((candidate) =>
+      candidate.operational_kinds.includes("openapi"),
+    ).length,
+    sse_backed_count: candidates.filter((candidate) =>
+      candidate.operational_kinds.includes("sse"),
+    ).length,
+    data_artifact_backed_count: candidates.filter((candidate) =>
+      candidate.operational_kinds.includes("data-artifact"),
+    ).length,
+  };
+}
+
+function recommendedAdapterKind(subnet, operationalKinds) {
+  if (subnet.curation.level === "adapter-backed") {
+    return "custom-adapter";
+  }
+  if (operationalKinds.includes("openapi")) {
+    return "generic-openapi-or-custom";
+  }
+  if (operationalKinds.includes("sse")) {
+    return "stream-adapter";
+  }
+  if (operationalKinds.includes("data-artifact")) {
+    return "data-artifact-adapter";
+  }
+  return "custom-adapter";
+}
+
+function adapterCandidateReasonCodes({
+  apiCandidates,
+  operationalKinds,
+  subnet,
+}) {
+  return [
+    ...(subnet.curation.level === "adapter-backed" ? ["existing-adapter"] : []),
+    ...operationalKinds.map((kind) => `${kind}-surface`),
+    ...(operationalKinds.length > 1 ? ["multiple-operational-kinds"] : []),
+    ...(apiCandidates.length > 0 ? ["candidate-api-evidence"] : []),
+  ].sort();
+}
+
+function adapterCandidateNextAction({
+  apiCandidateCount,
+  curationLevel,
+  operationalKinds,
+  operationalSurfaceCount,
+}) {
+  if (curationLevel === "adapter-backed") {
+    return "maintain and deepen existing adapter metrics";
+  }
+  if (operationalKinds.includes("openapi")) {
+    return "snapshot schema shape and consider normalized metrics from stable read-only operations";
+  }
+  if (operationalKinds.includes("sse")) {
+    return "evaluate stream freshness and event-shape metrics";
+  }
+  if (operationalKinds.includes("data-artifact")) {
+    return "evaluate data-artifact freshness and schema normalization";
+  }
+  if (operationalSurfaceCount > 0 || apiCandidateCount > 0) {
+    return "review public-safe API evidence before adding a custom adapter";
+  }
+  return "collect official operational interface evidence first";
+}
+
+function countArrayValues(items, key) {
+  const counts = {};
+  for (const item of items) {
+    for (const value of item[key] || []) {
+      counts[value] = (counts[value] || 0) + 1;
+    }
+  }
+  return Object.fromEntries(
+    Object.entries(counts).sort(([left], [right]) => left.localeCompare(right)),
+  );
 }
 
 function buildSchemaDriftPlaceholder(surfaces) {

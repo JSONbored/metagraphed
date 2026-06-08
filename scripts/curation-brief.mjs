@@ -149,7 +149,7 @@ export function renderCurationBrief(snapshot) {
     ...numberedRows(
       snapshot.adapter_candidates,
       (row) =>
-        `SN${row.netuid} ${row.name} - score ${row.adapter_score}; kinds: ${row.surface_kinds.join(", ")}`,
+        `SN${row.netuid} ${row.name} - score ${row.adapter_score}; ${row.suggested_adapter || "adapter"}; kinds: ${row.surface_kinds.join(", ")}; ${row.suggested_next_action || "review adapter fit"}`,
     ),
     "",
     "## Manual Review Targets",
@@ -201,7 +201,9 @@ function adapterBriefRow(candidate) {
     surface_count:
       candidate.surface_count ?? candidate.operational_surface_count ?? 0,
     surface_kinds: candidate.surface_kinds || candidate.operational_kinds || [],
-    suggested_adapter: candidate.suggested_adapter,
+    suggested_adapter:
+      candidate.suggested_adapter || candidate.recommended_adapter_kind,
+    suggested_next_action: candidate.suggested_next_action,
   };
 }
 

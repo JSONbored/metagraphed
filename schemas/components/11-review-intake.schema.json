@@ -69,18 +69,36 @@
         "type": "object",
         "required": [
           "candidate_api_count",
+          "candidate_api_ids",
+          "candidate_api_kinds",
           "curation_level",
           "name",
           "netuid",
           "operational_kinds",
           "operational_surface_count",
+          "operational_surface_ids",
           "priority_score",
+          "reason_codes",
+          "recommended_adapter_kind",
+          "suggested_next_action",
           "slug"
         ],
         "properties": {
           "candidate_api_count": {
             "type": "integer",
             "minimum": 0
+          },
+          "candidate_api_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "candidate_api_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
           },
           "curation_level": {
             "$ref": "#/components/schemas/CurationLevel"
@@ -102,9 +120,32 @@
             "type": "integer",
             "minimum": 0
           },
+          "operational_surface_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "priority_score": {
             "type": "integer",
             "minimum": 0
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended_adapter_kind": {
+            "enum": [
+              "custom-adapter",
+              "data-artifact-adapter",
+              "generic-openapi-or-custom",
+              "stream-adapter"
+            ]
+          },
+          "suggested_next_action": {
+            "type": "string"
           },
           "slug": {
             "type": "string"
@@ -706,13 +747,62 @@
           },
           {
             "type": "object",
-            "required": ["candidates"],
+            "required": ["candidates", "summary"],
             "properties": {
               "candidates": {
                 "type": "array",
                 "items": {
                   "$ref": "#/components/schemas/ReviewAdapterCandidate"
                 }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "adapter_backed_count",
+                  "candidate_api_kind_counts",
+                  "candidate_count",
+                  "by_curation_level",
+                  "by_recommended_adapter_kind",
+                  "data_artifact_backed_count",
+                  "openapi_backed_count",
+                  "operational_kind_counts",
+                  "sse_backed_count"
+                ],
+                "properties": {
+                  "adapter_backed_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "candidate_api_kind_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "by_curation_level": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_recommended_adapter_kind": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "data_artifact_backed_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "openapi_backed_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "operational_kind_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "sse_backed_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": true

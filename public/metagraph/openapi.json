@@ -2893,6 +2893,18 @@
             "minimum": 0,
             "type": "integer"
           },
+          "candidate_api_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "candidate_api_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
           "curation_level": {
             "$ref": "#/components/schemas/CurationLevel"
           },
@@ -2913,22 +2925,51 @@
             "minimum": 0,
             "type": "integer"
           },
+          "operational_surface_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "priority_score": {
             "minimum": 0,
             "type": "integer"
           },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "recommended_adapter_kind": {
+            "enum": [
+              "custom-adapter",
+              "data-artifact-adapter",
+              "generic-openapi-or-custom",
+              "stream-adapter"
+            ]
+          },
           "slug": {
+            "type": "string"
+          },
+          "suggested_next_action": {
             "type": "string"
           }
         },
         "required": [
           "candidate_api_count",
+          "candidate_api_ids",
+          "candidate_api_kinds",
           "curation_level",
           "name",
           "netuid",
           "operational_kinds",
           "operational_surface_count",
+          "operational_surface_ids",
           "priority_score",
+          "reason_codes",
+          "recommended_adapter_kind",
+          "suggested_next_action",
           "slug"
         ],
         "type": "object"
@@ -2946,10 +2987,60 @@
                   "$ref": "#/components/schemas/ReviewAdapterCandidate"
                 },
                 "type": "array"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "adapter_backed_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "by_curation_level": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_recommended_adapter_kind": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "candidate_api_kind_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "candidate_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "data_artifact_backed_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "openapi_backed_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "operational_kind_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "sse_backed_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "adapter_backed_count",
+                  "candidate_api_kind_counts",
+                  "candidate_count",
+                  "by_curation_level",
+                  "by_recommended_adapter_kind",
+                  "data_artifact_backed_count",
+                  "openapi_backed_count",
+                  "operational_kind_counts",
+                  "sse_backed_count"
+                ],
+                "type": "object"
               }
             },
             "required": [
-              "candidates"
+              "candidates",
+              "summary"
             ],
             "type": "object"
           }

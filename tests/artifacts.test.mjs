@@ -764,6 +764,29 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   assert.equal(Array.isArray(adapterCandidates.candidates), true);
+  assert.equal(
+    adapterCandidates.summary.candidate_count,
+    adapterCandidates.candidates.length,
+  );
+  assert.equal(
+    adapterCandidates.candidates.every(
+      (candidate) =>
+        Array.isArray(candidate.operational_surface_ids) &&
+        Array.isArray(candidate.candidate_api_ids) &&
+        Array.isArray(candidate.candidate_api_kinds) &&
+        Array.isArray(candidate.reason_codes) &&
+        typeof candidate.recommended_adapter_kind === "string" &&
+        typeof candidate.suggested_next_action === "string",
+    ),
+    true,
+  );
+  assert.equal(
+    adapterCandidates.candidates.some((candidate) =>
+      candidate.reason_codes.includes("openapi-surface"),
+    ),
+    true,
+  );
+  assert.equal(adapterCandidates.summary.openapi_backed_count > 0, true);
   assert.equal(Array.isArray(reviewDecisions.decisions), true);
   assert.equal(coverage.probed_count, native.subnets.length);
   const generatedSurfaces = surfaces.surfaces.filter(
