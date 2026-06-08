@@ -263,8 +263,15 @@ export const subnetSurfacesQuery = (netuid: number) =>
 export const subnetEndpointsQuery = (netuid: number) =>
   queryOptions({
     queryKey: k("subnet-endpoints", netuid),
-    queryFn: ({ signal }) =>
-      fetchList<Endpoint>(`/api/v1/subnets/${netuid}/endpoints`, "endpoints", undefined, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>(
+        `/api/v1/subnets/${netuid}/endpoints`,
+        "endpoints",
+        undefined,
+        signal,
+      );
+      return { ...res, data: res.data.map(normalizeEndpoint) } as ApiResult<Endpoint[]>;
+    },
     staleTime: STALE_MED,
   });
 
