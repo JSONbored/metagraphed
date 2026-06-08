@@ -8,6 +8,7 @@ import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
+import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import {
   FilterBar,
   Pagination,
@@ -46,9 +47,16 @@ function SurfacesPage() {
           <SurfacesTable />
         </Suspense>
       </QueryErrorBoundary>
+      <section className="mt-8">
+        <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
+          Evidence & sources
+        </h2>
+        <EvidencePanel />
+      </section>
     </AppShell>
   );
 }
+
 
 function SurfacesTable() {
   const search = Route.useSearch();
