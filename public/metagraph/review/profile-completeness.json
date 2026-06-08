@@ -383,6 +383,26 @@
       "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
+      "candidate_count": 5,
+      "completeness_score": 25,
+      "confidence": "low",
+      "gap_reasons": [
+        "missing-website",
+        "missing-docs",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 5,
+      "name": "Grail",
+      "netuid": 81,
+      "priority_score": 105,
+      "profile_level": "directory-only",
+      "slug": "sn-81",
+      "suggested_next_action": "submit official docs, website, or source repository evidence"
+    },
+    {
       "candidate_count": 4,
       "completeness_score": 25,
       "confidence": "high",
@@ -709,63 +729,6 @@
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
-      "candidate_count": 5,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "deprecated",
-      "netuid": 39,
-      "priority_score": 95,
-      "profile_level": "directory-only",
-      "slug": "sn-39",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 5,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "deprecated",
-      "netuid": 81,
-      "priority_score": 95,
-      "profile_level": "directory-only",
-      "slug": "sn-81",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 4,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "deprecated",
-      "netuid": 3,
-      "priority_score": 94,
-      "profile_level": "directory-only",
-      "slug": "sn-3",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
       "candidate_count": 4,
       "completeness_score": 35,
       "confidence": "medium",
@@ -1038,6 +1001,25 @@
       "priority_score": 85,
       "profile_level": "identity-complete",
       "slug": "sn-12",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 5,
+      "completeness_score": 40,
+      "confidence": "low",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "name": "Basilica",
+      "netuid": 39,
+      "priority_score": 85,
+      "profile_level": "identity-complete",
+      "slug": "sn-39",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
@@ -1741,6 +1723,24 @@
     {
       "candidate_count": 4,
       "completeness_score": 55,
+      "confidence": "low",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "name": "Templar",
+      "netuid": 3,
+      "priority_score": 69,
+      "profile_level": "identity-complete",
+      "slug": "sn-3",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 4,
+      "completeness_score": 55,
       "confidence": "high",
       "gap_reasons": [
         "missing-openapi",
@@ -2351,25 +2351,25 @@
     "average_completeness_score": 49,
     "by_confidence": {
       "high": 55,
-      "low": 1,
-      "medium": 73
+      "low": 4,
+      "medium": 70
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "directory-only": 29,
-      "identity-complete": 55,
+      "directory-only": 27,
+      "identity-complete": 57,
       "operational": 43
     },
     "critical_gap_counts": {
       "missing-data-artifact": 116,
-      "missing-docs": 28,
+      "missing-docs": 30,
       "missing-openapi": 102,
       "missing-source-repo": 21,
       "missing-sse": 128,
       "missing-subnet-api": 117,
-      "missing-website": 25
+      "missing-website": 23
     },
-    "needs_identity_count": 31,
+    "needs_identity_count": 29,
     "needs_operational_count": 84,
     "profile_count": 129
   }

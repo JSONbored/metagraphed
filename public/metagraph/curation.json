@@ -129,29 +129,28 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as deprecated.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "needs-review",
+        "reviewed_at": "2026-06-08T11:05:00.000Z",
+        "source_count": 6,
+        "verified_at": "2026-06-08T11:05:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 4,
       "gaps": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as deprecated.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -160,13 +159,14 @@
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo"
+          "source-repo",
+          "website"
         ]
       },
-      "name": "deprecated",
+      "name": "Templar",
       "netuid": 3,
       "slug": "sn-3",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
       "candidate_count": 22,
@@ -1657,29 +1657,31 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as deprecated.",
+          "No verified docs site yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "needs-review",
+        "reviewed_at": "2026-06-08T11:05:00.000Z",
+        "source_count": 5,
+        "verified_at": "2026-06-08T11:05:00.000Z"
       },
       "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as deprecated.",
+          "No verified docs site yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "website",
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1687,14 +1689,14 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
-          "source-repo"
+          "source-repo",
+          "website"
         ]
       },
-      "name": "deprecated",
+      "name": "Basilica",
       "netuid": 39,
       "slug": "sn-39",
-      "surface_count": 4
+      "surface_count": 2
     },
     {
       "candidate_count": 4,
@@ -3418,28 +3420,33 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as deprecated.",
+          "No verified standalone website yet.",
+          "No verified docs site yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "needs-review",
+        "reviewed_at": "2026-06-08T11:05:00.000Z",
+        "source_count": 5,
+        "verified_at": "2026-06-08T11:05:00.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 6,
       "gaps": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as deprecated.",
+          "No verified standalone website yet.",
+          "No verified docs site yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "website",
           "openapi",
           "subnet-api",
@@ -3448,14 +3455,13 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo"
         ]
       },
-      "name": "deprecated",
+      "name": "Grail",
       "netuid": 81,
       "slug": "sn-81",
-      "surface_count": 4
+      "surface_count": 3
     },
     {
       "candidate_count": 22,

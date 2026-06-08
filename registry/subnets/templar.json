@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "netuid": 3,
+  "name": "Templar",
+  "slug": "sn-3",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "decentralized-training",
+    "identity-drift",
+    "identity-reviewed",
+    "official-source-repo"
+  ],
+  "docs_url": "https://docs.tplr.ai/",
+  "source_repo": "https://github.com/one-covenant/templar",
+  "dashboard_url": "https://wandb.ai/tplr/templar",
+  "website_url": "https://www.tplr.ai/",
+  "notes": "Reviewed overlay for SN3 using the live One Covenant Templar repository, website, docs, and public dashboards. Native chain identity currently reports a deprecated placeholder, so this remains an explicit identity-drift entry rather than a silent rename.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "needs-review",
+    "reviewed_at": "2026-06-08T11:05:00.000Z",
+    "verified_at": "2026-06-08T11:05:00.000Z",
+    "source_count": 6,
+    "gap_notes": [
+      "Native chain name currently reports as deprecated.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-3-templar-source",
+      "name": "Templar source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/one-covenant/templar",
+      "provider": "one-covenant",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/one-covenant/templar",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/3/subnet.json"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Templar source repository."
+    },
+    {
+      "id": "sn-3-templar-website",
+      "name": "Templar website",
+      "kind": "website",
+      "url": "https://www.tplr.ai/",
+      "provider": "one-covenant",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": ["https://github.com/one-covenant/templar"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Website linked from the Templar repository homepage."
+    },
+    {
+      "id": "sn-3-templar-docs",
+      "name": "Templar docs",
+      "kind": "docs",
+      "url": "https://docs.tplr.ai/",
+      "provider": "one-covenant",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": [
+        "https://docs.tplr.ai/",
+        "https://github.com/one-covenant/templar"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Templar documentation."
+    },
+    {
+      "id": "sn-3-templar-wandb",
+      "name": "Templar W&B dashboard",
+      "kind": "dashboard",
+      "url": "https://wandb.ai/tplr/templar",
+      "provider": "one-covenant",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": ["https://github.com/one-covenant/templar"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public W&B dashboard linked from the Templar repository."
+    },
+    {
+      "id": "sn-3-templar-grafana",
+      "name": "Templar Grafana dashboard",
+      "kind": "dashboard",
+      "url": "https://grafana.tplr.ai/d/ceia6bwlwn8qof/eval-metrics",
+      "provider": "one-covenant",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": ["https://github.com/one-covenant/templar"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Grafana evaluation dashboard linked from the Templar repository."
+    }
+  ]
+}

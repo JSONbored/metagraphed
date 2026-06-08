@@ -1118,6 +1118,26 @@
       "verified_candidate_count": 3
     },
     {
+      "candidate_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Grail",
+      "netuid": 81,
+      "priority_score": 73,
+      "review_state": "needs-review",
+      "slug": "sn-81",
+      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+      "surface_count": 3,
+      "verified_candidate_count": 4
+    },
+    {
       "candidate_count": 4,
       "curation_level": "machine-verified",
       "missing_kinds": [
@@ -1627,40 +1647,21 @@
     },
     {
       "candidate_count": 5,
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "missing_kinds": [
-        "website",
+        "docs",
         "openapi",
         "subnet-api",
         "sse",
         "data-artifact"
       ],
-      "name": "deprecated",
+      "name": "Basilica",
       "netuid": 39,
       "priority_score": 61,
-      "review_state": "machine-generated",
+      "review_state": "needs-review",
       "slug": "sn-39",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "candidate_count": 5,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "deprecated",
-      "netuid": 81,
-      "priority_score": 61,
-      "review_state": "machine-generated",
-      "slug": "sn-81",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
+      "surface_count": 2,
       "verified_candidate_count": 4
     },
     {
@@ -1735,25 +1736,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 6,
       "verified_candidate_count": 10
-    },
-    {
-      "candidate_count": 4,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "deprecated",
-      "netuid": 3,
-      "priority_score": 60,
-      "review_state": "machine-generated",
-      "slug": "sn-3",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
     },
     {
       "candidate_count": 4,
@@ -2436,6 +2418,24 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 7,
       "verified_candidate_count": 9
+    },
+    {
+      "candidate_count": 4,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Templar",
+      "netuid": 3,
+      "priority_score": 48,
+      "review_state": "needs-review",
+      "slug": "sn-3",
+      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+      "surface_count": 5,
+      "verified_candidate_count": 4
     },
     {
       "candidate_count": 21,
@@ -3478,12 +3478,12 @@
     "gap_kind_counts": {
       "dashboard": 4,
       "data-artifact": 116,
-      "docs": 28,
+      "docs": 30,
       "openapi": 102,
       "source-repo": 21,
       "sse": 128,
       "subnet-api": 117,
-      "website": 25
+      "website": 23
     },
     "maintainer_decision_count": 3,
     "needs_maintainer_review_count": 74,

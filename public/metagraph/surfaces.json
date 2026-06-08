@@ -654,131 +654,120 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-3-taomarketcap-dashboard",
+      "authority": "provider-claimed",
+      "id": "sn-3-templar-docs",
+      "kind": "docs",
+      "name": "Templar docs",
+      "netuid": 3,
+      "notes": "Public Templar documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "source_urls": [
+        "https://docs.tplr.ai/",
+        "https://github.com/one-covenant/templar"
+      ],
+      "subnet_name": "Templar",
+      "subnet_slug": "sn-3",
+      "url": "https://docs.tplr.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-3-templar-grafana",
       "kind": "dashboard",
-      "name": "deprecated TaoMarketCap dashboard",
+      "name": "Templar Grafana dashboard",
       "netuid": 3,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "notes": "Public Grafana evaluation dashboard linked from the Templar repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "one-covenant",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/3"
+        "https://github.com/one-covenant/templar"
       ],
-      "subnet_name": "deprecated",
+      "subnet_name": "Templar",
       "subnet_slug": "sn-3",
-      "url": "https://taomarketcap.com/subnets/3"
+      "url": "https://grafana.tplr.ai/d/ceia6bwlwn8qof/eval-metrics"
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-3-taopedia-article",
-      "kind": "docs",
-      "name": "deprecated Taopedia article",
-      "netuid": 3,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_3/index.mdx"
-      ],
-      "subnet_name": "deprecated",
-      "subnet_slug": "sn-3",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_3/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-3-tensorplex-docs",
-      "kind": "docs",
-      "name": "deprecated Tensorplex subnet docs",
-      "netuid": 3,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/3/subnet.json"
-      ],
-      "subnet_name": "deprecated",
-      "subnet_slug": "sn-3",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/3"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-3-tensorplex-source-repo-1",
+      "authority": "provider-claimed",
+      "id": "sn-3-templar-source",
       "kind": "source-repo",
-      "name": "deprecated source repository",
+      "name": "Templar source repository",
       "netuid": 3,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Public Templar source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "one-covenant",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
+        "https://github.com/one-covenant/templar",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/3/subnet.json"
       ],
-      "subnet_name": "deprecated",
+      "subnet_name": "Templar",
       "subnet_slug": "sn-3",
-      "url": "https://github.com/tplr-ai/templar"
+      "url": "https://github.com/one-covenant/templar"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-3-templar-wandb",
+      "kind": "dashboard",
+      "name": "Templar W&B dashboard",
+      "netuid": 3,
+      "notes": "Public W&B dashboard linked from the Templar repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/one-covenant/templar"
+      ],
+      "subnet_name": "Templar",
+      "subnet_slug": "sn-3",
+      "url": "https://wandb.ai/tplr/templar"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-3-templar-website",
+      "kind": "website",
+      "name": "Templar website",
+      "netuid": 3,
+      "notes": "Website linked from the Templar repository homepage.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/one-covenant/templar"
+      ],
+      "subnet_name": "Templar",
+      "subnet_slug": "sn-3",
+      "url": "https://www.tplr.ai/"
     },
     {
       "auth_required": false,
@@ -5853,131 +5842,51 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-39-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "deprecated TaoMarketCap dashboard",
-      "netuid": 39,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/39"
-      ],
-      "subnet_name": "deprecated",
-      "subnet_slug": "sn-39",
-      "url": "https://taomarketcap.com/subnets/39"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-39-taopedia-article",
-      "kind": "docs",
-      "name": "deprecated Taopedia article",
-      "netuid": 39,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_39/index.mdx"
-      ],
-      "subnet_name": "deprecated",
-      "subnet_slug": "sn-39",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_39/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-39-tensorplex-docs",
-      "kind": "docs",
-      "name": "deprecated Tensorplex subnet docs",
-      "netuid": 39,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/39/subnet.json"
-      ],
-      "subnet_name": "deprecated",
-      "subnet_slug": "sn-39",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/39"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-39-tensorplex-source-repo-1",
+      "authority": "provider-claimed",
+      "id": "sn-39-basilica-source",
       "kind": "source-repo",
-      "name": "deprecated source repository",
+      "name": "Basilica source repository",
       "netuid": 39,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Public Basilica source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "one-covenant",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
+        "https://github.com/one-covenant/basilica",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/39/subnet.json"
       ],
-      "subnet_name": "deprecated",
+      "subnet_name": "Basilica",
       "subnet_slug": "sn-39",
-      "url": "https://github.com/tplr-ai/basilica"
+      "url": "https://github.com/one-covenant/basilica"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-39-basilica-website",
+      "kind": "website",
+      "name": "Basilica website",
+      "netuid": 39,
+      "notes": "Website linked from the Basilica repository homepage.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/one-covenant/basilica",
+        "https://www.basilica.ai/"
+      ],
+      "subnet_name": "Basilica",
+      "subnet_slug": "sn-39",
+      "url": "https://www.basilica.ai/"
     },
     {
       "auth_required": false,
@@ -12733,131 +12642,73 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-81-taomarketcap-dashboard",
+      "authority": "provider-claimed",
+      "id": "sn-81-grail-grafana",
       "kind": "dashboard",
-      "name": "deprecated TaoMarketCap dashboard",
+      "name": "Grail Grafana dashboard",
       "netuid": 81,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "notes": "Public Grafana dashboard linked from the Grail repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "one-covenant",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/81"
+        "https://github.com/one-covenant/grail"
       ],
-      "subnet_name": "deprecated",
+      "subnet_name": "Grail",
       "subnet_slug": "sn-81",
-      "url": "https://taomarketcap.com/subnets/81"
+      "url": "https://grail-grafana.tplr.ai/"
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-81-taopedia-article",
-      "kind": "docs",
-      "name": "deprecated Taopedia article",
-      "netuid": 81,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_81/index.mdx"
-      ],
-      "subnet_name": "deprecated",
-      "subnet_slug": "sn-81",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_81/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-81-tensorplex-docs",
-      "kind": "docs",
-      "name": "deprecated Tensorplex subnet docs",
-      "netuid": 81,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/81/subnet.json"
-      ],
-      "subnet_name": "deprecated",
-      "subnet_slug": "sn-81",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/81"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-81-tensorplex-source-repo-1",
+      "authority": "provider-claimed",
+      "id": "sn-81-grail-source",
       "kind": "source-repo",
-      "name": "deprecated source repository",
+      "name": "Grail source repository",
       "netuid": 81,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Public Grail source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "one-covenant",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
+        "https://github.com/one-covenant/grail",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/81/subnet.json"
       ],
-      "subnet_name": "deprecated",
+      "subnet_name": "Grail",
       "subnet_slug": "sn-81",
-      "url": "https://github.com/tplr-ai/grail"
+      "url": "https://github.com/one-covenant/grail"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-81-grail-wandb",
+      "kind": "dashboard",
+      "name": "Grail W&B dashboard",
+      "netuid": 81,
+      "notes": "Public W&B dashboard linked from the Grail repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/one-covenant/grail"
+      ],
+      "subnet_name": "Grail",
+      "subnet_slug": "sn-81",
+      "url": "https://wandb.ai/tplr/grail"
     },
     {
       "auth_required": false,

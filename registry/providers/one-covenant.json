@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "one-covenant",
+  "name": "One Covenant",
+  "kind": "subnet-team",
+  "website_url": "https://www.tplr.ai/",
+  "docs_url": "https://docs.tplr.ai/",
+  "github_url": "https://github.com/one-covenant",
+  "authority": "provider-claimed",
+  "notes": "Provider entry for the Covenant/TPLR subnet family. SN3, SN39, and SN81 are tracked as reviewed identity-drift cases because current native chain names are generic or deprecated while public sources identify the projects as Templar, Basilica, and Grail."
+}

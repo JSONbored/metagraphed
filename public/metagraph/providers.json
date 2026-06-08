@@ -389,6 +389,17 @@
       "website_url": "https://nodies.app"
     },
     {
+      "authority": "provider-claimed",
+      "docs_url": "https://docs.tplr.ai/",
+      "github_url": "https://github.com/one-covenant",
+      "id": "one-covenant",
+      "kind": "subnet-team",
+      "name": "One Covenant",
+      "notes": "Provider entry for the Covenant/TPLR subnet family. SN3, SN39, and SN81 are tracked as reviewed identity-drift cases because current native chain names are generic or deprecated while public sources identify the projects as Templar, Basilica, and Grail.",
+      "schema_version": 1,
+      "website_url": "https://www.tplr.ai/"
+    },
+    {
       "authority": "official",
       "github_url": "https://github.com/oneoneone-io/subnet-111",
       "id": "oneoneone",

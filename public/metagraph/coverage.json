@@ -6,8 +6,8 @@
   "curated_overlay_count": 129,
   "curation_level_counts": {
     "adapter-backed": 2,
-    "machine-verified": 73,
-    "maintainer-reviewed": 54
+    "machine-verified": 70,
+    "maintainer-reviewed": 57
   },
   "generated_at": "1970-01-01T00:00:00.000Z",
   "manifested_count": 0,
@@ -17,7 +17,7 @@
   "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
   "network": "finney",
   "probed_count": 129,
-  "probed_surface_count": 673,
+  "probed_surface_count": 671,
   "root_subnet_count": 1,
   "schema_version": 1,
   "source": {
@@ -31,5 +31,5 @@
     },
     "overlays": "registry/subnets"
   },
-  "surface_count": 677
+  "surface_count": 675
 }

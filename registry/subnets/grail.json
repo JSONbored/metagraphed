@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "netuid": 81,
+  "name": "Grail",
+  "slug": "sn-81",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "decentralized-training",
+    "identity-drift",
+    "identity-reviewed",
+    "official-source-repo"
+  ],
+  "source_repo": "https://github.com/one-covenant/grail",
+  "dashboard_url": "https://grail-grafana.tplr.ai/",
+  "website_url": null,
+  "notes": "Reviewed overlay for SN81 using the live One Covenant Grail repository and public dashboards. Native chain identity currently reports a deprecated placeholder, so this remains an explicit identity-drift entry rather than a silent rename.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "needs-review",
+    "reviewed_at": "2026-06-08T11:05:00.000Z",
+    "verified_at": "2026-06-08T11:05:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "Native chain name currently reports as deprecated.",
+      "No verified standalone website yet.",
+      "No verified docs site yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-81-grail-source",
+      "name": "Grail source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/one-covenant/grail",
+      "provider": "one-covenant",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/one-covenant/grail",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/81/subnet.json"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Grail source repository."
+    },
+    {
+      "id": "sn-81-grail-grafana",
+      "name": "Grail Grafana dashboard",
+      "kind": "dashboard",
+      "url": "https://grail-grafana.tplr.ai/",
+      "provider": "one-covenant",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": ["https://github.com/one-covenant/grail"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Grafana dashboard linked from the Grail repository."
+    },
+    {
+      "id": "sn-81-grail-wandb",
+      "name": "Grail W&B dashboard",
+      "kind": "dashboard",
+      "url": "https://wandb.ai/tplr/grail",
+      "provider": "one-covenant",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": ["https://github.com/one-covenant/grail"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public W&B dashboard linked from the Grail repository."
+    }
+  ]
+}
