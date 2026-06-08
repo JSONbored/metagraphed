@@ -1007,11 +1007,11 @@
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 5,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T07:12:52.000Z",
+        "source_count": 8,
+        "verified_at": "2026-06-08T07:12:52.000Z"
       },
       "gap_count": 3,
       "gaps": {
@@ -2067,44 +2067,38 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 4,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T07:12:52.000Z",
+        "source_count": 8,
+        "verified_at": "2026-06-08T07:12:52.000Z"
       },
-      "gap_count": 5,
+      "gap_count": 2,
       "gaps": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone data artifact yet."
         ],
         "missing_kinds": [
-          "website",
-          "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo"
+          "openapi",
+          "source-repo",
+          "subnet-api",
+          "website"
         ]
       },
       "name": "Nepher Robotics",
       "netuid": 49,
       "slug": "sn-49",
-      "surface_count": 5
+      "surface_count": 9
     },
     {
       "candidate_count": 12,
@@ -2447,42 +2441,38 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 4,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T07:12:52.000Z",
+        "source_count": 9,
+        "verified_at": "2026-06-08T07:12:52.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 2,
       "gaps": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified static data artifact yet."
         ],
         "missing_kinds": [
-          "website",
-          "openapi",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
-          "subnet-api"
+          "subnet-api",
+          "website"
         ]
       },
-      "name": "Pending",
+      "name": "Handshake58",
       "netuid": 58,
       "slug": "sn-58",
-      "surface_count": 8
+      "surface_count": 10
     },
     {
       "candidate_count": 16,
@@ -4624,26 +4614,25 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
+          "No verified source repository has been promoted as official because the discovered repository identifies a different Rich Kids of TAO subnet identity.",
           "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 4,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T07:12:52.000Z",
+        "source_count": 7,
+        "verified_at": "2026-06-08T07:12:52.000Z"
       },
-      "gap_count": 3,
+      "gap_count": 2,
       "gaps": {
         "gap_notes": [
+          "No verified source repository has been promoted as official because the discovered repository identifies a different Rich Kids of TAO subnet identity.",
           "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "openapi",
-          "subnet-api",
           "sse"
         ],
         "supported_kinds": [
@@ -4651,13 +4640,14 @@
           "data-artifact",
           "docs",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
       "name": "Green Compute",
       "netuid": 110,
       "slug": "sn-110",
-      "surface_count": 8
+      "surface_count": 7
     },
     {
       "candidate_count": 8,

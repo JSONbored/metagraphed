@@ -1,0 +1,224 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-api",
+    "official-docs",
+    "official-openapi",
+    "official-source-repo",
+    "official-website",
+    "robotics",
+    "tournament"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified SSE/event stream yet.",
+      "No verified standalone data artifact yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T07:12:52.000Z",
+    "source_count": 8,
+    "verified_at": "2026-06-08T07:12:52.000Z"
+  },
+  "dashboard_url": "https://tournament.nepher.ai",
+  "docs_url": "https://docs.nepher.ai/",
+  "links": [
+    {
+      "label": "GitHub org",
+      "source_url": "https://nepher.ai",
+      "url": "https://github.com/nepher-ai"
+    },
+    {
+      "label": "X",
+      "source_url": "https://nepher.ai",
+      "url": "https://x.com/nepher_robotics"
+    }
+  ],
+  "name": "Nepher Robotics",
+  "netuid": 49,
+  "notes": "Reviewed overlay for SN49 using the official Nepher Robotics README, website, docs, tournament app, and OpenAPI-backed tournament API.",
+  "schema_version": 1,
+  "slug": "sn-49",
+  "source_repo": "https://github.com/nepher-ai/nepher-subnet",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-49-nepher-website",
+      "kind": "website",
+      "name": "Nepher Robotics website",
+      "notes": "Official Nepher Robotics website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/nepher-ai/nepher-subnet",
+        "https://nepher.ai"
+      ],
+      "url": "https://nepher.ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-49-nepher-docs",
+      "kind": "docs",
+      "name": "Nepher Robotics docs",
+      "notes": "Official Nepher Robotics documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/nepher-ai/nepher-subnet",
+        "https://docs.nepher.ai/"
+      ],
+      "url": "https://docs.nepher.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-49-nepher-source",
+      "kind": "source-repo",
+      "name": "Nepher Robotics source repository",
+      "notes": "Official SN49 source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "source_urls": ["https://github.com/nepher-ai/nepher-subnet"],
+      "url": "https://github.com/nepher-ai/nepher-subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-49-nepher-tournament-dashboard",
+      "kind": "dashboard",
+      "name": "Nepher tournament dashboard",
+      "notes": "Public tournament app linked from the official Nepher Robotics website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "source_urls": ["https://nepher.ai"],
+      "url": "https://tournament.nepher.ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-49-nepher-tournament-openapi",
+      "kind": "openapi",
+      "name": "Nepher tournament OpenAPI schema",
+      "notes": "Machine-readable OpenAPI schema for the Nepher tournament backend.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://tournament-api.nepher.ai/docs",
+        "https://tournament-api.nepher.ai/openapi.json"
+      ],
+      "url": "https://tournament-api.nepher.ai/openapi.json"
+    },
+    {
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-49-nepher-tournament-api",
+      "kind": "subnet-api",
+      "name": "Nepher tournament API",
+      "notes": "Public tournament API host with machine-readable OpenAPI. Individual endpoints may require authentication or admin permissions, so proxy eligibility requires separate review.",
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "rate_limit_notes": "Schema is public; method-level auth must be reviewed before enabling health probes beyond schema fetches.",
+      "schema_status": "machine-readable",
+      "schema_url": "https://tournament-api.nepher.ai/openapi.json",
+      "source_urls": [
+        "https://tournament-api.nepher.ai/docs",
+        "https://tournament-api.nepher.ai/openapi.json"
+      ],
+      "url": "https://tournament-api.nepher.ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-49-taopedia-article",
+      "kind": "docs",
+      "name": "Nepher Robotics Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_49/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_49/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-49-tensorplex-docs",
+      "kind": "docs",
+      "name": "Nepher Robotics Tensorplex subnet docs",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/49/subnet.json"
+      ],
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/49"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-49-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "Nepher Robotics TaoMarketCap dashboard",
+      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/49"],
+      "url": "https://taomarketcap.com/subnets/49"
+    }
+  ],
+  "website_url": "https://nepher.ai"
+}

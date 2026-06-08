@@ -1,0 +1,205 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "language-models",
+    "model-artifacts",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified OpenAPI/Swagger surface yet.",
+      "No verified subnet API surface yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T07:12:52.000Z",
+    "source_count": 8,
+    "verified_at": "2026-06-08T07:12:52.000Z"
+  },
+  "dashboard_url": "https://taomarketcap.com/subnets/24",
+  "docs_url": "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md",
+  "links": [
+    {
+      "label": "Hugging Face",
+      "source_url": "https://silxinc.com/",
+      "url": "https://huggingface.co/silx-ai"
+    },
+    {
+      "label": "X",
+      "source_url": "https://silxinc.com/",
+      "url": "https://x.com/QuasarModels"
+    }
+  ],
+  "name": "Quasar",
+  "netuid": 24,
+  "notes": "Reviewed overlay for SN24 using the official SILX Labs website, Quasar source repository, README, and public model artifacts.",
+  "schema_version": 1,
+  "slug": "sn-24",
+  "source_repo": "https://github.com/SILX-LABS/QUASAR-SUBNET",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-24-quasar-website",
+      "kind": "website",
+      "name": "Quasar website",
+      "notes": "Official SILX Labs website page for Quasar.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "source_urls": ["https://silxinc.com/"],
+      "url": "https://silxinc.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-24-quasar-source",
+      "kind": "source-repo",
+      "name": "Quasar source repository",
+      "notes": "Official Quasar SN24 source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET",
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "url": "https://github.com/SILX-LABS/QUASAR-SUBNET"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-24-quasar-readme-docs",
+      "kind": "docs",
+      "name": "Quasar README docs",
+      "notes": "Official README documentation describing SN24, model requirements, miner flow, and validator flow.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET",
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "url": "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-24-quasar-base-model",
+      "kind": "data-artifact",
+      "name": "Quasar base model",
+      "notes": "Official Quasar base checkpoint referenced by the SN24 README.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "url": "https://huggingface.co/silx-ai/Quasar-3B-A1B-Preview"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-24-quasar-launch-teacher",
+      "kind": "data-artifact",
+      "name": "Quasar launch teacher model",
+      "notes": "Launch teacher model referenced by the official Quasar SN24 README.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "url": "https://huggingface.co/Qwen/Qwen3.5-4B"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-24-taopedia-article",
+      "kind": "docs",
+      "name": "Quasar Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_24/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_24/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-24-tensorplex-docs",
+      "kind": "docs",
+      "name": "Quasar Tensorplex subnet docs",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json"
+      ],
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/24"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-24-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "Quasar TaoMarketCap dashboard",
+      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/24"],
+      "url": "https://taomarketcap.com/subnets/24"
+    }
+  ],
+  "website_url": "https://silxinc.com/"
+}

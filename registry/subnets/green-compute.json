@@ -1,0 +1,161 @@
+{
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-api",
+    "official-website",
+    "model-directory"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified source repository has been promoted as official because the discovered repository identifies a different Rich Kids of TAO subnet identity.",
+      "No verified OpenAPI/Swagger surface yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T07:12:52.000Z",
+    "source_count": 7,
+    "verified_at": "2026-06-08T07:12:52.000Z"
+  },
+  "dashboard_url": "https://taomarketcap.com/subnets/110",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_110/index.mdx",
+  "links": [],
+  "name": "Green Compute",
+  "netuid": 110,
+  "notes": "Reviewed overlay for SN110. The official Green Compute website advertises a public model directory and API host; the discovered Rich Kids of TAO repository is retained only as registry-observed evidence pending identity review.",
+  "schema_version": 1,
+  "slug": "sn-110",
+  "source_repo": "https://github.com/Rich-Kids-of-TAO/rkt-subnet",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-110-green-compute-website",
+      "kind": "website",
+      "name": "Green Compute website",
+      "notes": "Official Green Compute website for SN110.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "source_urls": ["https://www.green-compute.com/"],
+      "url": "https://www.green-compute.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-110-green-compute-models",
+      "kind": "data-artifact",
+      "name": "Green Compute model directory",
+      "notes": "Official model directory linked from the Green Compute website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "source_urls": ["https://www.green-compute.com/"],
+      "url": "https://www.green-compute.com/models"
+    },
+    {
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-110-green-compute-chat-completions-api",
+      "kind": "subnet-api",
+      "name": "Green Compute chat completions API",
+      "notes": "Official API endpoint advertised by the Green Compute website. The endpoint is POST-only, so recurring read probes are intentionally disabled until a safe health or schema endpoint is confirmed.",
+      "provider": "green-compute",
+      "public_safe": true,
+      "rate_limit_notes": "Auth and request-shape details need maintainer review before monitoring or proxy eligibility.",
+      "source_urls": ["https://www.green-compute.com/"],
+      "url": "https://api.green-compute.com/v1/chat/completions"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-110-tensorplex-source-repo-1",
+      "kind": "source-repo",
+      "name": "Green Compute source repository candidate",
+      "notes": "Discovered source repository candidate from Tensorplex. The repository README identifies Rich Kids of TAO, so it remains registry-observed pending maintainer review.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/110/subnet.json"
+      ],
+      "url": "https://github.com/Rich-Kids-of-TAO/rkt-subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-110-taopedia-article",
+      "kind": "docs",
+      "name": "Green Compute Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_110/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_110/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-110-tensorplex-docs",
+      "kind": "docs",
+      "name": "Green Compute Tensorplex subnet docs",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/110/subnet.json"
+      ],
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/110"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-110-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "Green Compute TaoMarketCap dashboard",
+      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/110"],
+      "url": "https://taomarketcap.com/subnets/110"
+    }
+  ],
+  "website_url": "https://www.green-compute.com/"
+}

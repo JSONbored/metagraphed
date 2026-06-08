@@ -28,6 +28,19 @@
       "slug": "sn-64"
     },
     {
+      "candidate_api_count": 3,
+      "curation_level": "maintainer-reviewed",
+      "name": "Handshake58",
+      "netuid": 58,
+      "operational_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "operational_surface_count": 3,
+      "priority_score": 70,
+      "slug": "sn-58"
+    },
+    {
       "candidate_api_count": 7,
       "curation_level": "machine-verified",
       "name": "ninja",
@@ -51,42 +64,6 @@
       "operational_surface_count": 3,
       "priority_score": 69,
       "slug": "sn-33"
-    },
-    {
-      "candidate_api_count": 8,
-      "curation_level": "machine-verified",
-      "name": "Quasar",
-      "netuid": 24,
-      "operational_kinds": [
-        "data-artifact"
-      ],
-      "operational_surface_count": 3,
-      "priority_score": 68,
-      "slug": "sn-24"
-    },
-    {
-      "candidate_api_count": 3,
-      "curation_level": "machine-verified",
-      "name": "Pending",
-      "netuid": 58,
-      "operational_kinds": [
-        "subnet-api"
-      ],
-      "operational_surface_count": 3,
-      "priority_score": 68,
-      "slug": "sn-58"
-    },
-    {
-      "candidate_api_count": 8,
-      "curation_level": "machine-verified",
-      "name": "Green Compute",
-      "netuid": 110,
-      "operational_kinds": [
-        "data-artifact"
-      ],
-      "operational_surface_count": 3,
-      "priority_score": 68,
-      "slug": "sn-110"
     },
     {
       "candidate_api_count": 9,
@@ -140,6 +117,19 @@
     },
     {
       "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "Nepher Robotics",
+      "netuid": 49,
+      "operational_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "operational_surface_count": 2,
+      "priority_score": 49,
+      "slug": "sn-49"
+    },
+    {
+      "candidate_api_count": 6,
       "curation_level": "machine-verified",
       "name": "Gradients",
       "netuid": 56,
@@ -162,6 +152,31 @@
       "operational_surface_count": 2,
       "priority_score": 48,
       "slug": "sn-22"
+    },
+    {
+      "candidate_api_count": 8,
+      "curation_level": "maintainer-reviewed",
+      "name": "Quasar",
+      "netuid": 24,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 2,
+      "priority_score": 48,
+      "slug": "sn-24"
+    },
+    {
+      "candidate_api_count": 8,
+      "curation_level": "maintainer-reviewed",
+      "name": "Green Compute",
+      "netuid": 110,
+      "operational_kinds": [
+        "data-artifact",
+        "subnet-api"
+      ],
+      "operational_surface_count": 2,
+      "priority_score": 47,
+      "slug": "sn-110"
     },
     {
       "candidate_api_count": 14,
@@ -1024,16 +1039,6 @@
       "slug": "sn-48"
     },
     {
-      "candidate_api_count": 6,
-      "curation_level": "machine-verified",
-      "name": "Nepher Robotics",
-      "netuid": 49,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 5,
-      "slug": "sn-49"
-    },
-    {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "NIOME",
@@ -1165,23 +1170,6 @@
       "verified_candidate_count": 11
     },
     {
-      "candidate_count": 21,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse"
-      ],
-      "name": "Green Compute",
-      "netuid": 110,
-      "priority_score": 89,
-      "review_state": "machine-generated",
-      "slug": "sn-110",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 15
-    },
-    {
       "candidate_count": 28,
       "curation_level": "machine-verified",
       "missing_kinds": [
@@ -1196,23 +1184,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 12,
       "verified_candidate_count": 20
-    },
-    {
-      "candidate_count": 16,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse"
-      ],
-      "name": "Quasar",
-      "netuid": 24,
-      "priority_score": 84,
-      "review_state": "machine-generated",
-      "slug": "sn-24",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 10
     },
     {
       "candidate_count": 12,
@@ -1249,24 +1220,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 3,
       "verified_candidate_count": 3
-    },
-    {
-      "candidate_count": 8,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Pending",
-      "netuid": 58,
-      "priority_score": 76,
-      "review_state": "machine-generated",
-      "slug": "sn-58",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 8
     },
     {
       "candidate_count": 23,
@@ -1831,25 +1784,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 4,
       "verified_candidate_count": 6
-    },
-    {
-      "candidate_count": 13,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Nepher Robotics",
-      "netuid": 49,
-      "priority_score": 69,
-      "review_state": "machine-generated",
-      "slug": "sn-49",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
-      "verified_candidate_count": 5
     },
     {
       "candidate_count": 13,
@@ -3420,6 +3354,39 @@
       "verified_candidate_count": 9
     },
     {
+      "candidate_count": 16,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "name": "Quasar",
+      "netuid": 24,
+      "priority_score": 31,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-24",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 8,
+      "verified_candidate_count": 10
+    },
+    {
+      "candidate_count": 21,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "sse"
+      ],
+      "name": "Green Compute",
+      "netuid": 110,
+      "priority_score": 24,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-110",
+      "suggested_next_action": "evaluate for subnet-specific adapter",
+      "surface_count": 7,
+      "verified_candidate_count": 15
+    },
+    {
       "candidate_count": 17,
       "curation_level": "adapter-backed",
       "missing_kinds": [
@@ -3455,6 +3422,38 @@
       "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
       "surface_count": 6,
       "verified_candidate_count": 3
+    },
+    {
+      "candidate_count": 8,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Handshake58",
+      "netuid": 58,
+      "priority_score": 7,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-58",
+      "suggested_next_action": "evaluate for subnet-specific adapter",
+      "surface_count": 10,
+      "verified_candidate_count": 8
+    },
+    {
+      "candidate_count": 13,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Nepher Robotics",
+      "netuid": 49,
+      "priority_score": 4,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-49",
+      "suggested_next_action": "evaluate for subnet-specific adapter",
+      "surface_count": 9,
+      "verified_candidate_count": 5
     },
     {
       "candidate_count": 2,
@@ -3524,14 +3523,14 @@
     "gap_kind_counts": {
       "dashboard": 2,
       "data-artifact": 113,
-      "openapi": 103,
+      "openapi": 101,
       "source-repo": 21,
       "sse": 128,
-      "subnet-api": 117,
-      "website": 38
+      "subnet-api": 115,
+      "website": 36
     },
     "maintainer_decision_count": 3,
-    "needs_maintainer_review_count": 125,
+    "needs_maintainer_review_count": 121,
     "subnet_count": 129
   }
 }

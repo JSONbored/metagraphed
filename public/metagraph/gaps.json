@@ -646,7 +646,7 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
           "No verified OpenAPI/Swagger surface yet.",
@@ -1328,26 +1328,23 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone data artifact yet."
         ],
         "missing_kinds": [
-          "website",
-          "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
           "docs",
-          "source-repo"
+          "openapi",
+          "source-repo",
+          "subnet-api",
+          "website"
         ]
       },
       "name": "Nepher Robotics",
@@ -1572,28 +1569,26 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified static data artifact yet."
         ],
         "missing_kinds": [
-          "website",
-          "openapi",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
           "docs",
+          "openapi",
           "source-repo",
-          "subnet-api"
+          "subnet-api",
+          "website"
         ]
       },
-      "name": "Pending",
+      "name": "Handshake58",
       "netuid": 58,
       "slug": "sn-58"
     },
@@ -2973,16 +2968,15 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
+          "No verified source repository has been promoted as official because the discovered repository identifies a different Rich Kids of TAO subnet identity.",
           "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "openapi",
-          "subnet-api",
           "sse"
         ],
         "supported_kinds": [
@@ -2990,6 +2984,7 @@
           "data-artifact",
           "docs",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },

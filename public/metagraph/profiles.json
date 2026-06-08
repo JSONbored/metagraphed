@@ -1985,10 +1985,16 @@
     {
       "candidate_count": 16,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "identity-reviewed",
+        "language-models",
+        "model-artifacts",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-openapi",
           "missing-subnet-api",
@@ -2002,11 +2008,11 @@
         ],
         "missing_required": [],
         "profile_level": "operational",
-        "score": 58
+        "score": 63
       },
-      "completeness_score": 58,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 63,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
       "interface_count": 5,
       "missing_critical_count": 3,
@@ -2020,26 +2026,26 @@
         "data-artifact"
       ],
       "primary_app_surface": {
-        "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-1",
+        "id": "sn-24-quasar-base-model",
         "kind": "data-artifact",
-        "name": "Quasar data artifact",
-        "provider": "taomarketcap",
+        "name": "Quasar base model",
+        "provider": "silx-labs",
         "url": "https://huggingface.co/silx-ai/Quasar-3B-A1B-Preview"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/24",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_24/index.mdx",
+        "docs_url": "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md",
         "source_repo": "https://github.com/SILX-LABS/QUASAR-SUBNET",
         "website_url": "https://silxinc.com/"
       },
       "profile_level": "operational",
       "project_name": "Quasar",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 7,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T07:12:52.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/24",
           "https://github.com/SILX-LABS/QUASAR-SUBNET",
@@ -2050,7 +2056,7 @@
           "https://taomarketcap.com/subnets/24"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-24",
       "status": "active",
       "subnet_type": "application",
@@ -4050,84 +4056,93 @@
     {
       "candidate_count": 13,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "identity-reviewed",
+        "official-api",
+        "official-docs",
+        "official-openapi",
+        "official-source-repo",
+        "official-website",
+        "robotics",
+        "tournament"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-website",
-          "missing-openapi",
-          "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 5,
+        "missing_critical_count": 2,
         "missing_operational": [
-          "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [
-          "website"
-        ],
-        "profile_level": "directory-only",
-        "score": 35
+        "missing_required": [],
+        "profile_level": "operational",
+        "score": 85
       },
-      "completeness_score": 35,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 5,
-      "interface_count": 3,
-      "missing_critical_count": 5,
-      "monitored_endpoint_count": 5,
+      "completeness_score": 85,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 9,
+      "interface_count": 6,
+      "missing_critical_count": 2,
+      "monitored_endpoint_count": 8,
       "name": "Nepher Robotics",
       "native_name": "Nepher Robotics",
       "native_name_quality": "chain",
       "netuid": 49,
-      "operational_interface_count": 0,
-      "operational_interface_kinds": [],
+      "operational_interface_count": 2,
+      "operational_interface_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
       "primary_app_surface": {
-        "id": "sn-49-github-readme-nepher-ai-nepher-subnet-docs-1",
-        "kind": "docs",
-        "name": "Nepher Robotics docs",
-        "provider": "taomarketcap",
-        "url": "https://docs.nepher.ai/"
+        "id": "sn-49-nepher-tournament-api",
+        "kind": "subnet-api",
+        "name": "Nepher tournament API",
+        "provider": "nepher-robotics",
+        "url": "https://tournament-api.nepher.ai"
       },
       "primary_links": {
-        "dashboard_url": "https://taomarketcap.com/subnets/49",
+        "dashboard_url": "https://tournament.nepher.ai",
         "docs_url": "https://docs.nepher.ai/",
         "source_repo": "https://github.com/nepher-ai/nepher-subnet",
-        "website_url": null
+        "website_url": "https://nepher.ai"
       },
-      "profile_level": "directory-only",
+      "profile_level": "operational",
       "project_name": "Nepher Robotics",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 9,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T07:12:52.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/49",
           "https://docs.nepher.ai/",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_49/index.mdx",
           "https://github.com/nepher-ai/nepher-subnet",
-          "https://github.com/nepher-ai/nepher-subnet/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/49/subnet.json",
-          "https://taomarketcap.com/subnets/49"
+          "https://nepher.ai",
+          "https://tournament-api.nepher.ai/docs",
+          "https://tournament-api.nepher.ai/openapi.json",
+          "https://tournament.nepher.ai"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-49",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "source-repo"
+        "openapi",
+        "source-repo",
+        "subnet-api",
+        "website"
       ],
-      "surface_count": 5,
+      "surface_count": 9,
       "symbol": "ר",
       "team": null
     },
@@ -4793,85 +4808,93 @@
     {
       "candidate_count": 8,
       "categories": [
-        "baseline-curated"
+        "ai-marketplace",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-api",
+        "official-openapi",
+        "official-source-repo",
+        "official-website",
+        "payments"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-website",
-          "missing-openapi",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 4,
+        "missing_critical_count": 2,
         "missing_operational": [
-          "openapi",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [
-          "website"
-        ],
+        "missing_required": [],
         "profile_level": "operational",
-        "score": 50
+        "score": 85
       },
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 8,
-      "interface_count": 4,
-      "missing_critical_count": 4,
-      "monitored_endpoint_count": 8,
-      "name": "Pending",
+      "completeness_score": 85,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 10,
+      "interface_count": 6,
+      "missing_critical_count": 2,
+      "monitored_endpoint_count": 10,
+      "name": "Handshake58",
       "native_name": "Pending",
       "native_name_quality": "chain",
       "netuid": 58,
-      "operational_interface_count": 1,
+      "operational_interface_count": 2,
       "operational_interface_kinds": [
+        "openapi",
         "subnet-api"
       ],
       "primary_app_surface": {
-        "id": "sn-58-github-readme-handshake58-hs58-subnet-api-2",
+        "id": "sn-58-handshake58-provider-directory-api",
         "kind": "subnet-api",
-        "name": "Pending API surface",
-        "provider": "tensorplex-subnet-docs",
-        "url": "https://handshake58.com/api/drain/signing"
+        "name": "Handshake58 provider directory API",
+        "provider": "handshake58",
+        "url": "https://handshake58.com/api/mcp/providers"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/58",
         "docs_url": "https://handshake58.com/skill.md",
-        "source_repo": "https://github.com/Handshake58/HS58",
-        "website_url": null
+        "source_repo": "https://github.com/Handshake58/HS58-subnet",
+        "website_url": "https://handshake58.com"
       },
       "profile_level": "operational",
-      "project_name": "Pending",
+      "project_name": "Handshake58",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 10,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T07:12:52.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/58",
           "https://github.com/Handshake58/HS58",
-          "https://github.com/Handshake58/HS58/blob/main/README.md",
+          "https://github.com/Handshake58/HS58-subnet",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_58/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/58/subnet.json",
+          "https://handshake58.com",
+          "https://handshake58.com/.well-known/ai-plugin.json",
+          "https://handshake58.com/openapi.json",
           "https://handshake58.com/skill.md",
           "https://taomarketcap.com/subnets/58"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-58",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
         "docs",
+        "openapi",
         "source-repo",
-        "subnet-api"
+        "subnet-api",
+        "website"
       ],
-      "surface_count": 8,
+      "surface_count": 10,
       "symbol": "خ",
       "team": null
     },
@@ -9094,46 +9117,49 @@
     {
       "candidate_count": 21,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "identity-reviewed",
+        "official-api",
+        "official-website",
+        "model-directory"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-openapi",
-          "missing-subnet-api",
           "missing-sse"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 2,
         "missing_operational": [
           "openapi",
-          "subnet-api",
           "sse"
         ],
         "missing_required": [],
         "profile_level": "operational",
-        "score": 58
+        "score": 78
       },
-      "completeness_score": 58,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 8,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 8,
+      "completeness_score": 78,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 7,
+      "interface_count": 6,
+      "missing_critical_count": 2,
+      "monitored_endpoint_count": 6,
       "name": "Green Compute",
       "native_name": "Green Compute",
       "native_name_quality": "chain",
       "netuid": 110,
-      "operational_interface_count": 1,
+      "operational_interface_count": 2,
       "operational_interface_kinds": [
-        "data-artifact"
+        "data-artifact",
+        "subnet-api"
       ],
       "primary_app_surface": {
-        "id": "sn-110-website-link-www-green-compute-com-data-artifact-10",
-        "kind": "data-artifact",
-        "name": "Green Compute data artifact",
-        "provider": "taomarketcap",
-        "url": "https://www.green-compute.com/models?prefill=Qwen%2FQwen2.5-7B-Instruct"
+        "id": "sn-110-green-compute-chat-completions-api",
+        "kind": "subnet-api",
+        "name": "Green Compute chat completions API",
+        "provider": "green-compute",
+        "url": "https://api.green-compute.com/v1/chat/completions"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/110",
@@ -9144,11 +9170,11 @@
       "profile_level": "operational",
       "project_name": "Green Compute",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 6,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T07:12:52.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/110",
           "https://github.com/Rich-Kids-of-TAO/rkt-subnet",
@@ -9158,7 +9184,7 @@
           "https://www.green-compute.com/"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-110",
       "status": "active",
       "subnet_type": "application",
@@ -9167,9 +9193,10 @@
         "data-artifact",
         "docs",
         "source-repo",
+        "subnet-api",
         "website"
       ],
-      "surface_count": 8,
+      "surface_count": 7,
       "symbol": "Ѐ",
       "team": null
     },
@@ -10653,16 +10680,16 @@
   ],
   "schema_version": 1,
   "summary": {
-    "average_completeness_score": 49,
+    "average_completeness_score": 50,
     "by_confidence": {
-      "high": 4,
-      "medium": 125
+      "high": 8,
+      "medium": 121
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "directory-only": 38,
+      "directory-only": 37,
       "identity-complete": 43,
-      "operational": 46
+      "operational": 47
     },
     "profile_count": 129
   }

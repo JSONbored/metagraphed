@@ -5435,6 +5435,39 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Green Compute chat completions API is a public subnet-api surface for SN110.",
+      "confidence": "high",
+      "limits": "Surface is public metadata but requires authentication for access.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.green-compute.com/",
+      "subject": "surface:sn-110-green-compute-chat-completions-api",
+      "support_summary": "Listed in curated overlay for sn-110.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Green Compute model directory is a public data-artifact surface for SN110.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.green-compute.com/",
+      "subject": "surface:sn-110-green-compute-models",
+      "support_summary": "Listed in curated overlay for sn-110.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Green Compute website is a public website surface for SN110.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.green-compute.com/",
+      "subject": "surface:sn-110-green-compute-website",
+      "support_summary": "Listed in curated overlay for sn-110.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Green Compute TaoMarketCap dashboard is a public dashboard surface for SN110.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5442,17 +5475,6 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/110",
       "subject": "surface:sn-110-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-110.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Green Compute website is a public website surface for SN110.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/110",
-      "subject": "surface:sn-110-taomarketcap-website",
       "support_summary": "Listed in curated overlay for sn-110.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -5479,46 +5501,13 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Green Compute source repository is a public source-repo surface for SN110.",
+      "claim": "Green Compute source repository candidate is a public source-repo surface for SN110.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/110/subnet.json",
       "subject": "surface:sn-110-tensorplex-source-repo-1",
-      "support_summary": "Listed in curated overlay for sn-110.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Green Compute data artifact is a public data-artifact surface for SN110.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.green-compute.com/",
-      "subject": "surface:sn-110-website-link-www-green-compute-com-data-artifact-10",
-      "support_summary": "Listed in curated overlay for sn-110.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Green Compute data artifact is a public data-artifact surface for SN110.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.green-compute.com/",
-      "subject": "surface:sn-110-website-link-www-green-compute-com-data-artifact-6",
-      "support_summary": "Listed in curated overlay for sn-110.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Green Compute data artifact is a public data-artifact surface for SN110.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.green-compute.com/",
-      "subject": "surface:sn-110-website-link-www-green-compute-com-data-artifact-9",
       "support_summary": "Listed in curated overlay for sn-110.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7668,24 +7657,57 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Quasar data artifact is a public data-artifact surface for SN24.",
-      "confidence": "medium",
+      "claim": "Quasar base model is a public data-artifact surface for SN24.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
       "source_url": "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md",
-      "subject": "surface:sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-1",
+      "subject": "surface:sn-24-quasar-base-model",
       "support_summary": "Listed in curated overlay for sn-24.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Quasar data artifact is a public data-artifact surface for SN24.",
-      "confidence": "medium",
+      "claim": "Quasar launch teacher model is a public data-artifact surface for SN24.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
       "source_url": "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md",
-      "subject": "surface:sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-2",
+      "subject": "surface:sn-24-quasar-launch-teacher",
+      "support_summary": "Listed in curated overlay for sn-24.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Quasar README docs is a public docs surface for SN24.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/SILX-LABS/QUASAR-SUBNET",
+      "subject": "surface:sn-24-quasar-readme-docs",
+      "support_summary": "Listed in curated overlay for sn-24.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Quasar source repository is a public source-repo surface for SN24.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/SILX-LABS/QUASAR-SUBNET",
+      "subject": "surface:sn-24-quasar-source",
+      "support_summary": "Listed in curated overlay for sn-24.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Quasar website is a public website surface for SN24.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://silxinc.com/",
+      "subject": "surface:sn-24-quasar-website",
       "support_summary": "Listed in curated overlay for sn-24.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7697,28 +7719,6 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/24",
       "subject": "surface:sn-24-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-24.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Quasar source repository is a public source-repo surface for SN24.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/24",
-      "subject": "surface:sn-24-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-24.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Quasar website is a public website surface for SN24.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/24",
-      "subject": "surface:sn-24-taomarketcap-website",
       "support_summary": "Listed in curated overlay for sn-24.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7741,17 +7741,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json",
       "subject": "surface:sn-24-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-24.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Quasar data artifact is a public data-artifact surface for SN24.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://silxinc.com/",
-      "subject": "surface:sn-24-website-link-silxinc-com-data-artifact-3",
       "support_summary": "Listed in curated overlay for sn-24.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -9473,12 +9462,67 @@
     },
     {
       "claim": "Nepher Robotics docs is a public docs surface for SN49.",
-      "confidence": "medium",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/nepher-ai/nepher-subnet/blob/main/README.md",
-      "subject": "surface:sn-49-github-readme-nepher-ai-nepher-subnet-docs-1",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/nepher-ai/nepher-subnet",
+      "subject": "surface:sn-49-nepher-docs",
+      "support_summary": "Listed in curated overlay for sn-49.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Nepher Robotics source repository is a public source-repo surface for SN49.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/nepher-ai/nepher-subnet",
+      "subject": "surface:sn-49-nepher-source",
+      "support_summary": "Listed in curated overlay for sn-49.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Nepher tournament API is a public subnet-api surface for SN49.",
+      "confidence": "high",
+      "limits": "Surface is public metadata but requires authentication for access.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://tournament-api.nepher.ai/docs",
+      "subject": "surface:sn-49-nepher-tournament-api",
+      "support_summary": "Listed in curated overlay for sn-49.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Nepher tournament dashboard is a public dashboard surface for SN49.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://nepher.ai",
+      "subject": "surface:sn-49-nepher-tournament-dashboard",
+      "support_summary": "Listed in curated overlay for sn-49.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Nepher tournament OpenAPI schema is a public openapi surface for SN49.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://tournament-api.nepher.ai/docs",
+      "subject": "surface:sn-49-nepher-tournament-openapi",
+      "support_summary": "Listed in curated overlay for sn-49.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Nepher Robotics website is a public website surface for SN49.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/nepher-ai/nepher-subnet",
+      "subject": "surface:sn-49-nepher-website",
       "support_summary": "Listed in curated overlay for sn-49.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -9490,17 +9534,6 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/49",
       "subject": "surface:sn-49-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-49.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Nepher Robotics source repository is a public source-repo surface for SN49.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/49",
-      "subject": "surface:sn-49-taomarketcap-source-repo",
       "support_summary": "Listed in curated overlay for sn-49.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10154,51 +10187,84 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Pending docs is a public docs surface for SN58.",
-      "confidence": "medium",
+      "claim": "Handshake58 skill docs is a public docs surface for SN58.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/Handshake58/HS58/blob/main/README.md",
-      "subject": "surface:sn-58-github-readme-handshake58-hs58-docs-1",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://handshake58.com",
+      "subject": "surface:sn-58-handshake58-docs",
       "support_summary": "Listed in curated overlay for sn-58.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Pending API surface is a public subnet-api surface for SN58.",
-      "confidence": "medium",
+      "claim": "Handshake58 marketplace source repository is a public source-repo surface for SN58.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/Handshake58/HS58/blob/main/README.md",
-      "subject": "surface:sn-58-github-readme-handshake58-hs58-subnet-api-2",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://handshake58.com",
+      "subject": "surface:sn-58-handshake58-marketplace-source",
       "support_summary": "Listed in curated overlay for sn-58.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Pending API surface is a public subnet-api surface for SN58.",
-      "confidence": "medium",
+      "claim": "Handshake58 OpenAPI schema is a public openapi surface for SN58.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/Handshake58/HS58/blob/main/README.md",
-      "subject": "surface:sn-58-github-readme-handshake58-hs58-subnet-api-3",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://handshake58.com/.well-known/ai-plugin.json",
+      "subject": "surface:sn-58-handshake58-openapi",
       "support_summary": "Listed in curated overlay for sn-58.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Pending API surface is a public subnet-api surface for SN58.",
-      "confidence": "medium",
+      "claim": "Handshake58 provider directory API is a public subnet-api surface for SN58.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/Handshake58/HS58/blob/main/README.md",
-      "subject": "surface:sn-58-github-readme-handshake58-hs58-subnet-api-4",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://handshake58.com",
+      "subject": "surface:sn-58-handshake58-provider-directory-api",
       "support_summary": "Listed in curated overlay for sn-58.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Pending TaoMarketCap dashboard is a public dashboard surface for SN58.",
+      "claim": "Handshake58 skills API is a public subnet-api surface for SN58.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://handshake58.com",
+      "subject": "surface:sn-58-handshake58-skills-api",
+      "support_summary": "Listed in curated overlay for sn-58.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Handshake58 subnet source repository is a public source-repo surface for SN58.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/Handshake58/HS58",
+      "subject": "surface:sn-58-handshake58-subnet-source",
+      "support_summary": "Listed in curated overlay for sn-58.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Handshake58 website is a public website surface for SN58.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://handshake58.com",
+      "subject": "surface:sn-58-handshake58-website",
+      "support_summary": "Listed in curated overlay for sn-58.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Handshake58 TaoMarketCap dashboard is a public dashboard surface for SN58.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
@@ -10209,7 +10275,7 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Pending Taopedia article is a public docs surface for SN58.",
+      "claim": "Handshake58 Taopedia article is a public docs surface for SN58.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
@@ -10220,24 +10286,13 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Pending Tensorplex subnet docs is a public docs surface for SN58.",
+      "claim": "Handshake58 Tensorplex subnet docs is a public docs surface for SN58.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/58/subnet.json",
       "subject": "surface:sn-58-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-58.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Pending source repository is a public source-repo surface for SN58.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/58/subnet.json",
-      "subject": "surface:sn-58-tensorplex-source-repo-1",
       "support_summary": "Listed in curated overlay for sn-58.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -13592,8 +13647,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1235,
+    "claim_count": 1240,
     "subnet_claim_count": 129,
-    "surface_claim_count": 856
+    "surface_claim_count": 861
   }
 }

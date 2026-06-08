@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1000,
+  "document_count": 1009,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -90,6 +90,35 @@
     },
     {
       "artifact_path": "/metagraph/providers.json",
+      "id": "provider:green-compute",
+      "subtitle": "subnet-team",
+      "title": "Green Compute",
+      "tokens": [
+        "compute",
+        "green",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://www.green-compute.com/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:handshake58",
+      "subtitle": "subnet-team",
+      "title": "Handshake58",
+      "tokens": [
+        "handshake58",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://handshake58.com"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
       "id": "provider:luminar-network",
       "subtitle": "subnet-team",
       "title": "Luminar Network",
@@ -115,6 +144,21 @@
       ],
       "type": "provider",
       "url": "https://metagraph.sh"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:nepher-robotics",
+      "subtitle": "subnet-team",
+      "title": "Nepher Robotics",
+      "tokens": [
+        "nepher",
+        "official",
+        "robotics",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://nepher.ai"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -157,6 +201,21 @@
       ],
       "type": "provider",
       "url": "https://bittensor.com"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:silx-labs",
+      "subtitle": "subnet-team",
+      "title": "SILX Labs",
+      "tokens": [
+        "labs",
+        "official",
+        "silx",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://silxinc.com/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -1224,11 +1283,18 @@
       "title": "Green Compute",
       "tokens": [
         "110",
+        "api",
         "baseline",
         "compute",
         "curated",
+        "directory",
         "green",
-        "sn"
+        "identity",
+        "model",
+        "official",
+        "reviewed",
+        "sn",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/110"
@@ -1249,6 +1315,34 @@
       ],
       "type": "subnet",
       "url": "/subnets/20"
+    },
+    {
+      "artifact_path": "/metagraph/subnets/58.json",
+      "id": "subnet:58",
+      "netuid": 58,
+      "slug": "sn-58",
+      "subtitle": "SN58 خ",
+      "title": "Handshake58",
+      "tokens": [
+        "58",
+        "ai",
+        "api",
+        "baseline",
+        "curated",
+        "handshake58",
+        "identity",
+        "marketplace",
+        "official",
+        "openapi",
+        "payments",
+        "repo",
+        "reviewed",
+        "sn",
+        "source",
+        "website"
+      ],
+      "type": "subnet",
+      "url": "/subnets/58"
     },
     {
       "artifact_path": "/metagraph/subnets/116.json",
@@ -1610,11 +1704,21 @@
       "title": "Nepher Robotics",
       "tokens": [
         "49",
+        "api",
         "baseline",
         "curated",
+        "docs",
+        "identity",
         "nepher",
+        "official",
+        "openapi",
+        "repo",
+        "reviewed",
         "robotics",
-        "sn"
+        "sn",
+        "source",
+        "tournament",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/49"
@@ -1807,23 +1911,6 @@
       "url": "/subnets/73"
     },
     {
-      "artifact_path": "/metagraph/subnets/58.json",
-      "id": "subnet:58",
-      "netuid": 58,
-      "slug": "sn-58",
-      "subtitle": "SN58 خ",
-      "title": "Pending",
-      "tokens": [
-        "58",
-        "baseline",
-        "curated",
-        "pending",
-        "sn"
-      ],
-      "type": "subnet",
-      "url": "/subnets/58"
-    },
-    {
       "artifact_path": "/metagraph/subnets/26.json",
       "id": "subnet:26",
       "netuid": 26,
@@ -1902,10 +1989,21 @@
       "title": "Quasar",
       "tokens": [
         "24",
+        "artifacts",
         "baseline",
         "curated",
+        "docs",
+        "identity",
+        "language",
+        "model",
+        "models",
+        "official",
         "quasar",
-        "sn"
+        "repo",
+        "reviewed",
+        "sn",
+        "source",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/24"
@@ -9363,60 +9461,43 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-110-website-link-www-green-compute-com-data-artifact-10",
+      "id": "surface:sn-110-green-compute-chat-completions-api",
       "netuid": 110,
       "slug": "sn-110",
-      "subtitle": "data-artifact / taomarketcap",
-      "title": "Green Compute data artifact",
+      "subtitle": "subnet-api / green-compute",
+      "title": "Green Compute chat completions API",
       "tokens": [
         "110",
-        "artifact",
+        "api",
+        "chat",
+        "completions",
         "compute",
-        "data",
         "green",
         "sn",
-        "taomarketcap"
+        "subnet"
       ],
       "type": "surface",
-      "url": "https://www.green-compute.com/models?prefill=Qwen%2FQwen2.5-7B-Instruct"
+      "url": "https://api.green-compute.com/v1/chat/completions"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-110-website-link-www-green-compute-com-data-artifact-6",
+      "id": "surface:sn-110-green-compute-models",
       "netuid": 110,
       "slug": "sn-110",
-      "subtitle": "data-artifact / taomarketcap",
-      "title": "Green Compute data artifact",
+      "subtitle": "data-artifact / green-compute",
+      "title": "Green Compute model directory",
       "tokens": [
         "110",
         "artifact",
         "compute",
         "data",
+        "directory",
         "green",
-        "sn",
-        "taomarketcap"
+        "model",
+        "sn"
       ],
       "type": "surface",
       "url": "https://www.green-compute.com/models"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-110-website-link-www-green-compute-com-data-artifact-9",
-      "netuid": 110,
-      "slug": "sn-110",
-      "subtitle": "data-artifact / taomarketcap",
-      "title": "Green Compute data artifact",
-      "tokens": [
-        "110",
-        "artifact",
-        "compute",
-        "data",
-        "green",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://www.green-compute.com/models?prefill=meta-llama%2FMeta-Llama-3.1-8B-Instruct"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9424,9 +9505,10 @@
       "netuid": 110,
       "slug": "sn-110",
       "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "Green Compute source repository",
+      "title": "Green Compute source repository candidate",
       "tokens": [
         "110",
+        "candidate",
         "compute",
         "docs",
         "green",
@@ -9499,17 +9581,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-110-taomarketcap-website",
+      "id": "surface:sn-110-green-compute-website",
       "netuid": 110,
       "slug": "sn-110",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / green-compute",
       "title": "Green Compute website",
       "tokens": [
         "110",
         "compute",
         "green",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -9585,6 +9666,185 @@
       ],
       "type": "surface",
       "url": "https://groundlayer.xyz/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-58-handshake58-marketplace-source",
+      "netuid": 58,
+      "slug": "sn-58",
+      "subtitle": "source-repo / handshake58",
+      "title": "Handshake58 marketplace source repository",
+      "tokens": [
+        "58",
+        "handshake58",
+        "marketplace",
+        "repo",
+        "repository",
+        "sn",
+        "source"
+      ],
+      "type": "surface",
+      "url": "https://github.com/Handshake58/HS58"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-58-handshake58-openapi",
+      "netuid": 58,
+      "slug": "sn-58",
+      "subtitle": "openapi / handshake58",
+      "title": "Handshake58 OpenAPI schema",
+      "tokens": [
+        "58",
+        "handshake58",
+        "openapi",
+        "schema",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://handshake58.com/openapi.json"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-58-handshake58-provider-directory-api",
+      "netuid": 58,
+      "slug": "sn-58",
+      "subtitle": "subnet-api / handshake58",
+      "title": "Handshake58 provider directory API",
+      "tokens": [
+        "58",
+        "api",
+        "directory",
+        "handshake58",
+        "provider",
+        "sn",
+        "subnet"
+      ],
+      "type": "surface",
+      "url": "https://handshake58.com/api/mcp/providers"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-58-handshake58-docs",
+      "netuid": 58,
+      "slug": "sn-58",
+      "subtitle": "docs / handshake58",
+      "title": "Handshake58 skill docs",
+      "tokens": [
+        "58",
+        "docs",
+        "handshake58",
+        "skill",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://handshake58.com/skill.md"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-58-handshake58-skills-api",
+      "netuid": 58,
+      "slug": "sn-58",
+      "subtitle": "subnet-api / handshake58",
+      "title": "Handshake58 skills API",
+      "tokens": [
+        "58",
+        "api",
+        "handshake58",
+        "skills",
+        "sn",
+        "subnet"
+      ],
+      "type": "surface",
+      "url": "https://handshake58.com/api/skills?status=published"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-58-handshake58-subnet-source",
+      "netuid": 58,
+      "slug": "sn-58",
+      "subtitle": "source-repo / handshake58",
+      "title": "Handshake58 subnet source repository",
+      "tokens": [
+        "58",
+        "handshake58",
+        "repo",
+        "repository",
+        "sn",
+        "source",
+        "subnet"
+      ],
+      "type": "surface",
+      "url": "https://github.com/Handshake58/HS58-subnet"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-58-taomarketcap-dashboard",
+      "netuid": 58,
+      "slug": "sn-58",
+      "subtitle": "dashboard / taomarketcap",
+      "title": "Handshake58 TaoMarketCap dashboard",
+      "tokens": [
+        "58",
+        "dashboard",
+        "handshake58",
+        "sn",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://taomarketcap.com/subnets/58"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-58-taopedia-article",
+      "netuid": 58,
+      "slug": "sn-58",
+      "subtitle": "docs / taopedia-articles",
+      "title": "Handshake58 Taopedia article",
+      "tokens": [
+        "58",
+        "article",
+        "articles",
+        "docs",
+        "handshake58",
+        "sn",
+        "taopedia"
+      ],
+      "type": "surface",
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_58/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-58-tensorplex-docs",
+      "netuid": 58,
+      "slug": "sn-58",
+      "subtitle": "docs / tensorplex-subnet-docs",
+      "title": "Handshake58 Tensorplex subnet docs",
+      "tokens": [
+        "58",
+        "docs",
+        "handshake58",
+        "sn",
+        "subnet",
+        "tensorplex"
+      ],
+      "type": "surface",
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/58"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-58-handshake58-website",
+      "netuid": 58,
+      "slug": "sn-58",
+      "subtitle": "website / handshake58",
+      "title": "Handshake58 website",
+      "tokens": [
+        "58",
+        "handshake58",
+        "sn",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://handshake58.com"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12052,28 +12312,27 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-49-github-readme-nepher-ai-nepher-subnet-docs-1",
+      "id": "surface:sn-49-nepher-docs",
       "netuid": 49,
       "slug": "sn-49",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / nepher-robotics",
       "title": "Nepher Robotics docs",
       "tokens": [
         "49",
         "docs",
         "nepher",
         "robotics",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://docs.nepher.ai/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-49-taomarketcap-source-repo",
+      "id": "surface:sn-49-nepher-source",
       "netuid": 49,
       "slug": "sn-49",
-      "subtitle": "source-repo / taomarketcap",
+      "subtitle": "source-repo / nepher-robotics",
       "title": "Nepher Robotics source repository",
       "tokens": [
         "49",
@@ -12082,8 +12341,7 @@
         "repository",
         "robotics",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/nepher-ai/nepher-subnet"
@@ -12144,6 +12402,79 @@
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/49"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-49-nepher-website",
+      "netuid": 49,
+      "slug": "sn-49",
+      "subtitle": "website / nepher-robotics",
+      "title": "Nepher Robotics website",
+      "tokens": [
+        "49",
+        "nepher",
+        "robotics",
+        "sn",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://nepher.ai"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-49-nepher-tournament-api",
+      "netuid": 49,
+      "slug": "sn-49",
+      "subtitle": "subnet-api / nepher-robotics",
+      "title": "Nepher tournament API",
+      "tokens": [
+        "49",
+        "api",
+        "nepher",
+        "robotics",
+        "sn",
+        "subnet",
+        "tournament"
+      ],
+      "type": "surface",
+      "url": "https://tournament-api.nepher.ai"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-49-nepher-tournament-dashboard",
+      "netuid": 49,
+      "slug": "sn-49",
+      "subtitle": "dashboard / nepher-robotics",
+      "title": "Nepher tournament dashboard",
+      "tokens": [
+        "49",
+        "dashboard",
+        "nepher",
+        "robotics",
+        "sn",
+        "tournament"
+      ],
+      "type": "surface",
+      "url": "https://tournament.nepher.ai"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-49-nepher-tournament-openapi",
+      "netuid": 49,
+      "slug": "sn-49",
+      "subtitle": "openapi / nepher-robotics",
+      "title": "Nepher tournament OpenAPI schema",
+      "tokens": [
+        "49",
+        "nepher",
+        "openapi",
+        "robotics",
+        "schema",
+        "sn",
+        "tournament"
+      ],
+      "type": "surface",
+      "url": "https://tournament-api.nepher.ai/openapi.json"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13433,159 +13764,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-58-github-readme-handshake58-hs58-subnet-api-2",
-      "netuid": 58,
-      "slug": "sn-58",
-      "subtitle": "subnet-api / tensorplex-subnet-docs",
-      "title": "Pending API surface",
-      "tokens": [
-        "58",
-        "api",
-        "docs",
-        "pending",
-        "sn",
-        "subnet",
-        "surface",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://handshake58.com/api/drain/signing"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-58-github-readme-handshake58-hs58-subnet-api-3",
-      "netuid": 58,
-      "slug": "sn-58",
-      "subtitle": "subnet-api / tensorplex-subnet-docs",
-      "title": "Pending API surface",
-      "tokens": [
-        "58",
-        "api",
-        "docs",
-        "pending",
-        "sn",
-        "subnet",
-        "surface",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://handshake58.com/api/mcp/providers"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-58-github-readme-handshake58-hs58-subnet-api-4",
-      "netuid": 58,
-      "slug": "sn-58",
-      "subtitle": "subnet-api / tensorplex-subnet-docs",
-      "title": "Pending API surface",
-      "tokens": [
-        "58",
-        "api",
-        "docs",
-        "pending",
-        "sn",
-        "subnet",
-        "surface",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://handshake58.com/api/mcp/providers?model=gpt-4o&category=scraping&limit=3&format=compact"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-58-github-readme-handshake58-hs58-docs-1",
-      "netuid": 58,
-      "slug": "sn-58",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "Pending docs",
-      "tokens": [
-        "58",
-        "docs",
-        "pending",
-        "sn",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://handshake58.com/skill.md"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-58-tensorplex-source-repo-1",
-      "netuid": 58,
-      "slug": "sn-58",
-      "subtitle": "source-repo / tensorplex-subnet-docs",
-      "title": "Pending source repository",
-      "tokens": [
-        "58",
-        "docs",
-        "pending",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/Handshake58/HS58"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-58-taomarketcap-dashboard",
-      "netuid": 58,
-      "slug": "sn-58",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Pending TaoMarketCap dashboard",
-      "tokens": [
-        "58",
-        "dashboard",
-        "pending",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://taomarketcap.com/subnets/58"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-58-taopedia-article",
-      "netuid": 58,
-      "slug": "sn-58",
-      "subtitle": "docs / taopedia-articles",
-      "title": "Pending Taopedia article",
-      "tokens": [
-        "58",
-        "article",
-        "articles",
-        "docs",
-        "pending",
-        "sn",
-        "taopedia"
-      ],
-      "type": "surface",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_58/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-58-tensorplex-docs",
-      "netuid": 58,
-      "slug": "sn-58",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "Pending Tensorplex subnet docs",
-      "tokens": [
-        "58",
-        "docs",
-        "pending",
-        "sn",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/58"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-26-github-readme-0xsigurd-perturb-subnet-api-1",
       "netuid": 26,
       "slug": "sn-26",
@@ -14071,73 +14249,82 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-1",
+      "id": "surface:sn-24-quasar-base-model",
       "netuid": 24,
       "slug": "sn-24",
-      "subtitle": "data-artifact / taomarketcap",
-      "title": "Quasar data artifact",
+      "subtitle": "data-artifact / silx-labs",
+      "title": "Quasar base model",
       "tokens": [
         "24",
         "artifact",
+        "base",
         "data",
+        "labs",
+        "model",
         "quasar",
-        "sn",
-        "taomarketcap"
+        "silx",
+        "sn"
       ],
       "type": "surface",
       "url": "https://huggingface.co/silx-ai/Quasar-3B-A1B-Preview"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-2",
+      "id": "surface:sn-24-quasar-launch-teacher",
       "netuid": 24,
       "slug": "sn-24",
-      "subtitle": "data-artifact / taomarketcap",
-      "title": "Quasar data artifact",
+      "subtitle": "data-artifact / silx-labs",
+      "title": "Quasar launch teacher model",
       "tokens": [
         "24",
         "artifact",
         "data",
+        "labs",
+        "launch",
+        "model",
         "quasar",
+        "silx",
         "sn",
-        "taomarketcap"
+        "teacher"
       ],
       "type": "surface",
       "url": "https://huggingface.co/Qwen/Qwen3.5-4B"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-24-website-link-silxinc-com-data-artifact-3",
+      "id": "surface:sn-24-quasar-readme-docs",
       "netuid": 24,
       "slug": "sn-24",
-      "subtitle": "data-artifact / taomarketcap",
-      "title": "Quasar data artifact",
+      "subtitle": "docs / silx-labs",
+      "title": "Quasar README docs",
       "tokens": [
         "24",
-        "artifact",
-        "data",
+        "docs",
+        "labs",
         "quasar",
-        "sn",
-        "taomarketcap"
+        "readme",
+        "silx",
+        "sn"
       ],
       "type": "surface",
-      "url": "https://silxinc.com/blog/silx-ai-partners-with-adaption-labs"
+      "url": "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-24-taomarketcap-source-repo",
+      "id": "surface:sn-24-quasar-source",
       "netuid": 24,
       "slug": "sn-24",
-      "subtitle": "source-repo / taomarketcap",
+      "subtitle": "source-repo / silx-labs",
       "title": "Quasar source repository",
       "tokens": [
         "24",
+        "labs",
         "quasar",
         "repo",
         "repository",
+        "silx",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/SILX-LABS/QUASAR-SUBNET"
@@ -14198,16 +14385,17 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-24-taomarketcap-website",
+      "id": "surface:sn-24-quasar-website",
       "netuid": 24,
       "slug": "sn-24",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / silx-labs",
       "title": "Quasar website",
       "tokens": [
         "24",
+        "labs",
         "quasar",
+        "silx",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",

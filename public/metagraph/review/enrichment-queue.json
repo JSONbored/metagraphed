@@ -201,75 +201,6 @@
       "verified_candidate_count": 3
     },
     {
-      "adapter_score": 68,
-      "candidate_count": 21,
-      "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 58,
-      "contribution_hint": "Submit one official public openapi, subnet-api candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "endpoint_count": 8,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Green Compute",
-      "netuid": 110,
-      "operational_interface_count": 1,
-      "priority_score": 156,
-      "profile_level": "operational",
-      "reason_codes": [
-        "adapter-candidate",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-110-taomarketcap-dashboard",
-        "sn-110-taomarketcap-website",
-        "sn-110-taopedia-article",
-        "sn-110-tensorplex-docs",
-        "sn-110-tensorplex-source-repo-1"
-      ],
-      "slug": "sn-110",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/110",
-        "https://github.com/Rich-Kids-of-TAO/rkt-subnet",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_110/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/110/subnet.json",
-        "https://taomarketcap.com/subnets/110",
-        "https://www.green-compute.com/"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 8,
-      "verified_candidate_count": 15
-    },
-    {
       "adapter_score": 0,
       "candidate_count": 4,
       "candidate_evidence_summary": {
@@ -402,69 +333,6 @@
       "stale_candidate_count": 1,
       "surface_count": 3,
       "verified_candidate_count": 3
-    },
-    {
-      "adapter_score": 68,
-      "candidate_count": 8,
-      "candidate_evidence_summary": {
-        "candidate_count": 0,
-        "kinds_with_candidates": [],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "website"
-      ],
-      "endpoint_count": 8,
-      "evidence_action": "submit-new-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "website"
-      ],
-      "name": "Pending",
-      "netuid": 58,
-      "operational_interface_count": 1,
-      "priority_score": 150,
-      "profile_level": "operational",
-      "reason_codes": [
-        "adapter-candidate",
-        "missing-website",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-58-github-readme-handshake58-hs58-docs-1",
-        "sn-58-github-readme-handshake58-hs58-subnet-api-2",
-        "sn-58-github-readme-handshake58-hs58-subnet-api-3",
-        "sn-58-github-readme-handshake58-hs58-subnet-api-4",
-        "sn-58-taomarketcap-dashboard"
-      ],
-      "slug": "sn-58",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/58",
-        "https://github.com/Handshake58/HS58",
-        "https://github.com/Handshake58/HS58/blob/main/README.md",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_58/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/58/subnet.json",
-        "https://handshake58.com/skill.md",
-        "https://taomarketcap.com/subnets/58"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 8,
-      "verified_candidate_count": 8
     },
     {
       "adapter_score": 0,
@@ -666,76 +534,6 @@
       "stale_candidate_count": 1,
       "surface_count": 3,
       "verified_candidate_count": 3
-    },
-    {
-      "adapter_score": 68,
-      "candidate_count": 16,
-      "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 58,
-      "contribution_hint": "Submit one official public openapi, subnet-api candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "endpoint_count": 8,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Quasar",
-      "netuid": 24,
-      "operational_interface_count": 1,
-      "priority_score": 149,
-      "profile_level": "operational",
-      "reason_codes": [
-        "adapter-candidate",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-1",
-        "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-2",
-        "sn-24-taomarketcap-dashboard",
-        "sn-24-taomarketcap-source-repo",
-        "sn-24-taomarketcap-website"
-      ],
-      "slug": "sn-24",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/24",
-        "https://github.com/SILX-LABS/QUASAR-SUBNET",
-        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_24/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json",
-        "https://silxinc.com/",
-        "https://taomarketcap.com/subnets/24"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 8,
-      "verified_candidate_count": 10
     },
     {
       "adapter_score": 0,
@@ -1637,78 +1435,6 @@
       "stale_candidate_count": 6,
       "surface_count": 4,
       "verified_candidate_count": 6
-    },
-    {
-      "adapter_score": 5,
-      "candidate_count": 13,
-      "candidate_evidence_summary": {
-        "candidate_count": 7,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api",
-          "website"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 7,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api",
-          "website"
-        ],
-        "stale_or_failed_count": 7,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 35,
-      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "website"
-      ],
-      "endpoint_count": 5,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "Nepher Robotics",
-      "netuid": 49,
-      "operational_interface_count": 0,
-      "priority_score": 139,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-website",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-49-github-readme-nepher-ai-nepher-subnet-docs-1",
-        "sn-49-github-readme-nepher-ai-nepher-subnet-subnet-api-2",
-        "sn-49-taomarketcap-dashboard",
-        "sn-49-taomarketcap-source-repo",
-        "sn-49-taomarketcap-website"
-      ],
-      "slug": "sn-49",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/49",
-        "https://docs.nepher.ai/",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_49/index.mdx",
-        "https://github.com/nepher-ai/nepher-subnet",
-        "https://github.com/nepher-ai/nepher-subnet/blob/main/README.md",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/49/subnet.json",
-        "https://taomarketcap.com/subnets/49"
-      ],
-      "stale_candidate_count": 7,
-      "surface_count": 5,
-      "verified_candidate_count": 5
     },
     {
       "adapter_score": 5,
@@ -7508,6 +7234,75 @@
       "verified_candidate_count": 13
     },
     {
+      "adapter_score": 48,
+      "candidate_count": 16,
+      "candidate_evidence_summary": {
+        "candidate_count": 5,
+        "kinds_with_candidates": [
+          "openapi",
+          "subnet-api"
+        ],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 5,
+        "stale_kinds": [
+          "openapi",
+          "subnet-api"
+        ],
+        "stale_or_failed_count": 5,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 63,
+      "contribution_hint": "Submit one official public openapi, subnet-api candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "endpoint_count": 8,
+      "evidence_action": "replace-stale-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Quasar",
+      "netuid": 24,
+      "operational_interface_count": 1,
+      "priority_score": 107,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-1",
+        "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-2",
+        "sn-24-taomarketcap-dashboard",
+        "sn-24-taomarketcap-source-repo",
+        "sn-24-taomarketcap-website"
+      ],
+      "slug": "sn-24",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/24",
+        "https://github.com/SILX-LABS/QUASAR-SUBNET",
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_24/index.mdx",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json",
+        "https://silxinc.com/",
+        "https://taomarketcap.com/subnets/24"
+      ],
+      "stale_candidate_count": 5,
+      "surface_count": 8,
+      "verified_candidate_count": 10
+    },
+    {
       "adapter_score": 30,
       "candidate_count": 15,
       "candidate_evidence_summary": {
@@ -8581,6 +8376,124 @@
       "verified_candidate_count": 13
     },
     {
+      "adapter_score": 47,
+      "candidate_count": 21,
+      "candidate_evidence_summary": {
+        "candidate_count": 3,
+        "kinds_with_candidates": [
+          "openapi"
+        ],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 3,
+        "stale_kinds": [
+          "openapi"
+        ],
+        "stale_or_failed_count": 3,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 78,
+      "contribution_hint": "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [],
+      "endpoint_count": 7,
+      "evidence_action": "maintainer-review-existing-evidence",
+      "lane": "adapter-candidate",
+      "manual_review_required": true,
+      "missing_kinds": [
+        "openapi",
+        "sse"
+      ],
+      "name": "Green Compute",
+      "netuid": 110,
+      "operational_interface_count": 2,
+      "priority_score": 88,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate"
+      ],
+      "recommended_action": "evaluate adapter support for data-artifact, subnet-api",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-110-taomarketcap-dashboard",
+        "sn-110-taomarketcap-website",
+        "sn-110-taopedia-article",
+        "sn-110-tensorplex-docs",
+        "sn-110-tensorplex-source-repo-1"
+      ],
+      "slug": "sn-110",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/110",
+        "https://github.com/Rich-Kids-of-TAO/rkt-subnet",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_110/index.mdx",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/110/subnet.json",
+        "https://taomarketcap.com/subnets/110",
+        "https://www.green-compute.com/"
+      ],
+      "stale_candidate_count": 3,
+      "surface_count": 7,
+      "verified_candidate_count": 15
+    },
+    {
+      "adapter_score": 70,
+      "candidate_count": 8,
+      "candidate_evidence_summary": {
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 85,
+      "contribution_hint": "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [],
+      "endpoint_count": 10,
+      "evidence_action": "maintainer-review-existing-evidence",
+      "lane": "adapter-candidate",
+      "manual_review_required": true,
+      "missing_kinds": [
+        "data-artifact",
+        "sse"
+      ],
+      "name": "Handshake58",
+      "netuid": 58,
+      "operational_interface_count": 2,
+      "priority_score": 71,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate"
+      ],
+      "recommended_action": "evaluate adapter support for openapi, subnet-api",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-58-github-readme-handshake58-hs58-docs-1",
+        "sn-58-github-readme-handshake58-hs58-subnet-api-2",
+        "sn-58-github-readme-handshake58-hs58-subnet-api-3",
+        "sn-58-github-readme-handshake58-hs58-subnet-api-4",
+        "sn-58-taomarketcap-dashboard"
+      ],
+      "slug": "sn-58",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/58",
+        "https://github.com/Handshake58/HS58",
+        "https://github.com/Handshake58/HS58-subnet",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_58/index.mdx",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/58/subnet.json",
+        "https://handshake58.com",
+        "https://handshake58.com/.well-known/ai-plugin.json",
+        "https://handshake58.com/openapi.json"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 10,
+      "verified_candidate_count": 8
+    },
+    {
       "adapter_score": 0,
       "candidate_count": 2,
       "candidate_evidence_summary": {
@@ -8642,36 +8555,94 @@
       "stale_candidate_count": 0,
       "surface_count": 12,
       "verified_candidate_count": 2
+    },
+    {
+      "adapter_score": 49,
+      "candidate_count": 13,
+      "candidate_evidence_summary": {
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 85,
+      "contribution_hint": "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [],
+      "endpoint_count": 9,
+      "evidence_action": "maintainer-review-existing-evidence",
+      "lane": "adapter-candidate",
+      "manual_review_required": true,
+      "missing_kinds": [
+        "data-artifact",
+        "sse"
+      ],
+      "name": "Nepher Robotics",
+      "netuid": 49,
+      "operational_interface_count": 2,
+      "priority_score": 64,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate"
+      ],
+      "recommended_action": "evaluate adapter support for openapi, subnet-api",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-49-github-readme-nepher-ai-nepher-subnet-docs-1",
+        "sn-49-github-readme-nepher-ai-nepher-subnet-subnet-api-2",
+        "sn-49-taomarketcap-dashboard",
+        "sn-49-taomarketcap-source-repo",
+        "sn-49-taomarketcap-website"
+      ],
+      "slug": "sn-49",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/49",
+        "https://docs.nepher.ai/",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_49/index.mdx",
+        "https://github.com/nepher-ai/nepher-subnet",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/49/subnet.json",
+        "https://nepher.ai",
+        "https://tournament-api.nepher.ai/docs",
+        "https://tournament-api.nepher.ai/openapi.json"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 9,
+      "verified_candidate_count": 5
     }
   ],
   "schema_version": 1,
   "summary": {
-    "adapter_candidate_count": 1,
+    "adapter_candidate_count": 4,
     "baseline_monitoring_count": 0,
-    "direct_submission_count": 95,
+    "direct_submission_count": 92,
     "evidence_action_counts": {
-      "maintainer-review-existing-evidence": 34,
-      "replace-stale-evidence": 58,
+      "maintainer-review-existing-evidence": 37,
+      "replace-stale-evidence": 56,
       "review-existing-evidence": 1,
-      "submit-new-evidence": 34,
+      "submit-new-evidence": 33,
       "verify-existing-evidence": 2
     },
     "lane_counts": {
-      "adapter-candidate": 1,
-      "direct-submission": 95,
+      "adapter-candidate": 4,
+      "direct-submission": 92,
       "maintainer-review": 33
     },
     "maintainer_review_count": 33,
-    "manual_review_required_count": 34,
+    "manual_review_required_count": 37,
     "monitoring_followup_count": 0,
     "queue_count": 129,
     "subnet_count": 129,
     "top_direct_submission_kinds": {
       "data-artifact": 43,
-      "openapi": 51,
+      "openapi": 50,
       "source-repo": 21,
-      "subnet-api": 51,
-      "website": 38
+      "subnet-api": 50,
+      "website": 36
     }
   }
 }

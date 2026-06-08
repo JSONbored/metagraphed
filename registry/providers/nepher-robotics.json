@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "nepher-robotics",
+  "name": "Nepher Robotics",
+  "kind": "subnet-team",
+  "website_url": "https://nepher.ai",
+  "docs_url": "https://docs.nepher.ai/",
+  "github_url": "https://github.com/nepher-ai/nepher-subnet",
+  "authority": "official",
+  "notes": "Provider entry for Nepher Robotics SN49 official website, documentation, source repository, tournament app, and OpenAPI-backed API."
+}

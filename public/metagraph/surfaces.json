@@ -5646,29 +5646,20 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-1",
+      "authority": "official",
+      "id": "sn-24-quasar-base-model",
       "kind": "data-artifact",
-      "name": "Quasar data artifact",
+      "name": "Quasar base model",
       "netuid": 24,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Official Quasar base checkpoint referenced by the SN24 README.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "silx-labs",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
       ],
@@ -5678,35 +5669,97 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-24-github-readme-silx-labs-quasar-subnet-data-artifact-2",
+      "authority": "official",
+      "id": "sn-24-quasar-launch-teacher",
       "kind": "data-artifact",
-      "name": "Quasar data artifact",
+      "name": "Quasar launch teacher model",
       "netuid": 24,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Launch teacher model referenced by the official Quasar SN24 README.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "silx-labs",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
       ],
       "subnet_name": "Quasar",
       "subnet_slug": "sn-24",
       "url": "https://huggingface.co/Qwen/Qwen3.5-4B"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-24-quasar-readme-docs",
+      "kind": "docs",
+      "name": "Quasar README docs",
+      "netuid": 24,
+      "notes": "Official README documentation describing SN24, model requirements, miner flow, and validator flow.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET",
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "url": "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-24-quasar-source",
+      "kind": "source-repo",
+      "name": "Quasar source repository",
+      "netuid": 24,
+      "notes": "Official Quasar SN24 source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/SILX-LABS/QUASAR-SUBNET",
+        "https://github.com/SILX-LABS/QUASAR-SUBNET/blob/main/README.md"
+      ],
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "url": "https://github.com/SILX-LABS/QUASAR-SUBNET"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-24-quasar-website",
+      "kind": "website",
+      "name": "Quasar website",
+      "netuid": 24,
+      "notes": "Official SILX Labs website page for Quasar.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "silx-labs",
+      "public_safe": true,
+      "source_urls": [
+        "https://silxinc.com/"
+      ],
+      "subnet_name": "Quasar",
+      "subnet_slug": "sn-24",
+      "url": "https://silxinc.com/"
     },
     {
       "auth_required": false,
@@ -5724,15 +5777,6 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/24"
       ],
@@ -5743,76 +5787,11 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-24-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Quasar source repository",
-      "netuid": 24,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/24",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json"
-      ],
-      "subnet_name": "Quasar",
-      "subnet_slug": "sn-24",
-      "url": "https://github.com/SILX-LABS/QUASAR-SUBNET"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-24-taomarketcap-website",
-      "kind": "website",
-      "name": "Quasar website",
-      "netuid": 24,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/24"
-      ],
-      "subnet_name": "Quasar",
-      "subnet_slug": "sn-24",
-      "url": "https://silxinc.com/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-24-taopedia-article",
       "kind": "docs",
       "name": "Quasar Taopedia article",
       "netuid": 24,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -5821,15 +5800,6 @@
       },
       "provider": "taopedia-articles",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_24/index.mdx"
       ],
@@ -5853,53 +5823,12 @@
       },
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json"
       ],
       "subnet_name": "Quasar",
       "subnet_slug": "sn-24",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/24"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-24-website-link-silxinc-com-data-artifact-3",
-      "kind": "data-artifact",
-      "name": "Quasar data artifact",
-      "netuid": 24,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://silxinc.com/"
-      ],
-      "subnet_name": "Quasar",
-      "subnet_slug": "sn-24",
-      "url": "https://silxinc.com/blog/silx-ai-partners-with-adaption-labs"
     },
     {
       "auth_required": false,
@@ -10523,35 +10452,143 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-49-github-readme-nepher-ai-nepher-subnet-docs-1",
+      "authority": "official",
+      "id": "sn-49-nepher-docs",
       "kind": "docs",
       "name": "Nepher Robotics docs",
       "netuid": 49,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Official Nepher Robotics documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/nepher-ai/nepher-subnet",
+        "https://docs.nepher.ai/"
+      ],
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "url": "https://docs.nepher.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-49-nepher-source",
+      "kind": "source-repo",
+      "name": "Nepher Robotics source repository",
+      "netuid": 49,
+      "notes": "Official SN49 source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "nepher-robotics",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/nepher-ai/nepher-subnet/blob/main/README.md"
+        "https://github.com/nepher-ai/nepher-subnet"
       ],
       "subnet_name": "Nepher Robotics",
       "subnet_slug": "sn-49",
-      "url": "https://docs.nepher.ai/"
+      "url": "https://github.com/nepher-ai/nepher-subnet"
+    },
+    {
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-49-nepher-tournament-api",
+      "kind": "subnet-api",
+      "name": "Nepher tournament API",
+      "netuid": 49,
+      "notes": "Public tournament API host with machine-readable OpenAPI. Individual endpoints may require authentication or admin permissions, so proxy eligibility requires separate review.",
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "rate_limit_notes": "Schema is public; method-level auth must be reviewed before enabling health probes beyond schema fetches.",
+      "schema_status": "machine-readable",
+      "schema_url": "https://tournament-api.nepher.ai/openapi.json",
+      "source_urls": [
+        "https://tournament-api.nepher.ai/docs",
+        "https://tournament-api.nepher.ai/openapi.json"
+      ],
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "url": "https://tournament-api.nepher.ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-49-nepher-tournament-dashboard",
+      "kind": "dashboard",
+      "name": "Nepher tournament dashboard",
+      "netuid": 49,
+      "notes": "Public tournament app linked from the official Nepher Robotics website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "source_urls": [
+        "https://nepher.ai"
+      ],
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "url": "https://tournament.nepher.ai"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-49-nepher-tournament-openapi",
+      "kind": "openapi",
+      "name": "Nepher tournament OpenAPI schema",
+      "netuid": 49,
+      "notes": "Machine-readable OpenAPI schema for the Nepher tournament backend.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://tournament-api.nepher.ai/docs",
+        "https://tournament-api.nepher.ai/openapi.json"
+      ],
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "url": "https://tournament-api.nepher.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-49-nepher-website",
+      "kind": "website",
+      "name": "Nepher Robotics website",
+      "netuid": 49,
+      "notes": "Official Nepher Robotics website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/nepher-ai/nepher-subnet",
+        "https://nepher.ai"
+      ],
+      "subnet_name": "Nepher Robotics",
+      "subnet_slug": "sn-49",
+      "url": "https://nepher.ai"
     },
     {
       "auth_required": false,
@@ -10569,15 +10606,6 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/49"
       ],
@@ -10588,43 +10616,11 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-49-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Nepher Robotics source repository",
-      "netuid": 49,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/49"
-      ],
-      "subnet_name": "Nepher Robotics",
-      "subnet_slug": "sn-49",
-      "url": "https://github.com/nepher-ai/nepher-subnet"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-49-taopedia-article",
       "kind": "docs",
       "name": "Nepher Robotics Taopedia article",
       "netuid": 49,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -10633,15 +10629,6 @@
       },
       "provider": "taopedia-articles",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_49/index.mdx"
       ],
@@ -10665,15 +10652,6 @@
       },
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/49/subnet.json"
       ],
@@ -12290,138 +12268,179 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-58-github-readme-handshake58-hs58-docs-1",
+      "authority": "official",
+      "id": "sn-58-handshake58-docs",
       "kind": "docs",
-      "name": "Pending docs",
+      "name": "Handshake58 skill docs",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Official public skill/MCP documentation served by Handshake58.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "handshake58",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/Handshake58/HS58/blob/main/README.md"
+        "https://handshake58.com",
+        "https://github.com/Handshake58/HS58"
       ],
-      "subnet_name": "Pending",
+      "subnet_name": "Handshake58",
       "subnet_slug": "sn-58",
       "url": "https://handshake58.com/skill.md"
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-58-github-readme-handshake58-hs58-subnet-api-2",
-      "kind": "subnet-api",
-      "name": "Pending API surface",
+      "authority": "official",
+      "id": "sn-58-handshake58-marketplace-source",
+      "kind": "source-repo",
+      "name": "Handshake58 marketplace source repository",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Official Handshake58 marketplace and provider-template repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
-        "method": "GET",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "handshake58",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/Handshake58/HS58/blob/main/README.md"
+        "https://handshake58.com",
+        "https://github.com/Handshake58/HS58"
       ],
-      "subnet_name": "Pending",
+      "subnet_name": "Handshake58",
       "subnet_slug": "sn-58",
-      "url": "https://handshake58.com/api/drain/signing"
+      "url": "https://github.com/Handshake58/HS58"
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-58-github-readme-handshake58-hs58-subnet-api-3",
-      "kind": "subnet-api",
-      "name": "Pending API surface",
+      "authority": "official",
+      "id": "sn-58-handshake58-openapi",
+      "kind": "openapi",
+      "name": "Handshake58 OpenAPI schema",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Machine-readable OpenAPI schema advertised by the Handshake58 plugin manifest.",
       "probe": {
         "enabled": true,
-        "expect": "any",
-        "method": "GET",
+        "expect": "json",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "handshake58",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "schema_status": "machine-readable",
       "source_urls": [
-        "https://github.com/Handshake58/HS58/blob/main/README.md"
+        "https://handshake58.com/.well-known/ai-plugin.json",
+        "https://handshake58.com/openapi.json"
       ],
-      "subnet_name": "Pending",
+      "subnet_name": "Handshake58",
+      "subnet_slug": "sn-58",
+      "url": "https://handshake58.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-58-handshake58-provider-directory-api",
+      "kind": "subnet-api",
+      "name": "Handshake58 provider directory API",
+      "netuid": 58,
+      "notes": "Public JSON provider directory for the Handshake58 marketplace.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://handshake58.com/openapi.json",
+      "source_urls": [
+        "https://handshake58.com",
+        "https://handshake58.com/openapi.json"
+      ],
+      "subnet_name": "Handshake58",
       "subnet_slug": "sn-58",
       "url": "https://handshake58.com/api/mcp/providers"
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-58-github-readme-handshake58-hs58-subnet-api-4",
+      "authority": "official",
+      "id": "sn-58-handshake58-skills-api",
       "kind": "subnet-api",
-      "name": "Pending API surface",
+      "name": "Handshake58 skills API",
       "netuid": 58,
-      "notes": "Discovered from a public GitHub README link. Requires verification before promotion.",
+      "notes": "Public JSON skills index exposed by Handshake58.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "source_urls": [
+        "https://handshake58.com"
+      ],
+      "subnet_name": "Handshake58",
+      "subnet_slug": "sn-58",
+      "url": "https://handshake58.com/api/skills?status=published"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-58-handshake58-subnet-source",
+      "kind": "source-repo",
+      "name": "Handshake58 subnet source repository",
+      "netuid": 58,
+      "notes": "Official miner and validator repository for Bittensor SN58.",
       "probe": {
         "enabled": true,
         "expect": "any",
-        "method": "GET",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "handshake58",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/Handshake58/HS58/blob/main/README.md"
+        "https://github.com/Handshake58/HS58",
+        "https://github.com/Handshake58/HS58-subnet"
       ],
-      "subnet_name": "Pending",
+      "subnet_name": "Handshake58",
       "subnet_slug": "sn-58",
-      "url": "https://handshake58.com/api/mcp/providers?model=gpt-4o&category=scraping&limit=3&format=compact"
+      "url": "https://github.com/Handshake58/HS58-subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-58-handshake58-website",
+      "kind": "website",
+      "name": "Handshake58 website",
+      "netuid": 58,
+      "notes": "Official Handshake58 marketplace website for SN58.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "source_urls": [
+        "https://handshake58.com"
+      ],
+      "subnet_name": "Handshake58",
+      "subnet_slug": "sn-58",
+      "url": "https://handshake58.com"
     },
     {
       "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-58-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "Pending TaoMarketCap dashboard",
+      "name": "Handshake58 TaoMarketCap dashboard",
       "netuid": 58,
       "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "probe": {
@@ -12432,19 +12451,10 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/58"
       ],
-      "subnet_name": "Pending",
+      "subnet_name": "Handshake58",
       "subnet_slug": "sn-58",
       "url": "https://taomarketcap.com/subnets/58"
     },
@@ -12453,9 +12463,9 @@
       "authority": "registry-observed",
       "id": "sn-58-taopedia-article",
       "kind": "docs",
-      "name": "Pending Taopedia article",
+      "name": "Handshake58 Taopedia article",
       "netuid": 58,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -12464,19 +12474,10 @@
       },
       "provider": "taopedia-articles",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_58/index.mdx"
       ],
-      "subnet_name": "Pending",
+      "subnet_name": "Handshake58",
       "subnet_slug": "sn-58",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_58/index.mdx"
     },
@@ -12485,7 +12486,7 @@
       "authority": "registry-observed",
       "id": "sn-58-tensorplex-docs",
       "kind": "docs",
-      "name": "Pending Tensorplex subnet docs",
+      "name": "Handshake58 Tensorplex subnet docs",
       "netuid": 58,
       "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
@@ -12496,53 +12497,12 @@
       },
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/58/subnet.json"
       ],
-      "subnet_name": "Pending",
+      "subnet_name": "Handshake58",
       "subnet_slug": "sn-58",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/58"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-58-tensorplex-source-repo-1",
-      "kind": "source-repo",
-      "name": "Pending source repository",
-      "netuid": 58,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/58/subnet.json"
-      ],
-      "subnet_name": "Pending",
-      "subnet_slug": "sn-58",
-      "url": "https://github.com/Handshake58/HS58"
     },
     {
       "auth_required": false,
@@ -23654,6 +23614,70 @@
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/109"
     },
     {
+      "auth_required": true,
+      "authority": "official",
+      "id": "sn-110-green-compute-chat-completions-api",
+      "kind": "subnet-api",
+      "name": "Green Compute chat completions API",
+      "netuid": 110,
+      "notes": "Official API endpoint advertised by the Green Compute website. The endpoint is POST-only, so recurring read probes are intentionally disabled until a safe health or schema endpoint is confirmed.",
+      "provider": "green-compute",
+      "public_safe": true,
+      "rate_limit_notes": "Auth and request-shape details need maintainer review before monitoring or proxy eligibility.",
+      "source_urls": [
+        "https://www.green-compute.com/"
+      ],
+      "subnet_name": "Green Compute",
+      "subnet_slug": "sn-110",
+      "url": "https://api.green-compute.com/v1/chat/completions"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-110-green-compute-models",
+      "kind": "data-artifact",
+      "name": "Green Compute model directory",
+      "netuid": 110,
+      "notes": "Official model directory linked from the Green Compute website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.green-compute.com/"
+      ],
+      "subnet_name": "Green Compute",
+      "subnet_slug": "sn-110",
+      "url": "https://www.green-compute.com/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-110-green-compute-website",
+      "kind": "website",
+      "name": "Green Compute website",
+      "netuid": 110,
+      "notes": "Official Green Compute website for SN110.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "green-compute",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.green-compute.com/"
+      ],
+      "subnet_name": "Green Compute",
+      "subnet_slug": "sn-110",
+      "url": "https://www.green-compute.com/"
+    },
+    {
       "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-110-taomarketcap-dashboard",
@@ -23669,15 +23693,6 @@
       },
       "provider": "taomarketcap",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/110"
       ],
@@ -23688,43 +23703,11 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-110-taomarketcap-website",
-      "kind": "website",
-      "name": "Green Compute website",
-      "netuid": 110,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/110"
-      ],
-      "subnet_name": "Green Compute",
-      "subnet_slug": "sn-110",
-      "url": "https://www.green-compute.com/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-110-taopedia-article",
       "kind": "docs",
       "name": "Green Compute Taopedia article",
       "netuid": 110,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -23733,15 +23716,6 @@
       },
       "provider": "taopedia-articles",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_110/index.mdx"
       ],
@@ -23765,15 +23739,6 @@
       },
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/110/subnet.json"
       ],
@@ -23786,9 +23751,9 @@
       "authority": "registry-observed",
       "id": "sn-110-tensorplex-source-repo-1",
       "kind": "source-repo",
-      "name": "Green Compute source repository",
+      "name": "Green Compute source repository candidate",
       "netuid": 110,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Discovered source repository candidate from Tensorplex. The repository README identifies Rich Kids of TAO, so it remains registry-observed pending maintainer review.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -23797,117 +23762,12 @@
       },
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/110/subnet.json"
       ],
       "subnet_name": "Green Compute",
       "subnet_slug": "sn-110",
       "url": "https://github.com/Rich-Kids-of-TAO/rkt-subnet"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-110-website-link-www-green-compute-com-data-artifact-10",
-      "kind": "data-artifact",
-      "name": "Green Compute data artifact",
-      "netuid": 110,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://www.green-compute.com/"
-      ],
-      "subnet_name": "Green Compute",
-      "subnet_slug": "sn-110",
-      "url": "https://www.green-compute.com/models?prefill=Qwen%2FQwen2.5-7B-Instruct"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-110-website-link-www-green-compute-com-data-artifact-6",
-      "kind": "data-artifact",
-      "name": "Green Compute data artifact",
-      "netuid": 110,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://www.green-compute.com/"
-      ],
-      "subnet_name": "Green Compute",
-      "subnet_slug": "sn-110",
-      "url": "https://www.green-compute.com/models"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-110-website-link-www-green-compute-com-data-artifact-9",
-      "kind": "data-artifact",
-      "name": "Green Compute data artifact",
-      "netuid": 110,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://www.green-compute.com/"
-      ],
-      "subnet_name": "Green Compute",
-      "subnet_slug": "sn-110",
-      "url": "https://www.green-compute.com/models?prefill=meta-llama%2FMeta-Llama-3.1-8B-Instruct"
     },
     {
       "auth_required": false,

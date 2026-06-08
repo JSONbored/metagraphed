@@ -1,0 +1,249 @@
+{
+  "categories": [
+    "ai-marketplace",
+    "baseline-curated",
+    "identity-reviewed",
+    "official-api",
+    "official-openapi",
+    "official-source-repo",
+    "official-website",
+    "payments"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified SSE/event stream yet.",
+      "No verified static data artifact yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T07:12:52.000Z",
+    "source_count": 9,
+    "verified_at": "2026-06-08T07:12:52.000Z"
+  },
+  "dashboard_url": "https://taomarketcap.com/subnets/58",
+  "docs_url": "https://handshake58.com/skill.md",
+  "links": [
+    {
+      "label": "X",
+      "source_url": "https://handshake58.com",
+      "url": "https://x.com/handshake_58"
+    },
+    {
+      "label": "NPM",
+      "source_url": "https://handshake58.com",
+      "url": "https://www.npmjs.com/package/drain-mcp"
+    }
+  ],
+  "name": "Handshake58",
+  "netuid": 58,
+  "notes": "Reviewed identity overlay because the official repositories and website identify Bittensor SN58 as Handshake58 while native chain metadata currently displays Pending.",
+  "schema_version": 1,
+  "slug": "sn-58",
+  "source_repo": "https://github.com/Handshake58/HS58-subnet",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-58-handshake58-website",
+      "kind": "website",
+      "name": "Handshake58 website",
+      "notes": "Official Handshake58 marketplace website for SN58.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "source_urls": ["https://handshake58.com"],
+      "url": "https://handshake58.com"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-58-handshake58-docs",
+      "kind": "docs",
+      "name": "Handshake58 skill docs",
+      "notes": "Official public skill/MCP documentation served by Handshake58.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "source_urls": [
+        "https://handshake58.com",
+        "https://github.com/Handshake58/HS58"
+      ],
+      "url": "https://handshake58.com/skill.md"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-58-handshake58-marketplace-source",
+      "kind": "source-repo",
+      "name": "Handshake58 marketplace source repository",
+      "notes": "Official Handshake58 marketplace and provider-template repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "source_urls": [
+        "https://handshake58.com",
+        "https://github.com/Handshake58/HS58"
+      ],
+      "url": "https://github.com/Handshake58/HS58"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-58-handshake58-subnet-source",
+      "kind": "source-repo",
+      "name": "Handshake58 subnet source repository",
+      "notes": "Official miner and validator repository for Bittensor SN58.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/Handshake58/HS58",
+        "https://github.com/Handshake58/HS58-subnet"
+      ],
+      "url": "https://github.com/Handshake58/HS58-subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-58-handshake58-openapi",
+      "kind": "openapi",
+      "name": "Handshake58 OpenAPI schema",
+      "notes": "Machine-readable OpenAPI schema advertised by the Handshake58 plugin manifest.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://handshake58.com/.well-known/ai-plugin.json",
+        "https://handshake58.com/openapi.json"
+      ],
+      "url": "https://handshake58.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-58-handshake58-provider-directory-api",
+      "kind": "subnet-api",
+      "name": "Handshake58 provider directory API",
+      "notes": "Public JSON provider directory for the Handshake58 marketplace.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://handshake58.com/openapi.json",
+      "source_urls": [
+        "https://handshake58.com",
+        "https://handshake58.com/openapi.json"
+      ],
+      "url": "https://handshake58.com/api/mcp/providers"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-58-handshake58-skills-api",
+      "kind": "subnet-api",
+      "name": "Handshake58 skills API",
+      "notes": "Public JSON skills index exposed by Handshake58.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "source_urls": ["https://handshake58.com"],
+      "url": "https://handshake58.com/api/skills?status=published"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-58-taopedia-article",
+      "kind": "docs",
+      "name": "Handshake58 Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_58/index.mdx"
+      ],
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_58/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-58-tensorplex-docs",
+      "kind": "docs",
+      "name": "Handshake58 Tensorplex subnet docs",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/58/subnet.json"
+      ],
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/58"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-58-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "Handshake58 TaoMarketCap dashboard",
+      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/58"],
+      "url": "https://taomarketcap.com/subnets/58"
+    }
+  ],
+  "website_url": "https://handshake58.com"
+}

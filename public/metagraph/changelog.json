@@ -3,7 +3,67 @@
     "added": [],
     "modified": [
       {
-        "hash": "d649f1be154d488db817b1644df0cf8a4b2412f7bcca980dbd1bc92996bfebf9",
+        "hash": "f2d3e02ffc476ba81b4767c3b67014599f772653f56d6d289c909b0d55f4291b",
+        "path": "coverage.json"
+      },
+      {
+        "hash": "3223d4421ad7c6ceb70642ae41fbea01df038180bfaeb16446d483bc34827f73",
+        "path": "curation.json"
+      },
+      {
+        "hash": "b829708ccce71bd6560cd70feb7427c9091a20c55e67d1bcca45228ed7f146dd",
+        "path": "evidence-ledger.json"
+      },
+      {
+        "hash": "e50fc6cbe67b68a59a6ac7bb1aa7971b7dd34a68f62e746208282404b6da4686",
+        "path": "freshness.json"
+      },
+      {
+        "hash": "aa7388f22aba1bdadf9b5c7e32bfb474d11ac881072b22b433cc24ac44134225",
+        "path": "gaps.json"
+      },
+      {
+        "hash": "d288db0c673701455c53021ef34eec214c325fcd5b84e56ca79cb68e6f62cddd",
+        "path": "profiles.json"
+      },
+      {
+        "hash": "2f4911ee7a378068afbd6b3a340e7c6bf8ee185a4c9ee1b605c785f08b6758c3",
+        "path": "providers.json"
+      },
+      {
+        "hash": "53b7372803bc45fa341f209d4b9904532f52320ad8e7f4b0b39ceaa714db2431",
+        "path": "review/adapter-candidates.json"
+      },
+      {
+        "hash": "f9e68d0a9d62e303e009e90adf9bd8ba7081e2b7d31040eba9c21dfa31af8909",
+        "path": "review/curation.json"
+      },
+      {
+        "hash": "49f52a598d6e20a16fb25d84dd4d990366f209a39bc97aacfe341d075b125594",
+        "path": "review/enrichment-queue.json"
+      },
+      {
+        "hash": "fa3d6ed448179bfac1f5cff1db11d748fa0816ddc3b5be6385254f043d40487e",
+        "path": "review/gap-priorities.json"
+      },
+      {
+        "hash": "7b3f5d56820fdf8c32024db00dc100693115c5c65d344d8aced8218f68ab544f",
+        "path": "review/profile-completeness.json"
+      },
+      {
+        "hash": "9d1e8fc20a0a8c9086b18af03367405bdb0f9b3d628d20892196ff83222cab5d",
+        "path": "schema-drift.json"
+      },
+      {
+        "hash": "e4d318c84babb83dffb10061c1ca19d1310d5200a6b581ff31c631930abf5d5a",
+        "path": "search.json"
+      },
+      {
+        "hash": "fc4c8d3a47709fdc85cb60b2e6e57523cbfdfae5f236919146108e30a07413f5",
+        "path": "subnets.json"
+      },
+      {
+        "hash": "fd2f401836865ca1baf75cceda2fe2c8211e840c9c55b3b2cc7602875dc617ae",
         "path": "surfaces.json"
       }
     ],
@@ -20,11 +80,17 @@
   "subnets": {
     "added": [],
     "removed": [],
-    "renamed": []
+    "renamed": [
+      {
+        "after": "Handshake58",
+        "before": "Pending",
+        "netuid": 58
+      }
+    ]
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 1,
+    "artifact_modified_count": 16,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
@@ -44,13 +110,13 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 856,
+        "after": 861,
         "before": 856,
-        "delta": 0
+        "delta": 5
       }
     },
     "netuid_added_count": 0,
     "netuid_removed_count": 0,
-    "netuid_renamed_count": 0
+    "netuid_renamed_count": 1
   }
 }

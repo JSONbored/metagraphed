@@ -63,6 +63,26 @@
     },
     {
       "authority": "official",
+      "id": "green-compute",
+      "kind": "subnet-team",
+      "name": "Green Compute",
+      "notes": "Provider entry for Green Compute SN110 official website, model directory, and advertised API surface.",
+      "schema_version": 1,
+      "website_url": "https://www.green-compute.com/"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://handshake58.com/skill.md",
+      "github_url": "https://github.com/Handshake58/HS58",
+      "id": "handshake58",
+      "kind": "subnet-team",
+      "name": "Handshake58",
+      "notes": "Provider entry for Handshake58 SN58 marketplace, API, OpenAPI, and subnet source repositories.",
+      "schema_version": 1,
+      "website_url": "https://handshake58.com"
+    },
+    {
+      "authority": "official",
       "docs_url": "https://docs.luminar.network/",
       "id": "luminar-network",
       "kind": "subnet-team",
@@ -80,6 +100,17 @@
       "notes": "Registry and probe observations are not protocol authority.",
       "schema_version": 1,
       "website_url": "https://metagraph.sh"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://docs.nepher.ai/",
+      "github_url": "https://github.com/nepher-ai/nepher-subnet",
+      "id": "nepher-robotics",
+      "kind": "subnet-team",
+      "name": "Nepher Robotics",
+      "notes": "Provider entry for Nepher Robotics SN49 official website, documentation, source repository, tournament app, and OpenAPI-backed API.",
+      "schema_version": 1,
+      "website_url": "https://nepher.ai"
     },
     {
       "authority": "provider-claimed",
@@ -110,6 +141,16 @@
       "notes": "Official Bittensor network and Subtensor endpoint documentation source.",
       "schema_version": 1,
       "website_url": "https://bittensor.com"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/SILX-LABS/QUASAR-SUBNET",
+      "id": "silx-labs",
+      "kind": "subnet-team",
+      "name": "SILX Labs",
+      "notes": "Provider entry for the SILX Labs Quasar SN24 website, source repository, and public model artifacts.",
+      "schema_version": 1,
+      "website_url": "https://silxinc.com/"
     },
     {
       "authority": "provider-claimed",
