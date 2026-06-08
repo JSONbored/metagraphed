@@ -97,24 +97,33 @@ function ProvidersGrid() {
             )}
           >
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  {p.kind ?? "provider"}
-                </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  {isOfficial ? (
-                    <span
-                      aria-label="Official provider"
-                      title="Official"
-                      className="inline-block size-1.5 rounded-full bg-accent shrink-0"
-                    />
-                  ) : null}
-                  <div className="font-display text-base font-semibold text-ink-strong truncate">
-                    {p.name ?? p.slug}
+              <div className="flex items-start gap-3 min-w-0">
+                <BrandIcon
+                  url={p.website ?? p.homepage}
+                  iconUrl={p.icon_url}
+                  name={p.name ?? p.slug}
+                  fallback={p.slug}
+                  size={36}
+                />
+                <div className="min-w-0">
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                    {p.kind ?? "provider"}
                   </div>
-                </div>
-                <div className="font-mono text-[10px] text-ink-muted truncate">
-                  {p.slug}
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {isOfficial ? (
+                      <span
+                        aria-label="Official provider"
+                        title="Official"
+                        className="inline-block size-1.5 rounded-full bg-accent shrink-0"
+                      />
+                    ) : null}
+                    <div className="font-display text-base font-semibold text-ink-strong truncate">
+                      {p.name ?? p.slug}
+                    </div>
+                  </div>
+                  <div className="font-mono text-[10px] text-ink-muted truncate">
+                    {p.slug}
+                  </div>
                 </div>
               </div>
               {p.authority ? (
