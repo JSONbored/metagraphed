@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "netuid": 116,
+  "name": "TaoLend",
+  "slug": "taolend",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "defi",
+    "identity-reviewed",
+    "lending",
+    "official-website"
+  ],
+  "website_url": "https://taolend.io/",
+  "source_repo": null,
+  "notes": "Reviewed overlay for SN116 TaoLend. Native chain identity currently reports hard_sign, while public subnet directories identify SN116 as TaoLend. The official website is tracked but currently returns server errors to simple probes. The previously discovered source repository currently returns 404 and is not promoted.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T14:15:00.000Z",
+    "verified_at": "2026-06-08T14:15:00.000Z",
+    "source_count": 6,
+    "gap_notes": [
+      "Native chain name currently reports as hard_sign; public directories identify SN116 as TaoLend.",
+      "Official website currently returns 500/server-error responses to simple probes and should appear degraded until it recovers.",
+      "Previously discovered GitHub source repository currently returns 404.",
+      "No verified live source repository yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-116-taolend-website",
+      "name": "TaoLend website",
+      "kind": "website",
+      "url": "https://taolend.io/",
+      "provider": "taolend",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://taolend.io/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official TaoLend website. Current probe state is expected to show degraded while the origin returns server errors."
+    }
+  ]
+}

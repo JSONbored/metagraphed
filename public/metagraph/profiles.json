@@ -4,7 +4,7 @@
   "notes": "Public-safe subnet profiles derived from native chain data, curated overlays, verified surfaces, candidates, and explicit gaps.",
   "profiles": [
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "categories": [
         "baseline-augmented",
         "chain-rpc",
@@ -74,8 +74,8 @@
           "https://github.com/opentensor/subtensor",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/0/subnet.json",
           "https://onfinality.io/en/networks/bittensor-finney",
+          "https://subnetradar.com/subnet/0",
           "https://taomarketcap.com/subnets/0",
-          "https://taostats.io/subnets/0/metagraph",
           "https://www.comparenodes.com/library/public-endpoints/bittensor/"
         ]
       },
@@ -96,7 +96,7 @@
       "team": null
     },
     {
-      "candidate_count": 20,
+      "candidate_count": 21,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -168,8 +168,8 @@
           "https://github.com/macrocosm-os/apex",
           "https://github.com/macrocosm-os/apex/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json",
-          "https://taomarketcap.com/subnets/1",
-          "https://taostats.io/subnets/1/metagraph"
+          "https://subnetradar.com/subnet/1",
+          "https://taomarketcap.com/subnets/1"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -187,7 +187,7 @@
       "team": null
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -271,7 +271,7 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -340,7 +340,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_3/index.mdx",
           "https://github.com/one-covenant/templar",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/3/subnet.json",
-          "https://taostats.io/subnets/3/metagraph",
+          "https://subnetradar.com/subnet/3",
           "https://wandb.ai/tplr/templar",
           "https://www.tplr.ai/"
         ]
@@ -360,7 +360,7 @@
       "team": null
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -427,8 +427,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_4/index.mdx",
           "https://github.com/manifold-inc/targon",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/4/subnet.json",
+          "https://subnetradar.com/subnet/4",
           "https://taomarketcap.com/subnets/4",
-          "https://taostats.io/subnets/4/metagraph",
           "https://targon.com/"
         ]
       },
@@ -447,7 +447,7 @@
       "team": null
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -510,7 +510,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx",
           "https://github.com/manifold-inc/hone",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/5/subnet.json",
-          "https://taostats.io/subnets/5/metagraph",
+          "https://subnetradar.com/subnet/5",
           "https://www.hone.training/"
         ]
       },
@@ -529,7 +529,7 @@
       "team": null
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-curated"
       ],
@@ -583,7 +583,7 @@
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 8,
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_urls": [
@@ -593,7 +593,8 @@
           "https://github.com/numinouslabs/numinous",
           "https://github.com/numinouslabs/numinous/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json",
-          "https://numinouslabs.io/"
+          "https://numinouslabs.io/",
+          "https://subnetradar.com/subnet/6"
         ]
       },
       "review_state": "machine-generated",
@@ -611,7 +612,7 @@
       "team": null
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-augmented",
         "bitcoin",
@@ -678,7 +679,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_7/index.mdx",
           "https://github.com/entrius/allways",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/7/subnet.json",
-          "https://taostats.io/subnets/7/metagraph"
+          "https://subnetradar.com/subnet/7"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -699,7 +700,7 @@
       "team": null
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -762,7 +763,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx",
           "https://github.com/taoshidev/vanta-network",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json",
-          "https://taostats.io/subnets/8/metagraph",
+          "https://subnetradar.com/subnet/8",
           "https://www.vantanetwork.io/"
         ]
       },
@@ -845,14 +846,14 @@
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/9",
           "https://backprop.finance/dtao/subnets/9-iota",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_9/index.mdx",
           "https://github.com/macrocosm-os/iota",
           "https://github.com/macrocosm-os/iota/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/9/subnet.json",
           "https://iota.macrocosmos.ai/",
-          "https://iota.macrocosmos.ai/dashboard/mainnet"
+          "https://iota.macrocosmos.ai/dashboard/mainnet",
+          "https://subnetradar.com/subnet/9"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -870,7 +871,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -896,10 +897,10 @@
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 7,
+      "endpoint_count": 8,
       "interface_count": 4,
       "missing_critical_count": 4,
-      "monitored_endpoint_count": 7,
+      "monitored_endpoint_count": 8,
       "name": "Swap",
       "native_name": "Swap",
       "native_name_quality": "chain",
@@ -933,7 +934,7 @@
           "https://github.com/Swap-Subnet/swap-subnet",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_10/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/10/subnet.json",
-          "https://taostats.io/subnets/10/metagraph",
+          "https://subnetradar.com/subnet/10",
           "https://www.taofi.com/pool"
         ]
       },
@@ -947,12 +948,12 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 7,
+      "surface_count": 8,
       "symbol": "κ",
       "team": null
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -1015,7 +1016,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/11/subnet.json",
           "https://github.com/trajectoryRL/trajectoryRL",
-          "https://taostats.io/subnets/11/metagraph",
+          "https://subnetradar.com/subnet/11",
           "https://trajrl.com/"
         ]
       },
@@ -1034,7 +1035,7 @@
       "team": null
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1104,8 +1105,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_12/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/12/subnet.json",
           "https://learnbittensor.org/subnets/12",
-          "https://taomarketcap.com/subnets/12",
-          "https://taostats.io/subnets/12/metagraph"
+          "https://subnetradar.com/subnet/12",
+          "https://taomarketcap.com/subnets/12"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -1123,7 +1124,7 @@
       "team": null
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1198,7 +1199,7 @@
           "https://github.com/macrocosm-os/data-universe/blob/main/README.md",
           "https://github.com/macrocosm-os/scrapers",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/13/subnet.json",
-          "https://taostats.io/subnets/13/metagraph",
+          "https://subnetradar.com/subnet/13",
           "https://www.macrocosmos.ai/gravity"
         ]
       },
@@ -1217,7 +1218,7 @@
       "team": null
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-curated"
       ],
@@ -1271,7 +1272,7 @@
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 9,
+        "interface_source_count": 10,
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_urls": [
@@ -1283,7 +1284,8 @@
           "https://github.com/latent-to/cacheon",
           "https://github.com/latent-to/cacheon/blob/main/README.md",
           "https://github.com/latent-to/taohash/blob/main/README.md",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/14/subnet.json"
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/14/subnet.json",
+          "https://subnetradar.com/subnet/14"
         ]
       },
       "review_state": "machine-generated",
@@ -1301,7 +1303,7 @@
       "team": null
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1364,14 +1366,14 @@
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/15",
           "https://backprop.finance/dtao/subnets/15-oro",
           "https://docs.oroagents.com/docs/miners/quick-start",
           "https://github.com/ORO-AI/oro",
           "https://github.com/ORO-AI/oro/blob/main/README.md",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_15/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json",
-          "https://oroagents.com/"
+          "https://oroagents.com/",
+          "https://subnetradar.com/subnet/15"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -1389,7 +1391,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -1453,7 +1455,7 @@
           "https://github.com/FirstTensorLabs/BitAds",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_16/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/16/subnet.json",
-          "https://taostats.io/subnets/16/metagraph"
+          "https://subnetradar.com/subnet/16"
         ]
       },
       "review_state": "machine-generated",
@@ -1472,7 +1474,7 @@
       "team": null
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-curated"
       ],
@@ -1526,7 +1528,7 @@
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 8,
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_urls": [
@@ -1536,6 +1538,7 @@
           "https://github.com/404-Repo/three-gen-subnet/blob/main/README.md",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_17/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json",
+          "https://subnetradar.com/subnet/17",
           "https://www.404.xyz/"
         ]
       },
@@ -1554,7 +1557,7 @@
       "team": null
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-curated"
       ],
@@ -1617,7 +1620,7 @@
           "https://github.com/Orpheus-AI/Zeus",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_18/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/18/subnet.json",
-          "https://taostats.io/subnets/18/metagraph",
+          "https://subnetradar.com/subnet/18",
           "https://www.zeussubnet.com/"
         ]
       },
@@ -1636,7 +1639,7 @@
       "team": null
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1706,8 +1709,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_19/index.mdx",
           "https://github.com/taostat/blockmachine",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/19/subnet.json",
-          "https://taomarketcap.com/subnets/19",
-          "https://taostats.io/subnets/19/metagraph"
+          "https://subnetradar.com/subnet/19",
+          "https://taomarketcap.com/subnets/19"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -1725,7 +1728,7 @@
       "team": null
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1793,8 +1796,8 @@
           "https://backprop.finance/dtao/subnets/20-groundlayer",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_20/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/20/subnet.json",
+          "https://subnetradar.com/subnet/20",
           "https://taomarketcap.com/subnets/20",
-          "https://taostats.io/subnets/20/metagraph",
           "https://www.groundlayer.xyz/"
         ]
       },
@@ -1812,7 +1815,7 @@
       "team": null
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "advertising",
         "baseline-augmented",
@@ -1881,8 +1884,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_21/index.mdx",
           "https://github.com/ippcteam/SN21-adtao",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/21/subnet.json",
-          "https://taomarketcap.com/subnets/21",
-          "https://taostats.io/subnets/21/metagraph"
+          "https://subnetradar.com/subnet/21",
+          "https://taomarketcap.com/subnets/21"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -1900,7 +1903,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1974,7 +1977,7 @@
           "https://github.com/Desearch-ai/subnet-22",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json",
-          "https://taostats.io/subnets/22/metagraph",
+          "https://subnetradar.com/subnet/22",
           "https://www.desearch.ai/",
           "https://www.desearch.ai/docs",
           "https://www.desearch.ai/openapi.json"
@@ -1997,7 +2000,7 @@
       "team": null
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2056,7 +2059,7 @@
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 8,
+        "interface_source_count": 9,
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
         "source_urls": [
@@ -2066,6 +2069,7 @@
           "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_23/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/23/subnet.json",
+          "https://subnetradar.com/subnet/23",
           "https://trishool.ai/",
           "https://trishool.ai/dashboard"
         ]
@@ -2086,7 +2090,7 @@
       "team": null
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2158,8 +2162,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_24/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json",
           "https://silxinc.com/",
-          "https://taomarketcap.com/subnets/24",
-          "https://taostats.io/subnets/24/metagraph"
+          "https://subnetradar.com/subnet/24",
+          "https://taomarketcap.com/subnets/24"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -2178,7 +2182,7 @@
       "team": null
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2237,7 +2241,7 @@
       "provenance": {
         "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 8,
+        "interface_source_count": 9,
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
         "source_urls": [
@@ -2248,6 +2252,7 @@
           "https://github.com/macrocosm-os/mainframe/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/25/subnet.json",
           "https://macrocosmos.ai/sn25",
+          "https://subnetradar.com/subnet/25",
           "https://taomarketcap.com/subnets/25"
         ]
       },
@@ -2266,7 +2271,7 @@
       "team": null
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -2329,7 +2334,7 @@
           "https://github.com/0xsigurd/Perturb",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_26/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/26/subnet.json",
-          "https://taostats.io/subnets/26/metagraph",
+          "https://subnetradar.com/subnet/26",
           "https://www.perturbai.io/"
         ]
       },
@@ -2350,19 +2355,24 @@
     {
       "candidate_count": 14,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "compute",
+        "gpu",
+        "identity-reviewed",
+        "official-docs",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
-          "missing-website",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 6,
+        "missing_critical_count": 5,
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -2370,18 +2380,17 @@
           "data-artifact"
         ],
         "missing_required": [
-          "source-repo",
-          "website"
+          "source-repo"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 40
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 5,
-      "interface_count": 2,
-      "missing_critical_count": 6,
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 8,
+      "interface_count": 3,
+      "missing_critical_count": 5,
       "monitored_endpoint_count": 5,
       "name": "Nodexo",
       "native_name": "Nodexo",
@@ -2390,48 +2399,52 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-27-taopedia-article",
-        "kind": "docs",
-        "name": "Nodexo Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_27/index.mdx"
+        "id": "sn-27-nodexo-website",
+        "kind": "website",
+        "name": "Nodexo website",
+        "provider": "nodexo",
+        "url": "https://nodexo.ai/"
       },
       "primary_links": {
-        "dashboard_url": "https://backprop.finance/dtao/subnets/27-nodexo",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_27/index.mdx",
+        "dashboard_url": "https://console.nodexo.ai/",
+        "docs_url": "https://docs.nodexo.ai/",
         "source_repo": null,
-        "website_url": null
+        "website_url": "https://nodexo.ai/"
       },
       "profile_level": "directory-only",
       "project_name": "Nodexo",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 8,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T14:15:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/27",
           "https://backprop.finance/dtao/subnets/27-nodexo",
+          "https://console.nodexo.ai/",
+          "https://docs.nodexo.ai/",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_27/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/27/subnet.json",
-          "https://taostats.io/subnets/27/metagraph"
+          "https://nodexo.ai/",
+          "https://subnetradar.com/subnet/27"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-27",
+      "review_state": "maintainer-reviewed",
+      "slug": "nodexo",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs"
+        "docs",
+        "website"
       ],
-      "surface_count": 5,
+      "surface_count": 8,
       "symbol": "ג",
       "team": null
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -2498,7 +2511,7 @@
           "https://backprop.finance/dtao/subnets/28-gm",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_28/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/28/subnet.json",
-          "https://taostats.io/subnets/28/metagraph"
+          "https://subnetradar.com/subnet/28"
         ]
       },
       "review_state": "machine-generated",
@@ -2514,7 +2527,7 @@
       "team": null
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2588,7 +2601,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_29/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/29/subnet.json",
           "https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu-score-2",
-          "https://taostats.io/subnets/29/metagraph",
+          "https://subnetradar.com/subnet/29",
           "https://taostats.io/subnets/netuid-29"
         ]
       },
@@ -2608,7 +2621,7 @@
       "team": null
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2681,8 +2694,8 @@
           "https://endure.network/",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_30/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/30/subnet.json",
-          "https://taomarketcap.com/subnets/30",
-          "https://taostats.io/subnets/30/metagraph"
+          "https://subnetradar.com/subnet/30",
+          "https://taomarketcap.com/subnets/30"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -2699,7 +2712,7 @@
       "team": null
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -2766,7 +2779,7 @@
           "https://backprop.finance/dtao/subnets/31-recall",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_31/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/31/subnet.json",
-          "https://taostats.io/subnets/31/metagraph"
+          "https://subnetradar.com/subnet/31"
         ]
       },
       "review_state": "machine-generated",
@@ -2812,10 +2825,10 @@
       "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 8,
+      "endpoint_count": 7,
       "interface_count": 4,
       "missing_critical_count": 4,
-      "monitored_endpoint_count": 8,
+      "monitored_endpoint_count": 7,
       "name": "ItsAI",
       "native_name": "ItsAI",
       "native_name_quality": "chain",
@@ -2850,8 +2863,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_32/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/32/subnet.json",
           "https://its-ai.org/en",
-          "https://taomarketcap.com/subnets/32",
-          "https://taostats.io/subnets/32/metagraph"
+          "https://subnetradar.com/subnet/32",
+          "https://taomarketcap.com/subnets/32"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -2864,12 +2877,12 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 8,
+      "surface_count": 7,
       "symbol": "ח",
       "team": null
     },
     {
-      "candidate_count": 8,
+      "candidate_count": 9,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2943,7 +2956,7 @@
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/33/subnet.json",
           "https://huggingface.co/datasets/ReadyAi/5000-podcast-conversations-with-metadata-and-embedding-dataset",
           "https://readyai.ai/",
-          "https://taostats.io/subnets/33/metagraph"
+          "https://subnetradar.com/subnet/33"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -2962,7 +2975,7 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3036,7 +3049,7 @@
           "https://github.com/BitMind-AI/bitmind-subnet",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_34/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/34/subnet.json",
-          "https://taostats.io/subnets/34/metagraph"
+          "https://subnetradar.com/subnet/34"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -3054,7 +3067,7 @@
       "team": null
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -3080,10 +3093,10 @@
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 8,
+      "endpoint_count": 9,
       "interface_count": 4,
       "missing_critical_count": 4,
-      "monitored_endpoint_count": 8,
+      "monitored_endpoint_count": 9,
       "name": "OxMarkets",
       "native_name": "OxMarkets",
       "native_name_quality": "chain",
@@ -3117,7 +3130,7 @@
           "https://github.com/General-Tao-Ventures/cartha-validator",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_35/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/35/subnet.json",
-          "https://taostats.io/subnets/35/metagraph",
+          "https://subnetradar.com/subnet/35",
           "https://www.0xmarkets.io/"
         ]
       },
@@ -3131,12 +3144,12 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 8,
+      "surface_count": 9,
       "symbol": "ך",
       "team": null
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -3200,7 +3213,7 @@
           "https://github.com/RendixNetwork/eirel-ai",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_36/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/36/subnet.json",
-          "https://taostats.io/subnets/36/metagraph"
+          "https://subnetradar.com/subnet/36"
         ]
       },
       "review_state": "machine-generated",
@@ -3218,7 +3231,7 @@
       "team": null
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-curated"
       ],
@@ -3282,7 +3295,7 @@
           "https://github.com/Aurelius-Protocol/Aurelius-Protocol",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_37/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/37/subnet.json",
-          "https://taostats.io/subnets/37/metagraph"
+          "https://subnetradar.com/subnet/37"
         ]
       },
       "review_state": "machine-generated",
@@ -3300,37 +3313,34 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
-          "missing-source-repo",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 4,
+        "missing_critical_count": 3,
         "missing_operational": [
           "subnet-api",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [
-          "source-repo"
-        ],
+        "missing_required": [],
         "profile_level": "operational",
-        "score": 50
+        "score": 65
       },
-      "completeness_score": 50,
+      "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 8,
-      "interface_count": 4,
-      "missing_critical_count": 4,
-      "monitored_endpoint_count": 8,
+      "endpoint_count": 9,
+      "interface_count": 5,
+      "missing_critical_count": 3,
+      "monitored_endpoint_count": 9,
       "name": "colosseum",
       "native_name": "colosseum",
       "native_name_quality": "chain",
@@ -3349,7 +3359,7 @@
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/38-colosseum",
         "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx",
-        "source_repo": null,
+        "source_repo": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
         "website_url": "https://www.taocolosseum.com/"
       },
       "profile_level": "operational",
@@ -3357,15 +3367,16 @@
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 6,
+        "interface_source_count": 7,
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/38",
           "https://backprop.finance/dtao/subnets/38-colosseum",
+          "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json",
-          "https://taostats.io/subnets/38/metagraph",
+          "https://subnetradar.com/subnet/38",
           "https://www.taocolosseum.com/"
         ]
       },
@@ -3377,14 +3388,15 @@
         "dashboard",
         "docs",
         "openapi",
+        "source-repo",
         "website"
       ],
-      "surface_count": 8,
+      "surface_count": 9,
       "symbol": "ם",
       "team": null
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3452,8 +3464,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_39/index.mdx",
           "https://github.com/one-covenant/basilica",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/39/subnet.json",
+          "https://subnetradar.com/subnet/39",
           "https://taomarketcap.com/subnets/39",
-          "https://taostats.io/subnets/39/metagraph",
           "https://www.basilica.ai/"
         ]
       },
@@ -3472,7 +3484,7 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-curated"
       ],
@@ -3539,7 +3551,7 @@
           "https://backprop.finance/dtao/subnets/40-chunking",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_40/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json",
-          "https://taostats.io/subnets/40/metagraph"
+          "https://subnetradar.com/subnet/40"
         ]
       },
       "review_state": "machine-generated",
@@ -3555,7 +3567,7 @@
       "team": null
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -3619,7 +3631,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_41/index.mdx",
           "https://github.com/sportstensor/sn41",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/41/subnet.json",
-          "https://taostats.io/subnets/41/metagraph"
+          "https://subnetradar.com/subnet/41"
         ]
       },
       "review_state": "machine-generated",
@@ -3638,7 +3650,7 @@
       "team": null
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3713,8 +3725,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx",
           "https://github.com/gopher-lab/subnet-42",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/42/subnet.json",
-          "https://taomarketcap.com/subnets/42",
-          "https://taostats.io/subnets/42/metagraph"
+          "https://subnetradar.com/subnet/42",
+          "https://taomarketcap.com/subnets/42"
         ]
       },
       "review_state": "needs-review",
@@ -3731,7 +3743,7 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3802,8 +3814,8 @@
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/43/subnet.json",
           "https://graphite-ai.net/",
           "https://learnbittensor.org/subnets/43",
-          "https://taomarketcap.com/subnets/43",
-          "https://taostats.io/subnets/43/metagraph"
+          "https://subnetradar.com/subnet/43",
+          "https://taomarketcap.com/subnets/43"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -3821,7 +3833,7 @@
       "team": null
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -3884,7 +3896,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_44/index.mdx",
           "https://github.com/score-technologies/turbovision",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/44/subnet.json",
-          "https://taostats.io/subnets/44/metagraph",
+          "https://subnetradar.com/subnet/44",
           "https://www.wearescore.com/"
         ]
       },
@@ -3903,7 +3915,7 @@
       "team": null
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3971,8 +3983,8 @@
           "https://github.com/Team-Rizzo/talisman-ai",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_45/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/45/subnet.json",
-          "https://taomarketcap.com/subnets/45",
-          "https://taostats.io/subnets/45/metagraph"
+          "https://subnetradar.com/subnet/45",
+          "https://taomarketcap.com/subnets/45"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -3990,7 +4002,7 @@
       "team": null
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-curated"
       ],
@@ -4044,7 +4056,7 @@
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 8,
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_urls": [
@@ -4054,6 +4066,7 @@
           "https://github.com/resi-labs-ai/RESI-models",
           "https://github.com/resi-labs-ai/RESI-models/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/46/subnet.json",
+          "https://subnetradar.com/subnet/46",
           "https://zipcode.ai/"
         ]
       },
@@ -4073,7 +4086,7 @@
       "team": null
     },
     {
-      "candidate_count": 8,
+      "candidate_count": 9,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -4144,8 +4157,8 @@
           "https://github.com/openevolai/evolai",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/47/subnet.json",
           "https://huggingface.co/datasets/evolai/universal_qa",
-          "https://taomarketcap.com/subnets/47",
-          "https://taostats.io/subnets/47/metagraph"
+          "https://subnetradar.com/subnet/47",
+          "https://taomarketcap.com/subnets/47"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -4163,7 +4176,7 @@
       "team": null
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -4232,8 +4245,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_48/index.mdx",
           "https://github.com/qbittensor-labs/quantum-compute",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/48/subnet.json",
+          "https://subnetradar.com/subnet/48",
           "https://taomarketcap.com/subnets/48",
-          "https://taostats.io/subnets/48/metagraph",
           "https://www.qbittensorlabs.com/"
         ]
       },
@@ -4252,7 +4265,7 @@
       "team": null
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -4325,7 +4338,7 @@
           "https://github.com/nepher-ai/nepher-subnet",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/49/subnet.json",
           "https://nepher.ai",
-          "https://taostats.io/subnets/49/metagraph",
+          "https://subnetradar.com/subnet/49",
           "https://tournament-api.nepher.ai/docs",
           "https://tournament-api.nepher.ai/openapi.json",
           "https://tournament.nepher.ai"
@@ -4348,7 +4361,7 @@
       "team": null
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -4411,8 +4424,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_50/index.mdx",
           "https://github.com/mode-network/synth-subnet",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/50/subnet.json",
-          "https://synthdata.co/",
-          "https://taostats.io/subnets/50/metagraph"
+          "https://subnetradar.com/subnet/50",
+          "https://synthdata.co/"
         ]
       },
       "review_state": "machine-generated",
@@ -4431,7 +4444,7 @@
       "team": null
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-curated"
       ],
@@ -4497,7 +4510,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_51/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/51/subnet.json",
           "https://lium.io/",
-          "https://taostats.io/subnets/51/metagraph"
+          "https://subnetradar.com/subnet/51"
         ]
       },
       "review_state": "machine-generated",
@@ -4516,7 +4529,7 @@
       "team": null
     },
     {
-      "candidate_count": 10,
+      "candidate_count": 11,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -4588,8 +4601,8 @@
           "https://github.com/tensorplex-labs/dojo-ui",
           "https://github.com/tensorplex-labs/dojo-worker-api",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/52/subnet.json",
+          "https://subnetradar.com/subnet/52",
           "https://taomarketcap.com/subnets/52",
-          "https://taostats.io/subnets/52/metagraph",
           "https://www.tensorplex.ai/"
         ]
       },
@@ -4608,21 +4621,26 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "defi",
+        "financial-trading",
+        "identity-reviewed",
+        "official-website",
+        "trading-strategies"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
-          "missing-website",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 6,
+        "missing_critical_count": 5,
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -4630,19 +4648,18 @@
           "data-artifact"
         ],
         "missing_required": [
-          "source-repo",
-          "website"
+          "source-repo"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 40
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 5,
-      "interface_count": 2,
-      "missing_critical_count": 6,
-      "monitored_endpoint_count": 5,
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 7,
+      "interface_count": 3,
+      "missing_critical_count": 5,
+      "monitored_endpoint_count": 7,
       "name": "EfficientFrontier",
       "native_name": "EfficientFrontier",
       "native_name_quality": "chain",
@@ -4650,48 +4667,51 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-53-taopedia-article",
-        "kind": "docs",
-        "name": "EfficientFrontier Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_53/index.mdx"
+        "id": "sn-53-signalplus-website",
+        "kind": "website",
+        "name": "SignalPlus website",
+        "provider": "signalplus",
+        "url": "https://www.signalplus.com/"
       },
       "primary_links": {
-        "dashboard_url": "https://backprop.finance/dtao/subnets/53-efficientfrontier",
+        "dashboard_url": "https://t.signalplus.com/mining",
         "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_53/index.mdx",
         "source_repo": null,
-        "website_url": null
+        "website_url": "https://www.signalplus.com/"
       },
       "profile_level": "directory-only",
       "project_name": "EfficientFrontier",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 7,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T14:15:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/53",
           "https://backprop.finance/dtao/subnets/53-efficientfrontier",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_53/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json",
-          "https://taostats.io/subnets/53/metagraph"
+          "https://subnetradar.com/subnet/53",
+          "https://t.signalplus.com/mining",
+          "https://www.signalplus.com/"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-53",
+      "review_state": "maintainer-reviewed",
+      "slug": "efficientfrontier",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs"
+        "docs",
+        "website"
       ],
-      "surface_count": 5,
+      "surface_count": 7,
       "symbol": "ب",
       "team": null
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -4745,7 +4765,7 @@
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 8,
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_urls": [
@@ -4755,6 +4775,7 @@
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/54/subnet.json",
           "https://github.com/yanez-compliance/MIID-subnet",
           "https://github.com/yanez-compliance/MIID-subnet/blob/main/README.md",
+          "https://subnetradar.com/subnet/54",
           "https://www.yanez.ai/"
         ]
       },
@@ -4773,7 +4794,7 @@
       "team": null
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -4837,7 +4858,7 @@
           "https://github.com/genomesio/subnet-niome",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/55/subnet.json",
           "https://niome.genomes.io/",
-          "https://taostats.io/subnets/55/metagraph"
+          "https://subnetradar.com/subnet/55"
         ]
       },
       "review_state": "machine-generated",
@@ -4855,7 +4876,7 @@
       "team": null
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-curated"
       ],
@@ -4917,7 +4938,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_56/index.mdx",
           "https://github.com/gradients-ai/G.O.D",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/56/subnet.json",
-          "https://taostats.io/subnets/56/metagraph",
+          "https://subnetradar.com/subnet/56",
           "https://www.gradients.io/"
         ]
       },
@@ -4938,7 +4959,7 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -5009,8 +5030,8 @@
           "https://github.com/sparket-ai/sparket-ai",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/57/subnet.json",
           "https://sparket.ai/",
-          "https://taomarketcap.com/subnets/57",
-          "https://taostats.io/subnets/57/metagraph"
+          "https://subnetradar.com/subnet/57",
+          "https://taomarketcap.com/subnets/57"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -5028,7 +5049,7 @@
       "team": null
     },
     {
-      "candidate_count": 8,
+      "candidate_count": 9,
       "categories": [
         "ai-marketplace",
         "baseline-augmented",
@@ -5104,8 +5125,8 @@
           "https://handshake58.com/.well-known/ai-plugin.json",
           "https://handshake58.com/openapi.json",
           "https://handshake58.com/skill.md",
-          "https://taomarketcap.com/subnets/58",
-          "https://taostats.io/subnets/58/metagraph"
+          "https://subnetradar.com/subnet/58",
+          "https://taomarketcap.com/subnets/58"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -5125,7 +5146,7 @@
       "team": null
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-curated"
       ],
@@ -5190,7 +5211,7 @@
           "https://github.com/babelbit/babelbit_subnet/blob/main/README.md",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_59/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/59/subnet.json",
-          "https://taostats.io/subnets/59/metagraph"
+          "https://subnetradar.com/subnet/59"
         ]
       },
       "review_state": "machine-generated",
@@ -5209,7 +5230,7 @@
       "team": null
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -5275,7 +5296,7 @@
           "https://github.com/Bitsec-AI/sandbox/blob/main/README.md",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_60/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/60/subnet.json",
-          "https://taostats.io/subnets/60/metagraph"
+          "https://subnetradar.com/subnet/60"
         ]
       },
       "review_state": "machine-generated",
@@ -5294,7 +5315,7 @@
       "team": null
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -5359,7 +5380,6 @@
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/61",
           "https://backprop.finance/dtao/subnets/61-redteam",
           "https://dashboard.theredteam.io/",
           "https://docs.theredteam.io/",
@@ -5367,6 +5387,7 @@
           "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_61/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json",
+          "https://subnetradar.com/subnet/61",
           "https://www.theredteam.io/"
         ]
       },
@@ -5415,10 +5436,10 @@
       "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 7,
+      "endpoint_count": 6,
       "interface_count": 4,
       "missing_critical_count": 4,
-      "monitored_endpoint_count": 7,
+      "monitored_endpoint_count": 6,
       "name": "Ridges",
       "native_name": "Ridges",
       "native_name_quality": "chain",
@@ -5452,8 +5473,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_62/index.mdx",
           "https://github.com/ridgesai/ridges",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/62/subnet.json",
+          "https://subnetradar.com/subnet/62",
           "https://taomarketcap.com/subnets/62",
-          "https://taostats.io/subnets/62/metagraph",
           "https://www.ridges.ai/"
         ]
       },
@@ -5467,12 +5488,12 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 7,
+      "surface_count": 6,
       "symbol": "ز",
       "team": null
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -5540,8 +5561,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_63/index.mdx",
           "https://github.com/qbittensor-labs/enigma",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/63/subnet.json",
+          "https://subnetradar.com/subnet/63",
           "https://taomarketcap.com/subnets/63",
-          "https://taostats.io/subnets/63/metagraph",
           "https://www.qbittensorlabs.com/"
         ]
       },
@@ -5560,7 +5581,7 @@
       "team": null
     },
     {
-      "candidate_count": 28,
+      "candidate_count": 29,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -5636,7 +5657,7 @@
           "https://github.com/chutesai/chutes-miner",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_64/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/64/subnet.json",
-          "https://taostats.io/subnets/64/metagraph"
+          "https://subnetradar.com/subnet/64"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -5656,7 +5677,7 @@
       "team": null
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-curated"
       ],
@@ -5719,7 +5740,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_65/index.mdx",
           "https://github.com/taofu-labs/tpn-subnet",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/65/subnet.json",
-          "https://taostats.io/subnets/65/metagraph",
+          "https://subnetradar.com/subnet/65",
           "https://tpn.taofu.xyz/"
         ]
       },
@@ -5739,7 +5760,7 @@
       "team": null
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -5814,7 +5835,7 @@
           "https://ninja.arbos.life/",
           "https://ninja.arbos.life/health",
           "https://ninja.arbos.life/swagger",
-          "https://taostats.io/subnets/66/metagraph"
+          "https://subnetradar.com/subnet/66"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -5834,7 +5855,7 @@
       "team": null
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -5888,7 +5909,7 @@
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 8,
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_urls": [
@@ -5898,7 +5919,8 @@
           "https://github.com/harnyx/harnyx",
           "https://github.com/harnyx/harnyx/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/67/subnet.json",
-          "https://harnyx.ai/"
+          "https://harnyx.ai/",
+          "https://subnetradar.com/subnet/67"
         ]
       },
       "review_state": "machine-generated",
@@ -5916,7 +5938,7 @@
       "team": null
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-curated"
       ],
@@ -5979,7 +6001,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_68/index.mdx",
           "https://github.com/metanova-labs/nova",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/68/subnet.json",
-          "https://taostats.io/subnets/68/metagraph",
+          "https://subnetradar.com/subnet/68",
           "https://www.metanova-labs.ai/"
         ]
       },
@@ -5999,7 +6021,7 @@
       "team": null
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -6066,7 +6088,7 @@
           "https://backprop.finance/dtao/subnets/69-ain",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_69/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/69/subnet.json",
-          "https://taostats.io/subnets/69/metagraph"
+          "https://subnetradar.com/subnet/69"
         ]
       },
       "review_state": "machine-generated",
@@ -6082,7 +6104,7 @@
       "team": null
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-curated"
       ],
@@ -6146,7 +6168,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_70/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/70/subnet.json",
           "https://nexisgen.ai/",
-          "https://taostats.io/subnets/70/metagraph"
+          "https://subnetradar.com/subnet/70"
         ]
       },
       "review_state": "machine-generated",
@@ -6165,7 +6187,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -6229,7 +6251,7 @@
           "https://github.com/leadpoet/leadpoet",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/71/subnet.json",
           "https://leadpoet.com/",
-          "https://taostats.io/subnets/71/metagraph"
+          "https://subnetradar.com/subnet/71"
         ]
       },
       "review_state": "machine-generated",
@@ -6248,7 +6270,7 @@
       "team": null
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -6321,7 +6343,7 @@
           "https://github.com/natixnetwork/streetvision-subnet",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/72/subnet.json",
           "https://huggingface.co/natix-network-org",
-          "https://taostats.io/subnets/72/metagraph",
+          "https://subnetradar.com/subnet/72",
           "https://www.natix.network/",
           "https://www.natix.network/vx360-depin-dashcam"
         ]
@@ -6342,12 +6364,17 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "defi",
+        "identity-reviewed",
+        "otc",
+        "treasury"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
           "missing-website",
@@ -6368,16 +6395,16 @@
           "website"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 25
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 25,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
       "interface_count": 2,
       "missing_critical_count": 6,
       "monitored_endpoint_count": 5,
-      "name": "Parked",
+      "name": "MetaHash",
       "native_name": "Parked",
       "native_name_quality": "chain",
       "netuid": 73,
@@ -6397,23 +6424,23 @@
         "website_url": null
       },
       "profile_level": "directory-only",
-      "project_name": "Parked",
+      "project_name": "MetaHash",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T14:15:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/73",
           "https://backprop.finance/dtao/subnets/73-parked",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_73/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/73/subnet.json",
-          "https://taostats.io/subnets/73/metagraph"
+          "https://subnetradar.com/subnet/73"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-73",
+      "review_state": "maintainer-reviewed",
+      "slug": "metahash",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
@@ -6425,7 +6452,7 @@
       "team": null
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-augmented",
         "developer-tools",
@@ -6496,7 +6523,7 @@
           "https://github.com/entrius/gittensor/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/74/subnet.json",
           "https://gittensor.io/",
-          "https://taostats.io/subnets/74/metagraph"
+          "https://subnetradar.com/subnet/74"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -6517,7 +6544,7 @@
       "team": null
     },
     {
-      "candidate_count": 25,
+      "candidate_count": 26,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -6591,8 +6618,8 @@
           "https://github.com/thenervelab/hippius-storage-miner",
           "https://github.com/thenervelab/hippius-validator",
           "https://hippius.com/",
-          "https://taomarketcap.com/subnets/75",
-          "https://taostats.io/subnets/75/metagraph"
+          "https://subnetradar.com/subnet/75",
+          "https://taomarketcap.com/subnets/75"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -6610,7 +6637,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -6678,8 +6705,8 @@
           "https://backprop.finance/dtao/subnets/76-byzantium",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_76/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/76/subnet.json",
+          "https://subnetradar.com/subnet/76",
           "https://taomarketcap.com/subnets/76",
-          "https://taostats.io/subnets/76/metagraph",
           "https://www.byzantiumai.net/"
         ]
       },
@@ -6697,7 +6724,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -6761,7 +6788,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_77/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/77/subnet.json",
           "https://sn77.xyz/",
-          "https://taostats.io/subnets/77/metagraph"
+          "https://subnetradar.com/subnet/77"
         ]
       },
       "review_state": "machine-generated",
@@ -6780,7 +6807,7 @@
       "team": null
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -6843,7 +6870,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_78/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/78/subnet.json",
           "https://github.com/vocence-78/vocence",
-          "https://taostats.io/subnets/78/metagraph",
+          "https://subnetradar.com/subnet/78",
           "https://www.vocence.ai/"
         ]
       },
@@ -6863,7 +6890,7 @@
       "team": null
     },
     {
-      "candidate_count": 25,
+      "candidate_count": 26,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -6932,9 +6959,9 @@
           "https://github.com/taos-im/sn-79/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/79/subnet.json",
           "https://simulate.trading/taos-im-paper",
+          "https://subnetradar.com/subnet/79",
           "https://taomarketcap.com/subnets/79",
-          "https://taos.im/",
-          "https://taostats.io/subnets/79/metagraph"
+          "https://taos.im/"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -6953,7 +6980,7 @@
       "team": null
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -7017,7 +7044,7 @@
           "https://github.com/dogelayer-ai/dogelayer",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_80/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/80/subnet.json",
-          "https://taostats.io/subnets/80/metagraph"
+          "https://subnetradar.com/subnet/80"
         ]
       },
       "review_state": "machine-generated",
@@ -7036,7 +7063,7 @@
       "team": null
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -7108,7 +7135,7 @@
           "https://github.com/one-covenant/grail",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/81/subnet.json",
           "https://grail-grafana.tplr.ai/",
-          "https://taostats.io/subnets/81/metagraph"
+          "https://subnetradar.com/subnet/81"
         ]
       },
       "review_state": "needs-review",
@@ -7125,7 +7152,7 @@
       "team": null
     },
     {
-      "candidate_count": 25,
+      "candidate_count": 26,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -7193,8 +7220,8 @@
           "https://github.com/compelle/compelle-validator",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_82/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/82/subnet.json",
-          "https://taomarketcap.com/subnets/82",
-          "https://taostats.io/subnets/82/metagraph"
+          "https://subnetradar.com/subnet/82",
+          "https://taomarketcap.com/subnets/82"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -7212,7 +7239,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -7276,7 +7303,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_83/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/83/subnet.json",
           "https://github.com/toptensor/CliqueAI",
-          "https://taostats.io/subnets/83/metagraph"
+          "https://subnetradar.com/subnet/83"
         ]
       },
       "review_state": "machine-generated",
@@ -7295,7 +7322,7 @@
       "team": null
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -7367,8 +7394,8 @@
           "https://github.com/TatsuProject/ChipForge_SN84",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_84/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/84/subnet.json",
+          "https://subnetradar.com/subnet/84",
           "https://taomarketcap.com/subnets/84",
-          "https://taostats.io/subnets/84/metagraph",
           "https://www.chipforge.io/"
         ]
       },
@@ -7387,7 +7414,7 @@
       "team": null
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -7453,8 +7480,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_85/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/85/subnet.json",
           "https://github.com/vidaio-subnet/vidaio-subnet",
+          "https://subnetradar.com/subnet/85",
           "https://taomarketcap.com/subnets/85",
-          "https://taostats.io/subnets/85/metagraph",
           "https://vidaio.io/"
         ]
       },
@@ -7473,7 +7500,7 @@
       "team": null
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -7540,7 +7567,7 @@
           "https://backprop.finance/dtao/subnets/86-subnet-86",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_86/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/86/subnet.json",
-          "https://taostats.io/subnets/86/metagraph"
+          "https://subnetradar.com/subnet/86"
         ]
       },
       "review_state": "machine-generated",
@@ -7556,7 +7583,7 @@
       "team": null
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -7631,7 +7658,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/87/subnet.json",
           "https://luminar.network/",
-          "https://taostats.io/subnets/87/metagraph"
+          "https://subnetradar.com/subnet/87"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -7648,7 +7675,7 @@
       "team": null
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -7713,14 +7740,14 @@
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/88",
           "https://backprop.finance/dtao/subnets/88-investing",
           "https://db.investing88.ai/",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_88/index.mdx",
           "https://github.com/mobiusfund/investing",
           "https://github.com/mobiusfund/investing/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/88/subnet.json",
-          "https://investing88.ai/"
+          "https://investing88.ai/",
+          "https://subnetradar.com/subnet/88"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -7739,7 +7766,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -7808,8 +7835,8 @@
           "https://github.com/backend-developers-ltd/InfiniteHash",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_89/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/89/subnet.json",
-          "https://taomarketcap.com/subnets/89",
-          "https://taostats.io/subnets/89/metagraph"
+          "https://subnetradar.com/subnet/89",
+          "https://taomarketcap.com/subnets/89"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -7826,7 +7853,7 @@
       "team": null
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -7898,7 +7925,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_90/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/90/subnet.json",
           "https://subnet90.com/",
-          "https://taostats.io/subnets/90/metagraph"
+          "https://subnetradar.com/subnet/90"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -7915,7 +7942,7 @@
       "team": null
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -7985,8 +8012,8 @@
           "https://bitstarter.ai/",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_91/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/91/subnet.json",
-          "https://taomarketcap.com/subnets/91",
-          "https://taostats.io/subnets/91/metagraph"
+          "https://subnetradar.com/subnet/91",
+          "https://taomarketcap.com/subnets/91"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -8003,7 +8030,7 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -8072,8 +8099,8 @@
           "https://backprop.finance/dtao/subnets/92-luis",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json",
-          "https://taomarketcap.com/subnets/92",
-          "https://taostats.io/subnets/92/metagraph"
+          "https://subnetradar.com/subnet/92",
+          "https://taomarketcap.com/subnets/92"
         ]
       },
       "review_state": "stale",
@@ -8089,7 +8116,7 @@
       "team": null
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-curated"
       ],
@@ -8153,7 +8180,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_93/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/93/subnet.json",
           "https://stats.bitcast.network/",
-          "https://taostats.io/subnets/93/metagraph"
+          "https://subnetradar.com/subnet/93"
         ]
       },
       "review_state": "machine-generated",
@@ -8172,7 +8199,7 @@
       "team": null
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -8236,7 +8263,7 @@
           "https://github.com/AlveusLabs/SN94-BitSota",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_94/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/94/subnet.json",
-          "https://taostats.io/subnets/94/metagraph"
+          "https://subnetradar.com/subnet/94"
         ]
       },
       "review_state": "machine-generated",
@@ -8254,7 +8281,7 @@
       "team": null
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -8320,7 +8347,7 @@
           "https://backprop.finance/dtao/subnets/95-actual",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_95/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/95/subnet.json",
-          "https://taostats.io/subnets/95/metagraph"
+          "https://subnetradar.com/subnet/95"
         ]
       },
       "review_state": "machine-generated",
@@ -8338,7 +8365,7 @@
       "team": null
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -8410,7 +8437,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_96/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/96/subnet.json",
           "https://github.com/verathos-ai/verathos",
-          "https://taostats.io/subnets/96/metagraph",
+          "https://subnetradar.com/subnet/96",
           "https://verathos.ai/",
           "https://verathos.ai/chat",
           "https://verathos.ai/docs",
@@ -8434,7 +8461,7 @@
       "team": null
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -8499,7 +8526,7 @@
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/97/subnet.json",
           "https://github.com/unarbos/albedo",
           "https://github.com/unitone-labs/FlameWire/blob/main/README.md",
-          "https://taostats.io/subnets/97/metagraph",
+          "https://subnetradar.com/subnet/97",
           "https://us-east-1.hippius.com/albedo/index.html"
         ]
       },
@@ -8519,7 +8546,7 @@
       "team": null
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -8588,8 +8615,8 @@
           "https://github.com/SN98-ForeverMoney/forever-money",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_98/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/98/subnet.json",
-          "https://taomarketcap.com/subnets/98",
-          "https://taostats.io/subnets/98/metagraph"
+          "https://subnetradar.com/subnet/98",
+          "https://taomarketcap.com/subnets/98"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -8607,7 +8634,7 @@
       "team": null
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -8673,7 +8700,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_99/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/99/subnet.json",
           "https://leoma.ai/",
-          "https://taostats.io/subnets/99/metagraph"
+          "https://subnetradar.com/subnet/99"
         ]
       },
       "review_state": "machine-generated",
@@ -8692,7 +8719,7 @@
       "team": null
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-curated"
       ],
@@ -8756,7 +8783,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_100/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/100/subnet.json",
           "https://platform.network/",
-          "https://taostats.io/subnets/100/metagraph"
+          "https://subnetradar.com/subnet/100"
         ]
       },
       "review_state": "machine-generated",
@@ -8774,7 +8801,7 @@
       "team": null
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -8841,7 +8868,7 @@
           "https://backprop.finance/dtao/subnets/101-eni",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_101/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/101/subnet.json",
-          "https://taostats.io/subnets/101/metagraph"
+          "https://subnetradar.com/subnet/101"
         ]
       },
       "review_state": "machine-generated",
@@ -8857,7 +8884,7 @@
       "team": null
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -8925,8 +8952,8 @@
           "https://github.com/Connito-AI/Connito",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_102/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/102/subnet.json",
-          "https://taomarketcap.com/subnets/102",
-          "https://taostats.io/subnets/102/metagraph"
+          "https://subnetradar.com/subnet/102",
+          "https://taomarketcap.com/subnets/102"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -9012,8 +9039,8 @@
           "https://github.com/Djinn-Inc/djinn",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_103/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/103/subnet.json",
+          "https://subnetradar.com/subnet/103",
           "https://taomarketcap.com/subnets/103",
-          "https://taostats.io/subnets/103/metagraph",
           "https://www.djinn.gg/"
         ]
       },
@@ -9032,7 +9059,7 @@
       "team": null
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -9099,7 +9126,7 @@
           "https://backprop.finance/dtao/subnets/104-for-sale-burn-to-uid1",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_104/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/104/subnet.json",
-          "https://taostats.io/subnets/104/metagraph"
+          "https://subnetradar.com/subnet/104"
         ]
       },
       "review_state": "machine-generated",
@@ -9115,7 +9142,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -9179,7 +9206,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_105/index.mdx",
           "https://github.com/orgs/Beam-Network/repositories",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/105/subnet.json",
-          "https://taostats.io/subnets/105/metagraph"
+          "https://subnetradar.com/subnet/105"
         ]
       },
       "review_state": "machine-generated",
@@ -9198,7 +9225,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -9261,7 +9288,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_106/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/106/subnet.json",
           "https://github.com/v0idai/SN106",
-          "https://taostats.io/subnets/106/metagraph",
+          "https://subnetradar.com/subnet/106",
           "https://voidai.com/"
         ]
       },
@@ -9280,7 +9307,7 @@
       "team": null
     },
     {
-      "candidate_count": 20,
+      "candidate_count": 21,
       "categories": [
         "baseline-curated"
       ],
@@ -9344,7 +9371,7 @@
           "https://github.com/minos-protocol/minos_subnet",
           "https://github.com/minos-protocol/minos_subnet/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/107/subnet.json",
-          "https://taostats.io/subnets/107/metagraph",
+          "https://subnetradar.com/subnet/107",
           "https://theminos.ai/"
         ]
       },
@@ -9364,7 +9391,7 @@
       "team": null
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-curated"
       ],
@@ -9427,7 +9454,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_108/index.mdx",
           "https://github.com/talkheadai/talkhead-subnet",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/108/subnet.json",
-          "https://taostats.io/subnets/108/metagraph",
+          "https://subnetradar.com/subnet/108",
           "https://www.talkhead.ai/"
         ]
       },
@@ -9446,7 +9473,7 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -9515,8 +9542,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_109/index.mdx",
           "https://github.com/fx-integral/academia",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/109/subnet.json",
-          "https://taomarketcap.com/subnets/109",
-          "https://taostats.io/subnets/109/metagraph"
+          "https://subnetradar.com/subnet/109",
+          "https://taomarketcap.com/subnets/109"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -9533,7 +9560,7 @@
       "team": null
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -9600,8 +9627,8 @@
           "https://github.com/Rich-Kids-of-TAO/rkt-subnet",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_110/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/110/subnet.json",
+          "https://subnetradar.com/subnet/110",
           "https://taomarketcap.com/subnets/110",
-          "https://taostats.io/subnets/110/metagraph",
           "https://www.green-compute.com/"
         ]
       },
@@ -9622,7 +9649,7 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -9693,8 +9720,8 @@
           "https://github.com/oneoneone-io/subnet-111",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/111/subnet.json",
           "https://oneoneone.io/",
-          "https://taomarketcap.com/subnets/111",
-          "https://taostats.io/subnets/111/metagraph"
+          "https://subnetradar.com/subnet/111",
+          "https://taomarketcap.com/subnets/111"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -9712,7 +9739,7 @@
       "team": null
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -9738,10 +9765,10 @@
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 7,
+      "endpoint_count": 8,
       "interface_count": 4,
       "missing_critical_count": 4,
-      "monitored_endpoint_count": 7,
+      "monitored_endpoint_count": 8,
       "name": "minotaur",
       "native_name": "minotaur",
       "native_name_quality": "chain",
@@ -9776,7 +9803,7 @@
           "https://github.com/subnet112/minotaur_subnet",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/112/subnet.json",
           "https://minotaursubnet.com/",
-          "https://taostats.io/subnets/112/metagraph"
+          "https://subnetradar.com/subnet/112"
         ]
       },
       "review_state": "machine-generated",
@@ -9789,12 +9816,12 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 7,
+      "surface_count": 8,
       "symbol": "Ђ",
       "team": null
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -9865,8 +9892,8 @@
           "https://github.com/TensorUSD/subnet/blob/main/README.md",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_113/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/113/subnet.json",
+          "https://subnetradar.com/subnet/113",
           "https://taomarketcap.com/subnets/113",
-          "https://taostats.io/subnets/113/metagraph",
           "https://tensorusd.com/"
         ]
       },
@@ -9885,7 +9912,7 @@
       "team": null
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "categories": [
         "baseline-curated"
       ],
@@ -9948,7 +9975,7 @@
           "https://github.com/DendriteHQ/SOMA",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_114/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/114/subnet.json",
-          "https://taostats.io/subnets/114/metagraph",
+          "https://subnetradar.com/subnet/114",
           "https://thesoma.ai/"
         ]
       },
@@ -9968,7 +9995,7 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -10037,8 +10064,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_115/index.mdx",
           "https://github.com/hashi115/hashichain",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/115/subnet.json",
-          "https://taomarketcap.com/subnets/115",
-          "https://taostats.io/subnets/115/metagraph"
+          "https://subnetradar.com/subnet/115",
+          "https://taomarketcap.com/subnets/115"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -10055,21 +10082,25 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "defi",
+        "identity-reviewed",
+        "lending",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-source-repo",
-          "missing-website",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 6,
+        "missing_critical_count": 5,
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -10077,68 +10108,69 @@
           "data-artifact"
         ],
         "missing_required": [
-          "source-repo",
-          "website"
+          "source-repo"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 40
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 5,
-      "interface_count": 2,
-      "missing_critical_count": 6,
-      "monitored_endpoint_count": 5,
-      "name": "hard_sign",
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 6,
+      "interface_count": 3,
+      "missing_critical_count": 5,
+      "monitored_endpoint_count": 6,
+      "name": "TaoLend",
       "native_name": "hard_sign",
       "native_name_quality": "chain",
       "netuid": 116,
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-116-taopedia-article",
-        "kind": "docs",
-        "name": "hard_sign Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_116/index.mdx"
+        "id": "sn-116-taolend-website",
+        "kind": "website",
+        "name": "TaoLend website",
+        "provider": "taolend",
+        "url": "https://taolend.io/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/116-hard-sign",
         "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_116/index.mdx",
         "source_repo": null,
-        "website_url": null
+        "website_url": "https://taolend.io/"
       },
       "profile_level": "directory-only",
-      "project_name": "hard_sign",
+      "project_name": "TaoLend",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 5,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 6,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T14:15:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/116",
           "https://backprop.finance/dtao/subnets/116-hard-sign",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_116/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/116/subnet.json",
-          "https://taostats.io/subnets/116/metagraph"
+          "https://subnetradar.com/subnet/116",
+          "https://taolend.io/"
         ]
       },
-      "review_state": "machine-generated",
-      "slug": "sn-116",
+      "review_state": "maintainer-reviewed",
+      "slug": "taolend",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs"
+        "docs",
+        "website"
       ],
-      "surface_count": 5,
+      "surface_count": 6,
       "symbol": "ъ",
       "team": null
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -10206,8 +10238,8 @@
           "https://github.com/shiftlayer-llc/brainplay-subnet",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/117/subnet.json",
           "https://play.shiftlayer.ai/",
-          "https://taomarketcap.com/subnets/117",
-          "https://taostats.io/subnets/117/metagraph"
+          "https://subnetradar.com/subnet/117",
+          "https://taomarketcap.com/subnets/117"
         ]
       },
       "review_state": "needs-review",
@@ -10225,7 +10257,7 @@
       "team": null
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-curated"
       ],
@@ -10289,7 +10321,7 @@
           "https://github.com/orgs/ditto-assistant/repositories",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/118/subnet.json",
           "https://heyditto.ai/",
-          "https://taostats.io/subnets/118/metagraph"
+          "https://subnetradar.com/subnet/118"
         ]
       },
       "review_state": "machine-generated",
@@ -10307,7 +10339,7 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-curated"
       ],
@@ -10374,7 +10406,7 @@
           "https://backprop.finance/dtao/subnets/119-satori",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_119/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/119/subnet.json",
-          "https://taostats.io/subnets/119/metagraph"
+          "https://subnetradar.com/subnet/119"
         ]
       },
       "review_state": "machine-generated",
@@ -10390,7 +10422,7 @@
       "team": null
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -10444,7 +10476,7 @@
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 8,
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_urls": [
@@ -10454,6 +10486,7 @@
           "https://github.com/AffineFoundation/affine/blob/main/README.md",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_120/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/120/subnet.json",
+          "https://subnetradar.com/subnet/120",
           "https://www.affine.io/"
         ]
       },
@@ -10472,7 +10505,7 @@
       "team": null
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -10539,8 +10572,8 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_121/index.mdx",
           "https://github.com/sundae-bar/bittensor-subnet",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/121/subnet.json",
+          "https://subnetradar.com/subnet/121",
           "https://taomarketcap.com/subnets/121",
-          "https://taostats.io/subnets/121/metagraph",
           "https://www.sundaebar.ai/"
         ]
       },
@@ -10559,7 +10592,7 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -10630,8 +10663,8 @@
           "https://github.com/bitrecs/bitrecs-subnet",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_122/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/122/subnet.json",
+          "https://subnetradar.com/subnet/122",
           "https://taomarketcap.com/subnets/122",
-          "https://taostats.io/subnets/122/metagraph",
           "https://www.bitrecs.ai/"
         ]
       },
@@ -10650,7 +10683,7 @@
       "team": null
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -10719,8 +10752,8 @@
           "https://github.com/Barbariandev/MANTIS",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_123/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/123/subnet.json",
-          "https://taomarketcap.com/subnets/123",
-          "https://taostats.io/subnets/123/metagraph"
+          "https://subnetradar.com/subnet/123",
+          "https://taomarketcap.com/subnets/123"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -10737,7 +10770,7 @@
       "team": null
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -10791,7 +10824,7 @@
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 8,
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_urls": [
@@ -10801,6 +10834,7 @@
           "https://github.com/swarm-subnet/swarm",
           "https://github.com/swarm-subnet/swarm/blob/main/README.md",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/124/subnet.json",
+          "https://subnetradar.com/subnet/124",
           "https://www.swarm124.com/"
         ]
       },
@@ -10820,7 +10854,7 @@
       "team": null
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -10887,7 +10921,7 @@
           "https://backprop.finance/dtao/subnets/125-8-ball",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_125/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/125/subnet.json",
-          "https://taostats.io/subnets/125/metagraph"
+          "https://subnetradar.com/subnet/125"
         ]
       },
       "review_state": "machine-generated",
@@ -10903,7 +10937,7 @@
       "team": null
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -10967,7 +11001,7 @@
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_126/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/126/subnet.json",
           "https://poker44.net/",
-          "https://taostats.io/subnets/126/metagraph"
+          "https://subnetradar.com/subnet/126"
         ]
       },
       "review_state": "machine-generated",
@@ -10985,7 +11019,7 @@
       "team": null
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -11048,7 +11082,7 @@
           "https://github.com/astridintelligence/sn-127",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_127/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/127/subnet.json",
-          "https://taostats.io/subnets/127/metagraph",
+          "https://subnetradar.com/subnet/127",
           "https://www.astrid.global/"
         ]
       },
@@ -11067,7 +11101,7 @@
       "team": null
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -11131,7 +11165,7 @@
           "https://github.com/byteleapai/byteleap-Miner",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_128/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/128/subnet.json",
-          "https://taostats.io/subnets/128/metagraph"
+          "https://subnetradar.com/subnet/128"
         ]
       },
       "review_state": "machine-generated",
@@ -11152,11 +11186,11 @@
   ],
   "schema_version": 1,
   "summary": {
-    "average_completeness_score": 53,
+    "average_completeness_score": 54,
     "by_confidence": {
-      "high": 58,
+      "high": 62,
       "low": 5,
-      "medium": 66
+      "medium": 62
     },
     "by_profile_level": {
       "adapter-backed": 2,

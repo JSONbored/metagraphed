@@ -1,5 +1,5 @@
 {
-  "candidate_count": 1891,
+  "candidate_count": 2018,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "notes": "Compact promotion snapshot for deterministic Git review. Full latency, timestamp, and probe-detail rows are staged for R2 during refresh/publish runs.",
   "results": [
@@ -13,6 +13,27 @@
       "netuid": 0,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-0-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 0,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -127,6 +148,27 @@
         "transient_failure": false
       },
       "redirect_target": "https://docs.macrocosmos.ai/",
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-1-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 1,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -588,6 +630,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-2-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 2,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-2-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -857,6 +920,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-3-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 3,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-3-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -967,6 +1051,27 @@
       "netuid": 4,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-4-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 4,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -1269,6 +1374,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-4-website-link-targon-com-docs-4",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 4,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-4-website-link-targon-com-docs-9",
       "classification": "live",
       "confidence_score": 76,
@@ -1437,27 +1563,6 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-4-website-subdomain-docs-docs-targon-com",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 4,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "status": "ok"
-    },
-    {
       "candidate_id": "sn-5-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -1467,6 +1572,27 @@
       "netuid": 5,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-5-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 5,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -1853,6 +1979,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-6-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 6,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-6-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -2227,6 +2374,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-7-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 7,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-7-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -2484,6 +2652,27 @@
       "netuid": 8,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-8-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 8,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -2868,6 +3057,27 @@
       },
       "redirect_target": null,
       "status": "failed"
+    },
+    {
+      "candidate_id": "sn-9-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
     },
     {
       "candidate_id": "sn-9-taomarketcap-dashboard",
@@ -3286,26 +3496,6 @@
       "status": "failed"
     },
     {
-      "candidate_id": "sn-9-website-subdomain-docs-docs-iota-macrocosmos-ai",
-      "classification": "unsupported",
-      "confidence_score": 23,
-      "content_type": null,
-      "error": "probe-failed",
-      "kind": "docs",
-      "netuid": 9,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "failed"
-    },
-    {
       "candidate_id": "sn-10-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -3315,6 +3505,27 @@
       "netuid": 10,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-10-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 10,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -3575,6 +3786,27 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-10-website-subdomain-docs-docs-taofi-com",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 10,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-11-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -3584,6 +3816,27 @@
       "netuid": 11,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-11-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 11,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -3970,6 +4223,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-12-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 12,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-12-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -4152,6 +4426,27 @@
       },
       "redirect_target": null,
       "status": "failed"
+    },
+    {
+      "candidate_id": "sn-13-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 13,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
     },
     {
       "candidate_id": "sn-13-taomarketcap-dashboard",
@@ -4612,6 +4907,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-14-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 14,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-14-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -5003,6 +5319,27 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-15-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 15,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-15-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -5377,6 +5714,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-16-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 16,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-16-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -5661,6 +6019,27 @@
         "rate_limited": false,
         "redirected": false,
         "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-17-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 17,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
         "transient_failure": false
       },
       "redirect_target": null,
@@ -6025,6 +6404,27 @@
       "netuid": 18,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-18-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 18,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -6426,6 +6826,27 @@
         "rate_limited": false,
         "redirected": false,
         "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-19-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 19,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
         "transient_failure": false
       },
       "redirect_target": null,
@@ -6890,6 +7311,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-20-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 20,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-20-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -7192,6 +7634,27 @@
       "netuid": 21,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-21-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 21,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -7683,6 +8146,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-22-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 22,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-22-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -7994,6 +8478,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-23-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 23,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-23-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -8259,10 +8764,10 @@
       "status": "failed"
     },
     {
-      "candidate_id": "sn-23-website-link-trishool-ai-docs-2",
+      "candidate_id": "sn-23-website-link-trishool-ai-docs-1",
       "classification": "live",
-      "confidence_score": 68,
-      "content_type": "application/pdf",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
       "netuid": 23,
@@ -8280,10 +8785,10 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-23-website-subdomain-docs-docs-trishool-ai",
+      "candidate_id": "sn-23-website-link-trishool-ai-docs-2",
       "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "confidence_score": 68,
+      "content_type": "application/pdf",
       "error": null,
       "kind": "docs",
       "netuid": 23,
@@ -8337,6 +8842,27 @@
         "rate_limited": false,
         "redirected": false,
         "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-24-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 24,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
         "transient_failure": false
       },
       "redirect_target": null,
@@ -8738,6 +9264,27 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-25-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 25,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-25-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -8986,6 +9533,27 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-25-website-link-macrocosmos-ai-docs-3",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 25,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-25-website-link-macrocosmos-ai-docs-6",
       "classification": "redirected",
       "confidence_score": 71,
@@ -9112,27 +9680,6 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-25-website-subdomain-docs-docs-macrocosmos-ai",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 25,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "status": "ok"
-    },
-    {
       "candidate_id": "sn-26-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -9142,6 +9689,27 @@
       "netuid": 26,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-26-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 26,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -9506,6 +10074,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-27-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 27,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-27-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -9750,26 +10339,6 @@
       "status": "failed"
     },
     {
-      "candidate_id": "sn-27-website-subdomain-docs-docs-nodexo-ai",
-      "classification": "unsupported",
-      "confidence_score": 23,
-      "content_type": null,
-      "error": "probe-failed",
-      "kind": "docs",
-      "netuid": 27,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "status": "failed"
-    },
-    {
       "candidate_id": "sn-28-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -9779,6 +10348,27 @@
       "netuid": 28,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-28-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 28,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -9896,6 +10486,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-29-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 29,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-29-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -9919,18 +10530,21 @@
     {
       "candidate_id": "sn-29-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 29,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -9999,18 +10613,21 @@
     {
       "candidate_id": "sn-29-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 29,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -10023,6 +10640,27 @@
       "netuid": 30,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-30-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 30,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -10329,6 +10967,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-31-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 31,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-31-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -10434,6 +11093,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-32-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 32,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-32-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -10457,18 +11137,21 @@
     {
       "candidate_id": "sn-32-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 32,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -10892,27 +11575,6 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-32-website-subdomain-docs-docs-its-ai-org",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 32,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "status": "ok"
-    },
-    {
       "candidate_id": "sn-33-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -10976,6 +11638,27 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-33-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 33,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-33-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -10999,18 +11682,21 @@
     {
       "candidate_id": "sn-33-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 33,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -11098,6 +11784,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-34-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 34,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-34-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -11121,18 +11828,21 @@
     {
       "candidate_id": "sn-34-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 34,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -11220,6 +11930,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-35-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 35,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-35-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -11243,18 +11974,21 @@
     {
       "candidate_id": "sn-35-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 35,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -11344,18 +12078,21 @@
     {
       "candidate_id": "sn-35-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 35,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -11485,6 +12222,27 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 35,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-36-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -11494,6 +12252,27 @@
       "netuid": 36,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-36-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 36,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -11529,18 +12308,21 @@
     {
       "candidate_id": "sn-36-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 36,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -11859,6 +12641,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-37-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 37,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-37-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -11882,18 +12685,21 @@
     {
       "candidate_id": "sn-37-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 37,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -12233,6 +13039,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-38-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 38,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-38-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -12255,20 +13082,23 @@
     },
     {
       "candidate_id": "sn-38-taomarketcap-source-repo",
-      "classification": "unsupported",
-      "confidence_score": 20,
+      "classification": "live",
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 38,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": true,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
-      "status": "failed"
+      "redirect_target": null,
+      "status": "ok"
     },
     {
       "candidate_id": "sn-38-taomarketcap-website",
@@ -12502,6 +13332,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-39-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 39,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-39-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -12607,19 +13458,22 @@
     },
     {
       "candidate_id": "sn-39-tensorplex-source-repo-1",
-      "classification": "live",
-      "confidence_score": 80,
+      "classification": "redirected",
+      "confidence_score": 50,
       "error": null,
       "kind": "source-repo",
       "netuid": 39,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": "https://github.com/one-covenant/basilica",
       "status": "ok"
     },
     {
@@ -12632,6 +13486,27 @@
       "netuid": 40,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-40-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 40,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -12769,6 +13644,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-41-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 41,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-41-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -12792,18 +13688,21 @@
     {
       "candidate_id": "sn-41-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 41,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -13059,6 +13958,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-42-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 42,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-42-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -13164,6 +14084,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-43-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 43,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-43-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -13187,18 +14128,21 @@
     {
       "candidate_id": "sn-43-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 43,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -13286,6 +14230,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-44-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 44,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-44-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -13309,18 +14274,21 @@
     {
       "candidate_id": "sn-44-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 44,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -13410,18 +14378,21 @@
     {
       "candidate_id": "sn-44-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 44,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -13593,6 +14564,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-45-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 45,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-45-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -13616,18 +14608,21 @@
     {
       "candidate_id": "sn-45-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 45,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -14111,6 +15106,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-46-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 46,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-46-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -14134,18 +15150,21 @@
     {
       "candidate_id": "sn-46-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 46,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -14235,35 +15254,41 @@
     {
       "candidate_id": "sn-46-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 46,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
       "candidate_id": "sn-46-tensorplex-source-repo-2",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 46,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -14451,7 +15476,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://accounts.google.com/v3/signin/identifier?opparams=%253F&dsh=S942905491%3A1780924533297355&client_id=327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com&code_challenge=zGToScs4R1T7ex5LEZtaBt7RaKsGSyqmUbc5IdyNxG0&code_challenge_method=S256&nonce=yFuBi3ogykwGoak5JK62HvAjNBHYSicmkQvLSTc8KFM&o2v=2&prompt=select_account&redirect_uri=https%3A%2F%2Fzipcode.ai%2Fapi%2Fportal-auth%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+profile&service=lso&state=JP2kw3EFPvZQevuGIACR8HiL8zNpA5MYYRYD9zW6Rqo&flowName=GeneralOAuthLite&continue=https%3A%2F%2Faccounts.google.com%2Fsignin%2Foauth%2Flegacy%2Fconsent%3Fauthuser%3Dunknown%26part%3DAJi8hAPdfsFH9Nlywlb0fjHozHFqxzNLkM9m7qlp0CjwXAb72cQy9892pE9rkdAHJdiPeByIb1GOJYEyzmnKb658GnqCYMUwBOaJTvNrhKkTqQoa10GdZS3Nd7RLCK1bL0k3F1_4M1N7GaY7Ooh80VshPalfj9y1Far6WXu176b5Qu4d2TmzPUpYljDn87ZN0mjchKHeDLy5M5ucat1InqD9qw2j8GpoB3jph9J1xWa1xmvom38jiSUUJLwjd3QyXxM4rfA-JTjPq3BBQgdr5ETRfYntW2gaBn-aQVoW4ICRI4P54mgyeNAc8UU6WDhhl1r_Ew2s84w4Wgwh5cqUSukWO5fIBr2DHvTMbn8IEHC-cW6y9gNORTrBQNiYOAQp8VgAUDdxfMs5LPZBls26wt1vgyFMyA3ZA8ijDWbaK4on3vVUoBTIickW6rJz2duHuaCsVTfuBQaFWR2lWu3ZRuUJiMPGdjKeGA%26flowName%3DGeneralOAuthFlow%26as%3DS942905491%253A1780924533297355%26client_id%3D327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com%23&app_domain=https%3A%2F%2Fzipcode.ai&rart=ANgoxcduLdkaO2R_2iIyReI-doSVEqpImmzvdCwdALFAGus5xQsL0-KHJXvVP9lX7DxuYF5trCqLr_DVLKUO1Tr95g5z5rPQ4b0oTriZJ9cmc41msprjAWA",
+      "redirect_target": "https://accounts.google.com/v3/signin/identifier?opparams=%253F&dsh=S-165979954%3A1780927900000092&client_id=327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com&code_challenge=NybiCUinNQrqWDW1gZ9EZVkh462QXgIwN361WZcT3dw&code_challenge_method=S256&nonce=yIqKJtnoIIA_K6PmFLkBkPyClHvMvgtOvEbfKUJjvP0&o2v=2&prompt=select_account&redirect_uri=https%3A%2F%2Fzipcode.ai%2Fapi%2Fportal-auth%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+profile&service=lso&state=EKPG6nN-P5iQwZUu5ZSh5u7CjKkJWpuFpKjbmhU1PDk&flowName=GeneralOAuthLite&continue=https%3A%2F%2Faccounts.google.com%2Fsignin%2Foauth%2Flegacy%2Fconsent%3Fauthuser%3Dunknown%26part%3DAJi8hAObtNeYJIh6n3Oq3SHdSpeUyJrLF0SPsPXpmyzpmRXzQekQDnvYVfjbFVpCsov0QrC7Om89i137XrLVm7sgPZ0TlpDO7XyXaTH2OParYdaz8-Pk8MrYu_GxmI-Nyr4YGhhlu_IAvSufDJexn_SlNn_MsFBu65PPsi3XIKX7yixy0OHnGcahAmHOYPOOy_UHRFN5K5j8ojZtGCVIghzdBGNXLif9vXzb3SBVOHk2jRG6eGkIG_1QipLlDC218cSJFAsUCNCqW7d_zRewGNgHrRGou1U2eSXckgBJ1CEP8nVwzLCV9vIdxG6ZBp8lAmX9XtyJ_bDL7KjqpsBaA2qjL94hQZ2la5B7R3hMgVHQLqI0X_r5qDYXVvDM0zX0O-oDw8yo1tHhrN6SErQLu4BLse5rFeRzbosD1nSlPqjBw-X6NM5wThBMz1lUwQlUHCS2JuDNNBt-1GyXJk1FYPL5kmlR6npY5w%26flowName%3DGeneralOAuthFlow%26as%3DS-165979954%253A1780927900000092%26client_id%3D327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com%23&app_domain=https%3A%2F%2Fzipcode.ai&rart=ANgoxcf7fuzMQPI8VQoQO2dEnBZf7vw_H4-yhj6JxR07hrhMALLtYZKl_bTN4zHTlZFc3bdz3UPnxlBpUCToHgdzxmURcJoknbtOw6l0RaenlvZdUxlUx9A",
       "status": "ok"
     },
     {
@@ -14539,6 +15564,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-47-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 47,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-47-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -14561,19 +15607,22 @@
     },
     {
       "candidate_id": "sn-47-taomarketcap-source-repo",
-      "classification": "live",
-      "confidence_score": 80,
+      "classification": "redirected",
+      "confidence_score": 54,
       "error": null,
       "kind": "source-repo",
       "netuid": 47,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": "https://github.com/openevolai/evolai",
       "status": "ok"
     },
     {
@@ -14642,18 +15691,21 @@
     {
       "candidate_id": "sn-47-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 47,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -14666,6 +15718,27 @@
       "netuid": 48,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-48-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 48,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -14701,18 +15774,21 @@
     {
       "candidate_id": "sn-48-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 48,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -15198,6 +16274,27 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-49-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 49,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-49-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -15221,18 +16318,21 @@
     {
       "candidate_id": "sn-49-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 49,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -15481,6 +16581,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-50-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 50,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-50-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -15503,19 +16624,22 @@
     },
     {
       "candidate_id": "sn-50-taomarketcap-source-repo",
-      "classification": "live",
-      "confidence_score": 80,
+      "classification": "redirected",
+      "confidence_score": 54,
       "error": null,
       "kind": "source-repo",
       "netuid": 50,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": "https://github.com/synthdataco/synth-subnet",
       "status": "ok"
     },
     {
@@ -15771,6 +16895,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-51-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 51,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-51-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -15794,18 +16939,21 @@
     {
       "candidate_id": "sn-51-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 51,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -16271,6 +17419,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-52-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 52,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-52-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -16294,18 +17463,21 @@
     {
       "candidate_id": "sn-52-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 52,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -16394,35 +17566,41 @@
     {
       "candidate_id": "sn-52-tensorplex-source-repo-3",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 52,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
       "candidate_id": "sn-52-tensorplex-source-repo-4",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 52,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -16435,6 +17613,27 @@
       "netuid": 53,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-53-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 53,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -16593,6 +17792,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-54-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 54,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-54-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -16616,18 +17836,21 @@
     {
       "candidate_id": "sn-54-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 54,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -16892,6 +18115,27 @@
       "netuid": 55,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-55-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 55,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -17260,6 +18504,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-56-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 56,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-56-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -17283,18 +18548,21 @@
     {
       "candidate_id": "sn-56-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 56,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -17383,19 +18651,22 @@
     },
     {
       "candidate_id": "sn-56-tensorplex-source-repo-1",
-      "classification": "live",
-      "confidence_score": 80,
+      "classification": "redirected",
+      "confidence_score": 50,
       "error": null,
       "kind": "source-repo",
       "netuid": 56,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": "https://github.com/gradients-ai/G.O.D",
       "status": "ok"
     },
     {
@@ -17756,6 +19027,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-57-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 57,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-57-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -17842,18 +19134,21 @@
     {
       "candidate_id": "sn-57-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 57,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -17914,6 +19209,27 @@
         "rate_limited": false,
         "redirected": false,
         "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-58-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 58,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
         "transient_failure": false
       },
       "redirect_target": null,
@@ -18006,18 +19322,21 @@
     {
       "candidate_id": "sn-58-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 58,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -18063,6 +19382,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-59-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 59,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-59-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -18086,18 +19426,21 @@
     {
       "candidate_id": "sn-59-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 59,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -18437,6 +19780,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-60-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 60,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-60-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -18460,18 +19824,21 @@
     {
       "candidate_id": "sn-60-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 60,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -18768,6 +20135,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-61-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 61,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-61-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -18791,18 +20179,21 @@
     {
       "candidate_id": "sn-61-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 61,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -19037,6 +20428,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-62-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 62,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-62-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -19060,18 +20472,21 @@
     {
       "candidate_id": "sn-62-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 62,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -19285,27 +20700,6 @@
       "status": "failed"
     },
     {
-      "candidate_id": "sn-62-website-subdomain-docs-docs-ridges-ai",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 62,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "status": "ok"
-    },
-    {
       "candidate_id": "sn-63-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -19315,6 +20709,27 @@
       "netuid": 63,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-63-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 63,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -19350,18 +20765,21 @@
     {
       "candidate_id": "sn-63-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 63,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -19867,6 +21285,27 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-64-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 64,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-64-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -19890,18 +21329,21 @@
     {
       "candidate_id": "sn-64-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 64,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -19990,36 +21432,42 @@
     },
     {
       "candidate_id": "sn-64-tensorplex-source-repo-1",
-      "classification": "live",
-      "confidence_score": 80,
+      "classification": "redirected",
+      "confidence_score": 50,
       "error": null,
       "kind": "source-repo",
       "netuid": 64,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": "https://github.com/chutesai/chutes-miner",
       "status": "ok"
     },
     {
       "candidate_id": "sn-64-tensorplex-source-repo-2",
-      "classification": "live",
-      "confidence_score": 80,
+      "classification": "redirected",
+      "confidence_score": 50,
       "error": null,
       "kind": "source-repo",
       "netuid": 64,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": "https://github.com/chutesai/chutes",
       "status": "ok"
     },
     {
@@ -20380,6 +21828,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-65-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 65,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-65-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -20403,18 +21872,21 @@
     {
       "candidate_id": "sn-65-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 65,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -20775,6 +22247,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-66-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 66,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-66-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -20798,18 +22291,21 @@
     {
       "candidate_id": "sn-66-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 66,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -21128,6 +22624,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-67-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 67,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-67-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -21235,18 +22752,21 @@
     {
       "candidate_id": "sn-67-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 67,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -21439,6 +22959,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-68-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 68,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-68-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -21462,18 +23003,21 @@
     {
       "candidate_id": "sn-68-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 68,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -21813,6 +23357,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-69-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 69,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-69-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -21918,6 +23483,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-70-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 70,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-70-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -21941,18 +23527,21 @@
     {
       "candidate_id": "sn-70-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 70,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -22292,6 +23881,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-71-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 71,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-71-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -22315,18 +23925,21 @@
     {
       "candidate_id": "sn-71-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 71,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -22582,6 +24195,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-72-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 72,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-72-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -22605,18 +24239,21 @@
     {
       "candidate_id": "sn-72-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 72,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -23061,6 +24698,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-73-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 73,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-73-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -23228,6 +24886,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-74-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 74,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-74-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -23251,18 +24930,21 @@
     {
       "candidate_id": "sn-74-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 74,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -23352,18 +25034,21 @@
     {
       "candidate_id": "sn-74-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 74,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -23514,6 +25199,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-75-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 75,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-75-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -23537,18 +25243,21 @@
     {
       "candidate_id": "sn-75-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 75,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -23638,35 +25347,41 @@
     {
       "candidate_id": "sn-75-tensorplex-source-repo-2",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 75,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
       "candidate_id": "sn-75-tensorplex-source-repo-3",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 75,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -24027,6 +25742,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-76-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 76,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-76-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -24300,6 +26036,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-77-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 77,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-77-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -24323,18 +26080,21 @@
     {
       "candidate_id": "sn-77-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 77,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -24569,6 +26329,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-78-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 78,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-78-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -24592,18 +26373,21 @@
     {
       "candidate_id": "sn-78-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 78,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -24714,18 +26498,21 @@
     {
       "candidate_id": "sn-78-tensorplex-source-repo-2",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 78,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -24897,6 +26684,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-79-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 79,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-79-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -25004,18 +26812,21 @@
     {
       "candidate_id": "sn-79-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 79,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -25396,6 +27207,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-80-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-80-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -25419,18 +27251,21 @@
     {
       "candidate_id": "sn-80-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 80,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -25707,6 +27542,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-81-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 81,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-81-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -25812,19 +27668,22 @@
     },
     {
       "candidate_id": "sn-81-tensorplex-source-repo-1",
-      "classification": "live",
-      "confidence_score": 80,
+      "classification": "redirected",
+      "confidence_score": 50,
       "error": null,
       "kind": "source-repo",
       "netuid": 81,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": "https://github.com/one-covenant/grail",
       "status": "ok"
     },
     {
@@ -25837,6 +27696,27 @@
       "netuid": 82,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-82-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -25872,18 +27752,21 @@
     {
       "candidate_id": "sn-82-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 82,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -25973,18 +27856,21 @@
     {
       "candidate_id": "sn-82-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 82,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -26366,6 +28252,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-83-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 83,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-83-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -26389,18 +28296,21 @@
     {
       "candidate_id": "sn-83-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 83,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -26635,6 +28545,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-84-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 84,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-84-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -26721,35 +28652,41 @@
     {
       "candidate_id": "sn-84-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 84,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
       "candidate_id": "sn-84-tensorplex-source-repo-2",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 84,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -26762,6 +28699,27 @@
       "netuid": 85,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-85-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 85,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -26797,18 +28755,21 @@
     {
       "candidate_id": "sn-85-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 85,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -27211,6 +29172,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-86-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 86,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-86-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -27304,6 +29286,27 @@
       "netuid": 87,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-87-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 87,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -27463,6 +29466,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-88-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 88,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-88-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -27486,18 +29510,21 @@
     {
       "candidate_id": "sn-88-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 88,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -27795,6 +29822,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-89-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 89,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-89-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -27818,18 +29866,21 @@
     {
       "candidate_id": "sn-89-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 89,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -28064,6 +30115,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-90-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 90,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-90-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -28157,6 +30229,27 @@
       "netuid": 91,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-91-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 91,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -28526,6 +30619,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-92-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 92,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-92-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -28671,6 +30785,27 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-93-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 93,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-93-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -28694,18 +30829,21 @@
     {
       "candidate_id": "sn-93-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 93,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -29045,6 +31183,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-94-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 94,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-94-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -29068,18 +31227,21 @@
     {
       "candidate_id": "sn-94-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 94,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -29365,6 +31527,27 @@
       "netuid": 95,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-95-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 95,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -29733,6 +31916,27 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-96-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 96,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-96-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -29756,18 +31960,21 @@
     {
       "candidate_id": "sn-96-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 96,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -29857,18 +32064,21 @@
     {
       "candidate_id": "sn-96-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 96,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -30040,6 +32250,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-97-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 97,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-97-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -30063,18 +32294,21 @@
     {
       "candidate_id": "sn-97-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 97,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -30164,18 +32398,21 @@
     {
       "candidate_id": "sn-97-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 97,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -30347,6 +32584,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-98-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 98,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-98-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -30370,18 +32628,21 @@
     {
       "candidate_id": "sn-98-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 98,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -30636,6 +32897,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-98-website-link-forevermoney-ai-docs-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 98,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-98-website-link-forevermoney-ai-website-3",
       "classification": "live",
       "confidence_score": 76,
@@ -30741,27 +33023,6 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-98-website-subdomain-docs-docs-forevermoney-ai",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 98,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "status": "ok"
-    },
-    {
       "candidate_id": "sn-99-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -30825,6 +33086,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-99-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 99,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-99-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -30848,18 +33130,21 @@
     {
       "candidate_id": "sn-99-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 99,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -30949,18 +33234,21 @@
     {
       "candidate_id": "sn-99-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 99,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -31111,6 +33399,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-100-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 100,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-100-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -31134,18 +33443,21 @@
     {
       "candidate_id": "sn-100-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 100,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -31234,19 +33546,22 @@
     },
     {
       "candidate_id": "sn-100-tensorplex-source-repo-1",
-      "classification": "live",
-      "confidence_score": 80,
+      "classification": "redirected",
+      "confidence_score": 50,
       "error": null,
       "kind": "source-repo",
       "netuid": 100,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": true,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": "https://github.com/PlatformNetwork/platform",
       "status": "ok"
     },
     {
@@ -31502,6 +33817,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-101-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 101,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-101-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -31628,6 +33964,27 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-102-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 102,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-102-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -31651,18 +34008,21 @@
     {
       "candidate_id": "sn-102-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 102,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -31981,6 +34341,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-103-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 103,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-103-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -32004,18 +34385,21 @@
     {
       "candidate_id": "sn-103-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 103,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -32418,27 +34802,6 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-103-website-subdomain-docs-docs-djinn-gg",
-      "classification": "dead",
-      "confidence_score": 0,
-      "content_type": "text/html",
-      "error": null,
-      "kind": "docs",
-      "netuid": 103,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "status": "failed"
-    },
-    {
       "candidate_id": "sn-104-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -32448,6 +34811,27 @@
       "netuid": 104,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-104-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 104,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -32553,6 +34937,27 @@
       "netuid": 105,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-105-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 105,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -32837,6 +35242,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-106-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 106,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-106-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -32860,18 +35286,21 @@
     {
       "candidate_id": "sn-106-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 106,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -33147,6 +35576,27 @@
       "status": "failed"
     },
     {
+      "candidate_id": "sn-107-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 107,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-107-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -33170,18 +35620,21 @@
     {
       "candidate_id": "sn-107-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 107,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -33271,18 +35724,21 @@
     {
       "candidate_id": "sn-107-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 107,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -33517,6 +35973,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-108-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 108,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-108-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -33540,18 +36017,21 @@
     {
       "candidate_id": "sn-108-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 108,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -33912,6 +36392,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-109-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 109,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-109-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -33935,18 +36436,21 @@
     {
       "candidate_id": "sn-109-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 109,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -34022,6 +36526,27 @@
       "netuid": 110,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-110-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 110,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -34141,18 +36666,21 @@
     {
       "candidate_id": "sn-110-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 110,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -34513,6 +37041,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-111-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 111,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-111-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -34536,18 +37085,21 @@
     {
       "candidate_id": "sn-111-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 111,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -34635,6 +37187,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-112-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 112,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-112-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -34658,18 +37231,21 @@
     {
       "candidate_id": "sn-112-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 112,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -34904,6 +37480,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-112-website-subdomain-docs-docs-minotaursubnet-com",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "docs",
+      "netuid": 112,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-113-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -34946,6 +37543,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-113-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 113,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-113-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -34969,18 +37587,21 @@
     {
       "candidate_id": "sn-113-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 113,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -35320,6 +37941,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-114-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 114,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-114-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -35343,18 +37985,21 @@
     {
       "candidate_id": "sn-114-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 114,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -35444,18 +38089,21 @@
     {
       "candidate_id": "sn-114-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 114,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -35753,6 +38401,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-115-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 115,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-115-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -35863,6 +38532,27 @@
       "netuid": 116,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-116-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 116,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -35988,6 +38678,27 @@
       "netuid": 117,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-117-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 117,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -36158,6 +38869,27 @@
       },
       "redirect_target": null,
       "status": "failed"
+    },
+    {
+      "candidate_id": "sn-118-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 118,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
     },
     {
       "candidate_id": "sn-118-taomarketcap-dashboard",
@@ -36638,6 +39370,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-119-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 119,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-119-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -36778,6 +39531,27 @@
         "rate_limited": false,
         "redirected": false,
         "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-120-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 120,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
         "transient_failure": false
       },
       "redirect_target": null,
@@ -37041,6 +39815,27 @@
       "netuid": 121,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-121-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 121,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -37532,6 +40327,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-122-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 122,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-122-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -37642,6 +40458,27 @@
       "netuid": 123,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-123-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 123,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -37791,6 +40628,27 @@
         "rate_limited": false,
         "redirected": false,
         "source_tier": "community-docs",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-124-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 124,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
         "transient_failure": false
       },
       "redirect_target": null,
@@ -38066,6 +40924,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-125-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 125,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-125-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -38159,6 +41038,27 @@
       "netuid": 126,
       "private_redirect_blocked": false,
       "provider": "backprop-finance",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-126-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 126,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
       "quality_signals": {
         "content_type_matches_kind": true,
         "public_safe": true,
@@ -38524,6 +41424,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-127-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 127,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-127-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -38856,6 +41777,27 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-128-subnetradar-dashboard",
+      "classification": "live",
+      "confidence_score": 77,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 128,
+      "private_redirect_blocked": false,
+      "provider": "subnetradar",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
       "candidate_id": "sn-128-taomarketcap-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -39126,18 +42068,18 @@
     "by_classification": {
       "auth-required": 9,
       "content-mismatch": 46,
-      "dead": 400,
-      "live": 1233,
+      "dead": 399,
+      "live": 1356,
       "rate-limited": 7,
-      "redirected": 159,
+      "redirected": 167,
       "transient": 4,
       "unsafe": 2,
-      "unsupported": 31
+      "unsupported": 28
     },
     "by_kind": {
-      "dashboard": 435,
+      "dashboard": 564,
       "data-artifact": 14,
-      "docs": 426,
+      "docs": 424,
       "openapi": 280,
       "source-repo": 156,
       "subnet-api": 215,
@@ -39147,12 +42089,13 @@
       "allways": 1,
       "backprop-finance": 129,
       "gittensor": 1,
-      "taomarketcap": 1307,
+      "subnetradar": 129,
+      "taomarketcap": 1305,
       "taopedia-articles": 128,
       "taostats": 129,
       "tensorplex-subnet-docs": 196
     },
-    "promotable_count": 1392
+    "promotable_count": 1523
   },
   "verification_finished_at": null,
   "verification_started_at": null

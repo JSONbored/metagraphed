@@ -419,6 +419,16 @@
     },
     {
       "authority": "provider-claimed",
+      "docs_url": "https://docs.nodexo.ai/",
+      "id": "nodexo",
+      "kind": "subnet-team",
+      "name": "Nodexo",
+      "notes": "Provider entry for Nodexo Compute / SN27. Official browser-facing website, docs, and console surfaces are tracked, but simple Node/HEAD probes currently receive connection resets and are not treated as healthy monitored endpoints.",
+      "schema_version": 1,
+      "website_url": "https://nodexo.ai/"
+    },
+    {
+      "authority": "provider-claimed",
       "docs_url": "https://docs.nodies.app/rpc-services/public-endpoints",
       "id": "nodies",
       "kind": "infrastructure-provider",
@@ -531,6 +541,15 @@
       "website_url": "https://play.shiftlayer.ai/"
     },
     {
+      "authority": "provider-claimed",
+      "id": "signalplus",
+      "kind": "subnet-team",
+      "name": "SignalPlus",
+      "notes": "Provider entry for SignalPlus and SN53 EfficientFrontier. The SignalPlus company website is live; the subnet mining surface currently returns an auth/challenge-style response to simple probes.",
+      "schema_version": 1,
+      "website_url": "https://www.signalplus.com/"
+    },
+    {
       "authority": "official",
       "github_url": "https://github.com/SILX-LABS/QUASAR-SUBNET",
       "id": "silx-labs",
@@ -551,6 +570,16 @@
       "website_url": "https://sparket.ai/"
     },
     {
+      "authority": "provider-claimed",
+      "docs_url": "https://subnetradar.com/about",
+      "id": "subnetradar",
+      "kind": "data-provider",
+      "name": "SubnetRadar",
+      "notes": "Third-party Bittensor subnet analytics and risk/health dashboard. Tracked as dashboard enrichment only; Metagraphed's endpoint health remains probe-derived from our own monitors.",
+      "schema_version": 1,
+      "website_url": "https://subnetradar.com/"
+    },
+    {
       "authority": "official",
       "github_url": "https://github.com/sundae-bar/bittensor-subnet",
       "id": "sundae-bar",
@@ -569,6 +598,15 @@
       "notes": "Provider entry for Talisman AI SN45 website and source repository.",
       "schema_version": 1,
       "website_url": "https://ai.talisman.xyz/"
+    },
+    {
+      "authority": "provider-claimed",
+      "id": "taolend",
+      "kind": "subnet-team",
+      "name": "TaoLend",
+      "notes": "Provider entry for TaoLend / SN116. The official website is tracked with probe-derived degraded status when it returns server errors.",
+      "schema_version": 1,
+      "website_url": "https://taolend.io/"
     },
     {
       "authority": "provider-claimed",

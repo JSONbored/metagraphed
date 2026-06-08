@@ -54,6 +54,7 @@ await discoverFromTaopediaArticles();
 await discoverUniversalTaoMarketCapDashboards();
 await discoverUniversalBackpropFinanceDashboards();
 await discoverUniversalTaostatsMetagraphDashboards();
+await discoverUniversalSubnetRadarDashboards();
 if (restoredProviders.size === 0) {
   await discoverFromGithubReadmes();
   await discoverFromProjectWebsites();
@@ -113,6 +114,10 @@ if (!dryRun) {
         {
           id: "taostats",
           url: "https://taostats.io/subnets/",
+        },
+        {
+          id: "subnetradar",
+          url: "https://subnetradar.com/subnet/",
         },
         {
           id: "tensorplex-subnet-docs",
@@ -423,6 +428,27 @@ async function discoverUniversalTaostatsMetagraphDashboards() {
       provider: "taostats",
       review_notes:
         "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+    });
+  }
+}
+
+async function discoverUniversalSubnetRadarDashboards() {
+  for (const subnet of nativeSnapshot.subnets) {
+    const displayName = displayNameForNetuid(subnet.netuid);
+    const url = `https://subnetradar.com/subnet/${subnet.netuid}`;
+    addCandidate({
+      id: `sn-${subnet.netuid}-subnetradar-dashboard`,
+      netuid: subnet.netuid,
+      name: `${displayName} SubnetRadar dashboard`,
+      kind: "dashboard",
+      url,
+      source_url: url,
+      source_type: "subnetradar-dashboard",
+      source_tier: "third-party-index",
+      confidence: "medium",
+      provider: "subnetradar",
+      review_notes:
+        "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
     });
   }
 }
@@ -1071,7 +1097,9 @@ function isGenericHost(hostname) {
     "gitlab.com",
     "bitbucket.org",
     "readthedocs.io",
+    "subnetradar.com",
     "taomarketcap.com",
+    "taostats.io",
     "docs.google.com",
   ].some(
     (genericHost) => host === genericHost || host.endsWith(`.${genericHost}`),

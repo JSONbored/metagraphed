@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "netuid": 27,
+  "name": "Nodexo",
+  "slug": "nodexo",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "compute",
+    "gpu",
+    "identity-reviewed",
+    "official-docs",
+    "official-website"
+  ],
+  "website_url": "https://nodexo.ai/",
+  "docs_url": "https://docs.nodexo.ai/",
+  "dashboard_url": "https://console.nodexo.ai/",
+  "source_repo": null,
+  "notes": "Reviewed overlay for SN27 Nodexo Compute. Official browser-facing website, docs, and console surfaces are known, but simple Node/HEAD probes currently receive connection resets. The previously discovered source repository candidate currently returns 404 and is not promoted.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T14:15:00.000Z",
+    "verified_at": "2026-06-08T14:15:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "Official website/docs/console are browser-facing but currently reject simple machine probes with connection resets, so these surfaces are listed without recurring probe monitoring.",
+      "Previously discovered GitHub source repository candidates currently return 404.",
+      "No verified live source repository yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-27-nodexo-website",
+      "name": "Nodexo website",
+      "kind": "website",
+      "url": "https://nodexo.ai/",
+      "provider": "nodexo",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://nodexo.ai/", "https://docs.nodexo.ai/"],
+      "rate_limit_notes": "Not probe-enabled because simple Node/HEAD probes currently receive connection resets from the origin.",
+      "notes": "Official Nodexo Compute website."
+    },
+    {
+      "id": "sn-27-nodexo-docs",
+      "name": "Nodexo docs",
+      "kind": "docs",
+      "url": "https://docs.nodexo.ai/",
+      "provider": "nodexo",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://nodexo.ai/", "https://docs.nodexo.ai/"],
+      "rate_limit_notes": "Not probe-enabled because simple Node/HEAD probes currently receive connection resets from the origin.",
+      "notes": "Official Nodexo Compute documentation."
+    },
+    {
+      "id": "sn-27-nodexo-console",
+      "name": "Nodexo console",
+      "kind": "dashboard",
+      "url": "https://console.nodexo.ai/",
+      "provider": "nodexo",
+      "auth_required": true,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://nodexo.ai/", "https://docs.nodexo.ai/"],
+      "rate_limit_notes": "Not probe-enabled because simple Node/HEAD probes currently receive connection resets from the origin.",
+      "notes": "Official Nodexo console surface. Authentication may be required for account-specific workflows."
+    }
+  ]
+}

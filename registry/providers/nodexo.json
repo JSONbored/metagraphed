@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "nodexo",
+  "name": "Nodexo",
+  "kind": "subnet-team",
+  "website_url": "https://nodexo.ai/",
+  "docs_url": "https://docs.nodexo.ai/",
+  "authority": "provider-claimed",
+  "notes": "Provider entry for Nodexo Compute / SN27. Official browser-facing website, docs, and console surfaces are tracked, but simple Node/HEAD probes currently receive connection resets and are not treated as healthy monitored endpoints."
+}

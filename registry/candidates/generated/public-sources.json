@@ -24,6 +24,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-0-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "root SubnetRadar dashboard",
+      "netuid": 0,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/0",
+      "source_urls": [
+        "https://subnetradar.com/subnet/0"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/0"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-0-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "root TaoMarketCap dashboard",
@@ -104,6 +125,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/1-apex"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-1-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Apex SubnetRadar dashboard",
+      "netuid": 1,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/1",
+      "source_urls": [
+        "https://subnetradar.com/subnet/1"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/1"
     },
     {
       "auth_required": false,
@@ -572,6 +614,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-2-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "DSperse SubnetRadar dashboard",
+      "netuid": 2,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/2",
+      "source_urls": [
+        "https://subnetradar.com/subnet/2"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/2"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-2-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "DSperse TaoMarketCap dashboard",
@@ -867,6 +930,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-3-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "deprecated SubnetRadar dashboard",
+      "netuid": 3,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/3",
+      "source_urls": [
+        "https://subnetradar.com/subnet/3"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/3"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-3-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "deprecated TaoMarketCap dashboard",
@@ -989,6 +1073,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/4-targon"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-4-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Targon SubnetRadar dashboard",
+      "netuid": 4,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/4",
+      "source_urls": [
+        "https://subnetradar.com/subnet/4"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/4"
     },
     {
       "auth_required": false,
@@ -1140,6 +1245,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-4-website-link-targon-com-docs-4",
+      "kind": "docs",
+      "name": "Targon docs",
+      "netuid": 4,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://targon.com/",
+      "source_urls": [
+        "https://targon.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.targon.com/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-4-website-link-targon-com-docs-9",
       "kind": "docs",
       "name": "Targon docs",
@@ -1157,27 +1283,6 @@
       ],
       "state": "schema-valid",
       "url": "https://targon.com/releases/intel-whitepaper"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-4-website-subdomain-docs-docs-targon-com",
-      "kind": "docs",
-      "name": "Targon docs subdomain",
-      "netuid": 4,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
-      "source_url": "https://targon.com/",
-      "source_urls": [
-        "https://targon.com/"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.targon.com/"
     },
     {
       "auth_required": false,
@@ -1494,6 +1599,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/5-hone"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-5-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Hone SubnetRadar dashboard",
+      "netuid": 5,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/5",
+      "source_urls": [
+        "https://subnetradar.com/subnet/5"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/5"
     },
     {
       "auth_required": false,
@@ -1877,6 +2003,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-6-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Numinous SubnetRadar dashboard",
+      "netuid": 6,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/6",
+      "source_urls": [
+        "https://subnetradar.com/subnet/6"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/6"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-6-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Numinous TaoMarketCap dashboard",
@@ -2235,6 +2382,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-7-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Allways SubnetRadar dashboard",
+      "netuid": 7,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/7",
+      "source_urls": [
+        "https://subnetradar.com/subnet/7"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/7"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-7-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Allways TaoMarketCap dashboard",
@@ -2505,6 +2673,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/8-vanta"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-8-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Vanta SubnetRadar dashboard",
+      "netuid": 8,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/8",
+      "source_urls": [
+        "https://subnetradar.com/subnet/8"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/8"
     },
     {
       "auth_required": false,
@@ -2867,6 +3056,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-9-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "iota SubnetRadar dashboard",
+      "netuid": 9,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/9",
+      "source_urls": [
+        "https://subnetradar.com/subnet/9"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/9"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-9-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "iota TaoMarketCap dashboard",
@@ -3073,27 +3283,6 @@
       ],
       "state": "schema-valid",
       "url": "https://docs.macrocosmos.ai/product-and-services/tah"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-9-website-subdomain-docs-docs-iota-macrocosmos-ai",
-      "kind": "docs",
-      "name": "iota docs subdomain",
-      "netuid": 9,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
-      "source_url": "https://iota.macrocosmos.ai/",
-      "source_urls": [
-        "https://iota.macrocosmos.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.iota.macrocosmos.ai/"
     },
     {
       "auth_required": false,
@@ -3351,6 +3540,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-10-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Swap SubnetRadar dashboard",
+      "netuid": 10,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/10",
+      "source_urls": [
+        "https://subnetradar.com/subnet/10"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/10"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-10-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Swap TaoMarketCap dashboard",
@@ -3452,6 +3662,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.taofi.com/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-10-website-subdomain-docs-docs-taofi-com",
+      "kind": "docs",
+      "name": "Swap docs subdomain",
+      "netuid": 10,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.taofi.com/pool",
+      "source_urls": [
+        "https://www.taofi.com/pool"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.taofi.com/"
     },
     {
       "auth_required": false,
@@ -3621,6 +3852,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/11-trajectoryrl"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-11-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "TrajectoryRL SubnetRadar dashboard",
+      "netuid": 11,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/11",
+      "source_urls": [
+        "https://subnetradar.com/subnet/11"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/11"
     },
     {
       "auth_required": false,
@@ -3983,6 +4235,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-12-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Compute Horde SubnetRadar dashboard",
+      "netuid": 12,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/12",
+      "source_urls": [
+        "https://subnetradar.com/subnet/12"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/12"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-12-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Compute Horde TaoMarketCap dashboard",
@@ -4148,6 +4421,27 @@
       ],
       "state": "schema-valid",
       "url": "https://sn13-dashboard.api.macrocosmos.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-13-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Data Universe SubnetRadar dashboard",
+      "netuid": 13,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/13",
+      "source_urls": [
+        "https://subnetradar.com/subnet/13"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/13"
     },
     {
       "auth_required": false,
@@ -4615,6 +4909,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-14-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Cacheon SubnetRadar dashboard",
+      "netuid": 14,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/14",
+      "source_urls": [
+        "https://subnetradar.com/subnet/14"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/14"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-14-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Cacheon TaoMarketCap dashboard",
@@ -5011,6 +5326,27 @@
       ],
       "state": "schema-valid",
       "url": "https://oroagents.com/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-15-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "ORO SubnetRadar dashboard",
+      "netuid": 15,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/15",
+      "source_urls": [
+        "https://subnetradar.com/subnet/15"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/15"
     },
     {
       "auth_required": false,
@@ -5436,6 +5772,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-16-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "BitAds SubnetRadar dashboard",
+      "netuid": 16,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/16",
+      "source_urls": [
+        "https://subnetradar.com/subnet/16"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/16"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-16-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "BitAds TaoMarketCap dashboard",
@@ -5726,6 +6083,27 @@
       ],
       "state": "schema-valid",
       "url": "https://dashboard.404.xyz/d/main/404-gen"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-17-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "404—GEN SubnetRadar dashboard",
+      "netuid": 17,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/17",
+      "source_urls": [
+        "https://subnetradar.com/subnet/17"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/17"
     },
     {
       "auth_required": false,
@@ -6108,6 +6486,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-18-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Zeus SubnetRadar dashboard",
+      "netuid": 18,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/18",
+      "source_urls": [
+        "https://subnetradar.com/subnet/18"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/18"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-18-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Zeus TaoMarketCap dashboard",
@@ -6483,6 +6882,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/19-blockmachine"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-19-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "blockmachine SubnetRadar dashboard",
+      "netuid": 19,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/19",
+      "source_urls": [
+        "https://subnetradar.com/subnet/19"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/19"
     },
     {
       "auth_required": false,
@@ -6972,6 +7392,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-20-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "GroundLayer SubnetRadar dashboard",
+      "netuid": 20,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/20",
+      "source_urls": [
+        "https://subnetradar.com/subnet/20"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/20"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-20-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "GroundLayer TaoMarketCap dashboard",
@@ -7283,6 +7724,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/21-adtao"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-21-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "AdTAO SubnetRadar dashboard",
+      "netuid": 21,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/21",
+      "source_urls": [
+        "https://subnetradar.com/subnet/21"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/21"
     },
     {
       "auth_required": false,
@@ -7770,6 +8232,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-22-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Desearch SubnetRadar dashboard",
+      "netuid": 22,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/22",
+      "source_urls": [
+        "https://subnetradar.com/subnet/22"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/22"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-22-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Desearch TaoMarketCap dashboard",
@@ -8066,6 +8549,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-23-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Trishool SubnetRadar dashboard",
+      "netuid": 23,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/23",
+      "source_urls": [
+        "https://subnetradar.com/subnet/23"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/23"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-23-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Trishool TaoMarketCap dashboard",
@@ -8171,6 +8675,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-23-website-link-trishool-ai-docs-1",
+      "kind": "docs",
+      "name": "Trishool docs",
+      "netuid": 23,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://trishool.ai/",
+      "source_urls": [
+        "https://trishool.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.trishool.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-23-website-link-trishool-ai-docs-2",
       "kind": "docs",
       "name": "Trishool docs",
@@ -8188,27 +8713,6 @@
       ],
       "state": "schema-valid",
       "url": "https://litepaper.trishool.ai/"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-23-website-subdomain-docs-docs-trishool-ai",
-      "kind": "docs",
-      "name": "Trishool docs subdomain",
-      "netuid": 23,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
-      "source_url": "https://trishool.ai/",
-      "source_urls": [
-        "https://trishool.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.trishool.ai/"
     },
     {
       "auth_required": false,
@@ -8420,6 +8924,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/24-quasar"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-24-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Quasar SubnetRadar dashboard",
+      "netuid": 24,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/24",
+      "source_urls": [
+        "https://subnetradar.com/subnet/24"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/24"
     },
     {
       "auth_required": false,
@@ -8803,6 +9328,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-25-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Mainframe SubnetRadar dashboard",
+      "netuid": 25,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/25",
+      "source_urls": [
+        "https://subnetradar.com/subnet/25"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/25"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-25-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Mainframe TaoMarketCap dashboard",
@@ -8929,6 +9475,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-25-website-link-macrocosmos-ai-docs-3",
+      "kind": "docs",
+      "name": "Mainframe docs",
+      "netuid": 25,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://macrocosmos.ai/sn25",
+      "source_urls": [
+        "https://macrocosmos.ai/sn25"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.macrocosmos.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-25-website-link-macrocosmos-ai-docs-6",
       "kind": "docs",
       "name": "Mainframe docs",
@@ -8946,27 +9513,6 @@
       ],
       "state": "schema-valid",
       "url": "https://macrocosmos.ai/delegation-guide"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-25-website-subdomain-docs-docs-macrocosmos-ai",
-      "kind": "docs",
-      "name": "Mainframe docs subdomain",
-      "netuid": 25,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
-      "source_url": "https://macrocosmos.ai/sn25",
-      "source_urls": [
-        "https://macrocosmos.ai/sn25"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.macrocosmos.ai/"
     },
     {
       "auth_required": false,
@@ -9262,6 +9808,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/26-perturb"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-26-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Perturb SubnetRadar dashboard",
+      "netuid": 26,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/26",
+      "source_urls": [
+        "https://subnetradar.com/subnet/26"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/26"
     },
     {
       "auth_required": false,
@@ -9623,6 +10190,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-27-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Nodexo SubnetRadar dashboard",
+      "netuid": 27,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/27",
+      "source_urls": [
+        "https://subnetradar.com/subnet/27"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/27"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-27-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Nodexo TaoMarketCap dashboard",
@@ -9724,27 +10312,6 @@
       ],
       "state": "schema-valid",
       "url": "https://nodexo.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-27-website-subdomain-docs-docs-nodexo-ai",
-      "kind": "docs",
-      "name": "Nodexo docs subdomain",
-      "netuid": 27,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
-      "source_url": "https://nodexo.ai/",
-      "source_urls": [
-        "https://nodexo.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.nodexo.ai/"
     },
     {
       "auth_required": false,
@@ -9918,6 +10485,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-28-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "gm SubnetRadar dashboard",
+      "netuid": 28,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/28",
+      "source_urls": [
+        "https://subnetradar.com/subnet/28"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/28"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-28-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "gm TaoMarketCap dashboard",
@@ -10019,6 +10607,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/29-coldint"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-29-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Coldint SubnetRadar dashboard",
+      "netuid": 29,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/29",
+      "source_urls": [
+        "https://subnetradar.com/subnet/29"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/29"
     },
     {
       "auth_required": false,
@@ -10167,6 +10776,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/30-endure-network"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-30-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Endure Network SubnetRadar dashboard",
+      "netuid": 30,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/30",
+      "source_urls": [
+        "https://subnetradar.com/subnet/30"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/30"
     },
     {
       "auth_required": false,
@@ -10465,6 +11095,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-31-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Recall SubnetRadar dashboard",
+      "netuid": 31,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/31",
+      "source_urls": [
+        "https://subnetradar.com/subnet/31"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/31"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-31-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Recall TaoMarketCap dashboard",
@@ -10570,6 +11221,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-32-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "ItsAI SubnetRadar dashboard",
+      "netuid": 32,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/32",
+      "source_urls": [
+        "https://subnetradar.com/subnet/32"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/32"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-32-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "ItsAI TaoMarketCap dashboard",
@@ -10671,27 +11343,6 @@
       ],
       "state": "schema-valid",
       "url": "https://its-ai.org/docs"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-32-website-subdomain-docs-docs-its-ai-org",
-      "kind": "docs",
-      "name": "ItsAI docs subdomain",
-      "netuid": 32,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
-      "source_url": "https://its-ai.org/en",
-      "source_urls": [
-        "https://its-ai.org/en"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.its-ai.org/"
     },
     {
       "auth_required": false,
@@ -11075,6 +11726,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-33-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "ReadyAI SubnetRadar dashboard",
+      "netuid": 33,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/33",
+      "source_urls": [
+        "https://subnetradar.com/subnet/33"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/33"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-33-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "ReadyAI TaoMarketCap dashboard",
@@ -11244,6 +11916,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-34-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "BitMind SubnetRadar dashboard",
+      "netuid": 34,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/34",
+      "source_urls": [
+        "https://subnetradar.com/subnet/34"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/34"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-34-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "BitMind TaoMarketCap dashboard",
@@ -11371,6 +12064,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-35-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "OxMarkets SubnetRadar dashboard",
+      "netuid": 35,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/35",
+      "source_urls": [
+        "https://subnetradar.com/subnet/35"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/35"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-35-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "OxMarkets TaoMarketCap dashboard",
@@ -11472,6 +12186,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.0xmarkets.io/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "kind": "docs",
+      "name": "OxMarkets docs subdomain",
+      "netuid": 35,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.0xmarkets.io/",
+      "source_urls": [
+        "https://www.0xmarkets.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.0xmarkets.io/"
     },
     {
       "auth_required": false,
@@ -11661,6 +12396,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/36-eirel"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-36-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Eirel SubnetRadar dashboard",
+      "netuid": 36,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/36",
+      "source_urls": [
+        "https://subnetradar.com/subnet/36"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/36"
     },
     {
       "auth_required": false,
@@ -12018,6 +12774,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/37-aurelius"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-37-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Aurelius SubnetRadar dashboard",
+      "netuid": 37,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/37",
+      "source_urls": [
+        "https://subnetradar.com/subnet/37"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/37"
     },
     {
       "auth_required": false,
@@ -12400,6 +13177,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-38-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "colosseum SubnetRadar dashboard",
+      "netuid": 38,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/38",
+      "source_urls": [
+        "https://subnetradar.com/subnet/38"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/38"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-38-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "colosseum TaoMarketCap dashboard",
@@ -12674,6 +13472,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-39-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "deprecated SubnetRadar dashboard",
+      "netuid": 39,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/39",
+      "source_urls": [
+        "https://subnetradar.com/subnet/39"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/39"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-39-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "deprecated TaoMarketCap dashboard",
@@ -12821,6 +13640,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-40-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Chunking SubnetRadar dashboard",
+      "netuid": 40,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/40",
+      "source_urls": [
+        "https://subnetradar.com/subnet/40"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/40"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-40-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Chunking TaoMarketCap dashboard",
@@ -12944,6 +13784,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/41-almanac"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-41-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Almanac SubnetRadar dashboard",
+      "netuid": 41,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/41",
+      "source_urls": [
+        "https://subnetradar.com/subnet/41"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/41"
     },
     {
       "auth_required": false,
@@ -13243,6 +14104,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-42-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Gopher SubnetRadar dashboard",
+      "netuid": 42,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/42",
+      "source_urls": [
+        "https://subnetradar.com/subnet/42"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/42"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-42-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Gopher TaoMarketCap dashboard",
@@ -13344,6 +14226,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/43-graphite"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-43-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Graphite SubnetRadar dashboard",
+      "netuid": 43,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/43",
+      "source_urls": [
+        "https://subnetradar.com/subnet/43"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/43"
     },
     {
       "auth_required": false,
@@ -13471,6 +14374,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/44-score"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-44-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Score SubnetRadar dashboard",
+      "netuid": 44,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/44",
+      "source_urls": [
+        "https://subnetradar.com/subnet/44"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/44"
     },
     {
       "auth_required": false,
@@ -13786,6 +14710,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/45-talisman-ai"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-45-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Talisman AI SubnetRadar dashboard",
+      "netuid": 45,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/45",
+      "source_urls": [
+        "https://subnetradar.com/subnet/45"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/45"
     },
     {
       "auth_required": false,
@@ -14315,6 +15260,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-46-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Zipcode SubnetRadar dashboard",
+      "netuid": 46,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/46",
+      "source_urls": [
+        "https://subnetradar.com/subnet/46"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/46"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-46-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Zipcode TaoMarketCap dashboard",
@@ -14756,6 +15722,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-47-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "EvolAI SubnetRadar dashboard",
+      "netuid": 47,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/47",
+      "source_urls": [
+        "https://subnetradar.com/subnet/47"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/47"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-47-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "EvolAI TaoMarketCap dashboard",
@@ -14920,6 +15907,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/48-quantum-compute"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-48-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Quantum Compute SubnetRadar dashboard",
+      "netuid": 48,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/48",
+      "source_urls": [
+        "https://subnetradar.com/subnet/48"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/48"
     },
     {
       "auth_required": false,
@@ -15407,6 +16415,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-49-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Nepher Robotics SubnetRadar dashboard",
+      "netuid": 49,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/49",
+      "source_urls": [
+        "https://subnetradar.com/subnet/49"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/49"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-49-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Nepher Robotics TaoMarketCap dashboard",
@@ -15722,6 +16751,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-50-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Synth SubnetRadar dashboard",
+      "netuid": 50,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/50",
+      "source_urls": [
+        "https://subnetradar.com/subnet/50"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/50"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-50-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Synth TaoMarketCap dashboard",
@@ -16013,6 +17063,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/51-lium-io"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-51-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "lium.io SubnetRadar dashboard",
+      "netuid": 51,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/51",
+      "source_urls": [
+        "https://subnetradar.com/subnet/51"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/51"
     },
     {
       "auth_required": false,
@@ -16522,6 +17593,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-52-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Dojo SubnetRadar dashboard",
+      "netuid": 52,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/52",
+      "source_urls": [
+        "https://subnetradar.com/subnet/52"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/52"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-52-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Dojo TaoMarketCap dashboard",
@@ -16733,6 +17825,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-53-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "EfficientFrontier SubnetRadar dashboard",
+      "netuid": 53,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/53",
+      "source_urls": [
+        "https://subnetradar.com/subnet/53"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/53"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-53-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "EfficientFrontier TaoMarketCap dashboard",
@@ -16877,6 +17990,27 @@
       ],
       "state": "schema-valid",
       "url": "https://tao-ui-dashboard.yanez.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-54-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Yanez MIID SubnetRadar dashboard",
+      "netuid": 54,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/54",
+      "source_urls": [
+        "https://subnetradar.com/subnet/54"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/54"
     },
     {
       "auth_required": false,
@@ -17193,6 +18327,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/55-niome"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-55-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "NIOME SubnetRadar dashboard",
+      "netuid": 55,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/55",
+      "source_urls": [
+        "https://subnetradar.com/subnet/55"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/55"
     },
     {
       "auth_required": false,
@@ -17551,6 +18706,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/56-gradients"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-56-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Gradients SubnetRadar dashboard",
+      "netuid": 56,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/56",
+      "source_urls": [
+        "https://subnetradar.com/subnet/56"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/56"
     },
     {
       "auth_required": false,
@@ -18059,6 +19235,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-57-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "gaia SubnetRadar dashboard",
+      "netuid": 57,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/57",
+      "source_urls": [
+        "https://subnetradar.com/subnet/57"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/57"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-57-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "gaia TaoMarketCap dashboard",
@@ -18181,6 +19378,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/58-pending"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-58-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Pending SubnetRadar dashboard",
+      "netuid": 58,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/58",
+      "source_urls": [
+        "https://subnetradar.com/subnet/58"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/58"
     },
     {
       "auth_required": false,
@@ -18349,6 +19567,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/59-babelbit"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-59-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Babelbit SubnetRadar dashboard",
+      "netuid": 59,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/59",
+      "source_urls": [
+        "https://subnetradar.com/subnet/59"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/59"
     },
     {
       "auth_required": false,
@@ -18732,6 +19971,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-60-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Bitsec.ai SubnetRadar dashboard",
+      "netuid": 60,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/60",
+      "source_urls": [
+        "https://subnetradar.com/subnet/60"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/60"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-60-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Bitsec.ai TaoMarketCap dashboard",
@@ -19069,6 +20329,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-61-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "RedTeam SubnetRadar dashboard",
+      "netuid": 61,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/61",
+      "source_urls": [
+        "https://subnetradar.com/subnet/61"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/61"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-61-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "RedTeam TaoMarketCap dashboard",
@@ -19365,6 +20646,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-62-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Ridges SubnetRadar dashboard",
+      "netuid": 62,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/62",
+      "source_urls": [
+        "https://subnetradar.com/subnet/62"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/62"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-62-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Ridges TaoMarketCap dashboard",
@@ -19466,27 +20768,6 @@
       ],
       "state": "schema-valid",
       "url": "https://www.ridges.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-62-website-subdomain-docs-docs-ridges-ai",
-      "kind": "docs",
-      "name": "Ridges docs subdomain",
-      "netuid": 62,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
-      "source_url": "https://www.ridges.ai/",
-      "source_urls": [
-        "https://www.ridges.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.ridges.ai/"
     },
     {
       "auth_required": false,
@@ -19656,6 +20937,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/63-enigma"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-63-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Enigma SubnetRadar dashboard",
+      "netuid": 63,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/63",
+      "source_urls": [
+        "https://subnetradar.com/subnet/63"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/63"
     },
     {
       "auth_required": false,
@@ -20139,6 +21441,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/64-chutes"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-64-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Chutes SubnetRadar dashboard",
+      "netuid": 64,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/64",
+      "source_urls": [
+        "https://subnetradar.com/subnet/64"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/64"
     },
     {
       "auth_required": false,
@@ -20733,6 +22056,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-65-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "TAO Private Network SubnetRadar dashboard",
+      "netuid": 65,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/65",
+      "source_urls": [
+        "https://subnetradar.com/subnet/65"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/65"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-65-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "TAO Private Network TaoMarketCap dashboard",
@@ -21133,6 +22477,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-66-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "ninja SubnetRadar dashboard",
+      "netuid": 66,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/66",
+      "source_urls": [
+        "https://subnetradar.com/subnet/66"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/66"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-66-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "ninja TaoMarketCap dashboard",
@@ -21491,6 +22856,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-67-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Harnyx SubnetRadar dashboard",
+      "netuid": 67,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/67",
+      "source_urls": [
+        "https://subnetradar.com/subnet/67"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/67"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-67-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Harnyx TaoMarketCap dashboard",
@@ -21802,6 +23188,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/68-nova"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-68-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "NOVA SubnetRadar dashboard",
+      "netuid": 68,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/68",
+      "source_urls": [
+        "https://subnetradar.com/subnet/68"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/68"
     },
     {
       "auth_required": false,
@@ -22185,6 +23592,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-69-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "ain SubnetRadar dashboard",
+      "netuid": 69,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/69",
+      "source_urls": [
+        "https://subnetradar.com/subnet/69"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/69"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-69-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "ain TaoMarketCap dashboard",
@@ -22286,6 +23714,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/70-nexisgen"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-70-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "NexisGen SubnetRadar dashboard",
+      "netuid": 70,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/70",
+      "source_urls": [
+        "https://subnetradar.com/subnet/70"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/70"
     },
     {
       "auth_required": false,
@@ -22668,6 +24117,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-71-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Leadpoet SubnetRadar dashboard",
+      "netuid": 71,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/71",
+      "source_urls": [
+        "https://subnetradar.com/subnet/71"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/71"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-71-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Leadpoet TaoMarketCap dashboard",
@@ -22938,6 +24408,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/72-streetvision-by-natix"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-72-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "StreetVision by NATIX SubnetRadar dashboard",
+      "netuid": 72,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/72",
+      "source_urls": [
+        "https://subnetradar.com/subnet/72"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/72"
     },
     {
       "auth_required": false,
@@ -23447,6 +24938,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-73-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Parked SubnetRadar dashboard",
+      "netuid": 73,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/73",
+      "source_urls": [
+        "https://subnetradar.com/subnet/73"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/73"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-73-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Parked TaoMarketCap dashboard",
@@ -23569,6 +25081,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/74-gittensor"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-74-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Gittensor SubnetRadar dashboard",
+      "netuid": 74,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/74",
+      "source_urls": [
+        "https://subnetradar.com/subnet/74"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/74"
     },
     {
       "auth_required": false,
@@ -23884,6 +25417,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/75-hippius"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-75-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Hippius SubnetRadar dashboard",
+      "netuid": 75,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/75",
+      "source_urls": [
+        "https://subnetradar.com/subnet/75"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/75"
     },
     {
       "auth_required": false,
@@ -24414,6 +25968,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-76-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Byzantium SubnetRadar dashboard",
+      "netuid": 76,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/76",
+      "source_urls": [
+        "https://subnetradar.com/subnet/76"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/76"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-76-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Byzantium TaoMarketCap dashboard",
@@ -24683,6 +26258,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/77-liquidity"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-77-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Liquidity SubnetRadar dashboard",
+      "netuid": 77,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/77",
+      "source_urls": [
+        "https://subnetradar.com/subnet/77"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/77"
     },
     {
       "auth_required": false,
@@ -24957,6 +26553,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/78-vocence"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-78-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Vocence SubnetRadar dashboard",
+      "netuid": 78,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/78",
+      "source_urls": [
+        "https://subnetradar.com/subnet/78"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/78"
     },
     {
       "auth_required": false,
@@ -25272,6 +26889,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/79-mvtrx"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-79-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "MVTRX SubnetRadar dashboard",
+      "netuid": 79,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/79",
+      "source_urls": [
+        "https://subnetradar.com/subnet/79"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/79"
     },
     {
       "auth_required": false,
@@ -25801,6 +27439,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-80-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "dogelayer SubnetRadar dashboard",
+      "netuid": 80,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/80",
+      "source_urls": [
+        "https://subnetradar.com/subnet/80"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/80"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-80-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "dogelayer TaoMarketCap dashboard",
@@ -26116,6 +27775,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-81-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "deprecated SubnetRadar dashboard",
+      "netuid": 81,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/81",
+      "source_urls": [
+        "https://subnetradar.com/subnet/81"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/81"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-81-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "deprecated TaoMarketCap dashboard",
@@ -26259,6 +27939,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/82-compelle"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-82-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Compelle SubnetRadar dashboard",
+      "netuid": 82,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/82",
+      "source_urls": [
+        "https://subnetradar.com/subnet/82"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/82"
     },
     {
       "auth_required": false,
@@ -26788,6 +28489,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-83-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "CliqueAI SubnetRadar dashboard",
+      "netuid": 83,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/83",
+      "source_urls": [
+        "https://subnetradar.com/subnet/83"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/83"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-83-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "CliqueAI TaoMarketCap dashboard",
@@ -27062,6 +28784,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-84-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "ansuz SubnetRadar dashboard",
+      "netuid": 84,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/84",
+      "source_urls": [
+        "https://subnetradar.com/subnet/84"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/84"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-84-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "ansuz TaoMarketCap dashboard",
@@ -27205,6 +28948,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/85-vidaio"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-85-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Vidaio SubnetRadar dashboard",
+      "netuid": 85,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/85",
+      "source_urls": [
+        "https://subnetradar.com/subnet/85"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/85"
     },
     {
       "auth_required": false,
@@ -27651,6 +29415,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-86-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Subnet 86 SubnetRadar dashboard",
+      "netuid": 86,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/86",
+      "source_urls": [
+        "https://subnetradar.com/subnet/86"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/86"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-86-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Subnet 86 TaoMarketCap dashboard",
@@ -27752,6 +29537,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/87-luminar-network"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-87-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Luminar Network SubnetRadar dashboard",
+      "netuid": 87,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/87",
+      "source_urls": [
+        "https://subnetradar.com/subnet/87"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/87"
     },
     {
       "auth_required": false,
@@ -27879,6 +29685,27 @@
       ],
       "state": "schema-valid",
       "url": "https://db.investing88.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-88-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Investing SubnetRadar dashboard",
+      "netuid": 88,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/88",
+      "source_urls": [
+        "https://subnetradar.com/subnet/88"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/88"
     },
     {
       "auth_required": false,
@@ -28241,6 +30068,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-89-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "InfiniteHash SubnetRadar dashboard",
+      "netuid": 89,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/89",
+      "source_urls": [
+        "https://subnetradar.com/subnet/89"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/89"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-89-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "InfiniteHash TaoMarketCap dashboard",
@@ -28515,6 +30363,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-90-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "ogham SubnetRadar dashboard",
+      "netuid": 90,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/90",
+      "source_urls": [
+        "https://subnetradar.com/subnet/90"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/90"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-90-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "ogham TaoMarketCap dashboard",
@@ -28616,6 +30485,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/91-bitstarter-1"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-91-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Bitstarter #1 SubnetRadar dashboard",
+      "netuid": 91,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/91",
+      "source_urls": [
+        "https://subnetradar.com/subnet/91"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/91"
     },
     {
       "auth_required": false,
@@ -28977,6 +30867,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-92-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "luis SubnetRadar dashboard",
+      "netuid": 92,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/92",
+      "source_urls": [
+        "https://subnetradar.com/subnet/92"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/92"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-92-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "luis TaoMarketCap dashboard",
@@ -29120,6 +31031,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.dashboard.bitcast.network/briefs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-93-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Bitcast SubnetRadar dashboard",
+      "netuid": 93,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/93",
+      "source_urls": [
+        "https://subnetradar.com/subnet/93"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/93"
     },
     {
       "auth_required": false,
@@ -29503,6 +31435,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-94-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Bitsota SubnetRadar dashboard",
+      "netuid": 94,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/94",
+      "source_urls": [
+        "https://subnetradar.com/subnet/94"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/94"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-94-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Bitsota TaoMarketCap dashboard",
@@ -29839,6 +31792,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-95-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Actual SubnetRadar dashboard",
+      "netuid": 95,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/95",
+      "source_urls": [
+        "https://subnetradar.com/subnet/95"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/95"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-95-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Actual TaoMarketCap dashboard",
@@ -30150,6 +32124,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/96-verathos"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-96-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Verathos SubnetRadar dashboard",
+      "netuid": 96,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/96",
+      "source_urls": [
+        "https://subnetradar.com/subnet/96"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/96"
     },
     {
       "auth_required": false,
@@ -30466,6 +32461,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/97-albedo"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-97-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Albedo SubnetRadar dashboard",
+      "netuid": 97,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/97",
+      "source_urls": [
+        "https://subnetradar.com/subnet/97"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/97"
     },
     {
       "auth_required": false,
@@ -30827,6 +32843,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-98-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "ForeverMoney SubnetRadar dashboard",
+      "netuid": 98,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/98",
+      "source_urls": [
+        "https://subnetradar.com/subnet/98"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/98"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-98-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "ForeverMoney TaoMarketCap dashboard",
@@ -30953,17 +32990,17 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-98-website-subdomain-docs-docs-forevermoney-ai",
+      "id": "sn-98-website-link-forevermoney-ai-docs-2",
       "kind": "docs",
-      "name": "ForeverMoney docs subdomain",
+      "name": "ForeverMoney docs",
       "netuid": 98,
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
+      "source_type": "project-website-link",
       "source_url": "https://forevermoney.ai/",
       "source_urls": [
         "https://forevermoney.ai/"
@@ -31264,6 +33301,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/99-leoma"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-99-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Leoma SubnetRadar dashboard",
+      "netuid": 99,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/99",
+      "source_urls": [
+        "https://subnetradar.com/subnet/99"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/99"
     },
     {
       "auth_required": false,
@@ -31600,6 +33658,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/100-pla-form"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-100-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Plaτform SubnetRadar dashboard",
+      "netuid": 100,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/100",
+      "source_urls": [
+        "https://subnetradar.com/subnet/100"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/100"
     },
     {
       "auth_required": false,
@@ -32003,6 +34082,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-101-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "eni SubnetRadar dashboard",
+      "netuid": 101,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/101",
+      "source_urls": [
+        "https://subnetradar.com/subnet/101"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/101"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-101-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "eni TaoMarketCap dashboard",
@@ -32104,6 +34204,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/102-connitoai"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-102-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "ConnitoAI SubnetRadar dashboard",
+      "netuid": 102,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/102",
+      "source_urls": [
+        "https://subnetradar.com/subnet/102"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/102"
     },
     {
       "auth_required": false,
@@ -32486,6 +34607,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-103-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Djinn SubnetRadar dashboard",
+      "netuid": 103,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/103",
+      "source_urls": [
+        "https://subnetradar.com/subnet/103"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/103"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-103-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Djinn TaoMarketCap dashboard",
@@ -32608,27 +34750,6 @@
       ],
       "state": "schema-valid",
       "url": "https://djinn.gg/docs"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-103-website-subdomain-docs-docs-djinn-gg",
-      "kind": "docs",
-      "name": "Djinn docs subdomain",
-      "netuid": 103,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-docs-subdomain",
-      "source_url": "https://djinn.gg/",
-      "source_urls": [
-        "https://djinn.gg/"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.djinn.gg/"
     },
     {
       "auth_required": false,
@@ -32969,6 +35090,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-104-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "for sale (burn to uid1) SubnetRadar dashboard",
+      "netuid": 104,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/104",
+      "source_urls": [
+        "https://subnetradar.com/subnet/104"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/104"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-104-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "for sale (burn to uid1) TaoMarketCap dashboard",
@@ -33070,6 +35212,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/105-beam"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-105-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Beam SubnetRadar dashboard",
+      "netuid": 105,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/105",
+      "source_urls": [
+        "https://subnetradar.com/subnet/105"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/105"
     },
     {
       "auth_required": false,
@@ -33347,6 +35510,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-106-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "VoidAI SubnetRadar dashboard",
+      "netuid": 106,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/106",
+      "source_urls": [
+        "https://subnetradar.com/subnet/106"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/106"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-106-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "VoidAI TaoMarketCap dashboard",
@@ -33616,6 +35800,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/107-minos"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-107-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Minos SubnetRadar dashboard",
+      "netuid": 107,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/107",
+      "source_urls": [
+        "https://subnetradar.com/subnet/107"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/107"
     },
     {
       "auth_required": false,
@@ -34040,6 +36245,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-108-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "TalkHead SubnetRadar dashboard",
+      "netuid": 108,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/108",
+      "source_urls": [
+        "https://subnetradar.com/subnet/108"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/108"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-108-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "TalkHead TaoMarketCap dashboard",
@@ -34440,6 +36666,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-109-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Academia SubnetRadar dashboard",
+      "netuid": 109,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/109",
+      "source_urls": [
+        "https://subnetradar.com/subnet/109"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/109"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-109-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Academia TaoMarketCap dashboard",
@@ -34562,6 +36809,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/110-green-compute"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-110-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Green Compute SubnetRadar dashboard",
+      "netuid": 110,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/110",
+      "source_urls": [
+        "https://subnetradar.com/subnet/110"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/110"
     },
     {
       "auth_required": false,
@@ -35049,6 +37317,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-111-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "oneoneone SubnetRadar dashboard",
+      "netuid": 111,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/111",
+      "source_urls": [
+        "https://subnetradar.com/subnet/111"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/111"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-111-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "oneoneone TaoMarketCap dashboard",
@@ -35176,6 +37465,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-112-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "minotaur SubnetRadar dashboard",
+      "netuid": 112,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/112",
+      "source_urls": [
+        "https://subnetradar.com/subnet/112"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/112"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-112-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "minotaur TaoMarketCap dashboard",
@@ -35277,6 +37587,27 @@
       ],
       "state": "schema-valid",
       "url": "https://minotaursubnet.com/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-112-website-subdomain-docs-docs-minotaursubnet-com",
+      "kind": "docs",
+      "name": "minotaur docs subdomain",
+      "netuid": 112,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://minotaursubnet.com/",
+      "source_urls": [
+        "https://minotaursubnet.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.minotaursubnet.com/"
     },
     {
       "auth_required": false,
@@ -35467,6 +37798,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/113-tensorusd"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-113-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "TensorUSD SubnetRadar dashboard",
+      "netuid": 113,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/113",
+      "source_urls": [
+        "https://subnetradar.com/subnet/113"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/113"
     },
     {
       "auth_required": false,
@@ -35866,6 +38218,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/114-soma"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-114-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "SOMA SubnetRadar dashboard",
+      "netuid": 114,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/114",
+      "source_urls": [
+        "https://subnetradar.com/subnet/114"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/114"
     },
     {
       "auth_required": false,
@@ -36311,6 +38684,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-115-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "HashiChain SubnetRadar dashboard",
+      "netuid": 115,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/115",
+      "source_urls": [
+        "https://subnetradar.com/subnet/115"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/115"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-115-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "HashiChain TaoMarketCap dashboard",
@@ -36437,6 +38831,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-116-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "hard_sign SubnetRadar dashboard",
+      "netuid": 116,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/116",
+      "source_urls": [
+        "https://subnetradar.com/subnet/116"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/116"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-116-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "hard_sign TaoMarketCap dashboard",
@@ -36559,6 +38974,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/117-brainplay"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-117-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "BrainPlay SubnetRadar dashboard",
+      "netuid": 117,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/117",
+      "source_urls": [
+        "https://subnetradar.com/subnet/117"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/117"
     },
     {
       "auth_required": false,
@@ -36727,6 +39163,27 @@
       ],
       "state": "schema-valid",
       "url": "https://subnet-118-dashboard.vercel.app/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-118-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Ditto SubnetRadar dashboard",
+      "netuid": 118,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/118",
+      "source_urls": [
+        "https://subnetradar.com/subnet/118"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/118"
     },
     {
       "auth_required": false,
@@ -37214,6 +39671,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-119-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Satori SubnetRadar dashboard",
+      "netuid": 119,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/119",
+      "source_urls": [
+        "https://subnetradar.com/subnet/119"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/119"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-119-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Satori TaoMarketCap dashboard",
@@ -37357,6 +39835,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.affine.io/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-120-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Affine SubnetRadar dashboard",
+      "netuid": 120,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/120",
+      "source_urls": [
+        "https://subnetradar.com/subnet/120"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/120"
     },
     {
       "auth_required": false,
@@ -37631,6 +40130,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/121-sundae-bar"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-121-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "sundae_bar SubnetRadar dashboard",
+      "netuid": 121,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/121",
+      "source_urls": [
+        "https://subnetradar.com/subnet/121"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/121"
     },
     {
       "auth_required": false,
@@ -38118,6 +40638,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-122-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "gamma_small SubnetRadar dashboard",
+      "netuid": 122,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/122",
+      "source_urls": [
+        "https://subnetradar.com/subnet/122"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/122"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-122-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "gamma_small TaoMarketCap dashboard",
@@ -38240,6 +40781,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/123-mantis"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-123-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "MANTIS SubnetRadar dashboard",
+      "netuid": 123,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/123",
+      "source_urls": [
+        "https://subnetradar.com/subnet/123"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/123"
     },
     {
       "auth_required": false,
@@ -38388,6 +40950,27 @@
       ],
       "state": "schema-valid",
       "url": "https://swarm124.com/benchmark"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-124-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Swarm SubnetRadar dashboard",
+      "netuid": 124,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/124",
+      "source_urls": [
+        "https://subnetradar.com/subnet/124"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/124"
     },
     {
       "auth_required": false,
@@ -38666,6 +41249,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-125-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "8 Ball SubnetRadar dashboard",
+      "netuid": 125,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/125",
+      "source_urls": [
+        "https://subnetradar.com/subnet/125"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/125"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-125-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "8 Ball TaoMarketCap dashboard",
@@ -38767,6 +41371,27 @@
       ],
       "state": "schema-valid",
       "url": "https://backprop.finance/dtao/subnets/126-poker44"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-126-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Poker44 SubnetRadar dashboard",
+      "netuid": 126,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/126",
+      "source_urls": [
+        "https://subnetradar.com/subnet/126"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/126"
     },
     {
       "auth_required": false,
@@ -39128,6 +41753,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-127-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "Astrid SubnetRadar dashboard",
+      "netuid": 127,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/127",
+      "source_urls": [
+        "https://subnetradar.com/subnet/127"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/127"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-127-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Astrid TaoMarketCap dashboard",
@@ -39464,6 +42110,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-128-subnetradar-dashboard",
+      "kind": "dashboard",
+      "name": "ByteLeap SubnetRadar dashboard",
+      "netuid": 128,
+      "provider": "subnetradar",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal SubnetRadar subnet dashboard candidate. Third-party risk/market analytics enrichment, not Metagraphed endpoint health authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "subnetradar-dashboard",
+      "source_url": "https://subnetradar.com/subnet/128",
+      "source_urls": [
+        "https://subnetradar.com/subnet/128"
+      ],
+      "state": "schema-valid",
+      "url": "https://subnetradar.com/subnet/128"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-128-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "ByteLeap TaoMarketCap dashboard",
@@ -39740,7 +42407,7 @@
   "generated_by": "metagraphed-discover-candidates",
   "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
   "notes": "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
-  "observed_at": "2026-06-08T13:11:57.000Z",
+  "observed_at": "2026-06-08T14:11:05.342Z",
   "schema_version": 1,
   "sources": [
     {
@@ -39754,6 +42421,10 @@
     {
       "id": "taostats",
       "url": "https://taostats.io/subnets/"
+    },
+    {
+      "id": "subnetradar",
+      "url": "https://subnetradar.com/subnet/"
     },
     {
       "id": "tensorplex-subnet-docs",

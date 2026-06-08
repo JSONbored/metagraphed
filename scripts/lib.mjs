@@ -560,6 +560,7 @@ const GENERIC_README_REFERENCE_HOSTS = [
   "openai.com",
   "pm2.io",
   "python.org",
+  "subnetradar.com",
   "taomarketcap.com",
   "taostats.io",
 ];

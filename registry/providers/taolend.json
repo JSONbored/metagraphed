@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "taolend",
+  "name": "TaoLend",
+  "kind": "subnet-team",
+  "website_url": "https://taolend.io/",
+  "authority": "provider-claimed",
+  "notes": "Provider entry for TaoLend / SN116. The official website is tracked with probe-derived degraded status when it returns server errors."
+}

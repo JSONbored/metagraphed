@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1311,
+  "document_count": 1323,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -592,6 +592,21 @@
     },
     {
       "artifact_path": "/metagraph/providers.json",
+      "id": "provider:nodexo",
+      "subtitle": "subnet-team",
+      "title": "Nodexo",
+      "tokens": [
+        "claimed",
+        "nodexo",
+        "provider",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://nodexo.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
       "id": "provider:nodies",
       "subtitle": "infrastructure-provider",
       "title": "Nodies",
@@ -750,6 +765,21 @@
     },
     {
       "artifact_path": "/metagraph/providers.json",
+      "id": "provider:signalplus",
+      "subtitle": "subnet-team",
+      "title": "SignalPlus",
+      "tokens": [
+        "claimed",
+        "provider",
+        "signalplus",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://www.signalplus.com/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
       "id": "provider:silx-labs",
       "subtitle": "subnet-team",
       "title": "SILX Labs",
@@ -776,6 +806,20 @@
       ],
       "type": "provider",
       "url": "https://sparket.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:subnetradar",
+      "subtitle": "data-provider",
+      "title": "SubnetRadar",
+      "tokens": [
+        "claimed",
+        "data",
+        "provider",
+        "subnetradar"
+      ],
+      "type": "provider",
+      "url": "https://subnetradar.com/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -806,6 +850,21 @@
       ],
       "type": "provider",
       "url": "https://ai.talisman.xyz/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:taolend",
+      "subtitle": "subnet-team",
+      "title": "TaoLend",
+      "tokens": [
+        "claimed",
+        "provider",
+        "subnet",
+        "taolend",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://taolend.io/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -1932,15 +1991,22 @@
       "artifact_path": "/metagraph/subnets/53.json",
       "id": "subnet:53",
       "netuid": 53,
-      "slug": "sn-53",
+      "slug": "efficientfrontier",
       "subtitle": "SN53 ب",
       "title": "EfficientFrontier",
       "tokens": [
-        "53",
+        "augmented",
         "baseline",
         "curated",
+        "defi",
         "efficientfrontier",
-        "sn"
+        "financial",
+        "identity",
+        "official",
+        "reviewed",
+        "strategies",
+        "trading",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/53"
@@ -2311,24 +2377,6 @@
       "url": "/subnets/58"
     },
     {
-      "artifact_path": "/metagraph/subnets/116.json",
-      "id": "subnet:116",
-      "netuid": 116,
-      "slug": "sn-116",
-      "subtitle": "SN116 ъ",
-      "title": "hard_sign",
-      "tokens": [
-        "116",
-        "baseline",
-        "curated",
-        "hard",
-        "sign",
-        "sn"
-      ],
-      "type": "subnet",
-      "url": "/subnets/116"
-    },
-    {
       "artifact_path": "/metagraph/subnets/67.json",
       "id": "subnet:67",
       "netuid": 67,
@@ -2679,6 +2727,27 @@
       "url": "/subnets/123"
     },
     {
+      "artifact_path": "/metagraph/subnets/73.json",
+      "id": "subnet:73",
+      "netuid": 73,
+      "slug": "metahash",
+      "subtitle": "SN73 ك",
+      "title": "MetaHash",
+      "tokens": [
+        "augmented",
+        "baseline",
+        "curated",
+        "defi",
+        "identity",
+        "metahash",
+        "otc",
+        "reviewed",
+        "treasury"
+      ],
+      "type": "subnet",
+      "url": "/subnets/73"
+    },
+    {
       "artifact_path": "/metagraph/subnets/107.json",
       "id": "subnet:107",
       "netuid": 107,
@@ -2832,15 +2901,21 @@
       "artifact_path": "/metagraph/subnets/27.json",
       "id": "subnet:27",
       "netuid": 27,
-      "slug": "sn-27",
+      "slug": "nodexo",
       "subtitle": "SN27 ג",
       "title": "Nodexo",
       "tokens": [
-        "27",
+        "augmented",
         "baseline",
+        "compute",
         "curated",
+        "docs",
+        "gpu",
+        "identity",
         "nodexo",
-        "sn"
+        "official",
+        "reviewed",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/27"
@@ -2946,23 +3021,6 @@
       ],
       "type": "subnet",
       "url": "/subnets/35"
-    },
-    {
-      "artifact_path": "/metagraph/subnets/73.json",
-      "id": "subnet:73",
-      "netuid": 73,
-      "slug": "sn-73",
-      "subtitle": "SN73 ك",
-      "title": "Parked",
-      "tokens": [
-        "73",
-        "baseline",
-        "curated",
-        "parked",
-        "sn"
-      ],
-      "type": "subnet",
-      "url": "/subnets/73"
     },
     {
       "artifact_path": "/metagraph/subnets/26.json",
@@ -3447,6 +3505,28 @@
       "url": "/subnets/65"
     },
     {
+      "artifact_path": "/metagraph/subnets/116.json",
+      "id": "subnet:116",
+      "netuid": 116,
+      "slug": "taolend",
+      "subtitle": "SN116 ъ",
+      "title": "TaoLend",
+      "tokens": [
+        "augmented",
+        "baseline",
+        "curated",
+        "defi",
+        "identity",
+        "lending",
+        "official",
+        "reviewed",
+        "taolend",
+        "website"
+      ],
+      "type": "subnet",
+      "url": "/subnets/116"
+    },
+    {
       "artifact_path": "/metagraph/subnets/4.json",
       "id": "subnet:4",
       "netuid": 4,
@@ -3805,21 +3885,21 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-17-taomarketcap-dashboard",
+      "id": "surface:sn-17-subnetradar-dashboard",
       "netuid": 17,
       "slug": "sn-17",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "404—GEN TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "404—GEN SubnetRadar dashboard",
       "tokens": [
         "17",
         "404",
         "dashboard",
         "gen",
         "sn",
-        "taomarketcap"
+        "subnetradar"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/17"
+      "url": "https://subnetradar.com/subnet/17"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -3899,6 +3979,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-125-subnetradar-dashboard",
+      "netuid": 125,
+      "slug": "sn-125",
+      "subtitle": "dashboard / subnetradar",
+      "title": "8 Ball SubnetRadar dashboard",
+      "tokens": [
+        "125",
+        "8",
+        "ball",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/125"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-125-taomarketcap-dashboard",
       "netuid": 125,
       "slug": "sn-125",
@@ -3934,25 +4032,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_125/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-125-taostats-metagraph",
-      "netuid": 125,
-      "slug": "sn-125",
-      "subtitle": "dashboard / taostats",
-      "title": "8 Ball Taostats metagraph",
-      "tokens": [
-        "125",
-        "8",
-        "ball",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/125/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4011,6 +4090,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-109-subnetradar-dashboard",
+      "netuid": 109,
+      "slug": "sn-109",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Academia SubnetRadar dashboard",
+      "tokens": [
+        "109",
+        "academia",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/109"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-109-taomarketcap-dashboard",
       "netuid": 109,
       "slug": "sn-109",
@@ -4044,24 +4140,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_109/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-109-taostats-metagraph",
-      "netuid": 109,
-      "slug": "sn-109",
-      "subtitle": "dashboard / taostats",
-      "title": "Academia Taostats metagraph",
-      "tokens": [
-        "109",
-        "academia",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/109/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4118,6 +4196,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-95-subnetradar-dashboard",
+      "netuid": 95,
+      "slug": "sn-95",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Actual SubnetRadar dashboard",
+      "tokens": [
+        "95",
+        "actual",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/95"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-95-website-common-swagger",
       "netuid": 95,
       "slug": "sn-95",
@@ -4170,24 +4265,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_95/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-95-taostats-metagraph",
-      "netuid": 95,
-      "slug": "sn-95",
-      "subtitle": "dashboard / taostats",
-      "title": "Actual Taostats metagraph",
-      "tokens": [
-        "95",
-        "actual",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/95/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4262,6 +4339,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-21-subnetradar-dashboard",
+      "netuid": 21,
+      "slug": "sn-21",
+      "subtitle": "dashboard / subnetradar",
+      "title": "AdTAO SubnetRadar dashboard",
+      "tokens": [
+        "21",
+        "adtao",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/21"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-21-taomarketcap-dashboard",
       "netuid": 21,
       "slug": "sn-21",
@@ -4295,24 +4389,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_21/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-21-taostats-metagraph",
-      "netuid": 21,
-      "slug": "sn-21",
-      "subtitle": "dashboard / taostats",
-      "title": "AdTAO Taostats metagraph",
-      "tokens": [
-        "21",
-        "adtao",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/21/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4404,20 +4480,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-120-taomarketcap-dashboard",
+      "id": "surface:sn-120-subnetradar-dashboard",
       "netuid": 120,
       "slug": "sn-120",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Affine TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Affine SubnetRadar dashboard",
       "tokens": [
         "120",
         "affine",
         "dashboard",
         "sn",
-        "taomarketcap"
+        "subnetradar"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/120"
+      "url": "https://subnetradar.com/subnet/120"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4493,6 +4569,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-69-subnetradar-dashboard",
+      "netuid": 69,
+      "slug": "sn-69",
+      "subtitle": "dashboard / subnetradar",
+      "title": "ain SubnetRadar dashboard",
+      "tokens": [
+        "69",
+        "ain",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/69"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-69-taomarketcap-dashboard",
       "netuid": 69,
       "slug": "sn-69",
@@ -4526,24 +4619,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_69/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-69-taostats-metagraph",
-      "netuid": 69,
-      "slug": "sn-69",
-      "subtitle": "dashboard / taostats",
-      "title": "ain Taostats metagraph",
-      "tokens": [
-        "69",
-        "ain",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/69/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4676,6 +4751,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-97-subnetradar-dashboard",
+      "netuid": 97,
+      "slug": "sn-97",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Albedo SubnetRadar dashboard",
+      "tokens": [
+        "97",
+        "albedo",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/97"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-97-taomarketcap-dashboard",
       "netuid": 97,
       "slug": "sn-97",
@@ -4709,24 +4801,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_97/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-97-taostats-metagraph",
-      "netuid": 97,
-      "slug": "sn-97",
-      "subtitle": "dashboard / taostats",
-      "title": "Albedo Taostats metagraph",
-      "tokens": [
-        "97",
-        "albedo",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/97/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5009,6 +5083,21 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-7-subnetradar-dashboard",
+      "netuid": 7,
+      "slug": "allways",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Allways SubnetRadar dashboard",
+      "tokens": [
+        "allways",
+        "dashboard",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/7"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:allways-swagger",
       "netuid": 7,
       "slug": "allways",
@@ -5087,22 +5176,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_7/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-7-taostats-metagraph",
-      "netuid": 7,
-      "slug": "allways",
-      "subtitle": "dashboard / taostats",
-      "title": "Allways Taostats metagraph",
-      "tokens": [
-        "allways",
-        "dashboard",
-        "metagraph",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/7/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5190,6 +5263,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-41-subnetradar-dashboard",
+      "netuid": 41,
+      "slug": "sn-41",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Almanac SubnetRadar dashboard",
+      "tokens": [
+        "41",
+        "almanac",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/41"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-41-website-common-swagger",
       "netuid": 41,
       "slug": "sn-41",
@@ -5242,24 +5332,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_41/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-41-taostats-metagraph",
-      "netuid": 41,
-      "slug": "sn-41",
-      "subtitle": "dashboard / taostats",
-      "title": "Almanac Taostats metagraph",
-      "tokens": [
-        "41",
-        "almanac",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/41/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5337,6 +5409,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-84-subnetradar-dashboard",
+      "netuid": 84,
+      "slug": "sn-84",
+      "subtitle": "dashboard / subnetradar",
+      "title": "ansuz SubnetRadar dashboard",
+      "tokens": [
+        "84",
+        "ansuz",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/84"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-84-taomarketcap-dashboard",
       "netuid": 84,
       "slug": "sn-84",
@@ -5370,24 +5459,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_84/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-84-taostats-metagraph",
-      "netuid": 84,
-      "slug": "sn-84",
-      "subtitle": "dashboard / taostats",
-      "title": "ansuz Taostats metagraph",
-      "tokens": [
-        "84",
-        "ansuz",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/84/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5480,6 +5551,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-1-subnetradar-dashboard",
+      "netuid": 1,
+      "slug": "sn-1",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Apex SubnetRadar dashboard",
+      "tokens": [
+        "1",
+        "apex",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/1"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-1-taomarketcap-dashboard",
       "netuid": 1,
       "slug": "sn-1",
@@ -5513,24 +5601,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_1_apex/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-1-taostats-metagraph",
-      "netuid": 1,
-      "slug": "sn-1",
-      "subtitle": "dashboard / taostats",
-      "title": "Apex Taostats metagraph",
-      "tokens": [
-        "1",
-        "apex",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/1/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5606,6 +5676,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-127-subnetradar-dashboard",
+      "netuid": 127,
+      "slug": "sn-127",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Astrid SubnetRadar dashboard",
+      "tokens": [
+        "127",
+        "astrid",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/127"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-127-taomarketcap-dashboard",
       "netuid": 127,
       "slug": "sn-127",
@@ -5639,24 +5726,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_127/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-127-taostats-metagraph",
-      "netuid": 127,
-      "slug": "sn-127",
-      "subtitle": "dashboard / taostats",
-      "title": "Astrid Taostats metagraph",
-      "tokens": [
-        "127",
-        "astrid",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/127/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5753,6 +5822,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-37-subnetradar-dashboard",
+      "netuid": 37,
+      "slug": "sn-37",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Aurelius SubnetRadar dashboard",
+      "tokens": [
+        "37",
+        "aurelius",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/37"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-37-taomarketcap-dashboard",
       "netuid": 37,
       "slug": "sn-37",
@@ -5786,24 +5872,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_37/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-37-taostats-metagraph",
-      "netuid": 37,
-      "slug": "sn-37",
-      "subtitle": "dashboard / taostats",
-      "title": "Aurelius Taostats metagraph",
-      "tokens": [
-        "37",
-        "aurelius",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/37/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5898,6 +5966,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-59-subnetradar-dashboard",
+      "netuid": 59,
+      "slug": "sn-59",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Babelbit SubnetRadar dashboard",
+      "tokens": [
+        "59",
+        "babelbit",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/59"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-59-taomarketcap-dashboard",
       "netuid": 59,
       "slug": "sn-59",
@@ -5931,24 +6016,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_59/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-59-taostats-metagraph",
-      "netuid": 59,
-      "slug": "sn-59",
-      "subtitle": "dashboard / taostats",
-      "title": "Babelbit Taostats metagraph",
-      "tokens": [
-        "59",
-        "babelbit",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/59/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6079,6 +6146,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-105-subnetradar-dashboard",
+      "netuid": 105,
+      "slug": "sn-105",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Beam SubnetRadar dashboard",
+      "tokens": [
+        "105",
+        "beam",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/105"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-105-website-common-swagger",
       "netuid": 105,
       "slug": "sn-105",
@@ -6131,24 +6215,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_105/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-105-taostats-metagraph",
-      "netuid": 105,
-      "slug": "sn-105",
-      "subtitle": "dashboard / taostats",
-      "title": "Beam Taostats metagraph",
-      "tokens": [
-        "105",
-        "beam",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/105/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6241,6 +6307,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-16-subnetradar-dashboard",
+      "netuid": 16,
+      "slug": "sn-16",
+      "subtitle": "dashboard / subnetradar",
+      "title": "BitAds SubnetRadar dashboard",
+      "tokens": [
+        "16",
+        "bitads",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/16"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-16-website-common-swagger",
       "netuid": 16,
       "slug": "sn-16",
@@ -6293,24 +6376,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_16/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-16-taostats-metagraph",
-      "netuid": 16,
-      "slug": "sn-16",
-      "subtitle": "dashboard / taostats",
-      "title": "BitAds Taostats metagraph",
-      "tokens": [
-        "16",
-        "bitads",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/16/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6403,6 +6468,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-93-subnetradar-dashboard",
+      "netuid": 93,
+      "slug": "sn-93",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Bitcast SubnetRadar dashboard",
+      "tokens": [
+        "93",
+        "bitcast",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/93"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-93-website-common-swagger",
       "netuid": 93,
       "slug": "sn-93",
@@ -6455,24 +6537,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_93/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-93-taostats-metagraph",
-      "netuid": 93,
-      "slug": "sn-93",
-      "subtitle": "dashboard / taostats",
-      "title": "Bitcast Taostats metagraph",
-      "tokens": [
-        "93",
-        "bitcast",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/93/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6582,6 +6646,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-34-subnetradar-dashboard",
+      "netuid": 34,
+      "slug": "sn-34",
+      "subtitle": "dashboard / subnetradar",
+      "title": "BitMind SubnetRadar dashboard",
+      "tokens": [
+        "34",
+        "bitmind",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/34"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-34-taomarketcap-dashboard",
       "netuid": 34,
       "slug": "sn-34",
@@ -6615,24 +6696,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_34/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-34-taostats-metagraph",
-      "netuid": 34,
-      "slug": "sn-34",
-      "subtitle": "dashboard / taostats",
-      "title": "BitMind Taostats metagraph",
-      "tokens": [
-        "34",
-        "bitmind",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/34/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6818,6 +6881,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-60-subnetradar-dashboard",
+      "netuid": 60,
+      "slug": "sn-60",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Bitsec.ai SubnetRadar dashboard",
+      "tokens": [
+        "60",
+        "ai",
+        "bitsec",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/60"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-60-website-common-swagger",
       "netuid": 60,
       "slug": "sn-60",
@@ -6873,25 +6954,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_60/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-60-taostats-metagraph",
-      "netuid": 60,
-      "slug": "sn-60",
-      "subtitle": "dashboard / taostats",
-      "title": "Bitsec.ai Taostats metagraph",
-      "tokens": [
-        "60",
-        "ai",
-        "bitsec",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/60/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6986,6 +7048,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-94-subnetradar-dashboard",
+      "netuid": 94,
+      "slug": "sn-94",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Bitsota SubnetRadar dashboard",
+      "tokens": [
+        "94",
+        "bitsota",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/94"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-94-taomarketcap-dashboard",
       "netuid": 94,
       "slug": "sn-94",
@@ -7019,24 +7098,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_94/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-94-taostats-metagraph",
-      "netuid": 94,
-      "slug": "sn-94",
-      "subtitle": "dashboard / taostats",
-      "title": "Bitsota Taostats metagraph",
-      "tokens": [
-        "94",
-        "bitsota",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/94/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7094,6 +7155,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-91-subnetradar-dashboard",
+      "netuid": 91,
+      "slug": "sn-91",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Bitstarter #1 SubnetRadar dashboard",
+      "tokens": [
+        "1",
+        "91",
+        "bitstarter",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/91"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-91-taomarketcap-dashboard",
       "netuid": 91,
       "slug": "sn-91",
@@ -7129,25 +7208,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_91/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-91-taostats-metagraph",
-      "netuid": 91,
-      "slug": "sn-91",
-      "subtitle": "dashboard / taostats",
-      "title": "Bitstarter #1 Taostats metagraph",
-      "tokens": [
-        "1",
-        "91",
-        "bitstarter",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/91/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7310,6 +7370,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-19-subnetradar-dashboard",
+      "netuid": 19,
+      "slug": "sn-19",
+      "subtitle": "dashboard / subnetradar",
+      "title": "blockmachine SubnetRadar dashboard",
+      "tokens": [
+        "19",
+        "blockmachine",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/19"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-19-taomarketcap-dashboard",
       "netuid": 19,
       "slug": "sn-19",
@@ -7343,24 +7420,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_19/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-19-taostats-metagraph",
-      "netuid": 19,
-      "slug": "sn-19",
-      "subtitle": "dashboard / taostats",
-      "title": "blockmachine Taostats metagraph",
-      "tokens": [
-        "19",
-        "blockmachine",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/19/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7471,6 +7530,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-117-subnetradar-dashboard",
+      "netuid": 117,
+      "slug": "sn-117",
+      "subtitle": "dashboard / subnetradar",
+      "title": "BrainPlay SubnetRadar dashboard",
+      "tokens": [
+        "117",
+        "brainplay",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/117"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-117-taomarketcap-dashboard",
       "netuid": 117,
       "slug": "sn-117",
@@ -7504,24 +7580,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_117/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-117-taostats-metagraph",
-      "netuid": 117,
-      "slug": "sn-117",
-      "subtitle": "dashboard / taostats",
-      "title": "BrainPlay Taostats metagraph",
-      "tokens": [
-        "117",
-        "brainplay",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/117/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7618,6 +7676,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-128-subnetradar-dashboard",
+      "netuid": 128,
+      "slug": "sn-128",
+      "subtitle": "dashboard / subnetradar",
+      "title": "ByteLeap SubnetRadar dashboard",
+      "tokens": [
+        "128",
+        "byteleap",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/128"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-128-website-common-swagger",
       "netuid": 128,
       "slug": "sn-128",
@@ -7670,24 +7745,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_128/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-128-taostats-metagraph",
-      "netuid": 128,
-      "slug": "sn-128",
-      "subtitle": "dashboard / taostats",
-      "title": "ByteLeap Taostats metagraph",
-      "tokens": [
-        "128",
-        "byteleap",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/128/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7744,6 +7801,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-76-subnetradar-dashboard",
+      "netuid": 76,
+      "slug": "sn-76",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Byzantium SubnetRadar dashboard",
+      "tokens": [
+        "76",
+        "byzantium",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/76"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-76-taomarketcap-dashboard",
       "netuid": 76,
       "slug": "sn-76",
@@ -7777,24 +7851,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_76/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-76-taostats-metagraph",
-      "netuid": 76,
-      "slug": "sn-76",
-      "subtitle": "dashboard / taostats",
-      "title": "Byzantium Taostats metagraph",
-      "tokens": [
-        "76",
-        "byzantium",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/76/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7943,20 +7999,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-14-taomarketcap-dashboard",
+      "id": "surface:sn-14-subnetradar-dashboard",
       "netuid": 14,
       "slug": "sn-14",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Cacheon TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Cacheon SubnetRadar dashboard",
       "tokens": [
         "14",
         "cacheon",
         "dashboard",
         "sn",
-        "taomarketcap"
+        "subnetradar"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/14"
+      "url": "https://subnetradar.com/subnet/14"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8086,6 +8142,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-40-subnetradar-dashboard",
+      "netuid": 40,
+      "slug": "sn-40",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Chunking SubnetRadar dashboard",
+      "tokens": [
+        "40",
+        "chunking",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/40"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-40-taomarketcap-dashboard",
       "netuid": 40,
       "slug": "sn-40",
@@ -8119,24 +8192,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_40/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-40-taostats-metagraph",
-      "netuid": 40,
-      "slug": "sn-40",
-      "subtitle": "dashboard / taostats",
-      "title": "Chunking Taostats metagraph",
-      "tokens": [
-        "40",
-        "chunking",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/40/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8383,6 +8438,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-64-subnetradar-dashboard",
+      "netuid": 64,
+      "slug": "sn-64",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Chutes SubnetRadar dashboard",
+      "tokens": [
+        "64",
+        "chutes",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/64"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-64-taomarketcap-dashboard",
       "netuid": 64,
       "slug": "sn-64",
@@ -8416,24 +8488,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_64/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-64-taostats-metagraph",
-      "netuid": 64,
-      "slug": "sn-64",
-      "subtitle": "dashboard / taostats",
-      "title": "Chutes Taostats metagraph",
-      "tokens": [
-        "64",
-        "chutes",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/64/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8525,6 +8579,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-83-subnetradar-dashboard",
+      "netuid": 83,
+      "slug": "sn-83",
+      "subtitle": "dashboard / subnetradar",
+      "title": "CliqueAI SubnetRadar dashboard",
+      "tokens": [
+        "83",
+        "cliqueai",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/83"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-83-website-common-swagger",
       "netuid": 83,
       "slug": "sn-83",
@@ -8577,24 +8648,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_83/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-83-taostats-metagraph",
-      "netuid": 83,
-      "slug": "sn-83",
-      "subtitle": "dashboard / taostats",
-      "title": "CliqueAI Taostats metagraph",
-      "tokens": [
-        "83",
-        "cliqueai",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/83/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8688,6 +8741,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-29-subnetradar-dashboard",
+      "netuid": 29,
+      "slug": "sn-29",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Coldint SubnetRadar dashboard",
+      "tokens": [
+        "29",
+        "coldint",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/29"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-29-taomarketcap-dashboard",
       "netuid": 29,
       "slug": "sn-29",
@@ -8738,24 +8808,6 @@
       ],
       "type": "surface",
       "url": "https://taostats.io/subnets/netuid-29"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-29-taostats-metagraph",
-      "netuid": 29,
-      "slug": "sn-29",
-      "subtitle": "dashboard / taostats",
-      "title": "Coldint Taostats metagraph",
-      "tokens": [
-        "29",
-        "coldint",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/29/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8847,6 +8899,42 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-38-taomarketcap-source-repo",
+      "netuid": 38,
+      "slug": "sn-38",
+      "subtitle": "source-repo / taomarketcap",
+      "title": "colosseum source repository",
+      "tokens": [
+        "38",
+        "colosseum",
+        "repo",
+        "repository",
+        "sn",
+        "source",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-38-subnetradar-dashboard",
+      "netuid": 38,
+      "slug": "sn-38",
+      "subtitle": "dashboard / subnetradar",
+      "title": "colosseum SubnetRadar dashboard",
+      "tokens": [
+        "38",
+        "colosseum",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/38"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-38-website-common-swagger",
       "netuid": 38,
       "slug": "sn-38",
@@ -8899,24 +8987,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-38-taostats-metagraph",
-      "netuid": 38,
-      "slug": "sn-38",
-      "subtitle": "dashboard / taostats",
-      "title": "colosseum Taostats metagraph",
-      "tokens": [
-        "38",
-        "colosseum",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/38/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8994,6 +9064,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-82-subnetradar-dashboard",
+      "netuid": 82,
+      "slug": "sn-82",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Compelle SubnetRadar dashboard",
+      "tokens": [
+        "82",
+        "compelle",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/82"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-82-taomarketcap-dashboard",
       "netuid": 82,
       "slug": "sn-82",
@@ -9027,24 +9114,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_82/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-82-taostats-metagraph",
-      "netuid": 82,
-      "slug": "sn-82",
-      "subtitle": "dashboard / taostats",
-      "title": "Compelle Taostats metagraph",
-      "tokens": [
-        "82",
-        "compelle",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/82/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9139,6 +9208,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-12-subnetradar-dashboard",
+      "netuid": 12,
+      "slug": "sn-12",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Compute Horde SubnetRadar dashboard",
+      "tokens": [
+        "12",
+        "compute",
+        "dashboard",
+        "horde",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/12"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-12-taomarketcap-dashboard",
       "netuid": 12,
       "slug": "sn-12",
@@ -9174,25 +9261,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_12/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-12-taostats-metagraph",
-      "netuid": 12,
-      "slug": "sn-12",
-      "subtitle": "dashboard / taostats",
-      "title": "Compute Horde Taostats metagraph",
-      "tokens": [
-        "12",
-        "compute",
-        "dashboard",
-        "horde",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/12/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9303,6 +9371,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-102-subnetradar-dashboard",
+      "netuid": 102,
+      "slug": "sn-102",
+      "subtitle": "dashboard / subnetradar",
+      "title": "ConnitoAI SubnetRadar dashboard",
+      "tokens": [
+        "102",
+        "connitoai",
+        "dashboard",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/102"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-102-taomarketcap-dashboard",
       "netuid": 102,
       "slug": "sn-102",
@@ -9336,24 +9421,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_102/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-102-taostats-metagraph",
-      "netuid": 102,
-      "slug": "sn-102",
-      "subtitle": "dashboard / taostats",
-      "title": "ConnitoAI Taostats metagraph",
-      "tokens": [
-        "102",
-        "connitoai",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/102/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9467,6 +9534,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-13-subnetradar-dashboard",
+      "netuid": 13,
+      "slug": "sn-13",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Data Universe SubnetRadar dashboard",
+      "tokens": [
+        "13",
+        "dashboard",
+        "data",
+        "sn",
+        "subnetradar",
+        "universe"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/13"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-13-taomarketcap-dashboard",
       "netuid": 13,
       "slug": "sn-13",
@@ -9502,25 +9587,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_13/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-13-taostats-metagraph",
-      "netuid": 13,
-      "slug": "sn-13",
-      "subtitle": "dashboard / taostats",
-      "title": "Data Universe Taostats metagraph",
-      "tokens": [
-        "13",
-        "dashboard",
-        "data",
-        "metagraph",
-        "sn",
-        "taostats",
-        "universe"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/13/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9737,6 +9803,60 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-3-subnetradar-dashboard",
+      "netuid": 3,
+      "slug": "sn-3",
+      "subtitle": "dashboard / subnetradar",
+      "title": "deprecated SubnetRadar dashboard",
+      "tokens": [
+        "3",
+        "dashboard",
+        "deprecated",
+        "sn",
+        "subnetradar",
+        "templar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/3"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-39-subnetradar-dashboard",
+      "netuid": 39,
+      "slug": "sn-39",
+      "subtitle": "dashboard / subnetradar",
+      "title": "deprecated SubnetRadar dashboard",
+      "tokens": [
+        "39",
+        "basilica",
+        "dashboard",
+        "deprecated",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/39"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-81-subnetradar-dashboard",
+      "netuid": 81,
+      "slug": "sn-81",
+      "subtitle": "dashboard / subnetradar",
+      "title": "deprecated SubnetRadar dashboard",
+      "tokens": [
+        "81",
+        "dashboard",
+        "deprecated",
+        "grail",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/81"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-3-taomarketcap-dashboard",
       "netuid": 3,
       "slug": "sn-3",
@@ -9848,63 +9968,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_81/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-3-taostats-metagraph",
-      "netuid": 3,
-      "slug": "sn-3",
-      "subtitle": "dashboard / taostats",
-      "title": "deprecated Taostats metagraph",
-      "tokens": [
-        "3",
-        "dashboard",
-        "deprecated",
-        "metagraph",
-        "sn",
-        "taostats",
-        "templar"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/3/metagraph"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-39-taostats-metagraph",
-      "netuid": 39,
-      "slug": "sn-39",
-      "subtitle": "dashboard / taostats",
-      "title": "deprecated Taostats metagraph",
-      "tokens": [
-        "39",
-        "basilica",
-        "dashboard",
-        "deprecated",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/39/metagraph"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-81-taostats-metagraph",
-      "netuid": 81,
-      "slug": "sn-81",
-      "subtitle": "dashboard / taostats",
-      "title": "deprecated Taostats metagraph",
-      "tokens": [
-        "81",
-        "dashboard",
-        "deprecated",
-        "grail",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/81/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10122,6 +10185,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-22-subnetradar-dashboard",
+      "netuid": 22,
+      "slug": "sn-22",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Desearch SubnetRadar dashboard",
+      "tokens": [
+        "22",
+        "dashboard",
+        "desearch",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/22"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-22-website-common-swagger",
       "netuid": 22,
       "slug": "sn-22",
@@ -10174,24 +10254,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_22/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-22-taostats-metagraph",
-      "netuid": 22,
-      "slug": "sn-22",
-      "subtitle": "dashboard / taostats",
-      "title": "Desearch Taostats metagraph",
-      "tokens": [
-        "22",
-        "dashboard",
-        "desearch",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/22/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10338,6 +10400,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-118-subnetradar-dashboard",
+      "netuid": 118,
+      "slug": "sn-118",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Ditto SubnetRadar dashboard",
+      "tokens": [
+        "118",
+        "dashboard",
+        "ditto",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/118"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-118-taomarketcap-dashboard",
       "netuid": 118,
       "slug": "sn-118",
@@ -10371,24 +10450,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_118/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-118-taostats-metagraph",
-      "netuid": 118,
-      "slug": "sn-118",
-      "subtitle": "dashboard / taostats",
-      "title": "Ditto Taostats metagraph",
-      "tokens": [
-        "118",
-        "dashboard",
-        "ditto",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/118/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10480,6 +10541,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-103-subnetradar-dashboard",
+      "netuid": 103,
+      "slug": "sn-103",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Djinn SubnetRadar dashboard",
+      "tokens": [
+        "103",
+        "dashboard",
+        "djinn",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/103"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-103-taomarketcap-dashboard",
       "netuid": 103,
       "slug": "sn-103",
@@ -10513,24 +10591,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_103/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-103-taostats-metagraph",
-      "netuid": 103,
-      "slug": "sn-103",
-      "subtitle": "dashboard / taostats",
-      "title": "Djinn Taostats metagraph",
-      "tokens": [
-        "103",
-        "dashboard",
-        "djinn",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/103/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10656,6 +10716,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-80-subnetradar-dashboard",
+      "netuid": 80,
+      "slug": "sn-80",
+      "subtitle": "dashboard / subnetradar",
+      "title": "dogelayer SubnetRadar dashboard",
+      "tokens": [
+        "80",
+        "dashboard",
+        "dogelayer",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/80"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-80-website-common-swagger",
       "netuid": 80,
       "slug": "sn-80",
@@ -10708,24 +10785,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_80/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-80-taostats-metagraph",
-      "netuid": 80,
-      "slug": "sn-80",
-      "subtitle": "dashboard / taostats",
-      "title": "dogelayer Taostats metagraph",
-      "tokens": [
-        "80",
-        "dashboard",
-        "dogelayer",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/80/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10820,6 +10879,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-52-subnetradar-dashboard",
+      "netuid": 52,
+      "slug": "sn-52",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Dojo SubnetRadar dashboard",
+      "tokens": [
+        "52",
+        "dashboard",
+        "dojo",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/52"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-52-taomarketcap-dashboard",
       "netuid": 52,
       "slug": "sn-52",
@@ -10853,24 +10929,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_52/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-52-taostats-metagraph",
-      "netuid": 52,
-      "slug": "sn-52",
-      "subtitle": "dashboard / taostats",
-      "title": "Dojo Taostats metagraph",
-      "tokens": [
-        "52",
-        "dashboard",
-        "dojo",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/52/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11113,32 +11171,60 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-53-backprop-dashboard",
       "netuid": 53,
-      "slug": "sn-53",
+      "slug": "efficientfrontier",
       "subtitle": "dashboard / backprop-finance",
       "title": "EfficientFrontier Backprop Finance dashboard",
       "tokens": [
-        "53",
         "backprop",
         "dashboard",
         "efficientfrontier",
-        "finance",
-        "sn"
+        "finance"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/53-efficientfrontier"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-53-signalplus-mining",
+      "netuid": 53,
+      "slug": "efficientfrontier",
+      "subtitle": "dashboard / signalplus",
+      "title": "EfficientFrontier mining app",
+      "tokens": [
+        "app",
+        "dashboard",
+        "efficientfrontier",
+        "mining",
+        "signalplus"
+      ],
+      "type": "surface",
+      "url": "https://t.signalplus.com/mining"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-53-subnetradar-dashboard",
+      "netuid": 53,
+      "slug": "efficientfrontier",
+      "subtitle": "dashboard / subnetradar",
+      "title": "EfficientFrontier SubnetRadar dashboard",
+      "tokens": [
+        "dashboard",
+        "efficientfrontier",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/53"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-53-taomarketcap-dashboard",
       "netuid": 53,
-      "slug": "sn-53",
+      "slug": "efficientfrontier",
       "subtitle": "dashboard / taomarketcap",
       "title": "EfficientFrontier TaoMarketCap dashboard",
       "tokens": [
-        "53",
         "dashboard",
         "efficientfrontier",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -11148,16 +11234,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-53-taopedia-article",
       "netuid": 53,
-      "slug": "sn-53",
+      "slug": "efficientfrontier",
       "subtitle": "docs / taopedia-articles",
       "title": "EfficientFrontier Taopedia article",
       "tokens": [
-        "53",
         "article",
         "articles",
         "docs",
         "efficientfrontier",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -11165,34 +11249,14 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-53-taostats-metagraph",
-      "netuid": 53,
-      "slug": "sn-53",
-      "subtitle": "dashboard / taostats",
-      "title": "EfficientFrontier Taostats metagraph",
-      "tokens": [
-        "53",
-        "dashboard",
-        "efficientfrontier",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/53/metagraph"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-53-tensorplex-docs",
       "netuid": 53,
-      "slug": "sn-53",
+      "slug": "efficientfrontier",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "EfficientFrontier Tensorplex subnet docs",
       "tokens": [
-        "53",
         "docs",
         "efficientfrontier",
-        "sn",
         "subnet",
         "tensorplex"
       ],
@@ -11255,6 +11319,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-36-subnetradar-dashboard",
+      "netuid": 36,
+      "slug": "sn-36",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Eirel SubnetRadar dashboard",
+      "tokens": [
+        "36",
+        "dashboard",
+        "eirel",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/36"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-36-taomarketcap-dashboard",
       "netuid": 36,
       "slug": "sn-36",
@@ -11288,24 +11369,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_36/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-36-taostats-metagraph",
-      "netuid": 36,
-      "slug": "sn-36",
-      "subtitle": "dashboard / taostats",
-      "title": "Eirel Taostats metagraph",
-      "tokens": [
-        "36",
-        "dashboard",
-        "eirel",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/36/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11381,6 +11444,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-30-subnetradar-dashboard",
+      "netuid": 30,
+      "slug": "sn-30",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Endure Network SubnetRadar dashboard",
+      "tokens": [
+        "30",
+        "dashboard",
+        "endure",
+        "network",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/30"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-30-taomarketcap-dashboard",
       "netuid": 30,
       "slug": "sn-30",
@@ -11416,25 +11497,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_30/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-30-taostats-metagraph",
-      "netuid": 30,
-      "slug": "sn-30",
-      "subtitle": "dashboard / taostats",
-      "title": "Endure Network Taostats metagraph",
-      "tokens": [
-        "30",
-        "dashboard",
-        "endure",
-        "metagraph",
-        "network",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/30/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11492,6 +11554,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-101-subnetradar-dashboard",
+      "netuid": 101,
+      "slug": "sn-101",
+      "subtitle": "dashboard / subnetradar",
+      "title": "eni SubnetRadar dashboard",
+      "tokens": [
+        "101",
+        "dashboard",
+        "eni",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/101"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-101-taomarketcap-dashboard",
       "netuid": 101,
       "slug": "sn-101",
@@ -11525,24 +11604,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_101/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-101-taostats-metagraph",
-      "netuid": 101,
-      "slug": "sn-101",
-      "subtitle": "dashboard / taostats",
-      "title": "eni Taostats metagraph",
-      "tokens": [
-        "101",
-        "dashboard",
-        "eni",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/101/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11602,6 +11663,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-63-subnetradar-dashboard",
+      "netuid": 63,
+      "slug": "sn-63",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Enigma SubnetRadar dashboard",
+      "tokens": [
+        "63",
+        "dashboard",
+        "enigma",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/63"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-63-taomarketcap-dashboard",
       "netuid": 63,
       "slug": "sn-63",
@@ -11635,24 +11713,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_63/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-63-taostats-metagraph",
-      "netuid": 63,
-      "slug": "sn-63",
-      "subtitle": "dashboard / taostats",
-      "title": "Enigma Taostats metagraph",
-      "tokens": [
-        "63",
-        "dashboard",
-        "enigma",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/63/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11750,6 +11810,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-47-subnetradar-dashboard",
+      "netuid": 47,
+      "slug": "sn-47",
+      "subtitle": "dashboard / subnetradar",
+      "title": "EvolAI SubnetRadar dashboard",
+      "tokens": [
+        "47",
+        "dashboard",
+        "evolai",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/47"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-47-taomarketcap-dashboard",
       "netuid": 47,
       "slug": "sn-47",
@@ -11783,24 +11860,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_47/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-47-taostats-metagraph",
-      "netuid": 47,
-      "slug": "sn-47",
-      "subtitle": "dashboard / taostats",
-      "title": "EvolAI Taostats metagraph",
-      "tokens": [
-        "47",
-        "dashboard",
-        "evolai",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/47/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11886,6 +11945,27 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-104-subnetradar-dashboard",
+      "netuid": 104,
+      "slug": "sn-104",
+      "subtitle": "dashboard / subnetradar",
+      "title": "for sale (burn to uid1) SubnetRadar dashboard",
+      "tokens": [
+        "104",
+        "burn",
+        "dashboard",
+        "for",
+        "sale",
+        "sn",
+        "subnetradar",
+        "to",
+        "uid1"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/104"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-104-taomarketcap-dashboard",
       "netuid": 104,
       "slug": "sn-104",
@@ -11930,28 +12010,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-104-taostats-metagraph",
-      "netuid": 104,
-      "slug": "sn-104",
-      "subtitle": "dashboard / taostats",
-      "title": "for sale (burn to uid1) Taostats metagraph",
-      "tokens": [
-        "104",
-        "burn",
-        "dashboard",
-        "for",
-        "metagraph",
-        "sale",
-        "sn",
-        "taostats",
-        "to",
-        "uid1"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/104/metagraph"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-104-tensorplex-docs",
       "netuid": 104,
       "slug": "sn-104",
@@ -11992,17 +12050,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-98-website-subdomain-docs-docs-forevermoney-ai",
+      "id": "surface:sn-98-website-link-forevermoney-ai-docs-2",
       "netuid": 98,
       "slug": "sn-98",
       "subtitle": "docs / taomarketcap",
-      "title": "ForeverMoney docs subdomain",
+      "title": "ForeverMoney docs",
       "tokens": [
         "98",
         "docs",
         "forevermoney",
         "sn",
-        "subdomain",
         "taomarketcap"
       ],
       "type": "surface",
@@ -12049,6 +12106,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-98-subnetradar-dashboard",
+      "netuid": 98,
+      "slug": "sn-98",
+      "subtitle": "dashboard / subnetradar",
+      "title": "ForeverMoney SubnetRadar dashboard",
+      "tokens": [
+        "98",
+        "dashboard",
+        "forevermoney",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/98"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-98-taomarketcap-dashboard",
       "netuid": 98,
       "slug": "sn-98",
@@ -12082,24 +12156,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_98/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-98-taostats-metagraph",
-      "netuid": 98,
-      "slug": "sn-98",
-      "subtitle": "dashboard / taostats",
-      "title": "ForeverMoney Taostats metagraph",
-      "tokens": [
-        "98",
-        "dashboard",
-        "forevermoney",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/98/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12156,6 +12212,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-57-subnetradar-dashboard",
+      "netuid": 57,
+      "slug": "sn-57",
+      "subtitle": "dashboard / subnetradar",
+      "title": "gaia SubnetRadar dashboard",
+      "tokens": [
+        "57",
+        "dashboard",
+        "gaia",
+        "sn",
+        "sparket",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/57"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-57-taomarketcap-dashboard",
       "netuid": 57,
       "slug": "sn-57",
@@ -12191,25 +12265,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_57/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-57-taostats-metagraph",
-      "netuid": 57,
-      "slug": "sn-57",
-      "subtitle": "dashboard / taostats",
-      "title": "gaia Taostats metagraph",
-      "tokens": [
-        "57",
-        "dashboard",
-        "gaia",
-        "metagraph",
-        "sn",
-        "sparket",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/57/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12252,6 +12307,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-122-subnetradar-dashboard",
+      "netuid": 122,
+      "slug": "sn-122",
+      "subtitle": "dashboard / subnetradar",
+      "title": "gamma_small SubnetRadar dashboard",
+      "tokens": [
+        "122",
+        "bitrecs",
+        "dashboard",
+        "gamma",
+        "small",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/122"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-122-taomarketcap-dashboard",
       "netuid": 122,
       "slug": "sn-122",
@@ -12289,26 +12363,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_122/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-122-taostats-metagraph",
-      "netuid": 122,
-      "slug": "sn-122",
-      "subtitle": "dashboard / taostats",
-      "title": "gamma_small Taostats metagraph",
-      "tokens": [
-        "122",
-        "bitrecs",
-        "dashboard",
-        "gamma",
-        "metagraph",
-        "small",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/122/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12508,6 +12562,21 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-74-subnetradar-dashboard",
+      "netuid": 74,
+      "slug": "gittensor",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Gittensor SubnetRadar dashboard",
+      "tokens": [
+        "dashboard",
+        "gittensor",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/74"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-74-website-common-swagger",
       "netuid": 74,
       "slug": "gittensor",
@@ -12554,22 +12623,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_74/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-74-taostats-metagraph",
-      "netuid": 74,
-      "slug": "gittensor",
-      "subtitle": "dashboard / taostats",
-      "title": "Gittensor Taostats metagraph",
-      "tokens": [
-        "dashboard",
-        "gittensor",
-        "metagraph",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/74/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12621,6 +12674,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-28-subnetradar-dashboard",
+      "netuid": 28,
+      "slug": "sn-28",
+      "subtitle": "dashboard / subnetradar",
+      "title": "gm SubnetRadar dashboard",
+      "tokens": [
+        "28",
+        "dashboard",
+        "gm",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/28"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-28-taomarketcap-dashboard",
       "netuid": 28,
       "slug": "sn-28",
@@ -12654,24 +12724,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_28/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-28-taostats-metagraph",
-      "netuid": 28,
-      "slug": "sn-28",
-      "subtitle": "dashboard / taostats",
-      "title": "gm Taostats metagraph",
-      "tokens": [
-        "28",
-        "dashboard",
-        "gm",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/28/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12750,6 +12802,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-42-subnetradar-dashboard",
+      "netuid": 42,
+      "slug": "sn-42",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Gopher SubnetRadar dashboard",
+      "tokens": [
+        "42",
+        "dashboard",
+        "gopher",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/42"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-42-taomarketcap-dashboard",
       "netuid": 42,
       "slug": "sn-42",
@@ -12783,24 +12852,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-42-taostats-metagraph",
-      "netuid": 42,
-      "slug": "sn-42",
-      "subtitle": "dashboard / taostats",
-      "title": "Gopher Taostats metagraph",
-      "tokens": [
-        "42",
-        "dashboard",
-        "gopher",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/42/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12915,6 +12966,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-56-subnetradar-dashboard",
+      "netuid": 56,
+      "slug": "sn-56",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Gradients SubnetRadar dashboard",
+      "tokens": [
+        "56",
+        "dashboard",
+        "gradients",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/56"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-56-website-common-swagger",
       "netuid": 56,
       "slug": "sn-56",
@@ -12967,24 +13035,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_56/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-56-taostats-metagraph",
-      "netuid": 56,
-      "slug": "sn-56",
-      "subtitle": "dashboard / taostats",
-      "title": "Gradients Taostats metagraph",
-      "tokens": [
-        "56",
-        "dashboard",
-        "gradients",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/56/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13119,6 +13169,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-43-subnetradar-dashboard",
+      "netuid": 43,
+      "slug": "sn-43",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Graphite SubnetRadar dashboard",
+      "tokens": [
+        "43",
+        "dashboard",
+        "graphite",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/43"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-43-taomarketcap-dashboard",
       "netuid": 43,
       "slug": "sn-43",
@@ -13152,24 +13219,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_43/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-43-taostats-metagraph",
-      "netuid": 43,
-      "slug": "sn-43",
-      "subtitle": "dashboard / taostats",
-      "title": "Graphite Taostats metagraph",
-      "tokens": [
-        "43",
-        "dashboard",
-        "graphite",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/43/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13347,6 +13396,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-110-subnetradar-dashboard",
+      "netuid": 110,
+      "slug": "sn-110",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Green Compute SubnetRadar dashboard",
+      "tokens": [
+        "110",
+        "compute",
+        "dashboard",
+        "green",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/110"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-110-taomarketcap-dashboard",
       "netuid": 110,
       "slug": "sn-110",
@@ -13382,25 +13449,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_110/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-110-taostats-metagraph",
-      "netuid": 110,
-      "slug": "sn-110",
-      "subtitle": "dashboard / taostats",
-      "title": "Green Compute Taostats metagraph",
-      "tokens": [
-        "110",
-        "compute",
-        "dashboard",
-        "green",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/110/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13458,6 +13506,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-20-subnetradar-dashboard",
+      "netuid": 20,
+      "slug": "sn-20",
+      "subtitle": "dashboard / subnetradar",
+      "title": "GroundLayer SubnetRadar dashboard",
+      "tokens": [
+        "20",
+        "dashboard",
+        "groundlayer",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/20"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-20-taomarketcap-dashboard",
       "netuid": 20,
       "slug": "sn-20",
@@ -13491,24 +13556,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_20/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-20-taostats-metagraph",
-      "netuid": 20,
-      "slug": "sn-20",
-      "subtitle": "dashboard / taostats",
-      "title": "GroundLayer Taostats metagraph",
-      "tokens": [
-        "20",
-        "dashboard",
-        "groundlayer",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/20/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13744,34 +13791,49 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-116-backprop-dashboard",
       "netuid": 116,
-      "slug": "sn-116",
+      "slug": "taolend",
       "subtitle": "dashboard / backprop-finance",
       "title": "hard_sign Backprop Finance dashboard",
       "tokens": [
-        "116",
         "backprop",
         "dashboard",
         "finance",
         "hard",
         "sign",
-        "sn"
+        "taolend"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/116-hard-sign"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-116-taomarketcap-dashboard",
+      "id": "surface:sn-116-subnetradar-dashboard",
       "netuid": 116,
-      "slug": "sn-116",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "hard_sign TaoMarketCap dashboard",
+      "slug": "taolend",
+      "subtitle": "dashboard / subnetradar",
+      "title": "hard_sign SubnetRadar dashboard",
       "tokens": [
-        "116",
         "dashboard",
         "hard",
         "sign",
-        "sn",
+        "subnetradar",
+        "taolend"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/116"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-116-taomarketcap-dashboard",
+      "netuid": 116,
+      "slug": "taolend",
+      "subtitle": "dashboard / taomarketcap",
+      "title": "hard_sign TaoMarketCap dashboard",
+      "tokens": [
+        "dashboard",
+        "hard",
+        "sign",
+        "taolend",
         "taomarketcap"
       ],
       "type": "surface",
@@ -13781,17 +13843,16 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-116-taopedia-article",
       "netuid": 116,
-      "slug": "sn-116",
+      "slug": "taolend",
       "subtitle": "docs / taopedia-articles",
       "title": "hard_sign Taopedia article",
       "tokens": [
-        "116",
         "article",
         "articles",
         "docs",
         "hard",
         "sign",
-        "sn",
+        "taolend",
         "taopedia"
       ],
       "type": "surface",
@@ -13799,37 +13860,17 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-116-taostats-metagraph",
-      "netuid": 116,
-      "slug": "sn-116",
-      "subtitle": "dashboard / taostats",
-      "title": "hard_sign Taostats metagraph",
-      "tokens": [
-        "116",
-        "dashboard",
-        "hard",
-        "metagraph",
-        "sign",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/116/metagraph"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-116-tensorplex-docs",
       "netuid": 116,
-      "slug": "sn-116",
+      "slug": "taolend",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "hard_sign Tensorplex subnet docs",
       "tokens": [
-        "116",
         "docs",
         "hard",
         "sign",
-        "sn",
         "subnet",
+        "taolend",
         "tensorplex"
       ],
       "type": "surface",
@@ -13895,20 +13936,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-67-taomarketcap-dashboard",
+      "id": "surface:sn-67-subnetradar-dashboard",
       "netuid": 67,
       "slug": "sn-67",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Harnyx TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Harnyx SubnetRadar dashboard",
       "tokens": [
         "67",
         "dashboard",
         "harnyx",
         "sn",
-        "taomarketcap"
+        "subnetradar"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/67"
+      "url": "https://subnetradar.com/subnet/67"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14002,6 +14043,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-115-subnetradar-dashboard",
+      "netuid": 115,
+      "slug": "sn-115",
+      "subtitle": "dashboard / subnetradar",
+      "title": "HashiChain SubnetRadar dashboard",
+      "tokens": [
+        "115",
+        "dashboard",
+        "hashichain",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/115"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-115-taomarketcap-dashboard",
       "netuid": 115,
       "slug": "sn-115",
@@ -14035,24 +14093,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_115/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-115-taostats-metagraph",
-      "netuid": 115,
-      "slug": "sn-115",
-      "subtitle": "dashboard / taostats",
-      "title": "HashiChain Taostats metagraph",
-      "tokens": [
-        "115",
-        "dashboard",
-        "hashichain",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/115/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14165,6 +14205,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-75-subnetradar-dashboard",
+      "netuid": 75,
+      "slug": "sn-75",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Hippius SubnetRadar dashboard",
+      "tokens": [
+        "75",
+        "dashboard",
+        "hippius",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/75"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-75-taomarketcap-dashboard",
       "netuid": 75,
       "slug": "sn-75",
@@ -14198,24 +14255,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_75/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-75-taostats-metagraph",
-      "netuid": 75,
-      "slug": "sn-75",
-      "subtitle": "dashboard / taostats",
-      "title": "Hippius Taostats metagraph",
-      "tokens": [
-        "75",
-        "dashboard",
-        "hippius",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/75/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14309,6 +14348,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-5-subnetradar-dashboard",
+      "netuid": 5,
+      "slug": "sn-5",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Hone SubnetRadar dashboard",
+      "tokens": [
+        "5",
+        "dashboard",
+        "hone",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/5"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-5-taomarketcap-dashboard",
       "netuid": 5,
       "slug": "sn-5",
@@ -14342,24 +14398,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-5-taostats-metagraph",
-      "netuid": 5,
-      "slug": "sn-5",
-      "subtitle": "dashboard / taostats",
-      "title": "Hone Taostats metagraph",
-      "tokens": [
-        "5",
-        "dashboard",
-        "hone",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/5/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14434,6 +14472,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-89-subnetradar-dashboard",
+      "netuid": 89,
+      "slug": "sn-89",
+      "subtitle": "dashboard / subnetradar",
+      "title": "InfiniteHash SubnetRadar dashboard",
+      "tokens": [
+        "89",
+        "dashboard",
+        "infinitehash",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/89"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-89-taomarketcap-dashboard",
       "netuid": 89,
       "slug": "sn-89",
@@ -14467,24 +14522,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_89/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-89-taostats-metagraph",
-      "netuid": 89,
-      "slug": "sn-89",
-      "subtitle": "dashboard / taostats",
-      "title": "InfiniteHash Taostats metagraph",
-      "tokens": [
-        "89",
-        "dashboard",
-        "infinitehash",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/89/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14580,20 +14617,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-88-taomarketcap-dashboard",
+      "id": "surface:sn-88-subnetradar-dashboard",
       "netuid": 88,
       "slug": "sn-88",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Investing TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Investing SubnetRadar dashboard",
       "tokens": [
         "88",
         "dashboard",
         "investing",
         "sn",
-        "taomarketcap"
+        "subnetradar"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/88"
+      "url": "https://subnetradar.com/subnet/88"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14739,20 +14776,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-9-taomarketcap-dashboard",
+      "id": "surface:sn-9-subnetradar-dashboard",
       "netuid": 9,
       "slug": "sn-9",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "iota TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "iota SubnetRadar dashboard",
       "tokens": [
         "9",
         "dashboard",
         "iota",
         "sn",
-        "taomarketcap"
+        "subnetradar"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/9"
+      "url": "https://subnetradar.com/subnet/9"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14828,24 +14865,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-32-website-subdomain-docs-docs-its-ai-org",
-      "netuid": 32,
-      "slug": "sn-32",
-      "subtitle": "docs / taomarketcap",
-      "title": "ItsAI docs subdomain",
-      "tokens": [
-        "32",
-        "docs",
-        "itsai",
-        "sn",
-        "subdomain",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://docs.its-ai.org/"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-32-itsai-source",
       "netuid": 32,
       "slug": "sn-32",
@@ -14863,6 +14882,23 @@
       ],
       "type": "surface",
       "url": "https://github.com/It-s-AI/llm-detection"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-32-subnetradar-dashboard",
+      "netuid": 32,
+      "slug": "sn-32",
+      "subtitle": "dashboard / subnetradar",
+      "title": "ItsAI SubnetRadar dashboard",
+      "tokens": [
+        "32",
+        "dashboard",
+        "itsai",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/32"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14899,24 +14935,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_32/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-32-taostats-metagraph",
-      "netuid": 32,
-      "slug": "sn-32",
-      "subtitle": "dashboard / taostats",
-      "title": "ItsAI Taostats metagraph",
-      "tokens": [
-        "32",
-        "dashboard",
-        "itsai",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/32/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15010,6 +15028,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-71-subnetradar-dashboard",
+      "netuid": 71,
+      "slug": "sn-71",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Leadpoet SubnetRadar dashboard",
+      "tokens": [
+        "71",
+        "dashboard",
+        "leadpoet",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/71"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-71-website-common-swagger",
       "netuid": 71,
       "slug": "sn-71",
@@ -15062,24 +15097,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_71/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-71-taostats-metagraph",
-      "netuid": 71,
-      "slug": "sn-71",
-      "subtitle": "dashboard / taostats",
-      "title": "Leadpoet Taostats metagraph",
-      "tokens": [
-        "71",
-        "dashboard",
-        "leadpoet",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/71/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15210,6 +15227,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-99-subnetradar-dashboard",
+      "netuid": 99,
+      "slug": "sn-99",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Leoma SubnetRadar dashboard",
+      "tokens": [
+        "99",
+        "dashboard",
+        "leoma",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/99"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-99-website-common-swagger",
       "netuid": 99,
       "slug": "sn-99",
@@ -15262,24 +15296,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_99/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-99-taostats-metagraph",
-      "netuid": 99,
-      "slug": "sn-99",
-      "subtitle": "dashboard / taostats",
-      "title": "Leoma Taostats metagraph",
-      "tokens": [
-        "99",
-        "dashboard",
-        "leoma",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/99/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15372,6 +15388,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-77-subnetradar-dashboard",
+      "netuid": 77,
+      "slug": "sn-77",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Liquidity SubnetRadar dashboard",
+      "tokens": [
+        "77",
+        "dashboard",
+        "liquidity",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/77"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-77-website-common-swagger",
       "netuid": 77,
       "slug": "sn-77",
@@ -15424,24 +15457,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_77/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-77-taostats-metagraph",
-      "netuid": 77,
-      "slug": "sn-77",
-      "subtitle": "dashboard / taostats",
-      "title": "Liquidity Taostats metagraph",
-      "tokens": [
-        "77",
-        "dashboard",
-        "liquidity",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/77/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15574,6 +15589,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-51-subnetradar-dashboard",
+      "netuid": 51,
+      "slug": "sn-51",
+      "subtitle": "dashboard / subnetradar",
+      "title": "lium.io SubnetRadar dashboard",
+      "tokens": [
+        "51",
+        "dashboard",
+        "io",
+        "lium",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/51"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-51-taomarketcap-dashboard",
       "netuid": 51,
       "slug": "sn-51",
@@ -15609,25 +15642,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_51/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-51-taostats-metagraph",
-      "netuid": 51,
-      "slug": "sn-51",
-      "subtitle": "dashboard / taostats",
-      "title": "lium.io Taostats metagraph",
-      "tokens": [
-        "51",
-        "dashboard",
-        "io",
-        "lium",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/51/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15686,6 +15700,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-92-subnetradar-dashboard",
+      "netuid": 92,
+      "slug": "sn-92",
+      "subtitle": "dashboard / subnetradar",
+      "title": "luis SubnetRadar dashboard",
+      "tokens": [
+        "92",
+        "dashboard",
+        "luis",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/92"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-92-taopedia-article",
       "netuid": 92,
       "slug": "sn-92",
@@ -15702,24 +15733,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-92-taostats-metagraph",
-      "netuid": 92,
-      "slug": "sn-92",
-      "subtitle": "dashboard / taostats",
-      "title": "luis Taostats metagraph",
-      "tokens": [
-        "92",
-        "dashboard",
-        "luis",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/92/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15759,6 +15772,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-87-subnetradar-dashboard",
+      "netuid": 87,
+      "slug": "sn-87",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Luminar Network SubnetRadar dashboard",
+      "tokens": [
+        "87",
+        "dashboard",
+        "luminar",
+        "network",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/87"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-87-taomarketcap-dashboard",
       "netuid": 87,
       "slug": "sn-87",
@@ -15794,25 +15825,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-87-taostats-metagraph",
-      "netuid": 87,
-      "slug": "sn-87",
-      "subtitle": "dashboard / taostats",
-      "title": "Luminar Network Taostats metagraph",
-      "tokens": [
-        "87",
-        "dashboard",
-        "luminar",
-        "metagraph",
-        "network",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/87/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15946,6 +15958,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-25-website-link-macrocosmos-ai-docs-3",
+      "netuid": 25,
+      "slug": "sn-25",
+      "subtitle": "docs / taomarketcap",
+      "title": "Mainframe docs",
+      "tokens": [
+        "25",
+        "docs",
+        "mainframe",
+        "sn",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://docs.macrocosmos.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-25-website-link-macrocosmos-ai-docs-6",
       "netuid": 25,
       "slug": "sn-25",
@@ -15960,24 +15989,6 @@
       ],
       "type": "surface",
       "url": "https://macrocosmos.ai/delegation-guide"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-25-website-subdomain-docs-docs-macrocosmos-ai",
-      "netuid": 25,
-      "slug": "sn-25",
-      "subtitle": "docs / taomarketcap",
-      "title": "Mainframe docs subdomain",
-      "tokens": [
-        "25",
-        "docs",
-        "mainframe",
-        "sn",
-        "subdomain",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://docs.macrocosmos.ai/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -16000,20 +16011,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-25-taomarketcap-dashboard",
+      "id": "surface:sn-25-subnetradar-dashboard",
       "netuid": 25,
       "slug": "sn-25",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Mainframe TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Mainframe SubnetRadar dashboard",
       "tokens": [
         "25",
         "dashboard",
         "mainframe",
         "sn",
-        "taomarketcap"
+        "subnetradar"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/25"
+      "url": "https://subnetradar.com/subnet/25"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -16107,6 +16118,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-123-subnetradar-dashboard",
+      "netuid": 123,
+      "slug": "sn-123",
+      "subtitle": "dashboard / subnetradar",
+      "title": "MANTIS SubnetRadar dashboard",
+      "tokens": [
+        "123",
+        "dashboard",
+        "mantis",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/123"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-123-taomarketcap-dashboard",
       "netuid": 123,
       "slug": "sn-123",
@@ -16140,24 +16168,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_123/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-123-taostats-metagraph",
-      "netuid": 123,
-      "slug": "sn-123",
-      "subtitle": "dashboard / taostats",
-      "title": "MANTIS Taostats metagraph",
-      "tokens": [
-        "123",
-        "dashboard",
-        "mantis",
-        "metagraph",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/123/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -16290,6 +16300,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-107-subnetradar-dashboard",
+      "netuid": 107,
+      "slug": "sn-107",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Minos SubnetRadar dashboard",
+      "tokens": [
+        "107",
+        "dashboard",
+        "minos",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/107"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-107-taomarketcap-dashboard",
       "netuid": 107,
       "slug": "sn-107",
@@ -16323,24 +16350,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_107/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-107-taostats-metagraph",
-      "netuid": 107,
-      "slug": "sn-107",
-      "subtitle": "dashboard / taostats",
-      "title": "Minos Taostats metagraph",
-      "tokens": [
-        "107",
-        "dashboard",
-        "metagraph",
-        "minos",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/107/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -16397,6 +16406,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-112-website-subdomain-docs-docs-minotaursubnet-com",
+      "netuid": 112,
+      "slug": "sn-112",
+      "subtitle": "docs / taomarketcap",
+      "title": "minotaur docs subdomain",
+      "tokens": [
+        "112",
+        "docs",
+        "minotaur",
+        "sn",
+        "subdomain",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://docs.minotaursubnet.com/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-112-taomarketcap-source-repo",
       "netuid": 112,
       "slug": "sn-112",
@@ -16413,6 +16440,23 @@
       ],
       "type": "surface",
       "url": "https://github.com/subnet112/minotaur_subnet"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-112-subnetradar-dashboard",
+      "netuid": 112,
+      "slug": "sn-112",
+      "subtitle": "dashboard / subnetradar",
+      "title": "minotaur SubnetRadar dashboard",
+      "tokens": [
+        "112",
+        "dashboard",
+        "minotaur",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/112"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -16449,24 +16493,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_112/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-112-taostats-metagraph",
-      "netuid": 112,
-      "slug": "sn-112",
-      "subtitle": "dashboard / taostats",
-      "title": "minotaur Taostats metagraph",
-      "tokens": [
-        "112",
-        "dashboard",
-        "metagraph",
-        "minotaur",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/112/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -16561,6 +16587,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-79-subnetradar-dashboard",
+      "netuid": 79,
+      "slug": "sn-79",
+      "subtitle": "dashboard / subnetradar",
+      "title": "MVTRX SubnetRadar dashboard",
+      "tokens": [
+        "79",
+        "dashboard",
+        "mvtrx",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/79"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-79-taomarketcap-dashboard",
       "netuid": 79,
       "slug": "sn-79",
@@ -16594,24 +16637,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_79/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-79-taostats-metagraph",
-      "netuid": 79,
-      "slug": "sn-79",
-      "subtitle": "dashboard / taostats",
-      "title": "MVTRX Taostats metagraph",
-      "tokens": [
-        "79",
-        "dashboard",
-        "metagraph",
-        "mvtrx",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/79/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -16768,6 +16793,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-49-subnetradar-dashboard",
+      "netuid": 49,
+      "slug": "sn-49",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Nepher Robotics SubnetRadar dashboard",
+      "tokens": [
+        "49",
+        "dashboard",
+        "nepher",
+        "robotics",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/49"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-49-taomarketcap-dashboard",
       "netuid": 49,
       "slug": "sn-49",
@@ -16803,25 +16846,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_49/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-49-taostats-metagraph",
-      "netuid": 49,
-      "slug": "sn-49",
-      "subtitle": "dashboard / taostats",
-      "title": "Nepher Robotics Taostats metagraph",
-      "tokens": [
-        "49",
-        "dashboard",
-        "metagraph",
-        "nepher",
-        "robotics",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/49/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -16989,6 +17013,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-70-subnetradar-dashboard",
+      "netuid": 70,
+      "slug": "sn-70",
+      "subtitle": "dashboard / subnetradar",
+      "title": "NexisGen SubnetRadar dashboard",
+      "tokens": [
+        "70",
+        "dashboard",
+        "nexisgen",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/70"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-70-taomarketcap-dashboard",
       "netuid": 70,
       "slug": "sn-70",
@@ -17022,24 +17063,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_70/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-70-taostats-metagraph",
-      "netuid": 70,
-      "slug": "sn-70",
-      "subtitle": "dashboard / taostats",
-      "title": "NexisGen Taostats metagraph",
-      "tokens": [
-        "70",
-        "dashboard",
-        "metagraph",
-        "nexisgen",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/70/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -17172,6 +17195,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-66-subnetradar-dashboard",
+      "netuid": 66,
+      "slug": "sn-66",
+      "subtitle": "dashboard / subnetradar",
+      "title": "ninja SubnetRadar dashboard",
+      "tokens": [
+        "66",
+        "dashboard",
+        "ninja",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/66"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-66-website-common-swagger",
       "netuid": 66,
       "slug": "sn-66",
@@ -17243,24 +17283,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_66/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-66-taostats-metagraph",
-      "netuid": 66,
-      "slug": "sn-66",
-      "subtitle": "dashboard / taostats",
-      "title": "ninja Taostats metagraph",
-      "tokens": [
-        "66",
-        "dashboard",
-        "metagraph",
-        "ninja",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/66/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -17356,6 +17378,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-55-subnetradar-dashboard",
+      "netuid": 55,
+      "slug": "sn-55",
+      "subtitle": "dashboard / subnetradar",
+      "title": "NIOME SubnetRadar dashboard",
+      "tokens": [
+        "55",
+        "dashboard",
+        "niome",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/55"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-55-taomarketcap-dashboard",
       "netuid": 55,
       "slug": "sn-55",
@@ -17389,24 +17428,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_55/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-55-taostats-metagraph",
-      "netuid": 55,
-      "slug": "sn-55",
-      "subtitle": "dashboard / taostats",
-      "title": "NIOME Taostats metagraph",
-      "tokens": [
-        "55",
-        "dashboard",
-        "metagraph",
-        "niome",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/55/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -17447,32 +17468,72 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-27-backprop-dashboard",
       "netuid": 27,
-      "slug": "sn-27",
+      "slug": "nodexo",
       "subtitle": "dashboard / backprop-finance",
       "title": "Nodexo Backprop Finance dashboard",
       "tokens": [
-        "27",
         "backprop",
         "dashboard",
         "finance",
-        "nodexo",
-        "sn"
+        "nodexo"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/27-nodexo"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-27-nodexo-console",
+      "netuid": 27,
+      "slug": "nodexo",
+      "subtitle": "dashboard / nodexo",
+      "title": "Nodexo console",
+      "tokens": [
+        "console",
+        "dashboard",
+        "nodexo"
+      ],
+      "type": "surface",
+      "url": "https://console.nodexo.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-27-nodexo-docs",
+      "netuid": 27,
+      "slug": "nodexo",
+      "subtitle": "docs / nodexo",
+      "title": "Nodexo docs",
+      "tokens": [
+        "docs",
+        "nodexo"
+      ],
+      "type": "surface",
+      "url": "https://docs.nodexo.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-27-subnetradar-dashboard",
+      "netuid": 27,
+      "slug": "nodexo",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Nodexo SubnetRadar dashboard",
+      "tokens": [
+        "dashboard",
+        "nodexo",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/27"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-27-taomarketcap-dashboard",
       "netuid": 27,
-      "slug": "sn-27",
+      "slug": "nodexo",
       "subtitle": "dashboard / taomarketcap",
       "title": "Nodexo TaoMarketCap dashboard",
       "tokens": [
-        "27",
         "dashboard",
         "nodexo",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -17482,16 +17543,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-27-taopedia-article",
       "netuid": 27,
-      "slug": "sn-27",
+      "slug": "nodexo",
       "subtitle": "docs / taopedia-articles",
       "title": "Nodexo Taopedia article",
       "tokens": [
-        "27",
         "article",
         "articles",
         "docs",
         "nodexo",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -17499,39 +17558,33 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-27-taostats-metagraph",
-      "netuid": 27,
-      "slug": "sn-27",
-      "subtitle": "dashboard / taostats",
-      "title": "Nodexo Taostats metagraph",
-      "tokens": [
-        "27",
-        "dashboard",
-        "metagraph",
-        "nodexo",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/27/metagraph"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-27-tensorplex-docs",
       "netuid": 27,
-      "slug": "sn-27",
+      "slug": "nodexo",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "Nodexo Tensorplex subnet docs",
       "tokens": [
-        "27",
         "docs",
         "nodexo",
-        "sn",
         "subnet",
         "tensorplex"
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/27"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-27-nodexo-website",
+      "netuid": 27,
+      "slug": "nodexo",
+      "subtitle": "website / nodexo",
+      "title": "Nodexo website",
+      "tokens": [
+        "nodexo",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://nodexo.ai/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -17625,6 +17678,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-68-subnetradar-dashboard",
+      "netuid": 68,
+      "slug": "sn-68",
+      "subtitle": "dashboard / subnetradar",
+      "title": "NOVA SubnetRadar dashboard",
+      "tokens": [
+        "68",
+        "dashboard",
+        "nova",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/68"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-68-taomarketcap-dashboard",
       "netuid": 68,
       "slug": "sn-68",
@@ -17658,24 +17728,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_68/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-68-taostats-metagraph",
-      "netuid": 68,
-      "slug": "sn-68",
-      "subtitle": "dashboard / taostats",
-      "title": "NOVA Taostats metagraph",
-      "tokens": [
-        "68",
-        "dashboard",
-        "metagraph",
-        "nova",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/68/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -17768,20 +17820,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-6-taomarketcap-dashboard",
+      "id": "surface:sn-6-subnetradar-dashboard",
       "netuid": 6,
       "slug": "sn-6",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Numinous TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Numinous SubnetRadar dashboard",
       "tokens": [
         "6",
         "dashboard",
         "numinous",
         "sn",
-        "taomarketcap"
+        "subnetradar"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/6"
+      "url": "https://subnetradar.com/subnet/6"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -17858,6 +17910,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-90-subnetradar-dashboard",
+      "netuid": 90,
+      "slug": "sn-90",
+      "subtitle": "dashboard / subnetradar",
+      "title": "ogham SubnetRadar dashboard",
+      "tokens": [
+        "90",
+        "dashboard",
+        "degenbrain",
+        "ogham",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/90"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-90-taomarketcap-dashboard",
       "netuid": 90,
       "slug": "sn-90",
@@ -17893,25 +17963,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_90/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-90-taostats-metagraph",
-      "netuid": 90,
-      "slug": "sn-90",
-      "subtitle": "dashboard / taostats",
-      "title": "ogham Taostats metagraph",
-      "tokens": [
-        "90",
-        "dashboard",
-        "degenbrain",
-        "metagraph",
-        "ogham",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/90/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -17970,6 +18021,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-111-subnetradar-dashboard",
+      "netuid": 111,
+      "slug": "sn-111",
+      "subtitle": "dashboard / subnetradar",
+      "title": "oneoneone SubnetRadar dashboard",
+      "tokens": [
+        "111",
+        "dashboard",
+        "oneoneone",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/111"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-111-taomarketcap-dashboard",
       "netuid": 111,
       "slug": "sn-111",
@@ -18003,24 +18071,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_111/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-111-taostats-metagraph",
-      "netuid": 111,
-      "slug": "sn-111",
-      "subtitle": "dashboard / taostats",
-      "title": "oneoneone Taostats metagraph",
-      "tokens": [
-        "111",
-        "dashboard",
-        "metagraph",
-        "oneoneone",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/111/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -18233,20 +18283,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-15-taomarketcap-dashboard",
+      "id": "surface:sn-15-subnetradar-dashboard",
       "netuid": 15,
       "slug": "sn-15",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "ORO TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "ORO SubnetRadar dashboard",
       "tokens": [
         "15",
         "dashboard",
         "oro",
         "sn",
-        "taomarketcap"
+        "subnetradar"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/15"
+      "url": "https://subnetradar.com/subnet/15"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -18321,6 +18371,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "netuid": 35,
+      "slug": "sn-35",
+      "subtitle": "docs / taomarketcap",
+      "title": "OxMarkets docs subdomain",
+      "tokens": [
+        "35",
+        "docs",
+        "oxmarkets",
+        "sn",
+        "subdomain",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://docs.0xmarkets.io/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-35-taomarketcap-source-repo",
       "netuid": 35,
       "slug": "sn-35",
@@ -18361,6 +18429,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-35-subnetradar-dashboard",
+      "netuid": 35,
+      "slug": "sn-35",
+      "subtitle": "dashboard / subnetradar",
+      "title": "OxMarkets SubnetRadar dashboard",
+      "tokens": [
+        "35",
+        "dashboard",
+        "oxmarkets",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/35"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-35-taomarketcap-dashboard",
       "netuid": 35,
       "slug": "sn-35",
@@ -18394,24 +18479,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_35/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-35-taostats-metagraph",
-      "netuid": 35,
-      "slug": "sn-35",
-      "subtitle": "dashboard / taostats",
-      "title": "OxMarkets Taostats metagraph",
-      "tokens": [
-        "35",
-        "dashboard",
-        "metagraph",
-        "oxmarkets",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/35/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -18452,32 +18519,46 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-73-backprop-dashboard",
       "netuid": 73,
-      "slug": "sn-73",
+      "slug": "metahash",
       "subtitle": "dashboard / backprop-finance",
       "title": "Parked Backprop Finance dashboard",
       "tokens": [
-        "73",
         "backprop",
         "dashboard",
         "finance",
-        "parked",
-        "sn"
+        "metahash",
+        "parked"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/73-parked"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-73-subnetradar-dashboard",
+      "netuid": 73,
+      "slug": "metahash",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Parked SubnetRadar dashboard",
+      "tokens": [
+        "dashboard",
+        "metahash",
+        "parked",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/73"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-73-taomarketcap-dashboard",
       "netuid": 73,
-      "slug": "sn-73",
+      "slug": "metahash",
       "subtitle": "dashboard / taomarketcap",
       "title": "Parked TaoMarketCap dashboard",
       "tokens": [
-        "73",
         "dashboard",
+        "metahash",
         "parked",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -18487,16 +18568,15 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-73-taopedia-article",
       "netuid": 73,
-      "slug": "sn-73",
+      "slug": "metahash",
       "subtitle": "docs / taopedia-articles",
       "title": "Parked Taopedia article",
       "tokens": [
-        "73",
         "article",
         "articles",
         "docs",
+        "metahash",
         "parked",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -18504,34 +18584,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-73-taostats-metagraph",
-      "netuid": 73,
-      "slug": "sn-73",
-      "subtitle": "dashboard / taostats",
-      "title": "Parked Taostats metagraph",
-      "tokens": [
-        "73",
-        "dashboard",
-        "metagraph",
-        "parked",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/73/metagraph"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-73-tensorplex-docs",
       "netuid": 73,
-      "slug": "sn-73",
+      "slug": "metahash",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "Parked Tensorplex subnet docs",
       "tokens": [
-        "73",
         "docs",
+        "metahash",
         "parked",
-        "sn",
         "subnet",
         "tensorplex"
       ],
@@ -18580,22 +18641,21 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-58-taostats-metagraph",
+      "id": "surface:sn-58-subnetradar-dashboard",
       "netuid": 58,
       "slug": "sn-58",
-      "subtitle": "dashboard / taostats",
-      "title": "Pending Taostats metagraph",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Pending SubnetRadar dashboard",
       "tokens": [
         "58",
         "dashboard",
         "handshake58",
-        "metagraph",
         "pending",
         "sn",
-        "taostats"
+        "subnetradar"
       ],
       "type": "surface",
-      "url": "https://taostats.io/subnets/58/metagraph"
+      "url": "https://subnetradar.com/subnet/58"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -18653,6 +18713,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-26-subnetradar-dashboard",
+      "netuid": 26,
+      "slug": "sn-26",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Perturb SubnetRadar dashboard",
+      "tokens": [
+        "26",
+        "dashboard",
+        "perturb",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/26"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-26-taomarketcap-dashboard",
       "netuid": 26,
       "slug": "sn-26",
@@ -18686,24 +18763,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_26/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-26-taostats-metagraph",
-      "netuid": 26,
-      "slug": "sn-26",
-      "subtitle": "dashboard / taostats",
-      "title": "Perturb Taostats metagraph",
-      "tokens": [
-        "26",
-        "dashboard",
-        "metagraph",
-        "perturb",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/26/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -18843,6 +18902,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-100-subnetradar-dashboard",
+      "netuid": 100,
+      "slug": "sn-100",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Plaτform SubnetRadar dashboard",
+      "tokens": [
+        "100",
+        "dashboard",
+        "form",
+        "pla",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/100"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-100-taomarketcap-dashboard",
       "netuid": 100,
       "slug": "sn-100",
@@ -18878,25 +18955,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_100/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-100-taostats-metagraph",
-      "netuid": 100,
-      "slug": "sn-100",
-      "subtitle": "dashboard / taostats",
-      "title": "Plaτform Taostats metagraph",
-      "tokens": [
-        "100",
-        "dashboard",
-        "form",
-        "metagraph",
-        "pla",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/100/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -18974,6 +19032,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-126-subnetradar-dashboard",
+      "netuid": 126,
+      "slug": "sn-126",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Poker44 SubnetRadar dashboard",
+      "tokens": [
+        "126",
+        "dashboard",
+        "poker44",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/126"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-126-taomarketcap-dashboard",
       "netuid": 126,
       "slug": "sn-126",
@@ -19007,24 +19082,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_126/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-126-taostats-metagraph",
-      "netuid": 126,
-      "slug": "sn-126",
-      "subtitle": "dashboard / taostats",
-      "title": "Poker44 Taostats metagraph",
-      "tokens": [
-        "126",
-        "dashboard",
-        "metagraph",
-        "poker44",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/126/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -19140,6 +19197,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-48-subnetradar-dashboard",
+      "netuid": 48,
+      "slug": "sn-48",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Quantum Compute SubnetRadar dashboard",
+      "tokens": [
+        "48",
+        "compute",
+        "dashboard",
+        "quantum",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/48"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-48-taomarketcap-dashboard",
       "netuid": 48,
       "slug": "sn-48",
@@ -19175,25 +19250,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_48/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-48-taostats-metagraph",
-      "netuid": 48,
-      "slug": "sn-48",
-      "subtitle": "dashboard / taostats",
-      "title": "Quantum Compute Taostats metagraph",
-      "tokens": [
-        "48",
-        "compute",
-        "dashboard",
-        "metagraph",
-        "quantum",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/48/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -19334,6 +19390,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-24-subnetradar-dashboard",
+      "netuid": 24,
+      "slug": "sn-24",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Quasar SubnetRadar dashboard",
+      "tokens": [
+        "24",
+        "dashboard",
+        "quasar",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/24"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-24-taomarketcap-dashboard",
       "netuid": 24,
       "slug": "sn-24",
@@ -19367,24 +19440,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_24/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-24-taostats-metagraph",
-      "netuid": 24,
-      "slug": "sn-24",
-      "subtitle": "dashboard / taostats",
-      "title": "Quasar Taostats metagraph",
-      "tokens": [
-        "24",
-        "dashboard",
-        "metagraph",
-        "quasar",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/24/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -19518,6 +19573,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-33-subnetradar-dashboard",
+      "netuid": 33,
+      "slug": "sn-33",
+      "subtitle": "dashboard / subnetradar",
+      "title": "ReadyAI SubnetRadar dashboard",
+      "tokens": [
+        "33",
+        "dashboard",
+        "readyai",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/33"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-33-taomarketcap-dashboard",
       "netuid": 33,
       "slug": "sn-33",
@@ -19551,24 +19623,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_33/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-33-taostats-metagraph",
-      "netuid": 33,
-      "slug": "sn-33",
-      "subtitle": "dashboard / taostats",
-      "title": "ReadyAI Taostats metagraph",
-      "tokens": [
-        "33",
-        "dashboard",
-        "metagraph",
-        "readyai",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/33/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -19624,6 +19678,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-31-subnetradar-dashboard",
+      "netuid": 31,
+      "slug": "sn-31",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Recall SubnetRadar dashboard",
+      "tokens": [
+        "31",
+        "dashboard",
+        "recall",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/31"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-31-taomarketcap-dashboard",
       "netuid": 31,
       "slug": "sn-31",
@@ -19657,24 +19728,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_31/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-31-taostats-metagraph",
-      "netuid": 31,
-      "slug": "sn-31",
-      "subtitle": "dashboard / taostats",
-      "title": "Recall Taostats metagraph",
-      "tokens": [
-        "31",
-        "dashboard",
-        "metagraph",
-        "recall",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/31/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -19764,20 +19817,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-61-taomarketcap-dashboard",
+      "id": "surface:sn-61-subnetradar-dashboard",
       "netuid": 61,
       "slug": "sn-61",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "RedTeam TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "RedTeam SubnetRadar dashboard",
       "tokens": [
         "61",
         "dashboard",
         "redteam",
         "sn",
-        "taomarketcap"
+        "subnetradar"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/61"
+      "url": "https://subnetradar.com/subnet/61"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -19852,24 +19905,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-62-website-subdomain-docs-docs-ridges-ai",
-      "netuid": 62,
-      "slug": "sn-62",
-      "subtitle": "docs / taomarketcap",
-      "title": "Ridges docs subdomain",
-      "tokens": [
-        "62",
-        "docs",
-        "ridges",
-        "sn",
-        "subdomain",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://docs.ridges.ai/"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-62-ridges-source",
       "netuid": 62,
       "slug": "sn-62",
@@ -19885,6 +19920,23 @@
       ],
       "type": "surface",
       "url": "https://github.com/ridgesai/ridges"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-62-subnetradar-dashboard",
+      "netuid": 62,
+      "slug": "sn-62",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Ridges SubnetRadar dashboard",
+      "tokens": [
+        "62",
+        "dashboard",
+        "ridges",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/62"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -19924,24 +19976,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-62-taostats-metagraph",
-      "netuid": 62,
-      "slug": "sn-62",
-      "subtitle": "dashboard / taostats",
-      "title": "Ridges Taostats metagraph",
-      "tokens": [
-        "62",
-        "dashboard",
-        "metagraph",
-        "ridges",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/62/metagraph"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-62-tensorplex-docs",
       "netuid": 62,
       "slug": "sn-62",
@@ -19976,6 +20010,21 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-0-subnetradar-dashboard",
+      "netuid": 0,
+      "slug": "root",
+      "subtitle": "dashboard / subnetradar",
+      "title": "root SubnetRadar dashboard",
+      "tokens": [
+        "dashboard",
+        "root",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/0"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-0-taomarketcap-dashboard",
       "netuid": 0,
       "slug": "root",
@@ -19988,22 +20037,6 @@
       ],
       "type": "surface",
       "url": "https://taomarketcap.com/subnets/0"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-0-taostats-metagraph",
-      "netuid": 0,
-      "slug": "root",
-      "subtitle": "dashboard / taostats",
-      "title": "root Taostats metagraph",
-      "tokens": [
-        "dashboard",
-        "metagraph",
-        "root",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/0/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -20041,6 +20074,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-119-subnetradar-dashboard",
+      "netuid": 119,
+      "slug": "sn-119",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Satori SubnetRadar dashboard",
+      "tokens": [
+        "119",
+        "dashboard",
+        "satori",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/119"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-119-taomarketcap-dashboard",
       "netuid": 119,
       "slug": "sn-119",
@@ -20074,24 +20124,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_119/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-119-taostats-metagraph",
-      "netuid": 119,
-      "slug": "sn-119",
-      "subtitle": "dashboard / taostats",
-      "title": "Satori Taostats metagraph",
-      "tokens": [
-        "119",
-        "dashboard",
-        "metagraph",
-        "satori",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/119/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -20171,6 +20203,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-44-subnetradar-dashboard",
+      "netuid": 44,
+      "slug": "sn-44",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Score SubnetRadar dashboard",
+      "tokens": [
+        "44",
+        "dashboard",
+        "score",
+        "sn",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/44"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-44-taomarketcap-dashboard",
       "netuid": 44,
       "slug": "sn-44",
@@ -20207,24 +20256,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-44-taostats-metagraph",
-      "netuid": 44,
-      "slug": "sn-44",
-      "subtitle": "dashboard / taostats",
-      "title": "Score Taostats metagraph",
-      "tokens": [
-        "44",
-        "dashboard",
-        "metagraph",
-        "score",
-        "sn",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/44/metagraph"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-44-tensorplex-docs",
       "netuid": 44,
       "slug": "sn-44",
@@ -20257,6 +20288,21 @@
       ],
       "type": "surface",
       "url": "https://www.wearescore.com/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-53-signalplus-website",
+      "netuid": 53,
+      "slug": "efficientfrontier",
+      "subtitle": "website / signalplus",
+      "title": "SignalPlus website",
+      "tokens": [
+        "efficientfrontier",
+        "signalplus",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://www.signalplus.com/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -20374,6 +20420,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-114-subnetradar-dashboard",
+      "netuid": 114,
+      "slug": "sn-114",
+      "subtitle": "dashboard / subnetradar",
+      "title": "SOMA SubnetRadar dashboard",
+      "tokens": [
+        "114",
+        "dashboard",
+        "sn",
+        "soma",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/114"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-114-taomarketcap-dashboard",
       "netuid": 114,
       "slug": "sn-114",
@@ -20407,24 +20470,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_114/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-114-taostats-metagraph",
-      "netuid": 114,
-      "slug": "sn-114",
-      "subtitle": "dashboard / taostats",
-      "title": "SOMA Taostats metagraph",
-      "tokens": [
-        "114",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "soma",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/114/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -20517,6 +20562,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-72-subnetradar-dashboard",
+      "netuid": 72,
+      "slug": "sn-72",
+      "subtitle": "dashboard / subnetradar",
+      "title": "StreetVision by NATIX SubnetRadar dashboard",
+      "tokens": [
+        "72",
+        "by",
+        "dashboard",
+        "natix",
+        "sn",
+        "streetvision",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/72"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-72-taomarketcap-dashboard",
       "netuid": 72,
       "slug": "sn-72",
@@ -20554,26 +20618,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_72/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-72-taostats-metagraph",
-      "netuid": 72,
-      "slug": "sn-72",
-      "subtitle": "dashboard / taostats",
-      "title": "StreetVision by NATIX Taostats metagraph",
-      "tokens": [
-        "72",
-        "by",
-        "dashboard",
-        "metagraph",
-        "natix",
-        "sn",
-        "streetvision",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/72/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -20673,6 +20717,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-86-subnetradar-dashboard",
+      "netuid": 86,
+      "slug": "sn-86",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Subnet 86 SubnetRadar dashboard",
+      "tokens": [
+        "86",
+        "dashboard",
+        "sn",
+        "subnet",
+        "subnetradar"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/86"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-86-taomarketcap-dashboard",
       "netuid": 86,
       "slug": "sn-86",
@@ -20706,24 +20767,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_86/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-86-taostats-metagraph",
-      "netuid": 86,
-      "slug": "sn-86",
-      "subtitle": "dashboard / taostats",
-      "title": "Subnet 86 Taostats metagraph",
-      "tokens": [
-        "86",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "subnet",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/86/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -20817,6 +20860,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-121-subnetradar-dashboard",
+      "netuid": 121,
+      "slug": "sn-121",
+      "subtitle": "dashboard / subnetradar",
+      "title": "sundae_bar SubnetRadar dashboard",
+      "tokens": [
+        "121",
+        "bar",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "sundae"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/121"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-121-taomarketcap-dashboard",
       "netuid": 121,
       "slug": "sn-121",
@@ -20852,25 +20913,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_121/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-121-taostats-metagraph",
-      "netuid": 121,
-      "slug": "sn-121",
-      "subtitle": "dashboard / taostats",
-      "title": "sundae_bar Taostats metagraph",
-      "tokens": [
-        "121",
-        "bar",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "sundae",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/121/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -20911,6 +20953,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-10-website-subdomain-docs-docs-taofi-com",
+      "netuid": 10,
+      "slug": "sn-10",
+      "subtitle": "docs / taomarketcap",
+      "title": "Swap docs subdomain",
+      "tokens": [
+        "10",
+        "docs",
+        "sn",
+        "subdomain",
+        "swap",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://docs.taofi.com/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-10-taomarketcap-source-repo",
       "netuid": 10,
       "slug": "sn-10",
@@ -20927,6 +20987,23 @@
       ],
       "type": "surface",
       "url": "https://github.com/Swap-Subnet/swap-subnet"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-10-subnetradar-dashboard",
+      "netuid": 10,
+      "slug": "sn-10",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Swap SubnetRadar dashboard",
+      "tokens": [
+        "10",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "swap"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/10"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -20963,24 +21040,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_10/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-10-taostats-metagraph",
-      "netuid": 10,
-      "slug": "sn-10",
-      "subtitle": "dashboard / taostats",
-      "title": "Swap Taostats metagraph",
-      "tokens": [
-        "10",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "swap",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/10/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -21090,6 +21149,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-124-subnetradar-dashboard",
+      "netuid": 124,
+      "slug": "sn-124",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Swarm SubnetRadar dashboard",
+      "tokens": [
+        "124",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "swarm"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/124"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-124-website-common-swagger",
       "netuid": 124,
       "slug": "sn-124",
@@ -21106,23 +21182,6 @@
       ],
       "type": "surface",
       "url": "https://www.swarm124.com/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-124-taomarketcap-dashboard",
-      "netuid": 124,
-      "slug": "sn-124",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Swarm TaoMarketCap dashboard",
-      "tokens": [
-        "124",
-        "dashboard",
-        "sn",
-        "swarm",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://taomarketcap.com/subnets/124"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -21234,6 +21293,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-50-subnetradar-dashboard",
+      "netuid": 50,
+      "slug": "sn-50",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Synth SubnetRadar dashboard",
+      "tokens": [
+        "50",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "synth"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/50"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-50-website-common-swagger",
       "netuid": 50,
       "slug": "sn-50",
@@ -21286,24 +21362,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_50/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-50-taostats-metagraph",
-      "netuid": 50,
-      "slug": "sn-50",
-      "subtitle": "dashboard / taostats",
-      "title": "Synth Taostats metagraph",
-      "tokens": [
-        "50",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "synth",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/50/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -21416,6 +21474,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-45-subnetradar-dashboard",
+      "netuid": 45,
+      "slug": "sn-45",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Talisman AI SubnetRadar dashboard",
+      "tokens": [
+        "45",
+        "ai",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "talisman"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/45"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-45-taomarketcap-dashboard",
       "netuid": 45,
       "slug": "sn-45",
@@ -21451,25 +21527,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_45/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-45-taostats-metagraph",
-      "netuid": 45,
-      "slug": "sn-45",
-      "subtitle": "dashboard / taostats",
-      "title": "Talisman AI Taostats metagraph",
-      "tokens": [
-        "45",
-        "ai",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "talisman",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/45/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -21546,6 +21603,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-108-subnetradar-dashboard",
+      "netuid": 108,
+      "slug": "sn-108",
+      "subtitle": "dashboard / subnetradar",
+      "title": "TalkHead SubnetRadar dashboard",
+      "tokens": [
+        "108",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "talkhead"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/108"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-108-taomarketcap-dashboard",
       "netuid": 108,
       "slug": "sn-108",
@@ -21579,24 +21653,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_108/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-108-taostats-metagraph",
-      "netuid": 108,
-      "slug": "sn-108",
-      "subtitle": "dashboard / taostats",
-      "title": "TalkHead Taostats metagraph",
-      "tokens": [
-        "108",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "talkhead",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/108/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -21714,6 +21770,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-65-subnetradar-dashboard",
+      "netuid": 65,
+      "slug": "sn-65",
+      "subtitle": "dashboard / subnetradar",
+      "title": "TAO Private Network SubnetRadar dashboard",
+      "tokens": [
+        "65",
+        "dashboard",
+        "network",
+        "private",
+        "sn",
+        "subnetradar",
+        "tao"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/65"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-65-website-common-swagger",
       "netuid": 65,
       "slug": "sn-65",
@@ -21775,26 +21850,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-65-taostats-metagraph",
-      "netuid": 65,
-      "slug": "sn-65",
-      "subtitle": "dashboard / taostats",
-      "title": "TAO Private Network Taostats metagraph",
-      "tokens": [
-        "65",
-        "dashboard",
-        "metagraph",
-        "network",
-        "private",
-        "sn",
-        "tao",
-        "taostats"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/65/metagraph"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-65-tensorplex-docs",
       "netuid": 65,
       "slug": "sn-65",
@@ -21831,6 +21886,20 @@
       ],
       "type": "surface",
       "url": "https://tpn.taofu.xyz/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-116-taolend-website",
+      "netuid": 116,
+      "slug": "taolend",
+      "subtitle": "website / taolend",
+      "title": "TaoLend website",
+      "tokens": [
+        "taolend",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://taolend.io/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -21890,7 +21959,7 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-4-website-link-targon-com-docs-9",
+      "id": "surface:sn-4-website-link-targon-com-docs-4",
       "netuid": 4,
       "slug": "sn-4",
       "subtitle": "docs / taomarketcap",
@@ -21903,7 +21972,7 @@
         "targon"
       ],
       "type": "surface",
-      "url": "https://targon.com/releases/intel-whitepaper"
+      "url": "https://docs.targon.com/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -21945,6 +22014,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-4-subnetradar-dashboard",
+      "netuid": 4,
+      "slug": "sn-4",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Targon SubnetRadar dashboard",
+      "tokens": [
+        "4",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "targon"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/4"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-4-taomarketcap-dashboard",
       "netuid": 4,
       "slug": "sn-4",
@@ -21978,24 +22064,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_4/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-4-taostats-metagraph",
-      "netuid": 4,
-      "slug": "sn-4",
-      "subtitle": "dashboard / taostats",
-      "title": "Targon Taostats metagraph",
-      "tokens": [
-        "4",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats",
-        "targon"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/4/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -22215,6 +22283,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-113-subnetradar-dashboard",
+      "netuid": 113,
+      "slug": "sn-113",
+      "subtitle": "dashboard / subnetradar",
+      "title": "TensorUSD SubnetRadar dashboard",
+      "tokens": [
+        "113",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "tensorusd"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/113"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-113-taomarketcap-dashboard",
       "netuid": 113,
       "slug": "sn-113",
@@ -22248,24 +22333,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_113/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-113-taostats-metagraph",
-      "netuid": 113,
-      "slug": "sn-113",
-      "subtitle": "dashboard / taostats",
-      "title": "TensorUSD Taostats metagraph",
-      "tokens": [
-        "113",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats",
-        "tensorusd"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/113/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -22357,6 +22424,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-11-subnetradar-dashboard",
+      "netuid": 11,
+      "slug": "sn-11",
+      "subtitle": "dashboard / subnetradar",
+      "title": "TrajectoryRL SubnetRadar dashboard",
+      "tokens": [
+        "11",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "trajectoryrl"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/11"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-11-taomarketcap-dashboard",
       "netuid": 11,
       "slug": "sn-11",
@@ -22390,24 +22474,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-11-taostats-metagraph",
-      "netuid": 11,
-      "slug": "sn-11",
-      "subtitle": "dashboard / taostats",
-      "title": "TrajectoryRL Taostats metagraph",
-      "tokens": [
-        "11",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats",
-        "trajectoryrl"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/11/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -22498,6 +22564,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-23-website-link-trishool-ai-docs-1",
+      "netuid": 23,
+      "slug": "sn-23",
+      "subtitle": "docs / taomarketcap",
+      "title": "Trishool docs",
+      "tokens": [
+        "23",
+        "docs",
+        "sn",
+        "taomarketcap",
+        "trishool"
+      ],
+      "type": "surface",
+      "url": "https://docs.trishool.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-23-website-link-trishool-ai-docs-2",
       "netuid": 23,
       "slug": "sn-23",
@@ -22512,24 +22595,6 @@
       ],
       "type": "surface",
       "url": "https://litepaper.trishool.ai/"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-23-website-subdomain-docs-docs-trishool-ai",
-      "netuid": 23,
-      "slug": "sn-23",
-      "subtitle": "docs / taomarketcap",
-      "title": "Trishool docs subdomain",
-      "tokens": [
-        "23",
-        "docs",
-        "sn",
-        "subdomain",
-        "taomarketcap",
-        "trishool"
-      ],
-      "type": "surface",
-      "url": "https://docs.trishool.ai/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -22574,20 +22639,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-23-taomarketcap-dashboard",
+      "id": "surface:sn-23-subnetradar-dashboard",
       "netuid": 23,
       "slug": "sn-23",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Trishool TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Trishool SubnetRadar dashboard",
       "tokens": [
         "23",
         "dashboard",
         "sn",
-        "taomarketcap",
+        "subnetradar",
         "trishool"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/23"
+      "url": "https://subnetradar.com/subnet/23"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -22702,6 +22767,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-8-subnetradar-dashboard",
+      "netuid": 8,
+      "slug": "sn-8",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Vanta SubnetRadar dashboard",
+      "tokens": [
+        "8",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "vanta"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/8"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-8-taomarketcap-dashboard",
       "netuid": 8,
       "slug": "sn-8",
@@ -22735,24 +22817,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-8-taostats-metagraph",
-      "netuid": 8,
-      "slug": "sn-8",
-      "subtitle": "dashboard / taostats",
-      "title": "Vanta Taostats metagraph",
-      "tokens": [
-        "8",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats",
-        "vanta"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/8/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -22917,6 +22981,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-96-subnetradar-dashboard",
+      "netuid": 96,
+      "slug": "sn-96",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Verathos SubnetRadar dashboard",
+      "tokens": [
+        "96",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "verathos"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/96"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-96-website-common-swagger",
       "netuid": 96,
       "slug": "sn-96",
@@ -22969,24 +23050,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_96/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-96-taostats-metagraph",
-      "netuid": 96,
-      "slug": "sn-96",
-      "subtitle": "dashboard / taostats",
-      "title": "Verathos Taostats metagraph",
-      "tokens": [
-        "96",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats",
-        "verathos"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/96/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -23060,6 +23123,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-85-subnetradar-dashboard",
+      "netuid": 85,
+      "slug": "sn-85",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Vidaio SubnetRadar dashboard",
+      "tokens": [
+        "85",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "vidaio"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/85"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-85-taomarketcap-dashboard",
       "netuid": 85,
       "slug": "sn-85",
@@ -23093,24 +23173,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_85/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-85-taostats-metagraph",
-      "netuid": 85,
-      "slug": "sn-85",
-      "subtitle": "dashboard / taostats",
-      "title": "Vidaio Taostats metagraph",
-      "tokens": [
-        "85",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats",
-        "vidaio"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/85/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -23244,6 +23306,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-78-subnetradar-dashboard",
+      "netuid": 78,
+      "slug": "sn-78",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Vocence SubnetRadar dashboard",
+      "tokens": [
+        "78",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "vocence"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/78"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-78-website-common-swagger",
       "netuid": 78,
       "slug": "sn-78",
@@ -23296,24 +23375,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_78/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-78-taostats-metagraph",
-      "netuid": 78,
-      "slug": "sn-78",
-      "subtitle": "dashboard / taostats",
-      "title": "Vocence Taostats metagraph",
-      "tokens": [
-        "78",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats",
-        "vocence"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/78/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -23406,6 +23467,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-106-subnetradar-dashboard",
+      "netuid": 106,
+      "slug": "sn-106",
+      "subtitle": "dashboard / subnetradar",
+      "title": "VoidAI SubnetRadar dashboard",
+      "tokens": [
+        "106",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "voidai"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/106"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-106-taomarketcap-dashboard",
       "netuid": 106,
       "slug": "sn-106",
@@ -23439,24 +23517,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_106/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-106-taostats-metagraph",
-      "netuid": 106,
-      "slug": "sn-106",
-      "subtitle": "dashboard / taostats",
-      "title": "VoidAI Taostats metagraph",
-      "tokens": [
-        "106",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats",
-        "voidai"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/106/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -23552,21 +23612,21 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-54-taomarketcap-dashboard",
+      "id": "surface:sn-54-subnetradar-dashboard",
       "netuid": 54,
       "slug": "sn-54",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Yanez MIID TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Yanez MIID SubnetRadar dashboard",
       "tokens": [
         "54",
         "dashboard",
         "miid",
         "sn",
-        "taomarketcap",
+        "subnetradar",
         "yanez"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/54"
+      "url": "https://subnetradar.com/subnet/54"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -23681,6 +23741,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-18-subnetradar-dashboard",
+      "netuid": 18,
+      "slug": "sn-18",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Zeus SubnetRadar dashboard",
+      "tokens": [
+        "18",
+        "dashboard",
+        "sn",
+        "subnetradar",
+        "zeus"
+      ],
+      "type": "surface",
+      "url": "https://subnetradar.com/subnet/18"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-18-taomarketcap-dashboard",
       "netuid": 18,
       "slug": "sn-18",
@@ -23714,24 +23791,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_18/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-18-taostats-metagraph",
-      "netuid": 18,
-      "slug": "sn-18",
-      "subtitle": "dashboard / taostats",
-      "title": "Zeus Taostats metagraph",
-      "tokens": [
-        "18",
-        "dashboard",
-        "metagraph",
-        "sn",
-        "taostats",
-        "zeus"
-      ],
-      "type": "surface",
-      "url": "https://taostats.io/subnets/18/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -23901,20 +23960,20 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-46-taomarketcap-dashboard",
+      "id": "surface:sn-46-subnetradar-dashboard",
       "netuid": 46,
       "slug": "sn-46",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Zipcode TaoMarketCap dashboard",
+      "subtitle": "dashboard / subnetradar",
+      "title": "Zipcode SubnetRadar dashboard",
       "tokens": [
         "46",
         "dashboard",
         "sn",
-        "taomarketcap",
+        "subnetradar",
         "zipcode"
       ],
       "type": "surface",
-      "url": "https://taomarketcap.com/subnets/46"
+      "url": "https://subnetradar.com/subnet/46"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

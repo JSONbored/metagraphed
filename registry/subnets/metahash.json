@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "netuid": 73,
+  "name": "MetaHash",
+  "slug": "metahash",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "defi",
+    "identity-reviewed",
+    "otc",
+    "treasury"
+  ],
+  "source_repo": null,
+  "website_url": null,
+  "docs_url": null,
+  "dashboard_url": null,
+  "notes": "Reviewed identity overlay for SN73. Native chain identity currently reports Parked, while public subnet directories identify SN73 as MetaHash. Official-looking docs and source URLs discovered from public directories currently do not resolve or return 404, so they are not promoted.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T14:15:00.000Z",
+    "verified_at": "2026-06-08T14:15:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "Native chain name currently reports as Parked; multiple public directories identify SN73 as MetaHash.",
+      "Official-looking docs domain docs.metahash73.com currently does not resolve from simple probes.",
+      "Previously discovered GitHub source repository currently returns 404.",
+      "No verified official website yet.",
+      "No verified live source repository yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": []
+}

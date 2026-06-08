@@ -13,7 +13,7 @@
   "subnets": [
     {
       "block": 8357554,
-      "candidate_count": 4,
+      "candidate_count": 5,
       "categories": [
         "baseline-augmented",
         "chain-rpc",
@@ -44,7 +44,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 20,
+      "candidate_count": 21,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -78,7 +78,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -106,7 +106,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -139,7 +139,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -171,7 +171,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -199,7 +199,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-curated"
       ],
@@ -227,7 +227,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-augmented",
         "bitcoin",
@@ -258,7 +258,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -320,7 +320,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -335,20 +335,20 @@
       "native_name_quality": "chain",
       "netuid": 10,
       "participant_count": 256,
-      "probed_surface_count": 7,
+      "probed_surface_count": 8,
       "registered_at_block": 2869647,
       "slug": "sn-10",
       "source_repo": "https://github.com/Swap-Subnet/swap-subnet",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 7,
+      "surface_count": 8,
       "symbol": "κ",
       "tempo": 360,
       "website_url": "https://www.taofi.com/pool"
     },
     {
       "block": 8357554,
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -376,7 +376,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 7,
+      "candidate_count": 8,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -409,7 +409,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 22,
+      "candidate_count": 23,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -444,7 +444,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-curated"
       ],
@@ -472,7 +472,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 21,
+      "candidate_count": 22,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -505,7 +505,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -533,7 +533,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-curated"
       ],
@@ -561,7 +561,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-curated"
       ],
@@ -589,7 +589,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -622,7 +622,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -653,7 +653,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "advertising",
         "baseline-augmented",
@@ -686,7 +686,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -723,7 +723,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -756,7 +756,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -791,7 +791,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -824,7 +824,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -854,13 +854,19 @@
       "block": 8357554,
       "candidate_count": 14,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "compute",
+        "gpu",
+        "identity-reviewed",
+        "official-docs",
+        "official-website"
       ],
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
-      "dashboard_url": "https://backprop.finance/dtao/subnets/27-nodexo",
-      "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_27/index.mdx",
-      "gap_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "dashboard_url": "https://console.nodexo.ai/",
+      "docs_url": "https://docs.nodexo.ai/",
+      "gap_count": 5,
       "mechanism_count": 1,
       "name": "Nodexo",
       "native_name": "Nodexo",
@@ -869,18 +875,18 @@
       "participant_count": 256,
       "probed_surface_count": 5,
       "registered_at_block": 1727132,
-      "slug": "sn-27",
+      "slug": "nodexo",
       "source_repo": null,
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 5,
+      "surface_count": 8,
       "symbol": "ג",
       "tempo": 360,
-      "website_url": null
+      "website_url": "https://nodexo.ai/"
     },
     {
       "block": 8357554,
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -908,7 +914,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 7,
+      "candidate_count": 8,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -943,7 +949,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -977,7 +983,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -1024,20 +1030,20 @@
       "native_name_quality": "chain",
       "netuid": 32,
       "participant_count": 256,
-      "probed_surface_count": 8,
+      "probed_surface_count": 7,
       "registered_at_block": 2515294,
       "slug": "sn-32",
       "source_repo": "https://github.com/It-s-AI/llm-detection",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 8,
+      "surface_count": 7,
       "symbol": "ח",
       "tempo": 360,
       "website_url": "https://its-ai.org/en"
     },
     {
       "block": 8357554,
-      "candidate_count": 8,
+      "candidate_count": 9,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1072,7 +1078,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1107,7 +1113,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 14,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -1122,20 +1128,20 @@
       "native_name_quality": "chain",
       "netuid": 35,
       "participant_count": 256,
-      "probed_surface_count": 8,
+      "probed_surface_count": 9,
       "registered_at_block": 3037158,
       "slug": "sn-35",
       "source_repo": "https://github.com/General-Tao-Ventures/cartha-validator",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 8,
+      "surface_count": 9,
       "symbol": "ך",
       "tempo": 360,
       "website_url": "https://www.0xmarkets.io/"
     },
     {
       "block": 8357554,
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -1163,7 +1169,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-curated"
       ],
@@ -1191,7 +1197,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -1199,27 +1205,27 @@
       "curation_level": "machine-verified",
       "dashboard_url": "https://backprop.finance/dtao/subnets/38-colosseum",
       "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx",
-      "gap_count": 4,
+      "gap_count": 3,
       "mechanism_count": 1,
       "name": "colosseum",
       "native_name": "colosseum",
       "native_name_quality": "chain",
       "netuid": 38,
       "participant_count": 256,
-      "probed_surface_count": 8,
+      "probed_surface_count": 9,
       "registered_at_block": 7284230,
       "slug": "sn-38",
-      "source_repo": null,
+      "source_repo": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 8,
+      "surface_count": 9,
       "symbol": "ם",
       "tempo": 360,
       "website_url": "https://www.taocolosseum.com/"
     },
     {
       "block": 8357554,
-      "candidate_count": 7,
+      "candidate_count": 8,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1252,7 +1258,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-curated"
       ],
@@ -1280,7 +1286,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -1308,7 +1314,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1343,7 +1349,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1377,7 +1383,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -1405,7 +1411,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1437,7 +1443,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-curated"
       ],
@@ -1465,7 +1471,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 8,
+      "candidate_count": 9,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1497,7 +1503,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1531,7 +1537,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1568,7 +1574,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -1596,7 +1602,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-curated"
       ],
@@ -1624,7 +1630,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 10,
+      "candidate_count": 11,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1658,35 +1664,41 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "defi",
+        "financial-trading",
+        "identity-reviewed",
+        "official-website",
+        "trading-strategies"
       ],
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
-      "dashboard_url": "https://backprop.finance/dtao/subnets/53-efficientfrontier",
+      "curation_level": "maintainer-reviewed",
+      "dashboard_url": "https://t.signalplus.com/mining",
       "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_53/index.mdx",
-      "gap_count": 6,
+      "gap_count": 5,
       "mechanism_count": 1,
       "name": "EfficientFrontier",
       "native_name": "EfficientFrontier",
       "native_name_quality": "chain",
       "netuid": 53,
       "participant_count": 256,
-      "probed_surface_count": 5,
+      "probed_surface_count": 7,
       "registered_at_block": 4203869,
-      "slug": "sn-53",
+      "slug": "efficientfrontier",
       "source_repo": null,
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 5,
+      "surface_count": 7,
       "symbol": "ب",
       "tempo": 360,
-      "website_url": null
+      "website_url": "https://www.signalplus.com/"
     },
     {
       "block": 8357554,
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -1714,7 +1726,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -1742,7 +1754,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-curated"
       ],
@@ -1770,7 +1782,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1804,7 +1816,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 8,
+      "candidate_count": 9,
       "categories": [
         "ai-marketplace",
         "baseline-augmented",
@@ -1840,7 +1852,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-curated"
       ],
@@ -1868,7 +1880,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -1896,7 +1908,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1950,20 +1962,20 @@
       "native_name_quality": "chain",
       "netuid": 62,
       "participant_count": 256,
-      "probed_surface_count": 7,
+      "probed_surface_count": 6,
       "registered_at_block": 4474225,
       "slug": "sn-62",
       "source_repo": "https://github.com/ridgesai/ridges",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 7,
+      "surface_count": 6,
       "symbol": "ز",
       "tempo": 360,
       "website_url": "https://www.ridges.ai/"
     },
     {
       "block": 8357554,
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -1996,7 +2008,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 28,
+      "candidate_count": 29,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2032,7 +2044,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-curated"
       ],
@@ -2060,7 +2072,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2096,7 +2108,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -2124,7 +2136,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-curated"
       ],
@@ -2152,7 +2164,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -2180,7 +2192,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-curated"
       ],
@@ -2208,7 +2220,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -2236,7 +2248,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2272,24 +2284,29 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "defi",
+        "identity-reviewed",
+        "otc",
+        "treasury"
       ],
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://backprop.finance/dtao/subnets/73-parked",
       "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_73/index.mdx",
       "gap_count": 6,
       "mechanism_count": 1,
-      "name": "Parked",
+      "name": "MetaHash",
       "native_name": "Parked",
       "native_name_quality": "chain",
       "netuid": 73,
       "participant_count": 256,
       "probed_surface_count": 5,
       "registered_at_block": 5160047,
-      "slug": "sn-73",
+      "slug": "metahash",
       "source_repo": null,
       "status": "active",
       "subnet_type": "application",
@@ -2300,7 +2317,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-augmented",
         "developer-tools",
@@ -2331,7 +2348,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 25,
+      "candidate_count": 26,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2366,7 +2383,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2397,7 +2414,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -2425,7 +2442,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -2453,7 +2470,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 25,
+      "candidate_count": 26,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2485,7 +2502,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -2513,7 +2530,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 7,
+      "candidate_count": 8,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2546,7 +2563,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 25,
+      "candidate_count": 26,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2578,7 +2595,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -2606,7 +2623,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 7,
+      "candidate_count": 8,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2641,7 +2658,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 21,
+      "candidate_count": 22,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2672,7 +2689,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -2700,7 +2717,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2734,7 +2751,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2769,7 +2786,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2800,7 +2817,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2833,7 +2850,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2864,7 +2881,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -2894,7 +2911,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-curated"
       ],
@@ -2922,7 +2939,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -2950,7 +2967,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -2978,7 +2995,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3015,7 +3032,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -3043,7 +3060,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 21,
+      "candidate_count": 22,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3076,7 +3093,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -3104,7 +3121,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-curated"
       ],
@@ -3132,7 +3149,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -3160,7 +3177,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 18,
+      "candidate_count": 19,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3224,7 +3241,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -3252,7 +3269,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -3280,7 +3297,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -3308,7 +3325,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 20,
+      "candidate_count": 21,
       "categories": [
         "baseline-curated"
       ],
@@ -3336,7 +3353,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-curated"
       ],
@@ -3364,7 +3381,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3395,7 +3412,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3428,7 +3445,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3462,7 +3479,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 14,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -3477,20 +3494,20 @@
       "native_name_quality": "chain",
       "netuid": 112,
       "participant_count": 256,
-      "probed_surface_count": 7,
+      "probed_surface_count": 8,
       "registered_at_block": 5633022,
       "slug": "sn-112",
       "source_repo": "https://github.com/subnet112/minotaur_subnet",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 7,
+      "surface_count": 8,
       "symbol": "Ђ",
       "tempo": 360,
       "website_url": "https://minotaursubnet.com/"
     },
     {
       "block": 8357554,
-      "candidate_count": 19,
+      "candidate_count": 20,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3524,7 +3541,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 21,
+      "candidate_count": 22,
       "categories": [
         "baseline-curated"
       ],
@@ -3552,7 +3569,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3583,35 +3600,40 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "defi",
+        "identity-reviewed",
+        "lending",
+        "official-website"
       ],
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "dashboard_url": "https://backprop.finance/dtao/subnets/116-hard-sign",
       "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_116/index.mdx",
-      "gap_count": 6,
+      "gap_count": 5,
       "mechanism_count": 1,
-      "name": "hard_sign",
+      "name": "TaoLend",
       "native_name": "hard_sign",
       "native_name_quality": "chain",
       "netuid": 116,
       "participant_count": 73,
-      "probed_surface_count": 5,
+      "probed_surface_count": 6,
       "registered_at_block": 8294730,
-      "slug": "sn-116",
+      "slug": "taolend",
       "source_repo": null,
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 5,
+      "surface_count": 6,
       "symbol": "ъ",
       "tempo": 360,
-      "website_url": null
+      "website_url": "https://taolend.io/"
     },
     {
       "block": 8357554,
-      "candidate_count": 7,
+      "candidate_count": 8,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3643,7 +3665,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-curated"
       ],
@@ -3671,7 +3693,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-curated"
       ],
@@ -3699,7 +3721,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -3727,7 +3749,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3759,7 +3781,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3793,7 +3815,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 6,
+      "candidate_count": 7,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -3824,7 +3846,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -3852,7 +3874,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 5,
+      "candidate_count": 6,
       "categories": [
         "baseline-curated"
       ],
@@ -3880,7 +3902,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 17,
+      "candidate_count": 18,
       "categories": [
         "baseline-curated"
       ],
@@ -3908,7 +3930,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -3936,7 +3958,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "subnetradar",
+  "name": "SubnetRadar",
+  "kind": "data-provider",
+  "website_url": "https://subnetradar.com/",
+  "docs_url": "https://subnetradar.com/about",
+  "authority": "provider-claimed",
+  "notes": "Third-party Bittensor subnet analytics and risk/health dashboard. Tracked as dashboard enrichment only; Metagraphed's endpoint health remains probe-derived from our own monitors."
+}

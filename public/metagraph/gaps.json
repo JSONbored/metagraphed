@@ -735,19 +735,19 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website/docs/console are browser-facing but currently reject simple machine probes with connection resets, so these surfaces are listed without recurring probe monitoring.",
+          "Previously discovered GitHub source repository candidates currently return 404.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -755,12 +755,13 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
       "name": "Nodexo",
       "netuid": 27,
-      "slug": "sn-27"
+      "slug": "nodexo"
     },
     {
       "coverage_level": "probed",
@@ -1041,13 +1042,11 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -1056,6 +1055,7 @@
           "dashboard",
           "docs",
           "openapi",
+          "source-repo",
           "website"
         ]
       },
@@ -1447,19 +1447,20 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "SignalPlus website is live and is tracked as the team/project website.",
+          "The subnet mining app currently returns a 403/auth-challenge response to simple probes and is expected to appear degraded rather than healthy.",
+          "Previously discovered GitHub source repository currently returns 404.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1467,12 +1468,13 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
       "name": "EfficientFrontier",
       "netuid": 53,
-      "slug": "sn-53"
+      "slug": "efficientfrontier"
     },
     {
       "coverage_level": "probed",
@@ -1981,15 +1983,18 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as Parked; multiple public directories identify SN73 as MetaHash.",
+          "Official-looking docs domain docs.metahash73.com currently does not resolve from simple probes.",
+          "Previously discovered GitHub source repository currently returns 404.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
@@ -2004,9 +2009,9 @@
           "docs"
         ]
       },
-      "name": "Parked",
+      "name": "MetaHash",
       "netuid": 73,
-      "slug": "sn-73"
+      "slug": "metahash"
     },
     {
       "coverage_level": "probed",
@@ -3164,19 +3169,20 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as hard_sign; public directories identify SN116 as TaoLend.",
+          "Official website currently returns 500/server-error responses to simple probes and should appear degraded until it recovers.",
+          "Previously discovered GitHub source repository currently returns 404.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -3184,12 +3190,13 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
-      "name": "hard_sign",
+      "name": "TaoLend",
       "netuid": 116,
-      "slug": "sn-116"
+      "slug": "taolend"
     },
     {
       "coverage_level": "probed",

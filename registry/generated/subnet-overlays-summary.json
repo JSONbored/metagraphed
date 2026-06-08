@@ -1,7 +1,7 @@
 {
-  "generated_overlay_count": 66,
+  "generated_overlay_count": 61,
   "generated_without_surfaces": [],
-  "manual_overlay_count": 63,
+  "manual_overlay_count": 68,
   "mode": "write",
   "native_subnet_count": 129,
   "overlays": [
@@ -12,398 +12,368 @@
       "surface_count": 10
     },
     {
-      "checksum": "22a5a79613fc3456bb6239a616bb2af778cab916fa2c9051d05fe3ab8c1fb720",
+      "checksum": "a4a8c46e974d94c69fd62a947ac761a3d1547ecf3ed0132656b81c047ea80ffd",
       "netuid": 5,
       "slug": "sn-5",
       "surface_count": 7
     },
     {
-      "checksum": "5392b9f4623eaf5843ee51a46d6211b448772602498f668180702214523c6732",
+      "checksum": "6a8bf74760a9d3f83f7dfab466fd24bb0f9398829526e10c6629c5ae8a05a142",
       "netuid": 6,
       "slug": "sn-6",
       "surface_count": 7
     },
     {
-      "checksum": "7e39430bb3dfbabce10b4a174c391e4b2decb0457c37c06ec8f6286d6a73a1ff",
+      "checksum": "04f903b48a9afdf144c64cae4a125a5ea21c7665abc57fe057b6d228767de401",
       "netuid": 8,
       "slug": "sn-8",
       "surface_count": 7
     },
     {
-      "checksum": "5d0156642ac0bad8aa30fccbcf7357c9a6fa42e218e33b5d5bc39305940847cd",
+      "checksum": "c98813442a07f40f8447243744695e099a310b252ffdf19a1ca1eb6408806b81",
       "netuid": 10,
       "slug": "sn-10",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
-      "checksum": "5349a17577e4f9547460c7b531fdf8c3b64947f607c3d38e060b07c196a22de2",
+      "checksum": "c1619af2bd6a0378abd0873d601c5b148bcb6e99b1851fb5ab1db6de129db7d1",
       "netuid": 11,
       "slug": "sn-11",
       "surface_count": 8
     },
     {
-      "checksum": "5d387c525667b0d8d6fe8abc31bd0769216c9e4394b0b18b14a56779b48c46c6",
+      "checksum": "e03ca7159bb575af418f4c099f3e78e1af5fdbceb5e1574c8680bd24f81063c8",
       "netuid": 14,
       "slug": "sn-14",
       "surface_count": 10
     },
     {
-      "checksum": "11cc744e02ef2bd6a0548638c7784791485aa9fc205f0d3577b1ff654a685698",
+      "checksum": "b13aada63e16d4cbe1a2a4b56452177a8f271add626c73fd72c7c3863090ac27",
       "netuid": 16,
       "slug": "sn-16",
       "surface_count": 9
     },
     {
-      "checksum": "f18fc65ce8a98552e75407532f470fc5c424c8fec536a2f044a36e8617c9999d",
+      "checksum": "775663b340715cf621bdf3fc753b20fddf8e599a8ee036aa1b9c84e3a3d74d77",
       "netuid": 17,
       "slug": "sn-17",
       "surface_count": 8
     },
     {
-      "checksum": "77b31801051291fe2266ca2a0bb14f9f5abaac0a7c95a62bd21f3e0df27b3578",
+      "checksum": "4f14ed10003f319830969e25e422ab0a1b37eecb6855bf0ca9265bb8c6032f54",
       "netuid": 18,
       "slug": "sn-18",
       "surface_count": 8
     },
     {
-      "checksum": "e57d47410d94f0cc0e17ddd14eb4dd67e9dbc16f8a0e3d0a51c4fa85e84de83c",
+      "checksum": "5c02e0b22c6dffeeae167a5669e6d3205280046782782c2a05a4e42704995622",
       "netuid": 26,
       "slug": "sn-26",
       "surface_count": 8
     },
     {
-      "checksum": "47959eb46fceafe15b26a117472416a1c59e37915eefd9f6d22929e7cca3f539",
-      "netuid": 27,
-      "slug": "sn-27",
-      "surface_count": 5
-    },
-    {
-      "checksum": "9be99ac34b5de7ea6543a3fced3cebeb6d2f788fc386d2547f861845a5eb4a01",
+      "checksum": "ee9092de68a34200b8c5da515dfaf5f2389f8da437af7ca41c8bca14474d0dc3",
       "netuid": 28,
       "slug": "sn-28",
       "surface_count": 5
     },
     {
-      "checksum": "f347b0e6b94d43c570d781e652439b1343e34aef7f66df30653c5f10e2a51883",
+      "checksum": "d6d0b6c499a2773f289fbc72e10c56763d95cf9df65b591bd75ebb3b8d49bd38",
       "netuid": 31,
       "slug": "sn-31",
       "surface_count": 5
     },
     {
-      "checksum": "9928b72cbd52e02498fff1ab337a0a92f0d525002b969d1ed82065979d3dc8de",
+      "checksum": "7931631a1d5fefa0e5b9046580c92feb4ac42714a3babfe6e0f13cf61ff32577",
       "netuid": 35,
       "slug": "sn-35",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
-      "checksum": "a6d397b712c9d4aa19c6c92ab5c867aa7064f11fe77de59f88698846cc8e90ac",
+      "checksum": "89a5f532b4eb008c96261bde5f9e43a65b61a34d921ed11dc085e22a76933eca",
       "netuid": 36,
       "slug": "sn-36",
       "surface_count": 8
     },
     {
-      "checksum": "add784ded2cb8300a0d07321c5734a052936916156f5cbae32f82cac383aab42",
+      "checksum": "7bff9f0b95b2df9a5c90334dd58c62555ee0aa4c8248159cecb5103838e73c28",
       "netuid": 37,
       "slug": "sn-37",
       "surface_count": 8
     },
     {
-      "checksum": "e50feb88867b321308d7a04b7797eb63eb57a63d483be90d5c486ef163c7a753",
+      "checksum": "f06282d62f12a10a49653900c2837d77f6dd05c42df1a89ec92493732ffdbf32",
       "netuid": 38,
       "slug": "sn-38",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
-      "checksum": "da7e1ede26a46779bf942d6030066dc65ba2bc2b34cfac44f621f9e1fbaf3675",
+      "checksum": "1937645c2c42ba76561f17d11bdfb8b4a00a7d626917da8f6d8223967742e64a",
       "netuid": 40,
       "slug": "sn-40",
       "surface_count": 5
     },
     {
-      "checksum": "3fe09c914b5b1bf09255c0d2c344478eb89293c76a6167819ab9722a65b4e5c4",
+      "checksum": "40fb0a53777fc93d4bce3066d943bbc9af4247f91abe402d5a91e97ae596879e",
       "netuid": 41,
       "slug": "sn-41",
       "surface_count": 9
     },
     {
-      "checksum": "d0f5a50edee38dbc025e054ca8979390eb387694a1fef868b52433f8989396f9",
+      "checksum": "230c13ae29e29ee409b4f54a3472c3331b457035fccf1372b80ee94f4ccc2bcf",
       "netuid": 44,
       "slug": "sn-44",
       "surface_count": 8
     },
     {
-      "checksum": "9d0255bd91735f15b93db81ae0281824299432860dabe8c92cc9a00f3c6e50df",
+      "checksum": "bba361f4810ee4a94f40efb223fe072f828f50b10dde40710e870f280762bb58",
       "netuid": 46,
       "slug": "sn-46",
       "surface_count": 11
     },
     {
-      "checksum": "715d088a5998408f4592063ca7335f41396ef3fc10b56f2519fe783f76ca963a",
+      "checksum": "aee7168aa0d98eb48ea80bc1353e14e0a32b14f3847da4178882dd72a114f810",
       "netuid": 50,
       "slug": "sn-50",
       "surface_count": 9
     },
     {
-      "checksum": "85ebdcb8e71e624adcc8aba1e10a27aad347f2136c909d38bfbf219cc5014815",
+      "checksum": "89fa65098cc704b5dbaf13d783cf0d0db6e1ed6cf685e3f17372fb29ac2da84e",
       "netuid": 51,
       "slug": "sn-51",
       "surface_count": 10
     },
     {
-      "checksum": "ee3fa477b5ba232a6826caaf90441032bba7113cf4242725197aa0e176b2b8a8",
-      "netuid": 53,
-      "slug": "sn-53",
-      "surface_count": 5
-    },
-    {
-      "checksum": "bb5458d9bfe23eff83cbdbbcb72139c3f9599aa1c396b3452c433ec239180afa",
+      "checksum": "385b42cf693187bcb3f19c9f4298a5523df0dc43e7d8418e757ade75b7fb8030",
       "netuid": 54,
       "slug": "sn-54",
       "surface_count": 7
     },
     {
-      "checksum": "3784bfea39642ab3555560b1b12f8dc76d96c0183fe83aa76323344f1f421c9c",
+      "checksum": "3ed9725eff9d6516506dda19414d026474b8afdd35d14501d0f55dac77a7a9ec",
       "netuid": 55,
       "slug": "sn-55",
       "surface_count": 7
     },
     {
-      "checksum": "5bbb19648575cc4bd6ee21267f990f1193debdd25c7355415499e18c4d11b773",
+      "checksum": "558c64c7e2fea151bba4036b6e4314e7b747fe93d6c035a8b71096e8e4162cfd",
       "netuid": 56,
       "slug": "sn-56",
       "surface_count": 11
     },
     {
-      "checksum": "d628ee40f1b0e2c6e9c2957ae33b6ae434184c375d583851139b2197531f1dce",
+      "checksum": "9738c301d6b04e3291b232eb4845cfd7ab6f0faf860806fe0fe55e23771e7313",
       "netuid": 59,
       "slug": "sn-59",
       "surface_count": 8
     },
     {
-      "checksum": "9b06527345db0b2c034560cb62531638c1567e9fd704368b948220f7951a4d7e",
+      "checksum": "07a9ebad67740490733f5fb143817caf23290eb7309900bd70a7faa94330c38b",
       "netuid": 60,
       "slug": "sn-60",
       "surface_count": 11
     },
     {
-      "checksum": "a2d1c714921e549b0a91da9fa6b193d56ce4cb0e35a1fbb0366b9cbd771275cf",
+      "checksum": "b0191ea7949a6ab56f43741e0486a65e0507ee75ae6fb955a6c5bd05336ae9e1",
       "netuid": 65,
       "slug": "sn-65",
       "surface_count": 10
     },
     {
-      "checksum": "33f60f7f671671e01168e9751827d5130c474f8a8c0189fc4b6c7dcd970e82b2",
+      "checksum": "7cc4cfb63c1bf05437799f696462c7c1126b855bf134e5db831a902f0e532fae",
       "netuid": 67,
       "slug": "sn-67",
       "surface_count": 7
     },
     {
-      "checksum": "82168017963125f99b3fa1b913f8638f4a3b77fb9730adda10c2a820b2c5d7cf",
+      "checksum": "e3b1591e7dc2358923cc303e1a5a689476a7a479f82fb1eec1f41e76bee7c2e9",
       "netuid": 68,
       "slug": "sn-68",
       "surface_count": 9
     },
     {
-      "checksum": "ef1b1962e248ec13e53b9cf4d5cbabc285e537b94fbebaf353035af64038348d",
+      "checksum": "229947b752aee1392a7853c1b077742e5b511967092a865bbd50402838a9a78f",
       "netuid": 69,
       "slug": "sn-69",
       "surface_count": 5
     },
     {
-      "checksum": "a044e08e98def59f14b407837e3c92e46db4f8b78029995f90134e38bab1bd32",
+      "checksum": "1abbf05b3082091f746f9e58160cb875431b097f8b57c7ba192111a118d48499",
       "netuid": 70,
       "slug": "sn-70",
       "surface_count": 9
     },
     {
-      "checksum": "d89762d8da21bffe24675cec707299358b4278227bbe19e1318543e61388f093",
+      "checksum": "d0908efc513a5940cc73f8932712b5460c08860c862d1bf81fe288ecdafa2c2f",
       "netuid": 71,
       "slug": "sn-71",
       "surface_count": 9
     },
     {
-      "checksum": "644c97fe76b9cedf12932fd42602f546a2f78eb5765e22e5297c8b288ba453b7",
-      "netuid": 73,
-      "slug": "sn-73",
-      "surface_count": 5
-    },
-    {
-      "checksum": "1a663ced9dd65b0a369298677989515cb39239ef51270272049e2febafaa8b85",
+      "checksum": "cd41bf7f46295193dafec0ff3d63a32d1ae8aa350d2df4154fe5610e95357feb",
       "netuid": 77,
       "slug": "sn-77",
       "surface_count": 9
     },
     {
-      "checksum": "50c33629958df381a6dfc645191de04d1a9d53ea4d887b774b279d9c8ad8d4c4",
+      "checksum": "e01d94805bf6bd488f1b3a36101c98849c139d2c1dd69a821c81e2a4ef60c033",
       "netuid": 78,
       "slug": "sn-78",
       "surface_count": 11
     },
     {
-      "checksum": "eb8386433feacd9a95efb0f2457581de1d0d32dca17806267d52e76e2883c61d",
+      "checksum": "7dff4827ad0a93503e6871bd399454b070520c4f88f8d08e6a2fa0002a6b821c",
       "netuid": 80,
       "slug": "sn-80",
       "surface_count": 10
     },
     {
-      "checksum": "598a4adfcfc6f522647b8bf8b44daf02a55e9e034b4ec406e3ff17b0115ddbc0",
+      "checksum": "472c0232d3cf8bcb36201141d94e3524f7f9865f88cfee67ec9323463e6f43a2",
       "netuid": 83,
       "slug": "sn-83",
       "surface_count": 9
     },
     {
-      "checksum": "0e0e2d46cdc851a20f88ea425bccca4e86718c920b629c9f7daf3a0be70c586d",
+      "checksum": "ce017e9518cfb37b1a2dcf4e760804de9d80eb51f327c6f059fb94935e8371fc",
       "netuid": 86,
       "slug": "sn-86",
       "surface_count": 5
     },
     {
-      "checksum": "54765fdfef1e47e40c0bcce8a4964631bdd3b9a0c4f74673ac18645ae0297e8e",
-      "netuid": 90,
-      "slug": "sn-90",
-      "surface_count": 5
-    },
-    {
-      "checksum": "6d3a14f3aca9018ddb4a438980ba4412c36e84032694d032bf8833c1fe1d1296",
+      "checksum": "247ba88a6919acb918da12149a9d47d5e2cb54865fdcb49e412d3ff32361814c",
       "netuid": 93,
       "slug": "sn-93",
       "surface_count": 9
     },
     {
-      "checksum": "54bf6a6b0fe4c43c0e41426e609fcf23d038a5fd299d1e66a7bb34bd5d9e8ed2",
+      "checksum": "268d8bf74d5b069e595e77921316a3feca3999cd1205637048d91f97b09e540e",
       "netuid": 94,
       "slug": "sn-94",
       "surface_count": 8
     },
     {
-      "checksum": "b2a366ff3a81a4e75a00044f0b99766977c3b8988a2dbd8d16f8285ba536ddce",
+      "checksum": "f357dccfffc477cbc2b914e9fa12761c775257f0d3ff608972515accdcdd444d",
       "netuid": 95,
       "slug": "sn-95",
       "surface_count": 8
     },
     {
-      "checksum": "6a05d5447ddcaf511cdfd5ae9174e1bbc5c0d51702df25d0d9bc4eae28a8d966",
+      "checksum": "6f3273425c42250a62076e6e94e3f7e132c30f47b8dc177c9221c7192bdd7306",
       "netuid": 97,
       "slug": "sn-97",
       "surface_count": 11
     },
     {
-      "checksum": "1cb542a5e91031ab31191dc1965faaca63a86d057507c3f25f35978e035f44bc",
+      "checksum": "72486b6661101ae1eaf745e4ab697b5d83023ac434cba41a92927fb1b408f76c",
       "netuid": 99,
       "slug": "sn-99",
       "surface_count": 11
     },
     {
-      "checksum": "7628196216a215b43bbb069d7b3f6dac55f35bf5a76f6bb8321c571c869a6002",
+      "checksum": "1f5c36c1710f90f4c364c110d401216992e70cd78e97635b83e48d7abd7bc2bc",
       "netuid": 100,
       "slug": "sn-100",
       "surface_count": 10
     },
     {
-      "checksum": "edd14e7f79a08e79832880548d8e3161b9b587c1733516d0fdb787310b62b87f",
+      "checksum": "7a236c12036b4442d58a6e0566e7ce42ef5739cdf09f01a1ba833f562a6b2456",
       "netuid": 101,
       "slug": "sn-101",
       "surface_count": 5
     },
     {
-      "checksum": "7435523b13ae8883d70c9b1d5fbf0ff34c48c901c8f4d00ec885f46429ffa694",
+      "checksum": "e7aaf3c77c88ad2f380d62ed9666e18bb042b7e78c1519f2b2bc7793c397b974",
       "netuid": 104,
       "slug": "sn-104",
       "surface_count": 5
     },
     {
-      "checksum": "76527276269bff57b4ad909f210c17d93fd6f9cef3ecf62e666b5c0e4586fdd5",
+      "checksum": "852e35700eb77c199560477168ea7e506948053d280e1ffa83d9eae40f2c501e",
       "netuid": 105,
       "slug": "sn-105",
       "surface_count": 9
     },
     {
-      "checksum": "91256002e8f6c08f59518742e3ff50e5f083ac4506dc4ce20c285310a4e2ee53",
+      "checksum": "41baced03cee0907f54134e60e02cee813df259164ad383c58f04512fa3c706c",
       "netuid": 106,
       "slug": "sn-106",
       "surface_count": 8
     },
     {
-      "checksum": "d89659d03bf7cb892945d9a6d96997e58aff79f2055f1122a4904283845803c1",
+      "checksum": "ddbbb275c6cbc4e90c2882095eed8491774f9d5bd657d94375b7acd6dcf82255",
       "netuid": 107,
       "slug": "sn-107",
       "surface_count": 11
     },
     {
-      "checksum": "6aca082998173349b074993808705fbf754a76cd718284b11bdc056c5b802576",
+      "checksum": "460c2f378bd53c7cf290b126649df36c33f6bdcc27ece66f68e1048e6ac2025d",
       "netuid": 108,
       "slug": "sn-108",
       "surface_count": 7
     },
     {
-      "checksum": "5895ca77e1877951e01f095e226de153587f4a9efe2f787c504d14714e068e8a",
+      "checksum": "135bccfa5314fea391fb71f464ceb4fa7e348c9247f90262746e31a48a5374b7",
       "netuid": 112,
       "slug": "sn-112",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
-      "checksum": "3472ab2a612a27a6f215a9adb95db766548a83c6e0771a8f5b72665719eb233d",
+      "checksum": "d4d625dc9174ed3cb6415ff24cf71dc276ee187d93a70b40d930cefa76b6e55f",
       "netuid": 114,
       "slug": "sn-114",
       "surface_count": 9
     },
     {
-      "checksum": "e350fd4d19a1b841cfe7d66c465bd8c6a44ed1c0e44558b3fedee8008f658bcf",
-      "netuid": 116,
-      "slug": "sn-116",
-      "surface_count": 5
-    },
-    {
-      "checksum": "8dfef40578ca8317e1b4867461107752d20d29f1c0c35e664d87fff0996e2388",
+      "checksum": "cfe0a57a337c37150e67cf6765e62ddd273f113c396fed425099524e6711d5f8",
       "netuid": 118,
       "slug": "sn-118",
       "surface_count": 10
     },
     {
-      "checksum": "7959fd972124dc1ea74f6c099bcbfb7fb1212f10ad5c6a1d9d2d8ec724a93ae0",
+      "checksum": "7de61c1418113b2e7091c07e4eb4e3674bd4f99dc3f02efa1155de4ec80417b1",
       "netuid": 119,
       "slug": "sn-119",
       "surface_count": 5
     },
     {
-      "checksum": "edd1dc03c883b74c56ae36ef1526e022d58759e823e5504537a207da04ef35bb",
+      "checksum": "1229c8cd7459db6c6e288c2641a7257f5fe4882640b9ed79c8522b9f375b54d2",
       "netuid": 120,
       "slug": "sn-120",
       "surface_count": 7
     },
     {
-      "checksum": "29eb58ccbcce2173091f16c5cc930f0d8d207b902dfc481f9b70d146a1e941d6",
+      "checksum": "16f3505388e56a12e7660359514c99ba5a4d5474d5a01928fd7774fd8be81906",
       "netuid": 124,
       "slug": "sn-124",
       "surface_count": 9
     },
     {
-      "checksum": "ebfd69cefb54590ba20fa91a9c57844ac7d7825449ac9224493cd6e9a3ca44d0",
+      "checksum": "d1f6c29b80c62828342fb4a1daf5eb4d64c65ea41588c5b07a8877841b1e7b33",
       "netuid": 125,
       "slug": "sn-125",
       "surface_count": 5
     },
     {
-      "checksum": "de16899216742721123ea59d5ee37a12951739783097f38dc5134be88bf48b48",
+      "checksum": "8efdd1f9c187af2038a682895e1e23e6c024b4cd3ed85581dddc364e6155d8fc",
       "netuid": 126,
       "slug": "sn-126",
       "surface_count": 7
     },
     {
-      "checksum": "4e55ee7b17f66f7f681dafc7ff5927acebce34c11435df299a5b7278d0446e95",
+      "checksum": "2fb03ae4df955a48338d7923b112f353e790ec4fe0c3ae8820766d5552a2ac3c",
       "netuid": 127,
       "slug": "sn-127",
       "surface_count": 7
     },
     {
-      "checksum": "c51f055cda177d13de1b9d920f730d7b53e84df9c53e3902d6165ebadceabbbb",
+      "checksum": "c7092cf40c5a132fd80c1c20e8eaf53d9fdef96790e57e23352bed950802d814",
       "netuid": 128,
       "slug": "sn-128",
       "surface_count": 10
     }
   ],
-  "promoted_surface_count": 523,
+  "promoted_surface_count": 502,
   "schema_version": 1,
   "total_overlay_count": 129,
-  "verification_result_count": 1891
+  "verification_result_count": 2018
 }

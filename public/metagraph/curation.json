@@ -1,7 +1,7 @@
 {
   "curation": [
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -41,7 +41,7 @@
       "surface_count": 14
     },
     {
-      "candidate_count": 20,
+      "candidate_count": 21,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -85,7 +85,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -125,7 +125,7 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -169,7 +169,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -213,7 +213,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -255,7 +255,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -267,7 +267,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -297,7 +297,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -335,7 +335,7 @@
       "surface_count": 23
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -421,7 +421,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -433,7 +433,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -460,10 +460,10 @@
       "name": "Swap",
       "netuid": 10,
       "slug": "sn-10",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -505,7 +505,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -549,7 +549,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -591,7 +591,7 @@
       "surface_count": 13
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -603,7 +603,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": null
       },
       "gap_count": 4,
@@ -633,7 +633,7 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -675,7 +675,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -715,7 +715,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -727,7 +727,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -757,7 +757,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -799,7 +799,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -841,7 +841,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -887,7 +887,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -931,7 +931,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -969,7 +969,7 @@
       "surface_count": 16
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -981,7 +981,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
       "gap_count": 3,
@@ -1011,7 +1011,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1051,7 +1051,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1066,7 +1066,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:50:00.000Z",
-        "source_count": 7,
+        "source_count": 8,
         "verified_at": "2026-06-08T09:50:00.000Z"
       },
       "gap_count": 4,
@@ -1099,7 +1099,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1145,32 +1145,33 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website/docs/console are browser-facing but currently reject simple machine probes with connection resets, so these surfaces are listed without recurring probe monitoring.",
+          "Previously discovered GitHub source repository candidates currently return 404.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 5,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T14:15:00.000Z",
+        "source_count": 7,
+        "verified_at": "2026-06-08T14:15:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website/docs/console are browser-facing but currently reject simple machine probes with connection resets, so these surfaces are listed without recurring probe monitoring.",
+          "Previously discovered GitHub source repository candidates currently return 404.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1178,16 +1179,17 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
       "name": "Nodexo",
       "netuid": 27,
-      "slug": "sn-27",
-      "surface_count": 5
+      "slug": "nodexo",
+      "surface_count": 8
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1233,7 +1235,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1273,7 +1275,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1317,7 +1319,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1376,7 +1378,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 7,
+        "source_count": 6,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
       "gap_count": 4,
@@ -1404,10 +1406,10 @@
       "name": "ItsAI",
       "netuid": 32,
       "slug": "sn-32",
-      "surface_count": 8
+      "surface_count": 7
     },
     {
-      "candidate_count": 8,
+      "candidate_count": 9,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1447,7 +1449,7 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1489,7 +1491,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1501,7 +1503,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1528,10 +1530,10 @@
       "name": "OxMarkets",
       "netuid": 35,
       "slug": "sn-35",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1573,7 +1575,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1615,11 +1617,10 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
@@ -1630,16 +1631,14 @@
         "source_count": 6,
         "verified_at": null
       },
-      "gap_count": 4,
+      "gap_count": 3,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -1648,16 +1647,17 @@
           "dashboard",
           "docs",
           "openapi",
+          "source-repo",
           "website"
         ]
       },
       "name": "colosseum",
       "netuid": 38,
       "slug": "sn-38",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1703,7 +1703,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1749,7 +1749,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1789,7 +1789,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1835,7 +1835,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1879,7 +1879,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1921,7 +1921,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1965,7 +1965,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1976,7 +1976,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 3,
@@ -2005,7 +2005,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 8,
+      "candidate_count": 9,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2049,7 +2049,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2093,7 +2093,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2131,7 +2131,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2171,7 +2171,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2211,7 +2211,7 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 10,
+      "candidate_count": 11,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2253,36 +2253,39 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "SignalPlus website is live and is tracked as the team/project website.",
+          "The subnet mining app currently returns a 403/auth-challenge response to simple probes and is expected to appear degraded rather than healthy.",
+          "Previously discovered GitHub source repository currently returns 404.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 5,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T14:15:00.000Z",
+        "source_count": 7,
+        "verified_at": "2026-06-08T14:15:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "SignalPlus website is live and is tracked as the team/project website.",
+          "The subnet mining app currently returns a 403/auth-challenge response to simple probes and is expected to appear degraded rather than healthy.",
+          "Previously discovered GitHub source repository currently returns 404.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -2290,16 +2293,17 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
       "name": "EfficientFrontier",
       "netuid": 53,
-      "slug": "sn-53",
-      "surface_count": 5
+      "slug": "efficientfrontier",
+      "surface_count": 7
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2311,7 +2315,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2341,7 +2345,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2383,7 +2387,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2421,7 +2425,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2465,7 +2469,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 8,
+      "candidate_count": 9,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2503,7 +2507,7 @@
       "surface_count": 13
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2543,7 +2547,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2583,7 +2587,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2639,7 +2643,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 7,
+        "source_count": 6,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
       "gap_count": 4,
@@ -2668,10 +2672,10 @@
       "name": "Ridges",
       "netuid": 62,
       "slug": "sn-62",
-      "surface_count": 7
+      "surface_count": 6
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2715,7 +2719,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 28,
+      "candidate_count": 29,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2753,7 +2757,7 @@
       "surface_count": 17
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2793,7 +2797,7 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2833,7 +2837,7 @@
       "surface_count": 13
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2845,7 +2849,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2875,7 +2879,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2915,7 +2919,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2961,7 +2965,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3001,7 +3005,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3041,7 +3045,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3081,32 +3085,38 @@
       "surface_count": 12
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as Parked; multiple public directories identify SN73 as MetaHash.",
+          "Official-looking docs domain docs.metahash73.com currently does not resolve from simple probes.",
+          "Previously discovered GitHub source repository currently returns 404.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T14:15:00.000Z",
         "source_count": 5,
-        "verified_at": null
+        "verified_at": "2026-06-08T14:15:00.000Z"
       },
       "gap_count": 6,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as Parked; multiple public directories identify SN73 as MetaHash.",
+          "Official-looking docs domain docs.metahash73.com currently does not resolve from simple probes.",
+          "Previously discovered GitHub source repository currently returns 404.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
@@ -3121,13 +3131,13 @@
           "docs"
         ]
       },
-      "name": "Parked",
+      "name": "MetaHash",
       "netuid": 73,
-      "slug": "sn-73",
+      "slug": "metahash",
       "surface_count": 5
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3170,7 +3180,7 @@
       "surface_count": 17
     },
     {
-      "candidate_count": 25,
+      "candidate_count": 26,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3212,7 +3222,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3258,7 +3268,7 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3298,7 +3308,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3338,7 +3348,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 25,
+      "candidate_count": 26,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3380,7 +3390,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3420,7 +3430,7 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3468,7 +3478,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 25,
+      "candidate_count": 26,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3512,7 +3522,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3552,7 +3562,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3594,7 +3604,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3638,7 +3648,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3684,7 +3694,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3728,7 +3738,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3768,7 +3778,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3814,7 +3824,7 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3862,7 +3872,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3908,7 +3918,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3958,7 +3968,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3998,7 +4008,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4040,7 +4050,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4082,7 +4092,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4120,7 +4130,7 @@
       "surface_count": 13
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4160,7 +4170,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4204,7 +4214,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4244,7 +4254,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4286,7 +4296,7 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4332,7 +4342,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4420,7 +4430,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4466,7 +4476,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4506,7 +4516,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4548,7 +4558,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 20,
+      "candidate_count": 21,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4588,7 +4598,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4630,7 +4640,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4676,7 +4686,7 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4716,7 +4726,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4760,7 +4770,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4772,7 +4782,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4799,10 +4809,10 @@
       "name": "minotaur",
       "netuid": 112,
       "slug": "sn-112",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4844,7 +4854,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4884,7 +4894,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4930,36 +4940,39 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as hard_sign; public directories identify SN116 as TaoLend.",
+          "Official website currently returns 500/server-error responses to simple probes and should appear degraded until it recovers.",
+          "Previously discovered GitHub source repository currently returns 404.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 5,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T14:15:00.000Z",
+        "source_count": 6,
+        "verified_at": "2026-06-08T14:15:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as hard_sign; public directories identify SN116 as TaoLend.",
+          "Official website currently returns 500/server-error responses to simple probes and should appear degraded until it recovers.",
+          "Previously discovered GitHub source repository currently returns 404.",
+          "No verified live source repository yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -4967,16 +4980,17 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
-      "name": "hard_sign",
+      "name": "TaoLend",
       "netuid": 116,
-      "slug": "sn-116",
-      "surface_count": 5
+      "slug": "taolend",
+      "surface_count": 6
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5024,7 +5038,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5066,7 +5080,7 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5112,7 +5126,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5124,7 +5138,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -5154,7 +5168,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5198,7 +5212,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5240,7 +5254,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5286,7 +5300,7 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5297,7 +5311,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 3,
@@ -5326,7 +5340,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5372,7 +5386,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5414,7 +5428,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5456,7 +5470,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [

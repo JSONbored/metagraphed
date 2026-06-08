@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "signalplus",
+  "name": "SignalPlus",
+  "kind": "subnet-team",
+  "website_url": "https://www.signalplus.com/",
+  "authority": "provider-claimed",
+  "notes": "Provider entry for SignalPlus and SN53 EfficientFrontier. The SignalPlus company website is live; the subnet mining surface currently returns an auth/challenge-style response to simple probes."
+}

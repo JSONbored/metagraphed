@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "netuid": 53,
+  "name": "EfficientFrontier",
+  "slug": "efficientfrontier",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "defi",
+    "financial-trading",
+    "identity-reviewed",
+    "official-website",
+    "trading-strategies"
+  ],
+  "website_url": "https://www.signalplus.com/",
+  "dashboard_url": "https://t.signalplus.com/mining",
+  "source_repo": null,
+  "notes": "Reviewed overlay for SN53 EfficientFrontier by SignalPlus. The SignalPlus company website is live; the mining app surface returns an auth/challenge-style response to simple probes. The previously discovered EfficientFrontier source repository currently returns 404 and is not promoted.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T14:15:00.000Z",
+    "verified_at": "2026-06-08T14:15:00.000Z",
+    "source_count": 6,
+    "gap_notes": [
+      "SignalPlus website is live and is tracked as the team/project website.",
+      "The subnet mining app currently returns a 403/auth-challenge response to simple probes and is expected to appear degraded rather than healthy.",
+      "Previously discovered GitHub source repository currently returns 404.",
+      "No verified live source repository yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-53-signalplus-website",
+      "name": "SignalPlus website",
+      "kind": "website",
+      "url": "https://www.signalplus.com/",
+      "provider": "signalplus",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.signalplus.com/",
+        "https://t.signalplus.com/mining"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "SignalPlus team/company website for SN53 EfficientFrontier."
+    },
+    {
+      "id": "sn-53-signalplus-mining",
+      "name": "EfficientFrontier mining app",
+      "kind": "dashboard",
+      "url": "https://t.signalplus.com/mining",
+      "provider": "signalplus",
+      "auth_required": true,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://t.signalplus.com/mining",
+        "https://www.signalplus.com/"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "rate_limit_notes": "Simple probes currently receive an auth/challenge-style response; endpoint health should be interpreted as access-state, not app correctness.",
+      "notes": "SignalPlus mining/app surface linked by public SN53 references."
+    }
+  ]
+}
