@@ -241,6 +241,7 @@ function TableSkeleton() {
 function SubnetPreviewTable() {
   const { data, refetch } = useSuspenseQuery(subnetsQuery({ limit: 12 }));
   const { data: healthRes } = useSuspenseQuery(healthQuery());
+  const coverage = useQuery(coverageQuery()).data?.data;
   const subnets = (data.data ?? []) as Subnet[];
   const healthBySubnet = new Map<number, "ok" | "warn" | "down" | "unknown">();
   const hsubs = (healthRes.data as { subnets?: Array<{ netuid: number; status?: string }> })
@@ -262,6 +263,8 @@ function SubnetPreviewTable() {
       />
     );
   }
+
+  const total = coverage?.netuids_active ?? coverage?.netuids_total;
 
   return (
     <div className="rounded border border-border bg-card overflow-hidden">
@@ -295,9 +298,19 @@ function SubnetPreviewTable() {
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: String(s.netuid) }}
-                    className="font-medium text-ink-strong hover:underline"
+                    className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
                   >
-                    {s.name ?? `Subnet ${s.netuid}`}
+                    <BrandIcon
+                      size={20}
+                      name={s.name ?? `Subnet ${s.netuid}`}
+                      fallback={s.netuid}
+                      url={s.website ?? s.homepage}
+                      repoUrl={s.repo}
+                      lookup={undefined}
+                      subnetSlug={(s as { slug?: string }).slug}
+                      netuid={s.netuid}
+                    />
+                    <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
                   </Link>
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
@@ -324,7 +337,13 @@ function SubnetPreviewTable() {
         </table>
       </div>
       <div className="border-t border-border bg-surface/30 px-4 py-2 flex justify-between text-[11px] font-mono text-ink-muted">
-        <span>Showing first {Math.min(12, subnets.length)} of {subnets.length}</span>
+        <span>
+          Showing {Math.min(12, subnets.length)}
+          {total ? ` of ${formatNumber(total)}` : ""} ·{" "}
+          <Link to="/subnets" className="hover:text-ink-strong underline underline-offset-2">
+            view all
+          </Link>
+        </span>
         <button onClick={() => refetch()} className="hover:text-ink-strong">refresh</button>
       </div>
     </div>
