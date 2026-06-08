@@ -75,6 +75,8 @@ function SubnetDetailPage() {
         </Suspense>
       </QueryErrorBoundary>
 
+      <SectionNav />
+
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <QueryErrorBoundary>
@@ -83,7 +85,7 @@ function SubnetDetailPage() {
             </Suspense>
           </QueryErrorBoundary>
 
-          <Section title="Schemas & API contracts" subtitle="Generated client targets for this subnet.">
+          <Section id="schemas" title="Schemas & API contracts" subtitle="Generated client targets for this subnet.">
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-24 w-full" />}>
                 <SchemasPanel netuid={netuid} />
@@ -91,7 +93,7 @@ function SubnetDetailPage() {
             </QueryErrorBoundary>
           </Section>
 
-          <Section title="Verified surfaces" subtitle="Curated public interfaces with provenance.">
+          <Section id="surfaces" title="Verified surfaces" subtitle="Curated public interfaces with provenance.">
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-32 w-full" />}>
                 <SurfacesList netuid={netuid} />
@@ -99,7 +101,7 @@ function SubnetDetailPage() {
             </QueryErrorBoundary>
           </Section>
 
-          <Section title="Endpoints" subtitle="Probed resources — health and latency are probe-derived.">
+          <Section id="endpoints" title="Endpoints" subtitle="Probed resources — health and latency are probe-derived.">
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-32 w-full" />}>
                 <EndpointsList netuid={netuid} />
@@ -107,7 +109,7 @@ function SubnetDetailPage() {
             </QueryErrorBoundary>
           </Section>
 
-          <Section title="Candidates" subtitle="Unverified leads from public sources. Always labeled.">
+          <Section id="candidates" title="Candidates" subtitle="Unverified leads from public sources. Always labeled.">
             <QueryErrorBoundary>
               <Suspense fallback={<Skeleton className="h-24 w-full" />}>
                 <CandidatesList netuid={netuid} />
@@ -115,7 +117,7 @@ function SubnetDetailPage() {
             </QueryErrorBoundary>
           </Section>
 
-          <Section title="Evidence & sources" subtitle="Every claim should be traceable.">
+          <Section id="evidence" title="Evidence & sources" subtitle="Every claim should be traceable.">
             <EvidencePanel netuid={netuid} />
           </Section>
         </div>
@@ -135,17 +137,54 @@ function SubnetDetailPage() {
   );
 }
 
+/**
+ * Cosmos-directory-style in-page section navigation. Anchor links scroll to
+ * a section; the currently-visible section gets highlighted by the browser
+ * via `:target` would lose state on initial load, so we keep it visually
+ * minimal and rely on scroll behavior alone. Sticky under the app header.
+ */
+function SectionNav() {
+  const items: Array<{ to: string; label: string }> = [
+    { to: "#schemas", label: "Schemas" },
+    { to: "#surfaces", label: "Surfaces" },
+    { to: "#endpoints", label: "Endpoints" },
+    { to: "#candidates", label: "Candidates" },
+    { to: "#evidence", label: "Evidence" },
+  ];
+  return (
+    <nav
+      aria-label="Subnet sections"
+      className="sticky top-14 z-10 -mx-4 md:mx-0 mt-4 border-b border-border bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80 md:border md:rounded md:bg-card"
+    >
+      <ul className="flex items-center gap-1 overflow-x-auto px-3 py-1.5">
+        {items.map((it) => (
+          <li key={it.to}>
+            <a
+              href={it.to}
+              className="inline-flex items-center rounded px-2.5 py-1 text-[12px] font-medium text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors whitespace-nowrap"
+            >
+              {it.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
 function Section({
+  id,
   title,
   subtitle,
   children,
 }: {
+  id?: string;
   title: string;
   subtitle?: string;
   children: ReactNode;
 }) {
   return (
-    <section>
+    <section id={id} className="scroll-mt-32">
       <div className="mb-2">
         <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong">
           {title}

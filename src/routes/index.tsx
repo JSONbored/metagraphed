@@ -93,12 +93,12 @@ function StatStripSkeleton() {
 
 function StatCell({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="bg-card p-4">
+    <div className="bg-card p-4 mg-kpi">
       <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1">
         {label}
       </div>
       <div className="flex items-baseline gap-2">
-        <span className="font-display text-2xl font-semibold tracking-tight text-ink-strong tabular-nums">
+        <span className="mg-kpi-num font-display text-2xl font-semibold tracking-tight text-ink-strong tabular-nums">
           {value}
         </span>
         {hint ? <span className="font-mono text-[10px] text-ink-muted">{hint}</span> : null}
