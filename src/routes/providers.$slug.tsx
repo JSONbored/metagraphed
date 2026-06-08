@@ -86,6 +86,8 @@ function ProviderShell({ slug }: { slug: string }) {
           <BrandIcon
             url={p?.website ?? p?.homepage}
             iconUrl={p?.icon_url}
+            repoUrl={p?.repo}
+            providerSlug={slug}
             name={p?.name ?? slug}
             fallback={slug}
             size={48}

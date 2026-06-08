@@ -151,7 +151,11 @@ function SubnetsTable() {
       (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
         .requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1));
     const handle = ric(() => {
-      for (const s of rows) prefetchBrandIcon(s.website, 32);
+      for (const s of rows)
+        prefetchBrandIcon(s.website, 32, {
+          iconUrl: s.icon_url,
+          lookup: { netuid: s.netuid },
+        });
     });
     return () => {
       const cic =
@@ -219,6 +223,7 @@ function SubnetsTable() {
               <BrandIcon
                 url={s.website}
                 iconUrl={s.icon_url}
+                netuid={s.netuid}
                 name={s.name}
                 fallback={s.netuid}
                 size={32}
@@ -270,6 +275,7 @@ function SubnetsTable() {
                     <BrandIcon
                       url={s.website}
                       iconUrl={s.icon_url}
+                      netuid={s.netuid}
                       name={s.name}
                       fallback={s.netuid}
                       size={20}

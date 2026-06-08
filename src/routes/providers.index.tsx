@@ -78,7 +78,12 @@ function ProvidersGrid() {
       (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
         .requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1));
     const handle = ric(() => {
-      for (const p of rows) prefetchBrandIcon(p.website ?? p.homepage, 36);
+      for (const p of rows)
+        prefetchBrandIcon(p.website ?? p.homepage, 36, {
+          iconUrl: p.icon_url,
+          repoUrl: p.repo,
+          lookup: { providerSlug: p.slug },
+        });
     });
     return () => {
       const cic =
@@ -118,6 +123,8 @@ function ProvidersGrid() {
                 <BrandIcon
                   url={p.website ?? p.homepage}
                   iconUrl={p.icon_url}
+                  repoUrl={p.repo}
+                  providerSlug={p.slug}
                   name={p.name ?? p.slug}
                   fallback={p.slug}
                   size={36}
