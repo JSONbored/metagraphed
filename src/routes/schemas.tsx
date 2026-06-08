@@ -176,13 +176,50 @@ interface SchemaSnapshot {
   previous_version?: string;
 }
 
+interface SnapshotMeta {
+  version?: string;
+  id?: string;
+  at?: string;
+}
+
+function snapshotKey(s: SnapshotMeta, idx: number): string {
+  return s.version ?? s.id ?? s.at ?? `snap-${idx}`;
+}
+
 function DriftView({ schema }: { schema: SchemaInfo }) {
-  const { data, error, isLoading, refetch } = useQuery({
-    queryKey: ["metagraphed", "schema-diff", schema.id],
+  const [a, setA] = useState<string>("");
+  const [b, setB] = useState<string>("");
+
+  // List of available snapshots (best effort — empty if endpoint absent).
+  const snapshots = useQuery({
+    queryKey: ["metagraphed", "schema-snapshots", schema.id],
     queryFn: async ({ signal }) => {
-      // Try the dedicated diff endpoint first; fall back to fetching current schema only.
       try {
-        const res = await apiFetch<SchemaSnapshot>(`/api/v1/schemas/${encodeURIComponent(schema.id)}/diff`, { signal });
+        const res = await apiFetch<SnapshotMeta[]>(
+          `/api/v1/schemas/${encodeURIComponent(schema.id)}/snapshots`,
+          { signal },
+        );
+        return Array.isArray(res.data) ? res.data : [];
+      } catch {
+        return [] as SnapshotMeta[];
+      }
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const snapList = snapshots.data ?? [];
+
+  const diff = useQuery({
+    queryKey: ["metagraphed", "schema-diff", schema.id, a, b],
+    queryFn: async ({ signal }) => {
+      const params: Record<string, string> = {};
+      if (a) params.a = a;
+      if (b) params.b = b;
+      try {
+        const res = await apiFetch<SchemaSnapshot>(
+          `/api/v1/schemas/${encodeURIComponent(schema.id)}/diff`,
+          { signal, params },
+        );
         return res.data;
       } catch {
         if (schema.url) {
@@ -198,37 +235,89 @@ function DriftView({ schema }: { schema: SchemaInfo }) {
     staleTime: 5 * 60_000,
   });
 
-  if (isLoading) return <div className="p-4"><Skeleton className="h-24 w-full" /></div>;
-  if (error) return <div className="p-4"><ErrorState error={error} onRetry={() => refetch()} /></div>;
+  if (diff.isLoading) return <div className="p-4"><Skeleton className="h-24 w-full" /></div>;
+  if (diff.error) return <div className="p-4"><ErrorState error={diff.error} onRetry={() => diff.refetch()} /></div>;
+  const data = diff.data;
   if (!data) return <div className="p-4"><EmptyState title="No snapshot" /></div>;
 
   const currentStr = stringify(data.current);
   const previousStr = data.previous != null ? stringify(data.previous) : "";
 
-  if (!previousStr) {
-    return (
-      <div className="p-4 space-y-2">
-        <div className="flex items-center gap-3 text-[11px] font-mono text-ink-muted">
-          <span>current: {data.current_version ?? "—"}</span>
-          <span>·</span>
-          <span>captured {formatRelative(data.current_at)}</span>
-        </div>
-        <EmptyState title="No previous version recorded" description="Drift can only be shown once a second snapshot is published." />
-        {currentStr ? (
-          <pre className="mt-2 max-h-96 overflow-auto rounded border border-border bg-card p-3 font-mono text-[11px] text-ink-strong whitespace-pre">
-            {currentStr.slice(0, 5000)}
-            {currentStr.length > 5000 ? "\n…(truncated)" : ""}
-          </pre>
-        ) : null}
-      </div>
-    );
-  }
-
-  const lines = lineDiff(previousStr, currentStr);
-  const stats = diffStats(lines);
-
   return (
     <div className="p-4 space-y-3">
+      {snapList.length >= 2 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded border border-border bg-paper p-2 text-[11px]">
+          <span className="font-mono uppercase tracking-widest text-ink-muted">previous</span>
+          <select
+            value={a}
+            onChange={(e) => setA(e.target.value)}
+            className="rounded border border-border bg-card px-2 py-1 font-mono text-[11px] focus:outline-none"
+          >
+            <option value="">auto (one before current)</option>
+            {snapList.map((s, i) => (
+              <option key={snapshotKey(s, i)} value={s.version ?? s.id ?? s.at ?? ""}>
+                {(s.version ?? s.id ?? "snap")} · {s.at ?? "—"}
+              </option>
+            ))}
+          </select>
+          <span className="text-ink-muted">→</span>
+          <span className="font-mono uppercase tracking-widest text-ink-muted">current</span>
+          <select
+            value={b}
+            onChange={(e) => setB(e.target.value)}
+            className="rounded border border-border bg-card px-2 py-1 font-mono text-[11px] focus:outline-none"
+          >
+            <option value="">latest</option>
+            {snapList.map((s, i) => (
+              <option key={snapshotKey(s, i)} value={s.version ?? s.id ?? s.at ?? ""}>
+                {(s.version ?? s.id ?? "snap")} · {s.at ?? "—"}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => { setA(""); setB(""); }}
+            className="ml-auto text-[11px] text-ink-muted hover:text-ink-strong underline underline-offset-2"
+          >
+            reset
+          </button>
+        </div>
+      ) : null}
+
+      {!previousStr ? (
+        <>
+          <div className="flex items-center gap-3 text-[11px] font-mono text-ink-muted">
+            <span>current: {data.current_version ?? "—"}</span>
+            <span>·</span>
+            <span>captured {formatRelative(data.current_at)}</span>
+          </div>
+          <EmptyState title="No previous version recorded" description="Drift can only be shown once a second snapshot is published." />
+          {currentStr ? (
+            <pre className="mt-2 max-h-96 overflow-auto rounded border border-border bg-card p-3 font-mono text-[11px] text-ink-strong whitespace-pre">
+              {currentStr.slice(0, 5000)}
+              {currentStr.length > 5000 ? "\n…(truncated)" : ""}
+            </pre>
+          ) : null}
+        </>
+      ) : (
+        <DiffPanel previousStr={previousStr} currentStr={currentStr} data={data} />
+      )}
+    </div>
+  );
+}
+
+function DiffPanel({
+  previousStr,
+  currentStr,
+  data,
+}: {
+  previousStr: string;
+  currentStr: string;
+  data: SchemaSnapshot;
+}) {
+  const lines = lineDiff(previousStr, currentStr);
+  const stats = diffStats(lines);
+  return (
+    <>
       <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono">
         <span className="text-ink-muted">previous: {data.previous_version ?? "—"} · {formatRelative(data.previous_at)}</span>
         <span className="text-ink-muted">→</span>
@@ -264,9 +353,10 @@ function DriftView({ schema }: { schema: SchemaInfo }) {
           </tbody>
         </table>
       </div>
-    </div>
+    </>
   );
 }
+
 
 function stringify(v: unknown): string {
   if (v == null) return "";
