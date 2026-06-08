@@ -219,33 +219,20 @@ async function discoverFromTaoMarketCap() {
 }
 
 async function discoverFromTensorplexSubnetDocs() {
-  const dataRootUrl =
-    "https://api.github.com/repos/tensorplex-labs/subnet-docs/contents/data?ref=main";
-  const entries = await fetchJson(dataRootUrl, githubHeaders());
-  if (!Array.isArray(entries)) {
-    warnings.push("tensorplex-subnet-docs: failed to list data directories");
-    restoreExistingCandidatesForProvider("tensorplex-subnet-docs");
-    return;
-  }
-
-  const availableNetuids = new Set(
-    entries
-      .filter((entry) => entry.type === "dir" && /^\d+$/.test(entry.name))
-      .map((entry) => Number(entry.name))
-      .filter((netuid) => nativeByNetuid.has(netuid)),
-  );
+  let discoveredCount = 0;
 
   await mapLimit(
-    [...availableNetuids].sort((a, b) => a - b),
+    nativeSnapshot.subnets.map((subnet) => subnet.netuid).sort((a, b) => a - b),
     8,
     async (netuid) => {
       const rawUrl = `https://raw.githubusercontent.com/tensorplex-labs/subnet-docs/main/data/${netuid}/subnet.json`;
       const repoUrl = `https://github.com/tensorplex-labs/subnet-docs/blob/main/data/${netuid}/subnet.json`;
       const directoryUrl = `https://github.com/tensorplex-labs/subnet-docs/tree/main/data/${netuid}`;
-      const document = await fetchJson(rawUrl);
+      const document = await fetchJson(rawUrl, {}, { warn: false });
       if (!document) {
         return;
       }
+      discoveredCount += 1;
 
       const nativeName = displayNameForNetuid(netuid);
       const displayName = cleanName(document.name) || nativeName;
@@ -325,49 +312,77 @@ async function discoverFromTensorplexSubnetDocs() {
       }
     },
   );
+
+  if (discoveredCount === 0) {
+    warnings.push(
+      "tensorplex-subnet-docs: failed to fetch any raw subnet documents",
+    );
+    restoreExistingCandidatesForProvider("tensorplex-subnet-docs");
+  }
 }
 
 async function discoverFromTaopediaArticles() {
-  const pagesUrl =
-    "https://api.github.com/repos/e35ventura/taopedia-articles/contents/content/pages?ref=main";
-  const pages = await fetchJson(pagesUrl, githubHeaders());
-  if (!Array.isArray(pages)) {
-    warnings.push("taopedia-articles: failed to list content pages");
+  let discoveredCount = 0;
+  const existingTaopediaByNetuid = new Map(
+    existingGeneratedCandidates
+      .filter((candidate) => candidate.provider === "taopedia-articles")
+      .map((candidate) => [candidate.netuid, candidate]),
+  );
+  await mapLimit(
+    nativeSnapshot.subnets
+      .map((subnet) => subnet.netuid)
+      .filter((netuid) => netuid !== 0)
+      .sort((a, b) => a - b),
+    8,
+    async (netuid) => {
+      const articlePath =
+        (await fetchTaopediaArticlePath(
+          `content/pages/subnet_${netuid}/index.mdx`,
+        )) ||
+        (await fetchTaopediaArticlePath(
+          githubBlobPath(existingTaopediaByNetuid.get(netuid)?.url),
+        ));
+      if (!articlePath) {
+        return;
+      }
+      discoveredCount += 1;
+      const url = `https://github.com/e35ventura/taopedia-articles/blob/main/${articlePath}`;
+      addCandidate({
+        id: `sn-${netuid}-taopedia-article`,
+        netuid,
+        name: `${displayNameForNetuid(netuid)} Taopedia article`,
+        kind: "docs",
+        url,
+        source_url: url,
+        source_type: "taopedia-article",
+        source_tier: "community-docs",
+        confidence: "low",
+        provider: "taopedia-articles",
+        review_notes:
+          "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      });
+    },
+  );
+
+  if (discoveredCount === 0) {
+    warnings.push("taopedia-articles: failed to fetch any raw article pages");
     restoreExistingCandidatesForProvider("taopedia-articles");
-    return;
   }
+}
 
-  for (const entry of pages) {
-    if (entry.type !== "dir") {
-      continue;
-    }
-
-    const match = /^subnet_(\d+)[^/]*$/.exec(entry.name || "");
-    if (!match) {
-      continue;
-    }
-
-    const netuid = Number(match[1]);
-    if (!nativeByNetuid.has(netuid)) {
-      continue;
-    }
-
-    const url = `https://github.com/e35ventura/taopedia-articles/blob/main/${entry.path}/index.mdx`;
-    addCandidate({
-      id: `sn-${netuid}-taopedia-article`,
-      netuid,
-      name: `${displayNameForNetuid(netuid)} Taopedia article`,
-      kind: "docs",
-      url,
-      source_url: url,
-      source_type: "taopedia-article",
-      source_tier: "community-docs",
-      confidence: "low",
-      provider: "taopedia-articles",
-      review_notes:
-        "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-    });
+async function fetchTaopediaArticlePath(pathValue) {
+  if (!pathValue) {
+    return null;
   }
+  const rawUrl = `https://raw.githubusercontent.com/e35ventura/taopedia-articles/main/${pathValue}`;
+  const response = await fetchText(rawUrl, {
+    accept: "text/plain",
+    warn: false,
+  });
+  if (!response || response.status_code !== 200 || !response.text.trim()) {
+    return null;
+  }
+  return pathValue;
 }
 
 async function discoverUniversalTaoMarketCapDashboards() {
@@ -717,6 +732,22 @@ function restoreCandidate(candidate) {
       stripRefreshFailureNote(candidate.review_notes) ||
       "Candidate restored from previous generated bundle.",
   });
+}
+
+function githubBlobPath(urlValue) {
+  if (!urlValue) {
+    return null;
+  }
+  try {
+    const url = new URL(urlValue);
+    const prefix = "/e35ventura/taopedia-articles/blob/main/";
+    if (url.hostname !== "github.com" || !url.pathname.startsWith(prefix)) {
+      return null;
+    }
+    return decodeURIComponent(url.pathname.slice(prefix.length));
+  } catch {
+    return null;
+  }
 }
 
 function stripRefreshFailureNote(value) {
@@ -1163,7 +1194,7 @@ function stripHtml(value) {
     .trim();
 }
 
-async function fetchJson(url, headers = {}) {
+async function fetchJson(url, headers = {}, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
@@ -1176,12 +1207,16 @@ async function fetchJson(url, headers = {}) {
       signal: controller.signal,
     });
     if (!response.ok) {
-      warnings.push(`${url}: HTTP ${response.status}`);
+      if (options.warn !== false) {
+        warnings.push(`${url}: HTTP ${response.status}`);
+      }
       return null;
     }
     return await response.json();
   } catch (error) {
-    warnings.push(`${url}: ${error.message}`);
+    if (options.warn !== false) {
+      warnings.push(`${url}: ${error.message}`);
+    }
     return null;
   } finally {
     clearTimeout(timer);
@@ -1249,17 +1284,6 @@ async function fetchWithSafeRedirects(url, init, redirectCount = 0) {
   }
 
   return response;
-}
-
-function githubHeaders() {
-  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-  if (!token) {
-    return {};
-  }
-  return {
-    authorization: `Bearer ${token}`,
-    "x-github-api-version": "2022-11-28",
-  };
 }
 
 async function mapLimit(items, limit, mapper) {
