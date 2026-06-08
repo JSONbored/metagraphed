@@ -197,17 +197,49 @@ export const sourceHealthQuery = () =>
     staleTime: STALE_MED,
   });
 
+function normalizeSubnet(raw: unknown): Subnet {
+  if (!raw || typeof raw !== "object") return raw as Subnet;
+  const s = raw as Record<string, unknown>;
+  const statusToHealth = (v: unknown): HealthState | undefined => {
+    if (typeof v !== "string") return undefined;
+    if (v === "ok") return "ok";
+    if (v === "degraded" || v === "warn") return "warn";
+    if (v === "failed" || v === "down") return "down";
+    return "unknown";
+  };
+  return {
+    ...(s as object),
+    netuid: s.netuid as number,
+    name: (s.name as string) ?? (s.native_name as string),
+    type: (s.subnet_type as Subnet["type"]) ?? (s.type as Subnet["type"]),
+    participants: (s.participants as number) ?? (s.participant_count as number),
+    surfaces_count: (s.surfaces_count as number) ?? (s.surface_count as number),
+    candidates_count: (s.candidates_count as number) ?? (s.candidate_count as number),
+    health: (s.health as HealthState) ?? statusToHealth(s.status),
+    updated_at:
+      (s.updated_at as string) ??
+      (s.last_checked as string) ??
+      (s.last_ok as string),
+  } as Subnet;
+}
+
 export const subnetsQuery = (params?: QueryParams) =>
   queryOptions({
     queryKey: k("subnets", params ?? {}),
-    queryFn: ({ signal }) => fetchList<Subnet>("/api/v1/subnets", "subnets", params, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/subnets", "subnets", params, signal);
+      return { ...res, data: res.data.map(normalizeSubnet) } as ApiResult<Subnet[]>;
+    },
     staleTime: STALE_MED,
   });
 
 export const subnetQuery = (netuid: number) =>
   queryOptions({
     queryKey: k("subnet", netuid),
-    queryFn: ({ signal }) => fetchDetail<Subnet>(`/api/v1/subnets/${netuid}`, "subnet", signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchDetail<unknown>(`/api/v1/subnets/${netuid}`, "subnet", signal);
+      return { ...res, data: normalizeSubnet(res.data) } as ApiResult<Subnet>;
+    },
     staleTime: STALE_MED,
   });
 
