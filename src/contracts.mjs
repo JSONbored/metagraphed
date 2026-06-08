@@ -770,6 +770,12 @@ export const PUBLIC_ARTIFACTS = [
     "SchemaIndexArtifact",
   ),
   artifact(
+    "schema-snapshot",
+    "/metagraph/schemas/{surface_id}.json",
+    "Captured machine-readable OpenAPI/Swagger schema snapshot detail.",
+    "JsonObject",
+  ),
+  artifact(
     "adapter",
     "/metagraph/adapters/{slug}.json",
     "Adapter-backed public metrics by subnet slug.",
@@ -1465,19 +1471,22 @@ export function artifactPathFromTemplate(template, params = {}) {
   return template
     .replace("{netuid}", String(params.netuid ?? ""))
     .replace("{slug}", String(params.slug ?? ""))
-    .replace("{date}", String(params.date ?? ""));
+    .replace("{date}", String(params.date ?? ""))
+    .replace("{surface_id}", String(params.surface_id ?? ""));
 }
 
 export function compileRoutePattern(pathTemplate) {
   const tokenized = pathTemplate
     .replace(/\{netuid\}/g, "__METAGRAPH_NETUID__")
     .replace(/\{slug\}/g, "__METAGRAPH_SLUG__")
-    .replace(/\{date\}/g, "__METAGRAPH_DATE__");
+    .replace(/\{date\}/g, "__METAGRAPH_DATE__")
+    .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
     .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
-    .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})");
+    .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
+    .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)");
   return new RegExp(`^${pattern}\\/?$`);
 }
 
@@ -1612,11 +1621,13 @@ function pathTemplatesMatch(contractPath, artifactPath) {
   const contractPattern = contractPath
     .replace("{netuid}", ":netuid")
     .replace("{slug}", ":slug")
-    .replace("{date}", ":date");
+    .replace("{date}", ":date")
+    .replace("{surface_id}", ":surface_id");
   const artifactPattern = artifactPath
     .replace("{netuid}", ":netuid")
     .replace("{slug}", ":slug")
-    .replace("{date}", ":date");
+    .replace("{date}", ":date")
+    .replace("{surface_id}", ":surface_id");
   return contractPattern === artifactPattern;
 }
 

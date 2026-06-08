@@ -165,6 +165,47 @@ describe("Worker runtime", () => {
     assert.equal((await response.json()).network, "finney");
   });
 
+  test("serves raw R2-backed schema snapshot artifacts", async () => {
+    const r2KeysRequested = [];
+    const schemaSnapshot = {
+      schema_version: 1,
+      contract_version: "2026-06-06.1",
+      generated_at: "1970-01-01T00:00:00.000Z",
+      observed_at: "2999-01-01T00:00:00.000Z",
+      surface_id: "example-openapi",
+      schema_url: "https://example.com/openapi.json",
+      hash: "abc123",
+      openapi_version: "3.1.0",
+      title: "Example API",
+    };
+    const response = await handleRequest(
+      new Request(
+        "https://metagraph.sh/metagraph/schemas/example-openapi.json",
+      ),
+      {
+        ASSETS: env.ASSETS,
+        METAGRAPH_ARCHIVE: {
+          async get(key) {
+            r2KeysRequested.push(key);
+            assert.equal(key, "latest/schemas/example-openapi.json");
+            return {
+              async json() {
+                return schemaSnapshot;
+              },
+            };
+          },
+        },
+      },
+      {},
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-metagraph-artifact-source"), "r2");
+    assert.equal(response.headers.get("x-metagraph-storage-tier"), "r2");
+    assert.deepEqual(r2KeysRequested, ["latest/schemas/example-openapi.json"]);
+    assert.equal((await response.json()).title, "Example API");
+  });
+
   test("rejects raw artifact paths outside public contracts before storage lookup", async () => {
     const assetRequests = [];
     const r2KeysRequested = [];

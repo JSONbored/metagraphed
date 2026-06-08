@@ -1,12 +1,7 @@
 {
   "artifacts": {
     "added": [],
-    "modified": [
-      {
-        "hash": "e46cc964fb68ed9eb41a503d5082ceced79657449c4044766f9393eba9eba9d7",
-        "path": "freshness.json"
-      }
-    ],
+    "modified": [],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
@@ -24,7 +19,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 1,
+    "artifact_modified_count": 0,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {

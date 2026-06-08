@@ -372,6 +372,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Captured machine-readable OpenAPI/Swagger schema snapshot detail.",
+      "id": "schema-snapshot",
+      "path": "/metagraph/schemas/{surface_id}.json",
+      "schema_ref": "#/components/schemas/JsonObject",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Adapter-backed public metrics by subnet slug.",
       "id": "adapter",
       "path": "/metagraph/adapters/{slug}.json",

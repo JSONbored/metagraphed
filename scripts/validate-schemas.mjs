@@ -112,7 +112,8 @@ async function artifactValidationTargets() {
     if (
       artifact.path.includes("{netuid}") ||
       artifact.path.includes("{slug}") ||
-      artifact.path.includes("{date}")
+      artifact.path.includes("{date}") ||
+      artifact.path.includes("{surface_id}")
     ) {
       const filePaths =
         artifact.id === "provider-endpoints"
@@ -156,6 +157,7 @@ function templatedArtifactDirectory(artifactId) {
     ...netuidArtifactDirectories(),
     ...slugArtifactDirectories(),
     "health-history": "health/history",
+    "schema-snapshot": "schemas",
   };
   const relativeDir = directories[artifactId];
   const template = PUBLIC_ARTIFACTS.find(

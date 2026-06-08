@@ -289,6 +289,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "schema-snapshot",
+      "path": "/metagraph/schemas/{surface_id}.json",
+      "schema_ref": "#/components/schemas/JsonObject",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "adapter",
       "path": "/metagraph/adapters/{slug}.json",
       "schema_ref": "#/components/schemas/AdapterArtifact",

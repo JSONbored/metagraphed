@@ -78,6 +78,24 @@ describe("public contract registry", () => {
       }),
       "/metagraph/health/history/2026-06-06.json",
     );
+
+    const schemaPattern = compileRoutePattern(
+      "/metagraph/schemas/{surface_id}.json",
+    );
+    const schemaMatch = schemaPattern.exec(
+      "/metagraph/schemas/sn-56-gradients-openapi.json",
+    );
+    assert.equal(schemaMatch.groups.surface_id, "sn-56-gradients-openapi");
+    assert.equal(
+      schemaPattern.test("/metagraph/schemas/SN-56-gradients-openapi.json"),
+      false,
+    );
+    assert.equal(
+      artifactPathFromTemplate("/metagraph/schemas/{surface_id}.json", {
+        surface_id: "sn-56-gradients-openapi",
+      }),
+      "/metagraph/schemas/sn-56-gradients-openapi.json",
+    );
   });
 
   test("builds contracts, API index, and OpenAPI from one route table", async () => {

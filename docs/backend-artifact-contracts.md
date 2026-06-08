@@ -62,6 +62,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/endpoint-incidents.json`: probe-derived endpoint incident summary and active endpoint failures.
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
+- `/metagraph/schemas/{surface_id}.json`: captured machine-readable OpenAPI/Swagger schema snapshot detail. R2-backed.
 - `/metagraph/adapters/{slug}.json`: adapter-backed public metrics snapshot. R2-backed.
 - `/metagraph/r2-manifest.json`: compact committed Cloudflare R2 upload manifest. The full upload manifest is generated under `dist/metagraph-r2/metagraph/r2-manifest.json`.
 - `/metagraph/review/curation.json`: maintainer review and adapter candidate report.

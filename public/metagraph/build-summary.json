@@ -7,24 +7,24 @@
   },
   "artifact_budgets": [],
   "artifact_count": 23,
-  "artifact_size_bytes": 5513741,
+  "artifact_size_bytes": 5514179,
   "artifacts": [
     {
       "path": "api-index.json",
-      "sha256": "25180464764d42f7b37b35add626cc4721bed8da62325dd8668b1745af45a44e",
-      "size_bytes": 86083,
+      "sha256": "2c20d8282759dd3da4e5f85978d1bbbd745ddb4a4e7fdfff7af7f4bf62f6530a",
+      "size_bytes": 86305,
       "storage_tier": "dual"
     },
     {
       "path": "changelog.json",
-      "sha256": "07342a0258a055001d33b58b0269105baed6dcb59066d8b434830eaf8e3c0e32",
-      "size_bytes": 1349,
+      "sha256": "8b988b12ffb8ac473c7c396e3e44af7351532c7caff27e62b7f10a3dfb52843e",
+      "size_bytes": 1211,
       "storage_tier": "dual"
     },
     {
       "path": "contracts.json",
-      "sha256": "0f62ba4372e8b56085b8cb87928da44ad6421937cbd034dad63495655741cb30",
-      "size_bytes": 18666,
+      "sha256": "f1ee86995f7953a878322af4e72fce6d448c9ebfc1d04e03f6bcaa0a0b97eaea",
+      "size_bytes": 19020,
       "storage_tier": "dual"
     },
     {
@@ -47,7 +47,7 @@
     },
     {
       "path": "freshness.json",
-      "sha256": "e46cc964fb68ed9eb41a503d5082ceced79657449c4044766f9393eba9eba9d7",
+      "sha256": "7830a1e22360002c3a512ff0f27bbe0ed88bdcaddf29feda0b2413af8d7f08b1",
       "size_bytes": 7081,
       "storage_tier": "dual"
     },
@@ -119,13 +119,13 @@
     },
     {
       "path": "schema-drift.json",
-      "sha256": "8a568403fcf8c5d6835886b3230f372e6b7e7443b5f06de26f19c4a167451970",
+      "sha256": "f4699ee1e5cde1089573898b9331cc1a2c9db27a02499cb52890caa9fb8904e6",
       "size_bytes": 6264,
       "storage_tier": "dual"
     },
     {
       "path": "schemas/index.json",
-      "sha256": "098b5c4e0bcf86782586e59de4065120cbeb5e3004eb77a74a9ceda806e54f1c",
+      "sha256": "aa3ad3dc2b93bddb96701b921b0387c8f069ecf5e31e65d82bd1d7180339d80d",
       "size_bytes": 18221,
       "storage_tier": "dual"
     },
@@ -187,7 +187,7 @@
   },
   "endpoint_count": 1111,
   "full_artifact_count": 1239,
-  "full_artifact_size_bytes": 48833977,
+  "full_artifact_size_bytes": 48834415,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profile_count": 129,
   "provider_count": 80,
@@ -202,7 +202,7 @@
     "r2": 1216
   },
   "storage_tier_size_bytes": {
-    "dual": 4609323,
+    "dual": 4609761,
     "git": 904418,
     "r2": 43320236
   },
