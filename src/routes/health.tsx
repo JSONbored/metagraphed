@@ -181,7 +181,7 @@ function AutoRefreshControl({
           ? "Paused"
           : !visible
             ? "Tab hidden"
-            : <><span aria-hidden="true">Next sync · {secondsLeft}s</span><span className="sr-only">Auto-refresh on</span></>}
+            : <><span aria-hidden="true">Next sync · <AnimatedNumber value={secondsLeft} flashOnChange={false} duration={250} />s</span><span className="sr-only">Auto-refresh on</span></>}
       </button>
 
       {enabled && !visible ? (
