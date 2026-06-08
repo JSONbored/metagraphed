@@ -611,10 +611,42 @@ export const providersQuery = () =>
     staleTime: STALE_MED,
   });
 
+function normalizeProvider(raw: unknown, slug: string): Provider {
+  const root = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}) as Record<
+    string,
+    unknown
+  >;
+  const inner = (root.provider as Record<string, unknown> | undefined) ?? root;
+  const summary = (root.endpoint_summary as Record<string, unknown> | undefined) ?? undefined;
+  const website = pickStr(inner.website_url, inner.homepage, inner.website);
+  const docs = pickStr(inner.docs_url, inner.docs);
+  return {
+    slug: (inner.id as string) ?? (inner.slug as string) ?? slug,
+    name: pickStr(inner.name) ?? slug,
+    kind: pickStr(inner.kind),
+    authority: pickStr(inner.authority),
+    homepage: website,
+    website,
+    docs,
+    notes: pickStr(inner.notes),
+    endpoint_summary: summary as ProviderEndpointSummary | undefined,
+    endpoints_count: summary?.endpoint_count as number | undefined,
+    generated_at: pickStr(root.generated_at as string, inner.generated_at as string),
+    ...inner,
+  } as Provider;
+}
+
 export const providerQuery = (slug: string) =>
   queryOptions({
     queryKey: k("provider", slug),
-    queryFn: ({ signal }) => fetchDetail<Provider>(`/api/v1/providers/${slug}`, "provider", signal),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/providers/${slug}`, { signal });
+      return {
+        data: normalizeProvider(res.data, slug),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<Provider>;
+    },
     staleTime: STALE_MED,
   });
 
