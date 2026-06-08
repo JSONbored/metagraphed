@@ -9,6 +9,7 @@ import type {
   EvidenceItem,
   Freshness,
   Gap,
+  HealthState,
   HealthSummary,
   Provider,
   RpcPool,
