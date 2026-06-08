@@ -82,6 +82,15 @@ function ProviderShell({ slug }: { slug: string }) {
   return (
     <>
       <ProfileHero
+        icon={
+          <BrandIcon
+            url={p?.website ?? p?.homepage}
+            iconUrl={p?.icon_url}
+            name={p?.name ?? slug}
+            fallback={slug}
+            size={48}
+          />
+        }
         eyebrow={
           <span>
             Provider
