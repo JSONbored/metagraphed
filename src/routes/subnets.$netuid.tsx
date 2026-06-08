@@ -26,6 +26,7 @@ import { ProfileHero } from "@/components/metagraphed/profile-hero";
 import { PrimaryLinksRail } from "@/components/metagraphed/primary-links-rail";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { CoverageCard } from "@/components/metagraphed/coverage-card";
+import { SchemaDriftSummary } from "@/components/metagraphed/schema-drift";
 import {
   subnetProfileQuery,
   subnetSurfacesQuery,
