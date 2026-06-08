@@ -570,63 +570,19 @@ function ApiPanel({ netuid }: { netuid: number }) {
 
 function SchemasPanel({ netuid }: { netuid: number }) {
   return (
-    <Section title="Schemas & API contracts" subtitle="Generated client targets for this subnet.">
+    <Section
+      title="Schemas & drift"
+      subtitle="OpenAPI/JSON Schema snapshots joined from /api/v1/schemas, with hash diffs."
+    >
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-          <SchemasInner netuid={netuid} />
+          <SchemaDriftSummary netuid={netuid} />
         </Suspense>
       </QueryErrorBoundary>
     </Section>
   );
 }
 
-function SchemasInner({ netuid }: { netuid: number }) {
-  const surfacesRes = useSuspenseQuery(subnetSurfacesQuery(netuid)).data;
-  const surfaces = (surfacesRes.data ?? []) as Surface[];
-  const schemas = surfaces.filter(
-    (s) =>
-      s.schema_url ||
-      s.kind === "openapi" ||
-      s.kind === "schema" ||
-      s.kind === "subnet-api" ||
-      s.kind === "api",
-  );
-  if (schemas.length === 0) {
-    return (
-      <EmptyState
-        title="No schema URLs yet"
-        description="API surfaces with OpenAPI/JSON Schema will appear here."
-      />
-    );
-  }
-  return (
-    <ul className="space-y-2">
-      {schemas.map((s) => (
-        <li key={s.id} className="rounded border border-border bg-card p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <FileCode className="size-3.5 text-ink-muted shrink-0" />
-              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                {s.kind ?? "api"}
-              </span>
-              <span className="truncate text-sm font-medium text-ink-strong">
-                {s.name ?? s.url}
-              </span>
-            </div>
-            <span className="font-mono text-[10px] text-ink-muted shrink-0">
-              <TimeAgo at={s.updated_at} />
-            </span>
-          </div>
-          {s.schema_url ? (
-            <CopyableCode label="schema" value={s.schema_url} truncate={false} className="w-full" />
-          ) : s.url ? (
-            <CopyableCode label="endpoint" value={s.url} truncate={false} className="w-full" />
-          ) : null}
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 /* ----------------------------- surfaces list ----------------------------- */
 
