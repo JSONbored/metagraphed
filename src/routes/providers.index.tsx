@@ -9,7 +9,7 @@ import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { providersQuery } from "@/lib/metagraphed/queries";
 import type { Provider } from "@/lib/metagraphed/types";
 
-export const Route = createFileRoute("/providers")({
+export const Route = createFileRoute("/providers/")({
   head: () => ({
     meta: [
       { title: "Providers — Metagraphed" },

@@ -22,7 +22,7 @@ import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
 import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
 import type { Subnet } from "@/lib/metagraphed/types";
 
-export const Route = createFileRoute("/subnets")({
+export const Route = createFileRoute("/subnets/")({
   validateSearch: zodValidator(tableSearchSchema),
   head: () => ({
     meta: [
