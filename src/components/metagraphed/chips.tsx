@@ -1,55 +1,106 @@
 import { classNames } from "@/lib/metagraphed/format";
 import type { CurationLevel, HealthState } from "@/lib/metagraphed/types";
 
-export function HealthDot({ state }: { state?: HealthState | string }) {
-  const map: Record<string, string> = {
-    ok: "bg-health-ok",
-    warn: "bg-health-warn",
-    degraded: "bg-health-warn",
-    down: "bg-health-down",
-    offline: "bg-health-down",
-    unknown: "bg-health-unknown",
-  };
-  const cls = map[(state as string) ?? "unknown"] ?? "bg-health-unknown";
+/**
+ * Universal health indicator.
+ *
+ * Minimal pulsing dot with optional label. The dot itself is the primary
+ * affordance — color carries the state, a subtle pulse signals attention for
+ * `warn` and `down`. Reduced-motion users see static dots (CSS handles this).
+ *
+ * Variants:
+ *   - `dot`   compact, dot-only (table rows, sidebar, list rows)
+ *   - `label` dot + state name (detail headers, summaries)
+ *
+ * Color mapping is fixed and documented:
+ *   green   ok        — probes succeeding
+ *   amber   warn      — degraded / high latency
+ *   red     down      — failing probes / open incident
+ *   grey    unknown   — never probed, offline, or stale
+ */
+type Variant = "dot" | "label";
+
+const STATE_LABEL: Record<string, string> = {
+  ok: "OK",
+  warn: "Degraded",
+  degraded: "Degraded",
+  down: "Down",
+  offline: "Offline",
+  unknown: "Unknown",
+};
+
+const STATE_COLOR: Record<string, string> = {
+  ok: "bg-health-ok",
+  warn: "bg-health-warn",
+  degraded: "bg-health-warn",
+  down: "bg-health-down",
+  offline: "bg-health-down",
+  unknown: "bg-health-unknown",
+};
+
+function normalize(state?: HealthState | string): string {
+  const s = (state as string) ?? "unknown";
+  return STATE_COLOR[s] ? s : "unknown";
+}
+
+export function HealthDot({
+  state,
+  variant = "dot",
+  className,
+}: {
+  state?: HealthState | string;
+  variant?: Variant;
+  className?: string;
+}) {
+  const key = normalize(state);
+  const color = STATE_COLOR[key];
+  const label = STATE_LABEL[key];
+  const shouldPulse = key === "warn" || key === "degraded" || key === "down" || key === "offline";
+
+  const dot = (
+    <span
+      role="img"
+      aria-label={`Health: ${label.toLowerCase()}`}
+      title={label}
+      className={classNames(
+        "relative inline-block size-2 rounded-full shrink-0",
+        color,
+        shouldPulse && "mg-pulse",
+        className,
+      )}
+    />
+  );
+
+  if (variant === "dot") return dot;
+
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className={classNames("size-1.5 rounded-full", cls)} />
-      <span className="text-[11px] font-medium capitalize text-ink">{state ?? "unknown"}</span>
+      {dot}
+      <span className="text-[11px] font-medium text-ink">{label}</span>
     </span>
   );
 }
 
-export function HealthPill({ state, label }: { state?: HealthState | string; label?: string }) {
-  const map: Record<string, string> = {
-    ok: "text-health-ok border-health-ok/30 bg-health-ok/5",
-    warn: "text-health-warn border-health-warn/30 bg-health-warn/5",
-    down: "text-health-down border-health-down/30 bg-health-down/5",
-    unknown: "text-ink-muted border-border bg-surface",
-  };
-  const key = (state as string) ?? "unknown";
-  const cls = map[key] ?? map.unknown;
-  return (
-    <span
-      className={classNames(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-        cls,
-      )}
-    >
-      <span
-        className={classNames(
-          "size-1.5 rounded-full",
-          key === "ok"
-            ? "bg-health-ok"
-            : key === "warn"
-              ? "bg-health-warn"
-              : key === "down"
-                ? "bg-health-down"
-                : "bg-health-unknown",
-        )}
-      />
-      {label ?? key}
-    </span>
-  );
+/**
+ * Back-compat: HealthPill now renders as a labeled dot. Existing call sites
+ * keep working; the visual is unified across the app.
+ */
+export function HealthPill({
+  state,
+  label,
+}: {
+  state?: HealthState | string;
+  label?: string;
+}) {
+  if (label) {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <HealthDot state={state} />
+        <span className="text-[11px] font-medium text-ink">{label}</span>
+      </span>
+    );
+  }
+  return <HealthDot state={state} variant="label" />;
 }
 
 const curationLabel: Record<CurationLevel, string> = {

@@ -123,3 +123,16 @@
     color: var(--color-ink-strong);
   }
 }
+
+/* Subtle pulse for warn/down health dots. Reduced motion → static. */
+@keyframes mg-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
+}
+.mg-pulse {
+  animation: mg-pulse 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-pulse { animation: none; }
+}
+
