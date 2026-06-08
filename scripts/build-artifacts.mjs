@@ -677,6 +677,10 @@ await writeJson(
   artifactFile("review/enrichment-evidence.json"),
   enrichmentArtifacts.evidenceArtifact,
 );
+await writeJson(
+  artifactFile("review/enrichment-targets.json"),
+  enrichmentArtifacts.targetArtifact,
+);
 await writeJson(artifactFile("review/maintainer-decisions.json"), {
   schema_version: 1,
   contract_version: contractVersion,
@@ -1103,7 +1107,286 @@ function buildEnrichmentQueueArtifacts({
       ),
     },
   };
-  return { evidenceArtifact, queueArtifact };
+  const targetArtifact = buildEnrichmentTargetsArtifact({
+    evidenceEntries,
+    queue,
+  });
+  return { evidenceArtifact, queueArtifact, targetArtifact };
+}
+
+function buildEnrichmentTargetsArtifact({ evidenceEntries, queue }) {
+  const evidenceByNetuid = new Map(
+    evidenceEntries.map((entry) => [entry.netuid, entry]),
+  );
+  const targets = queue
+    .flatMap((entry) =>
+      enrichmentTargetsForEntry({
+        entry,
+        evidenceEntry: evidenceByNetuid.get(entry.netuid),
+      }),
+    )
+    .sort(
+      (a, b) =>
+        b.priority_score - a.priority_score ||
+        a.target_type.localeCompare(b.target_type) ||
+        String(a.kind || "").localeCompare(String(b.kind || "")) ||
+        a.netuid - b.netuid,
+    );
+
+  return {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    notes:
+      "Contributor-oriented enrichment target pack derived from the queue and evidence artifacts. It provides public-safe submission guidance only; observed health and registry truth remain probe/generated artifacts.",
+    summary: {
+      target_count: targets.length,
+      subnet_count: new Set(targets.map((target) => target.netuid)).size,
+      auto_review_candidate_count: targets.filter(
+        (target) => target.auto_review_candidate,
+      ).length,
+      manual_review_required_count: targets.filter(
+        (target) => target.manual_review_required,
+      ).length,
+      new_evidence_count: targets.filter(
+        (target) => target.evidence_action === "submit-new-evidence",
+      ).length,
+      stale_replacement_count: targets.filter(
+        (target) => target.evidence_action === "replace-stale-evidence",
+      ).length,
+      by_evidence_action: countBy(targets, "evidence_action"),
+      by_kind: countBy(
+        targets.filter((target) => target.kind),
+        "kind",
+      ),
+      by_lane: countBy(targets, "lane"),
+      by_target_type: countBy(targets, "target_type"),
+    },
+    groups: enrichmentTargetGroups(targets),
+    targets,
+  };
+}
+
+function enrichmentTargetsForEntry({ entry, evidenceEntry }) {
+  if (entry.lane === "direct-submission") {
+    return entry.direct_submission_kinds.map((kind) =>
+      surfaceCandidateTarget({ entry, evidenceEntry, kind }),
+    );
+  }
+  if (entry.lane === "adapter-candidate") {
+    return [
+      nonSurfaceEnrichmentTarget({ entry, targetType: "adapter-review" }),
+    ];
+  }
+  if (entry.lane === "maintainer-review") {
+    return [
+      nonSurfaceEnrichmentTarget({
+        entry,
+        targetType: "maintainer-review",
+      }),
+    ];
+  }
+  return [
+    nonSurfaceEnrichmentTarget({
+      entry,
+      targetType: "monitoring-followup",
+    }),
+  ];
+}
+
+function surfaceCandidateTarget({ entry, evidenceEntry, kind }) {
+  const candidateEvidence = evidenceEntry?.candidate_evidence_by_kind?.[
+    kind
+  ] || {
+    candidate_count: 0,
+    classifications: {},
+    live_or_redirected_count: 0,
+    reviewable_count: 0,
+    sample_candidate_ids: [],
+    stale_or_failed_count: 0,
+    unverified_count: 0,
+  };
+  const action = surfaceTargetAction(entry.evidence_action);
+  return {
+    auto_review_candidate: !entry.manual_review_required,
+    candidate_command: candidateCommandTemplate(entry.netuid, kind),
+    candidate_evidence: candidateEvidence,
+    contribution_prompt: contributionPromptForKind(kind, entry.evidence_action),
+    evidence_action: entry.evidence_action,
+    identity_level: entry.identity_level,
+    kind,
+    lane: entry.lane,
+    manual_review_required: entry.manual_review_required,
+    missing_kinds: entry.missing_kinds,
+    name: entry.name,
+    netuid: entry.netuid,
+    priority_score: entry.priority_score,
+    profile_level: entry.profile_level,
+    reason_codes: entry.reason_codes,
+    recommended_action: entry.recommended_action,
+    sample_live_candidate_ids: entry.sample_live_candidate_ids,
+    sample_stale_candidate_ids: entry.sample_stale_candidate_ids,
+    sample_target_candidate_ids: entry.sample_target_candidate_ids,
+    slug: entry.slug,
+    source_requirements: sourceRequirementsForKind(kind),
+    source_urls: entry.source_urls.slice(0, 3),
+    submission_route: "direct-candidate-pr",
+    target_id: enrichmentTargetId(entry, "surface-candidate", kind),
+    target_type: "surface-candidate",
+    target_action: action,
+  };
+}
+
+function nonSurfaceEnrichmentTarget({ entry, targetType }) {
+  const routeByType = {
+    "adapter-review": "adapter-request",
+    "maintainer-review": "maintainer-review",
+    "monitoring-followup": "status-report",
+  };
+  return {
+    auto_review_candidate: false,
+    candidate_command: null,
+    candidate_evidence: null,
+    contribution_prompt: contributionPromptForTargetType(targetType),
+    evidence_action: entry.evidence_action,
+    identity_level: entry.identity_level,
+    kind: null,
+    lane: entry.lane,
+    manual_review_required: true,
+    missing_kinds: entry.missing_kinds,
+    name: entry.name,
+    netuid: entry.netuid,
+    priority_score: entry.priority_score,
+    profile_level: entry.profile_level,
+    reason_codes: entry.reason_codes,
+    recommended_action: entry.recommended_action,
+    sample_live_candidate_ids: entry.sample_live_candidate_ids,
+    sample_stale_candidate_ids: entry.sample_stale_candidate_ids,
+    sample_target_candidate_ids: entry.sample_target_candidate_ids,
+    slug: entry.slug,
+    source_requirements: sourceRequirementsForTargetType(targetType),
+    source_urls: entry.source_urls.slice(0, 3),
+    submission_route: routeByType[targetType],
+    target_id: enrichmentTargetId(entry, targetType, null),
+    target_type: targetType,
+    target_action: targetType,
+  };
+}
+
+function enrichmentTargetGroups(targets) {
+  return [...groupBy(targets, "target_type").entries()]
+    .flatMap(([targetType, rows]) => {
+      const byKind = groupBy(rows, (row) => row.kind || targetType);
+      return [...byKind.entries()].map(([kind, kindRows]) => ({
+        auto_review_candidate_count: kindRows.filter(
+          (target) => target.auto_review_candidate,
+        ).length,
+        kind: kind === targetType ? null : kind,
+        manual_review_required_count: kindRows.filter(
+          (target) => target.manual_review_required,
+        ).length,
+        target_count: kindRows.length,
+        target_ids: kindRows.map((target) => target.target_id).slice(0, 20),
+        target_type: targetType,
+        top_netuids: kindRows
+          .slice()
+          .sort(
+            (a, b) =>
+              b.priority_score - a.priority_score || a.netuid - b.netuid,
+          )
+          .slice(0, 10)
+          .map((target) => target.netuid),
+      }));
+    })
+    .sort(
+      (a, b) =>
+        a.target_type.localeCompare(b.target_type) ||
+        String(a.kind || "").localeCompare(String(b.kind || "")),
+    );
+}
+
+function enrichmentTargetId(entry, targetType, kind) {
+  return [`sn-${entry.netuid}`, targetType, kind || entry.lane]
+    .map(slugify)
+    .join("-");
+}
+
+function candidateCommandTemplate(netuid, kind) {
+  return `npm run candidate:new -- --netuid ${netuid} --kind ${kind} --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write`;
+}
+
+function surfaceTargetAction(evidenceAction) {
+  if (evidenceAction === "replace-stale-evidence") {
+    return "replace-stale-candidate";
+  }
+  if (evidenceAction === "verify-existing-evidence") {
+    return "verify-existing-candidate";
+  }
+  if (evidenceAction === "review-existing-evidence") {
+    return "review-existing-candidate";
+  }
+  return "submit-new-candidate";
+}
+
+function contributionPromptForKind(kind, evidenceAction) {
+  const verb =
+    evidenceAction === "replace-stale-evidence"
+      ? "Replace stale or failed"
+      : evidenceAction === "review-existing-evidence"
+        ? "Confirm and submit"
+        : "Submit";
+  return `${verb} official public ${kind} evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.`;
+}
+
+function contributionPromptForTargetType(targetType) {
+  if (targetType === "adapter-review") {
+    return "Review whether the existing public API/schema/data surfaces justify a subnet-specific adapter. Adapter requests route to manual review.";
+  }
+  if (targetType === "maintainer-review") {
+    return "Review existing machine-verified surfaces and promote only source-backed public interfaces.";
+  }
+  return "Review probe-derived status or request a re-probe. Contributor reports never set observed health directly.";
+}
+
+function sourceRequirementsForKind(kind) {
+  if (["website", "docs", "source-repo"].includes(kind)) {
+    return [
+      "Prefer an official project/team source.",
+      "The source URL must be public and show the subnet/project relationship.",
+      "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals.",
+    ];
+  }
+  if (["openapi", "subnet-api", "sse", "data-artifact"].includes(kind)) {
+    return [
+      "The URL must be public-safe and read-only.",
+      "The source URL must document or link the interface.",
+      "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows.",
+    ];
+  }
+  return [
+    "The URL and source URL must both be public.",
+    "The source URL must explain ownership or relevance.",
+    "Do not submit secrets, private URLs, wallet paths, or validator internals.",
+  ];
+}
+
+function sourceRequirementsForTargetType(targetType) {
+  if (targetType === "adapter-review") {
+    return [
+      "Existing public API/schema/data evidence should be stable enough to normalize.",
+      "Adapter work requires maintainer review before publication.",
+    ];
+  }
+  if (targetType === "maintainer-review") {
+    return [
+      "Use public provenance to confirm or reject existing machine-verified surfaces.",
+      "Promotion decisions must stay public-safe and source-backed.",
+    ];
+  }
+  return [
+    "Use status reports to trigger review or re-probes only.",
+    "Observed uptime, latency, and incidents remain probe-derived.",
+  ];
 }
 
 function compactEnrichmentQueueEntry(entry) {
@@ -1910,9 +2193,10 @@ function groupByNetuid(items) {
 function groupBy(items, key) {
   const groups = new Map();
   for (const item of items) {
-    const group = groups.get(item[key]) || [];
+    const groupKey = typeof key === "function" ? key(item) : item[key];
+    const group = groups.get(groupKey) || [];
     group.push(item);
-    groups.set(item[key], group);
+    groups.set(groupKey, group);
   }
   return groups;
 }

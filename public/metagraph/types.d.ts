@@ -412,6 +412,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/review/enrichment-targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch contributor-ready enrichment targets grouped by missing surface kind and review route. */
+        get: operations["reviewEnrichmentTargets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/review/gaps": {
         parameters: {
             query?: never;
@@ -1559,6 +1576,70 @@ export interface components {
             surface_count: number;
             verified_candidate_count: number;
         };
+        /** @enum {unknown} */
+        ReviewEnrichmentSubmissionRoute: "direct-candidate-pr" | "adapter-request" | "maintainer-review" | "status-report";
+        ReviewEnrichmentTarget: {
+            auto_review_candidate: boolean;
+            candidate_command: string | null;
+            candidate_evidence: components["schemas"]["ReviewCandidateEvidence"] | null;
+            contribution_prompt: string;
+            evidence_action: components["schemas"]["ReviewEvidenceAction"];
+            /** @enum {unknown} */
+            identity_level: "none" | "directory" | "partial" | "complete";
+            kind: components["schemas"]["SurfaceKind"] | null;
+            lane: components["schemas"]["ReviewEnrichmentLane"];
+            manual_review_required: boolean;
+            missing_kinds: components["schemas"]["SurfaceKind"][];
+            name: string;
+            netuid: number;
+            priority_score: number;
+            /** @enum {unknown} */
+            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            reason_codes: string[];
+            recommended_action: string;
+            sample_live_candidate_ids: string[];
+            sample_stale_candidate_ids: string[];
+            sample_target_candidate_ids: string[];
+            slug: string;
+            source_requirements: string[];
+            source_urls: string[];
+            submission_route: components["schemas"]["ReviewEnrichmentSubmissionRoute"];
+            target_action: components["schemas"]["ReviewEnrichmentTargetAction"];
+            target_id: string;
+            target_type: components["schemas"]["ReviewEnrichmentTargetType"];
+        };
+        /** @enum {unknown} */
+        ReviewEnrichmentTargetAction: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
+        ReviewEnrichmentTargetGroup: {
+            auto_review_candidate_count: number;
+            kind: components["schemas"]["SurfaceKind"] | null;
+            manual_review_required_count: number;
+            target_count: number;
+            target_ids: string[];
+            target_type: components["schemas"]["ReviewEnrichmentTargetType"];
+            top_netuids: number[];
+        };
+        ReviewEnrichmentTargetsArtifact: components["schemas"]["ArtifactBase"] & ({
+            groups: components["schemas"]["ReviewEnrichmentTargetGroup"][];
+            notes: string;
+            summary: {
+                auto_review_candidate_count: number;
+                by_evidence_action: components["schemas"]["CountMap"];
+                by_kind: components["schemas"]["CountMap"];
+                by_lane: components["schemas"]["CountMap"];
+                by_target_type: components["schemas"]["CountMap"];
+                manual_review_required_count: number;
+                new_evidence_count: number;
+                stale_replacement_count: number;
+                subnet_count: number;
+                target_count: number;
+            };
+            targets: components["schemas"]["ReviewEnrichmentTarget"][];
+        } & {
+            [key: string]: unknown;
+        });
+        /** @enum {unknown} */
+        ReviewEnrichmentTargetType: "surface-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
         /** @enum {unknown} */
         ReviewEvidenceAction: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
         ReviewGapPrioritiesArtifact: components["schemas"]["ArtifactBase"] & ({
@@ -3927,6 +4008,93 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ReviewEnrichmentQueueArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reviewEnrichmentTargets: {
+        parameters: {
+            query?: {
+                auto_review_candidate?: "true" | "false";
+                evidence_action?: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
+                identity_level?: "none" | "directory" | "partial" | "complete";
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+                manual_review_required?: "true" | "false";
+                missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                netuid?: number;
+                profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                reason_codes?: string;
+                submission_route?: "direct-candidate-pr" | "adapter-request" | "maintainer-review" | "status-report";
+                target_action?: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
+                target_type?: "surface-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
+                q?: string;
+                limit?: number;
+                cursor?: number;
+                sort?: "auto_review_candidate" | "evidence_action" | "identity_level" | "kind" | "lane" | "manual_review_required" | "name" | "netuid" | "priority_score" | "profile_level" | "submission_route" | "target_action" | "target_type";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ReviewEnrichmentTargetsArtifact"];
                     };
                 };
             };

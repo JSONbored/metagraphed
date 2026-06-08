@@ -3697,6 +3697,337 @@
         ],
         "type": "object"
       },
+      "ReviewEnrichmentSubmissionRoute": {
+        "enum": [
+          "direct-candidate-pr",
+          "adapter-request",
+          "maintainer-review",
+          "status-report"
+        ]
+      },
+      "ReviewEnrichmentTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "auto_review_candidate": {
+            "type": "boolean"
+          },
+          "candidate_command": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "candidate_evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewCandidateEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contribution_prompt": {
+            "type": "string"
+          },
+          "evidence_action": {
+            "$ref": "#/components/schemas/ReviewEvidenceAction"
+          },
+          "identity_level": {
+            "enum": [
+              "none",
+              "directory",
+              "partial",
+              "complete"
+            ]
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SurfaceKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lane": {
+            "$ref": "#/components/schemas/ReviewEnrichmentLane"
+          },
+          "manual_review_required": {
+            "type": "boolean"
+          },
+          "missing_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "priority_score": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "recommended_action": {
+            "type": "string"
+          },
+          "sample_live_candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sample_stale_candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sample_target_candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source_requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_urls": {
+            "items": {
+              "format": "uri",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "submission_route": {
+            "$ref": "#/components/schemas/ReviewEnrichmentSubmissionRoute"
+          },
+          "target_action": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetAction"
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetType"
+          }
+        },
+        "required": [
+          "auto_review_candidate",
+          "candidate_command",
+          "candidate_evidence",
+          "contribution_prompt",
+          "evidence_action",
+          "identity_level",
+          "kind",
+          "lane",
+          "manual_review_required",
+          "missing_kinds",
+          "name",
+          "netuid",
+          "priority_score",
+          "profile_level",
+          "reason_codes",
+          "recommended_action",
+          "sample_live_candidate_ids",
+          "sample_stale_candidate_ids",
+          "sample_target_candidate_ids",
+          "slug",
+          "source_requirements",
+          "source_urls",
+          "submission_route",
+          "target_action",
+          "target_id",
+          "target_type"
+        ],
+        "type": "object"
+      },
+      "ReviewEnrichmentTargetAction": {
+        "enum": [
+          "submit-new-candidate",
+          "replace-stale-candidate",
+          "verify-existing-candidate",
+          "review-existing-candidate",
+          "adapter-review",
+          "maintainer-review",
+          "monitoring-followup"
+        ]
+      },
+      "ReviewEnrichmentTargetGroup": {
+        "additionalProperties": false,
+        "properties": {
+          "auto_review_candidate_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SurfaceKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manual_review_required_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "target_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "target_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetType"
+          },
+          "top_netuids": {
+            "items": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "auto_review_candidate_count",
+          "kind",
+          "manual_review_required_count",
+          "target_count",
+          "target_ids",
+          "target_type",
+          "top_netuids"
+        ],
+        "type": "object"
+      },
+      "ReviewEnrichmentTargetsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "groups": {
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentTargetGroup"
+                },
+                "type": "array"
+              },
+              "notes": {
+                "type": "string"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "auto_review_candidate_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "by_evidence_action": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_kind": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_lane": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_target_type": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "manual_review_required_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "new_evidence_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "stale_replacement_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "subnet_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "target_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "auto_review_candidate_count",
+                  "by_evidence_action",
+                  "by_kind",
+                  "by_lane",
+                  "by_target_type",
+                  "manual_review_required_count",
+                  "new_evidence_count",
+                  "stale_replacement_count",
+                  "subnet_count",
+                  "target_count"
+                ],
+                "type": "object"
+              },
+              "targets": {
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentTarget"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "groups",
+              "notes",
+              "summary",
+              "targets"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ReviewEnrichmentTargetType": {
+        "enum": [
+          "surface-candidate",
+          "adapter-review",
+          "maintainer-review",
+          "monitoring-followup"
+        ]
+      },
       "ReviewEvidenceAction": {
         "enum": [
           "submit-new-evidence",
@@ -10186,6 +10517,351 @@
           }
         },
         "summary": "Fetch the prioritized all-subnet enrichment queue.",
+        "tags": [
+          "registry",
+          "review",
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/review/enrichment-targets": {
+      "get": {
+        "operationId": "reviewEnrichmentTargets",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "auto_review_candidate",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "evidence_action",
+            "required": false,
+            "schema": {
+              "enum": [
+                "submit-new-evidence",
+                "verify-existing-evidence",
+                "replace-stale-evidence",
+                "review-existing-evidence",
+                "maintainer-review-existing-evidence",
+                "monitor"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "identity_level",
+            "required": false,
+            "schema": {
+              "enum": [
+                "none",
+                "directory",
+                "partial",
+                "complete"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lane",
+            "required": false,
+            "schema": {
+              "enum": [
+                "direct-submission",
+                "maintainer-review",
+                "adapter-candidate",
+                "monitoring-followup",
+                "baseline-monitoring"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "manual_review_required",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "missing_kinds",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_level",
+            "required": false,
+            "schema": {
+              "enum": [
+                "directory-only",
+                "identity-complete",
+                "operational",
+                "adapter-backed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reason_codes",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "submission_route",
+            "required": false,
+            "schema": {
+              "enum": [
+                "direct-candidate-pr",
+                "adapter-request",
+                "maintainer-review",
+                "status-report"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_action",
+            "required": false,
+            "schema": {
+              "enum": [
+                "submit-new-candidate",
+                "replace-stale-candidate",
+                "verify-existing-candidate",
+                "review-existing-candidate",
+                "adapter-review",
+                "maintainer-review",
+                "monitoring-followup"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_type",
+            "required": false,
+            "schema": {
+              "enum": [
+                "surface-candidate",
+                "adapter-review",
+                "maintainer-review",
+                "monitoring-followup"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "auto_review_candidate",
+                "evidence_action",
+                "identity_level",
+                "kind",
+                "lane",
+                "manual_review_required",
+                "name",
+                "netuid",
+                "priority_score",
+                "profile_level",
+                "submission_route",
+                "target_action",
+                "target_type"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ReviewEnrichmentTargetsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch contributor-ready enrichment targets grouped by missing surface kind and review route.",
         "tags": [
           "registry",
           "review",

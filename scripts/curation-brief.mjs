@@ -24,18 +24,21 @@ export async function loadCurationSnapshot({ limit = 12 } = {}) {
     gapPriorities,
     adapterCandidates,
     enrichmentQueue,
+    enrichmentTargets,
   ] = await Promise.all([
     readArtifact("coverage.json"),
     readArtifact("review/profile-completeness.json"),
     readArtifact("review/gap-priorities.json"),
     readArtifact("review/adapter-candidates.json"),
     readArtifact("review/enrichment-queue.json"),
+    readArtifact("review/enrichment-targets.json"),
   ]);
 
   const profiles = profileCompleteness.profiles || [];
   const priorities = gapPriorities.priorities || [];
   const adapters = adapterCandidates.candidates || [];
   const queue = enrichmentQueue.queue || [];
+  const targets = enrichmentTargets.targets || [];
 
   return {
     schema_version: 1,
@@ -58,7 +61,9 @@ export async function loadCurationSnapshot({ limit = 12 } = {}) {
         profileCompleteness.summary?.critical_gap_counts || {},
     },
     enrichment_summary: enrichmentQueue.summary || {},
+    enrichment_target_summary: enrichmentTargets.summary || {},
     enrichment_queue: queue.slice(0, limit).map(enrichmentBriefRow),
+    enrichment_targets: targets.slice(0, limit).map(enrichmentTargetBriefRow),
     lowest_completeness: profiles.slice(0, limit).map(profileBriefRow),
     highest_gap_priority: priorities.slice(0, limit).map(priorityBriefRow),
     adapter_candidates: adapters.slice(0, limit).map(adapterBriefRow),
@@ -117,11 +122,22 @@ export function renderCurationBrief(snapshot) {
     `- Direct-submission targets: ${enrichmentSummary.direct_submission_count ?? "unknown"}`,
     `- Maintainer-review targets: ${enrichmentSummary.maintainer_review_count ?? "unknown"}`,
     `- Manual-review-required targets: ${enrichmentSummary.manual_review_required_count ?? "unknown"}`,
+    `- Target-pack kinds: ${formatCounts(snapshot.enrichment_target_summary?.by_kind)}`,
     "",
     ...numberedRows(
       enrichmentQueue,
       (row) =>
         `SN${row.netuid} ${row.name} - ${row.lane}; ${row.evidence_action || "unknown-action"}; priority ${row.priority_score}; ${row.recommended_action}; target kinds: ${row.direct_submission_kinds.join(", ") || "n/a"}; candidates: ${formatCandidateSamples(row)}`,
+    ),
+    "",
+    "## Contributor Target Pack",
+    "",
+    "These rows are copyable contribution targets. Surface candidates can usually be submitted directly with the command template; adapter, provider, base-layer, and status-review work still routes to manual review.",
+    "",
+    ...numberedRows(
+      snapshot.enrichment_targets || [],
+      (row) =>
+        `SN${row.netuid} ${row.name} - ${row.target_type}${row.kind ? `/${row.kind}` : ""}; ${row.target_action}; priority ${row.priority_score}; auto-review ${row.auto_review_candidate ? "yes" : "no"}; ${row.candidate_command || row.contribution_prompt}`,
     ),
     "",
     "## Lowest Profile Completeness",
@@ -160,6 +176,20 @@ export function renderCurationBrief(snapshot) {
   ];
 
   return `${lines.join("\n")}\n`;
+}
+
+function enrichmentTargetBriefRow(target) {
+  return {
+    auto_review_candidate: target.auto_review_candidate,
+    candidate_command: target.candidate_command,
+    contribution_prompt: target.contribution_prompt,
+    kind: target.kind,
+    name: target.name,
+    netuid: target.netuid,
+    priority_score: target.priority_score,
+    target_action: target.target_action,
+    target_type: target.target_type,
+  };
 }
 
 function profileBriefRow(profile) {

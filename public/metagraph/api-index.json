@@ -345,6 +345,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "review-enrichment-targets",
+      "path": "/metagraph/review/enrichment-targets.json",
+      "schema_ref": "#/components/schemas/ReviewEnrichmentTargetsArtifact",
+      "storage_tier": "git"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "review-decisions",
       "path": "/metagraph/review/maintainer-decisions.json",
       "schema_ref": "#/components/schemas/ReviewDecisionsArtifact",
@@ -2384,6 +2391,251 @@
               "name",
               "netuid",
               "priority_score"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/review/enrichment-targets.json",
+      "cache": "standard",
+      "description": "Fetch contributor-ready enrichment targets grouped by missing surface kind and review route.",
+      "id": "review-enrichment-targets",
+      "method": "GET",
+      "path": "/api/v1/review/enrichment-targets",
+      "public": true,
+      "query_collection": "enrichment-targets",
+      "query_filter_names": [
+        "auto_review_candidate",
+        "evidence_action",
+        "identity_level",
+        "kind",
+        "lane",
+        "manual_review_required",
+        "missing_kinds",
+        "netuid",
+        "profile_level",
+        "reason_codes",
+        "submission_route",
+        "target_action",
+        "target_type"
+      ],
+      "query_parameters": [
+        {
+          "name": "auto_review_candidate",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "evidence_action",
+          "schema": {
+            "enum": [
+              "submit-new-evidence",
+              "verify-existing-evidence",
+              "replace-stale-evidence",
+              "review-existing-evidence",
+              "maintainer-review-existing-evidence",
+              "monitor"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "identity_level",
+          "schema": {
+            "enum": [
+              "none",
+              "directory",
+              "partial",
+              "complete"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "lane",
+          "schema": {
+            "enum": [
+              "direct-submission",
+              "maintainer-review",
+              "adapter-candidate",
+              "monitoring-followup",
+              "baseline-monitoring"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "manual_review_required",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "missing_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "profile_level",
+          "schema": {
+            "enum": [
+              "directory-only",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "reason_codes",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "submission_route",
+          "schema": {
+            "enum": [
+              "direct-candidate-pr",
+              "adapter-request",
+              "maintainer-review",
+              "status-report"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "target_action",
+          "schema": {
+            "enum": [
+              "submit-new-candidate",
+              "replace-stale-candidate",
+              "verify-existing-candidate",
+              "review-existing-candidate",
+              "adapter-review",
+              "maintainer-review",
+              "monitoring-followup"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "target_type",
+          "schema": {
+            "enum": [
+              "surface-candidate",
+              "adapter-review",
+              "maintainer-review",
+              "monitoring-followup"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "auto_review_candidate",
+              "evidence_action",
+              "identity_level",
+              "kind",
+              "lane",
+              "manual_review_required",
+              "name",
+              "netuid",
+              "priority_score",
+              "profile_level",
+              "submission_route",
+              "target_action",
+              "target_type"
             ],
             "type": "string"
           }

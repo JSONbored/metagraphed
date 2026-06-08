@@ -373,6 +373,7 @@ test("public artifacts are internally consistent", () => {
   const schemaOnlyGenericAdapter = readArtifact("adapters/sn-46.json");
   const enrichmentQueue = readArtifact("review/enrichment-queue.json");
   const enrichmentEvidence = readArtifact("review/enrichment-evidence.json");
+  const enrichmentTargets = readArtifact("review/enrichment-targets.json");
   const reviewDecisions = readArtifact("review/maintainer-decisions.json");
   const generatedCandidateDiscovery = JSON.parse(
     readFileSync("registry/candidates/generated/public-sources.json", "utf8"),
@@ -658,6 +659,53 @@ test("public artifacts are internally consistent", () => {
   assert.equal(enrichmentQueue.queue.length, native.subnets.length);
   assert.equal(enrichmentEvidence.summary.subnet_count, native.subnets.length);
   assert.equal(enrichmentEvidence.entries.length, native.subnets.length);
+  assert.equal(
+    enrichmentTargets.summary.target_count,
+    enrichmentTargets.targets.length,
+  );
+  assert.equal(
+    enrichmentTargets.groups.reduce(
+      (sum, group) => sum + group.target_count,
+      0,
+    ),
+    enrichmentTargets.targets.length,
+  );
+  assert.equal(
+    new Set(enrichmentTargets.targets.map((target) => target.target_id)).size,
+    enrichmentTargets.targets.length,
+  );
+  assert.equal(
+    enrichmentTargets.targets.filter(
+      (target) => target.target_type === "surface-candidate",
+    ).length,
+    enrichmentQueue.queue.reduce(
+      (sum, entry) => sum + entry.direct_submission_kinds.length,
+      0,
+    ),
+  );
+  assert.equal(
+    enrichmentTargets.targets.every((target) =>
+      target.target_type === "surface-candidate"
+        ? target.kind && target.candidate_command?.startsWith("npm run ")
+        : target.kind === null && target.candidate_command === null,
+    ),
+    true,
+  );
+  assert.equal(
+    enrichmentTargets.targets.some(
+      (target) =>
+        target.target_type === "surface-candidate" &&
+        target.kind === "openapi" &&
+        target.submission_route === "direct-candidate-pr",
+    ),
+    true,
+  );
+  assert.equal(
+    enrichmentTargets.targets.some(
+      (target) => target.target_type === "adapter-review",
+    ),
+    true,
+  );
   assert.equal(
     enrichmentQueue.queue.some((entry) => entry.lane === "direct-submission"),
     true,

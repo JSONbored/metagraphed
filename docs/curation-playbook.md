@@ -21,6 +21,7 @@ npm run curation:brief -- --json
 The brief reads existing registry review artifacts:
 
 - `public/metagraph/review/enrichment-queue.json`
+- `public/metagraph/review/enrichment-targets.json`
 - `public/metagraph/review/profile-completeness.json`
 - `public/metagraph/review/gap-priorities.json`
 - `public/metagraph/review/adapter-candidates.json`
@@ -30,6 +31,12 @@ The enrichment queue is also available through
 `/api/v1/review/enrichment-queue` for backend consumers. It does not create new
 registry truth; it only prioritizes public-safe work derived from current
 artifacts.
+
+Contributor-ready targets are available through
+`/api/v1/review/enrichment-targets`. This route groups the queue into concrete
+surface-candidate, adapter-review, maintainer-review, and monitoring-followup
+targets, including copyable `npm run candidate:new` command templates for
+direct public-safe submissions.
 
 Detailed candidate evidence behind the queue is available through
 `/api/v1/review/enrichment-evidence`. That route is R2-backed so full
@@ -119,7 +126,8 @@ observed health directly.
 ## Curation Order
 
 1. Start with the enrichment queue from `npm run curation:brief`.
-2. Prefer `direct-submission` rows for contributor PRs.
+2. Prefer `surface-candidate` rows from the enrichment target pack for
+   contributor PRs.
 3. Route `maintainer-review`, `adapter-candidate`, and `monitoring-followup`
    rows through maintainer review.
 4. Submit official docs, website, or source repo evidence before optional app

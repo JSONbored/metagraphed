@@ -196,6 +196,20 @@ const checks = [
     },
   ],
   [
+    "/api/v1/review/enrichment-targets?target_type=surface-candidate&kind=openapi&limit=3",
+    (body) => {
+      assert.equal(body.data.targets.length <= 3, true);
+      assert.equal(
+        body.data.targets.every(
+          (target) =>
+            target.target_type === "surface-candidate" &&
+            target.kind === "openapi",
+        ),
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/health",
     (body) => assert.equal(Array.isArray(body.data.subnets), true),
   ],
@@ -330,6 +344,7 @@ for (const route of [
   "/api/v1/subnets?order=sideways",
   "/api/v1/subnets?sort=unknown_field",
   "/api/v1/subnets?netuid=not-a-number",
+  "/api/v1/review/enrichment-targets?target_type=unknown",
 ]) {
   const response = await handleRequest(
     new Request(`https://metagraph.sh${route}`),

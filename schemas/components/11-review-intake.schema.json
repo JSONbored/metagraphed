@@ -298,6 +298,33 @@
           "monitor"
         ]
       },
+      "ReviewEnrichmentTargetType": {
+        "enum": [
+          "surface-candidate",
+          "adapter-review",
+          "maintainer-review",
+          "monitoring-followup"
+        ]
+      },
+      "ReviewEnrichmentSubmissionRoute": {
+        "enum": [
+          "direct-candidate-pr",
+          "adapter-request",
+          "maintainer-review",
+          "status-report"
+        ]
+      },
+      "ReviewEnrichmentTargetAction": {
+        "enum": [
+          "submit-new-candidate",
+          "replace-stale-candidate",
+          "verify-existing-candidate",
+          "review-existing-candidate",
+          "adapter-review",
+          "maintainer-review",
+          "monitoring-followup"
+        ]
+      },
       "ReviewEnrichmentQueueEntry": {
         "type": "object",
         "required": [
@@ -640,6 +667,214 @@
           },
           "slug": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewEnrichmentTarget": {
+        "type": "object",
+        "required": [
+          "auto_review_candidate",
+          "candidate_command",
+          "candidate_evidence",
+          "contribution_prompt",
+          "evidence_action",
+          "identity_level",
+          "kind",
+          "lane",
+          "manual_review_required",
+          "missing_kinds",
+          "name",
+          "netuid",
+          "priority_score",
+          "profile_level",
+          "reason_codes",
+          "recommended_action",
+          "sample_live_candidate_ids",
+          "sample_stale_candidate_ids",
+          "sample_target_candidate_ids",
+          "slug",
+          "source_requirements",
+          "source_urls",
+          "submission_route",
+          "target_action",
+          "target_id",
+          "target_type"
+        ],
+        "properties": {
+          "auto_review_candidate": {
+            "type": "boolean"
+          },
+          "candidate_command": {
+            "type": ["string", "null"]
+          },
+          "candidate_evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewCandidateEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contribution_prompt": {
+            "type": "string"
+          },
+          "evidence_action": {
+            "$ref": "#/components/schemas/ReviewEvidenceAction"
+          },
+          "identity_level": {
+            "enum": ["none", "directory", "partial", "complete"]
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SurfaceKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lane": {
+            "$ref": "#/components/schemas/ReviewEnrichmentLane"
+          },
+          "manual_review_required": {
+            "type": "boolean"
+          },
+          "missing_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended_action": {
+            "type": "string"
+          },
+          "sample_live_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sample_stale_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sample_target_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source_requirements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "submission_route": {
+            "$ref": "#/components/schemas/ReviewEnrichmentSubmissionRoute"
+          },
+          "target_action": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetAction"
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewEnrichmentTargetGroup": {
+        "type": "object",
+        "required": [
+          "auto_review_candidate_count",
+          "kind",
+          "manual_review_required_count",
+          "target_count",
+          "target_ids",
+          "target_type",
+          "top_netuids"
+        ],
+        "properties": {
+          "auto_review_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SurfaceKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manual_review_required_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "target_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "target_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetType"
+          },
+          "top_netuids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "additionalProperties": false
@@ -1044,6 +1279,89 @@
                   }
                 },
                 "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewEnrichmentTargetsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["groups", "notes", "summary", "targets"],
+            "properties": {
+              "groups": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentTargetGroup"
+                }
+              },
+              "notes": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "auto_review_candidate_count",
+                  "by_evidence_action",
+                  "by_kind",
+                  "by_lane",
+                  "by_target_type",
+                  "manual_review_required_count",
+                  "new_evidence_count",
+                  "stale_replacement_count",
+                  "subnet_count",
+                  "target_count"
+                ],
+                "properties": {
+                  "auto_review_candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "by_evidence_action": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_kind": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_lane": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_target_type": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "manual_review_required_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "new_evidence_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "stale_replacement_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "subnet_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "target_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              },
+              "targets": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentTarget"
+                }
               }
             },
             "additionalProperties": true

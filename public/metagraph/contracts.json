@@ -444,6 +444,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Contributor-oriented enrichment target pack grouped by submission kind, review route, and evidence action.",
+      "id": "review-enrichment-targets",
+      "path": "/metagraph/review/enrichment-targets.json",
+      "schema_ref": "#/components/schemas/ReviewEnrichmentTargetsArtifact",
+      "storage_tier": "git"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Public-safe maintainer review decision ledger.",
       "id": "review-decisions",
       "path": "/metagraph/review/maintainer-decisions.json",

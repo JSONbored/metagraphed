@@ -1009,6 +1009,16 @@ describe("Worker runtime", () => {
           ),
       ],
       [
+        "https://metagraph.sh/api/v1/review/enrichment-targets?target_type=surface-candidate&kind=openapi",
+        (body) =>
+          body.data.targets.length > 0 &&
+          body.data.targets.every(
+            (target) =>
+              target.target_type === "surface-candidate" &&
+              target.kind === "openapi",
+          ),
+      ],
+      [
         "https://metagraph.sh/api/v1/subnets/7/health?status=ok",
         (body) =>
           body.data.surfaces.every(
@@ -1049,6 +1059,7 @@ describe("Worker runtime", () => {
       "https://metagraph.sh/api/v1/review/enrichment-queue?direct_submission_kinds=seed-node",
       "https://metagraph.sh/api/v1/review/enrichment-queue?identity_level=unknown",
       "https://metagraph.sh/api/v1/review/enrichment-evidence?missing_kinds=seed-node",
+      "https://metagraph.sh/api/v1/review/enrichment-targets?target_type=unknown",
       "https://metagraph.sh/api/v1/subnets/7/health?status=alive",
     ];
 
