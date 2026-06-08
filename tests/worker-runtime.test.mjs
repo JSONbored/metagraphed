@@ -971,6 +971,30 @@ describe("Worker runtime", () => {
           ),
       ],
       [
+        "https://metagraph.sh/api/v1/review/enrichment-queue?direct_submission_kinds=openapi",
+        (body) =>
+          body.data.queue.length > 0 &&
+          body.data.queue.every((entry) =>
+            entry.direct_submission_kinds.includes("openapi"),
+          ),
+      ],
+      [
+        "https://metagraph.sh/api/v1/review/enrichment-queue?missing_kinds=source-repo",
+        (body) =>
+          body.data.queue.length > 0 &&
+          body.data.queue.every((entry) =>
+            entry.missing_kinds.includes("source-repo"),
+          ),
+      ],
+      [
+        "https://metagraph.sh/api/v1/review/enrichment-evidence?missing_kinds=openapi",
+        (body) =>
+          body.data.entries.length > 0 &&
+          body.data.entries.every((entry) =>
+            entry.missing_kinds.includes("openapi"),
+          ),
+      ],
+      [
         "https://metagraph.sh/api/v1/subnets/7/health?status=ok",
         (body) =>
           body.data.surfaces.every(
@@ -1007,6 +1031,8 @@ describe("Worker runtime", () => {
       "https://metagraph.sh/api/v1/subnets?coverage_level=fake",
       "https://metagraph.sh/api/v1/candidates?state=approved",
       "https://metagraph.sh/api/v1/review/adapter-candidates?recommended_adapter_kind=generic",
+      "https://metagraph.sh/api/v1/review/enrichment-queue?direct_submission_kinds=seed-node",
+      "https://metagraph.sh/api/v1/review/enrichment-evidence?missing_kinds=seed-node",
       "https://metagraph.sh/api/v1/subnets/7/health?status=alive",
     ];
 

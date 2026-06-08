@@ -160,22 +160,28 @@ const checks = [
     (body) => assert.equal(body.data.candidates.length <= 3, true),
   ],
   [
-    "/api/v1/review/enrichment-queue?lane=direct-submission&limit=3",
+    "/api/v1/review/enrichment-queue?lane=direct-submission&direct_submission_kinds=openapi&limit=3",
     (body) => {
       assert.equal(body.data.queue.length <= 3, true);
       assert.equal(
-        body.data.queue.every((entry) => entry.lane === "direct-submission"),
+        body.data.queue.every(
+          (entry) =>
+            entry.lane === "direct-submission" &&
+            entry.direct_submission_kinds.includes("openapi"),
+        ),
         true,
       );
     },
   ],
   [
-    "/api/v1/review/enrichment-evidence?evidence_action=replace-stale-evidence&limit=3",
+    "/api/v1/review/enrichment-evidence?evidence_action=replace-stale-evidence&missing_kinds=openapi&limit=3",
     (body) => {
       assert.equal(body.data.entries.length <= 3, true);
       assert.equal(
         body.data.entries.every(
-          (entry) => entry.evidence_action === "replace-stale-evidence",
+          (entry) =>
+            entry.evidence_action === "replace-stale-evidence" &&
+            entry.missing_kinds.includes("openapi"),
         ),
         true,
       );

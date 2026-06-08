@@ -2036,12 +2036,67 @@
       "public": true,
       "query_collection": "enrichment-queue",
       "query_filter_names": [
+        "curation_level",
+        "direct_submission_kinds",
+        "evidence_action",
         "lane",
+        "missing_kinds",
         "netuid",
         "profile_level",
+        "reason_codes",
+        "review_state",
         "manual_review_required"
       ],
       "query_parameters": [
+        {
+          "name": "curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "direct_submission_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "evidence_action",
+          "schema": {
+            "enum": [
+              "submit-new-evidence",
+              "verify-existing-evidence",
+              "replace-stale-evidence",
+              "review-existing-evidence",
+              "maintainer-review-existing-evidence",
+              "monitor"
+            ],
+            "type": "string"
+          }
+        },
         {
           "name": "lane",
           "schema": {
@@ -2051,6 +2106,28 @@
               "adapter-candidate",
               "monitoring-followup",
               "baseline-monitoring"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "missing_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
             ],
             "type": "string"
           }
@@ -2071,6 +2148,18 @@
               "operational",
               "adapter-backed"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "reason_codes",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "review_state",
+          "schema": {
             "type": "string"
           }
         },
@@ -2112,11 +2201,18 @@
               "adapter_score",
               "candidate_count",
               "completeness_score",
+              "curation_level",
+              "endpoint_count",
+              "evidence_action",
               "lane",
               "name",
               "netuid",
+              "operational_interface_count",
               "priority_score",
               "profile_level",
+              "review_state",
+              "stale_candidate_count",
+              "surface_count",
               "verified_candidate_count"
             ],
             "type": "string"
@@ -2143,11 +2239,35 @@
       "public": true,
       "query_collection": "enrichment-evidence",
       "query_filter_names": [
+        "direct_submission_kinds",
         "evidence_action",
         "lane",
+        "missing_kinds",
         "netuid"
       ],
       "query_parameters": [
+        {
+          "name": "direct_submission_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
         {
           "name": "evidence_action",
           "schema": {
@@ -2171,6 +2291,28 @@
               "adapter-candidate",
               "monitoring-followup",
               "baseline-monitoring"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "missing_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
             ],
             "type": "string"
           }

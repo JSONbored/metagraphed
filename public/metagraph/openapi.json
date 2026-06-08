@@ -9551,6 +9551,30 @@
         "parameters": [
           {
             "in": "query",
+            "name": "direct_submission_kinds",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "evidence_action",
             "required": false,
             "schema": {
@@ -9576,6 +9600,30 @@
                 "adapter-candidate",
                 "monitoring-followup",
                 "baseline-monitoring"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "missing_kinds",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
               ],
               "type": "string"
             }
@@ -9735,6 +9783,61 @@
         "parameters": [
           {
             "in": "query",
+            "name": "curation_level",
+            "required": false,
+            "schema": {
+              "enum": [
+                "native",
+                "candidate-discovered",
+                "machine-verified",
+                "maintainer-reviewed",
+                "adapter-backed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "direct_submission_kinds",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "evidence_action",
+            "required": false,
+            "schema": {
+              "enum": [
+                "submit-new-evidence",
+                "verify-existing-evidence",
+                "replace-stale-evidence",
+                "review-existing-evidence",
+                "maintainer-review-existing-evidence",
+                "monitor"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "lane",
             "required": false,
             "schema": {
@@ -9744,6 +9847,30 @@
                 "adapter-candidate",
                 "monitoring-followup",
                 "baseline-monitoring"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "missing_kinds",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
               ],
               "type": "string"
             }
@@ -9768,6 +9895,22 @@
                 "operational",
                 "adapter-backed"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reason_codes",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "review_state",
+            "required": false,
+            "schema": {
               "type": "string"
             }
           },
@@ -9819,11 +9962,18 @@
                 "adapter_score",
                 "candidate_count",
                 "completeness_score",
+                "curation_level",
+                "endpoint_count",
+                "evidence_action",
                 "lane",
                 "name",
                 "netuid",
+                "operational_interface_count",
                 "priority_score",
                 "profile_level",
+                "review_state",
+                "stale_candidate_count",
+                "surface_count",
                 "verified_candidate_count"
               ],
               "type": "string"

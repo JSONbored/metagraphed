@@ -3795,8 +3795,10 @@ export interface operations {
     reviewEnrichmentEvidence: {
         parameters: {
             query?: {
+                direct_submission_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 evidence_action?: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
                 lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+                missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 netuid?: number;
                 q?: string;
                 limit?: number;
@@ -3872,14 +3874,20 @@ export interface operations {
     reviewEnrichmentQueue: {
         parameters: {
             query?: {
+                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                direct_submission_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                evidence_action?: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
                 lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+                missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 netuid?: number;
                 profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                reason_codes?: string;
+                review_state?: string;
                 manual_review_required?: "true" | "false";
                 q?: string;
                 limit?: number;
                 cursor?: number;
-                sort?: "adapter_score" | "candidate_count" | "completeness_score" | "lane" | "name" | "netuid" | "priority_score" | "profile_level" | "verified_candidate_count";
+                sort?: "adapter_score" | "candidate_count" | "completeness_score" | "curation_level" | "endpoint_count" | "evidence_action" | "lane" | "name" | "netuid" | "operational_interface_count" | "priority_score" | "profile_level" | "review_state" | "stale_candidate_count" | "surface_count" | "verified_candidate_count";
                 order?: "asc" | "desc";
             };
             header?: never;
