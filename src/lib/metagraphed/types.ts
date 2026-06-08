@@ -181,15 +181,29 @@ export interface EndpointIncident {
   [key: string]: unknown;
 }
 
+export interface ProviderEndpointSummary {
+  endpoint_count?: number;
+  monitored_count?: number;
+  pool_eligible_count?: number;
+  by_kind?: Record<string, number>;
+  by_status?: Record<string, number>;
+  by_layer?: Record<string, number>;
+  by_publication_state?: Record<string, number>;
+}
+
 export interface Provider {
   slug: string;
   name?: string;
   kind?: string; // team | infra | docs | registry | community
   homepage?: string;
+  website?: string;
   docs?: string;
-  authority?: "official" | "community" | "third-party";
+  notes?: string;
+  authority?: "official" | "community" | "third-party" | string;
   endpoints_count?: number;
   surfaces_count?: number;
+  endpoint_summary?: ProviderEndpointSummary;
+  generated_at?: string;
   [key: string]: unknown;
 }
 
