@@ -171,7 +171,13 @@ function IncidentsTable() {
             {i.message ? <p className="text-[12px] text-ink-muted line-clamp-2">{i.message}</p> : null}
             <div className="flex items-center justify-between font-mono text-[10px] text-ink-muted">
               <span>started <TimeAgo at={i.started_at} /></span>
-              <span>{i.ended_at ? `ended $<TimeAgo at={i.ended_at} />` : "—"}</span>
+              <span>
+                {i.ended_at ? (
+                  <>ended <TimeAgo at={i.ended_at} /></>
+                ) : (
+                  "—"
+                )}
+              </span>
             </div>
           </li>
         );
