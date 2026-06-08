@@ -65,6 +65,8 @@ export interface Subnet {
   health_score?: number;
   freshness?: string; // iso
   updated_at?: string;
+  website?: string;
+  icon_url?: string;
   [key: string]: unknown;
 }
 
