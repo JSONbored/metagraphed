@@ -10101,75 +10101,6 @@
       "verified_candidate_count": 6
     },
     {
-      "adapter_score": 0,
-      "candidate_count": 5,
-      "candidate_evidence_summary": {
-        "candidate_count": 0,
-        "kinds_with_candidates": [],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 55,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "maintainer-reviewed",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 14,
-      "evidence_action": "submit-new-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "root",
-      "netuid": 0,
-      "operational_interface_count": 0,
-      "priority_score": 72,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "maintainer-reviewed",
-      "sample_candidate_ids": [
-        "sn-0-backprop-dashboard",
-        "sn-0-subnetradar-dashboard",
-        "sn-0-taomarketcap-dashboard",
-        "sn-0-taostats-metagraph",
-        "sn-0-tensorplex-docs"
-      ],
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [],
-      "slug": "root",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/0",
-        "https://backprop.finance/dtao/subnets/0-root",
-        "https://bittensor.com",
-        "https://docs.learnbittensor.org/concepts/bittensor-networks",
-        "https://docs.learnbittensor.org/subtensor-nodes/subtensor-node-requirements",
-        "https://docs.nodies.app/rpc-services/public-endpoints",
-        "https://github.com/opentensor/subtensor",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/0/subnet.json"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 14,
-      "verified_candidate_count": 5
-    },
-    {
       "adapter_score": 52,
       "candidate_count": 16,
       "candidate_evidence_summary": {
@@ -10290,23 +10221,86 @@
       "stale_candidate_count": 0,
       "surface_count": 11,
       "verified_candidate_count": 8
+    },
+    {
+      "adapter_score": 0,
+      "candidate_count": 5,
+      "candidate_evidence_summary": {
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 100,
+      "contribution_hint": "No immediate enrichment action; keep monitoring for drift and new public interfaces.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [],
+      "endpoint_count": 14,
+      "evidence_action": "monitor",
+      "lane": "baseline-monitoring",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "root",
+      "netuid": 0,
+      "operational_interface_count": 3,
+      "priority_score": 7,
+      "profile_level": "operational",
+      "reason_codes": [],
+      "recommended_action": "profile is baseline-complete; monitor operational surfaces for drift",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-0-backprop-dashboard",
+        "sn-0-subnetradar-dashboard",
+        "sn-0-taomarketcap-dashboard",
+        "sn-0-taostats-metagraph",
+        "sn-0-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "root",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/0",
+        "https://backprop.finance/dtao/subnets/0-root",
+        "https://bittensor.com",
+        "https://docs.learnbittensor.org/concepts/bittensor-networks",
+        "https://docs.learnbittensor.org/subtensor-nodes/subtensor-node-requirements",
+        "https://docs.nodies.app/rpc-services/public-endpoints",
+        "https://github.com/opentensor/subtensor",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/0/subnet.json"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 14,
+      "verified_candidate_count": 5
     }
   ],
   "schema_version": 1,
   "summary": {
     "adapter_candidate_count": 11,
-    "baseline_monitoring_count": 0,
-    "direct_submission_count": 113,
+    "baseline_monitoring_count": 1,
+    "direct_submission_count": 112,
     "evidence_action_counts": {
       "maintainer-review-existing-evidence": 16,
+      "monitor": 1,
       "replace-stale-evidence": 81,
       "review-existing-evidence": 1,
-      "submit-new-evidence": 30,
+      "submit-new-evidence": 29,
       "verify-existing-evidence": 1
     },
     "lane_counts": {
       "adapter-candidate": 11,
-      "direct-submission": 113,
+      "baseline-monitoring": 1,
+      "direct-submission": 112,
       "maintainer-review": 5
     },
     "maintainer_review_count": 5,
@@ -10315,10 +10309,10 @@
     "queue_count": 129,
     "subnet_count": 129,
     "top_direct_submission_kinds": {
-      "data-artifact": 75,
-      "openapi": 85,
+      "data-artifact": 74,
+      "openapi": 84,
       "source-repo": 21,
-      "subnet-api": 85,
+      "subnet-api": 84,
       "website": 16
     }
   }

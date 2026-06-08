@@ -1607,9 +1607,15 @@ function countGapReasons(profiles) {
 }
 
 function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
-  const supportedKinds = [...new Set(subnet.gaps.supported_kinds || [])].sort();
+  const archiveSupported = surfaces.some(surfaceHasArchiveSupport);
+  const supportedKinds = [
+    ...new Set([
+      ...(subnet.gaps.supported_kinds || []),
+      ...(archiveSupported ? ["archive"] : []),
+    ]),
+  ].sort();
   const operationalKinds = supportedKinds.filter((kind) =>
-    ["openapi", "subnet-api", "sse", "data-artifact"].includes(kind),
+    operationalKindsForSubnetType(subnet.subnet_type).includes(kind),
   );
   const primaryLinks = {
     website_url: subnet.website_url || firstSurfaceUrl(surfaces, "website"),
@@ -1621,12 +1627,13 @@ function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
   const completeness = subnetProfileCompleteness({
     curationLevel: subnet.curation.level,
     primaryLinks,
+    subnetType: subnet.subnet_type,
     supportedKinds,
   });
   const sourceUrls = profileSourceUrls({ primaryLinks, surfaces });
   const confidence = profileConfidence(subnet.curation);
 
-  return {
+  const profile = {
     netuid: subnet.netuid,
     slug: subnet.slug,
     name: subnet.name,
@@ -1665,13 +1672,21 @@ function buildSubnetProfile({ subnet, surfaces, endpoints, candidates }) {
     confidence,
     profile_level: completeness.profile_level,
     completeness_score: completeness.score,
+    missing_required: completeness.missing_required,
+    missing_operational: completeness.missing_operational,
     missing_critical_count: completeness.missing_critical_count,
+    gap_reasons: completeness.gap_reasons,
+  };
+  return {
+    ...profile,
+    suggested_submission_kinds: directSubmissionKindsForProfile(profile),
   };
 }
 
 function subnetProfileCompleteness({
   curationLevel,
   primaryLinks,
+  subnetType,
   supportedKinds,
 }) {
   const kindSet = new Set(supportedKinds);
@@ -1686,23 +1701,27 @@ function subnetProfileCompleteness({
   ]
     .filter(([, present]) => !present)
     .map(([kind]) => kind);
-  const missingOperational = [
-    "openapi",
-    "subnet-api",
-    "sse",
-    "data-artifact",
-  ].filter((kind) => !kindSet.has(kind));
-  const operationalCount = 4 - missingOperational.length;
+  const operationalKinds = operationalKindsForSubnetType(subnetType);
+  const missingOperational = operationalKinds.filter(
+    (kind) => !kindSet.has(kind),
+  );
+  const operationalCount = operationalKinds.length - missingOperational.length;
+  const operationalScore =
+    subnetType === "root"
+      ? (kindSet.has("subtensor-rpc") ? 20 : 0) +
+        (kindSet.has("subtensor-wss") ? 15 : 0) +
+        (kindSet.has("archive") ? 10 : 0)
+      : (kindSet.has("openapi") ? 15 : 0) +
+        (kindSet.has("subnet-api") ? 15 : 0) +
+        (kindSet.has("sse") ? 7 : 0) +
+        (kindSet.has("data-artifact") ? 8 : 0);
   const score = Math.min(
     100,
     (primaryLinks.docs_url || kindSet.has("docs") ? 15 : 0) +
       (primaryLinks.source_repo || kindSet.has("source-repo") ? 15 : 0) +
       (primaryLinks.website_url || kindSet.has("website") ? 15 : 0) +
       (primaryLinks.dashboard_url || kindSet.has("dashboard") ? 5 : 0) +
-      (kindSet.has("openapi") ? 15 : 0) +
-      (kindSet.has("subnet-api") ? 15 : 0) +
-      (kindSet.has("sse") ? 7 : 0) +
-      (kindSet.has("data-artifact") ? 8 : 0) +
+      operationalScore +
       (curationLevel === "maintainer-reviewed" ? 5 : 0) +
       (curationLevel === "adapter-backed" ? 10 : 0),
   );
@@ -1735,6 +1754,27 @@ function subnetProfileCompleteness({
     missing_critical_count: missingRequired.length + missingOperational.length,
     gap_reasons: gapReasons,
   };
+}
+
+function operationalKindsForSubnetType(subnetType) {
+  if (subnetType === "root") {
+    return ["subtensor-rpc", "subtensor-wss", "archive"];
+  }
+  return ["openapi", "subnet-api", "sse", "data-artifact"];
+}
+
+function surfaceHasArchiveSupport(surface) {
+  if (surface.kind === "archive") {
+    return true;
+  }
+  if (!["subtensor-rpc", "subtensor-wss"].includes(surface.kind)) {
+    return false;
+  }
+  return /archive/i.test(
+    [surface.id, surface.name, surface.rate_limit_notes]
+      .filter(Boolean)
+      .join(" "),
+  );
 }
 
 function profileConfidence(curation) {

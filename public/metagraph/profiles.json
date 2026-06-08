@@ -13,36 +13,33 @@
       ],
       "completeness": {
         "confidence": "high",
-        "gap_reasons": [
-          "missing-openapi",
-          "missing-subnet-api",
-          "missing-sse",
-          "missing-data-artifact"
-        ],
-        "missing_critical_count": 4,
-        "missing_operational": [
-          "openapi",
-          "subnet-api",
-          "sse",
-          "data-artifact"
-        ],
+        "gap_reasons": [],
+        "missing_critical_count": 0,
+        "missing_operational": [],
         "missing_required": [],
-        "profile_level": "identity-complete",
-        "score": 55
+        "profile_level": "operational",
+        "score": 100
       },
-      "completeness_score": 55,
+      "completeness_score": 100,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 14,
-      "interface_count": 6,
-      "missing_critical_count": 4,
+      "gap_reasons": [],
+      "interface_count": 7,
+      "missing_critical_count": 0,
+      "missing_operational": [],
+      "missing_required": [],
       "monitored_endpoint_count": 14,
       "name": "root",
       "native_name": "root",
       "native_name_quality": "chain",
       "netuid": 0,
-      "operational_interface_count": 0,
-      "operational_interface_kinds": [],
+      "operational_interface_count": 3,
+      "operational_interface_kinds": [
+        "archive",
+        "subtensor-rpc",
+        "subtensor-wss"
+      ],
       "primary_app_surface": {
         "id": "bittensor-website",
         "kind": "website",
@@ -56,7 +53,7 @@
         "source_repo": "https://github.com/opentensor/subtensor",
         "website_url": "https://bittensor.com"
       },
-      "profile_level": "identity-complete",
+      "profile_level": "operational",
       "project_name": "root",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -83,7 +80,9 @@
       "slug": "root",
       "status": "active",
       "subnet_type": "root",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
+        "archive",
         "dashboard",
         "docs",
         "source-repo",
@@ -129,8 +128,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "Apex",
       "native_name": "Apex",
@@ -176,6 +188,11 @@
       "slug": "sn-1",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -221,8 +238,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "DSperse",
       "native_name": "DSperse",
@@ -265,6 +295,11 @@
       "slug": "dsperse",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -308,8 +343,21 @@
       "confidence": "low",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 11,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 11,
       "name": "Templar",
       "native_name": "deprecated",
@@ -354,6 +402,11 @@
       "slug": "sn-3",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -397,8 +450,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 10,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 10,
       "name": "Targon",
       "native_name": "Targon",
@@ -443,6 +509,11 @@
       "slug": "sn-4",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -481,8 +552,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "Hone",
       "native_name": "Hone",
@@ -525,6 +609,11 @@
       "slug": "sn-5",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -566,8 +655,17 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 11,
+      "gap_reasons": [
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_operational": [
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 11,
       "name": "Numinous",
       "native_name": "Numinous",
@@ -615,6 +713,7 @@
       "slug": "numinous",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -652,8 +751,15 @@
       "confidence": "high",
       "curation_level": "adapter-backed",
       "endpoint_count": 22,
+      "gap_reasons": [
+        "missing-data-artifact"
+      ],
       "interface_count": 7,
       "missing_critical_count": 1,
+      "missing_operational": [
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 21,
       "name": "Allways",
       "native_name": "Allways",
@@ -702,6 +808,7 @@
       "slug": "allways",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -743,8 +850,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "Vanta",
       "native_name": "Vanta",
@@ -787,6 +907,11 @@
       "slug": "sn-8",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -831,8 +956,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "iota",
       "native_name": "iota",
@@ -876,6 +1014,11 @@
       "slug": "sn-9",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -914,8 +1057,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Swap",
       "native_name": "Swap",
@@ -958,6 +1114,11 @@
       "slug": "sn-10",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -996,8 +1157,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "TrajectoryRL",
       "native_name": "TrajectoryRL",
@@ -1040,6 +1214,11 @@
       "slug": "sn-11",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -1084,8 +1263,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Compute Horde",
       "native_name": "Compute Horde",
@@ -1131,6 +1323,11 @@
       "slug": "sn-12",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -1176,8 +1373,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 13,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 13,
       "name": "Data Universe",
       "native_name": "Data Universe",
@@ -1225,6 +1435,11 @@
       "slug": "sn-13",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -1269,8 +1484,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 11,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 11,
       "name": "Cacheon",
       "native_name": "Cacheon",
@@ -1315,6 +1543,11 @@
       "slug": "cacheon",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -1358,8 +1591,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "ORO",
       "native_name": "ORO",
@@ -1403,6 +1649,11 @@
       "slug": "sn-15",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -1441,8 +1692,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "BitAds",
       "native_name": "BitAds",
@@ -1485,6 +1749,11 @@
       "slug": "sn-16",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -1523,8 +1792,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "404—GEN",
       "native_name": "404—GEN",
@@ -1568,6 +1850,11 @@
       "slug": "sn-17",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -1606,8 +1893,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Zeus",
       "native_name": "Zeus",
@@ -1650,6 +1950,11 @@
       "slug": "sn-18",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -1693,8 +1998,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "blockmachine",
       "native_name": "blockmachine",
@@ -1739,6 +2057,11 @@
       "slug": "sn-19",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -1783,8 +2106,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "monitored_endpoint_count": 7,
       "name": "GroundLayer",
       "native_name": "GroundLayer",
@@ -1827,6 +2166,9 @@
       "slug": "sn-20",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -1869,8 +2211,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "AdTAO",
       "native_name": "AdTAO",
@@ -1914,6 +2269,11 @@
       "slug": "sn-21",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -1957,8 +2317,17 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 15,
+      "gap_reasons": [
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_operational": [
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 14,
       "name": "Desearch",
       "native_name": "Desearch",
@@ -2009,6 +2378,7 @@
       "slug": "sn-22",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -2052,8 +2422,19 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 11,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 11,
       "name": "Trishool",
       "native_name": "Trishool",
@@ -2100,6 +2481,7 @@
       "slug": "sn-23",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -2144,8 +2526,19 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 11,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 11,
       "name": "Quasar",
       "native_name": "Quasar",
@@ -2192,6 +2585,10 @@
       "slug": "sn-24",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -2236,8 +2633,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "Mainframe",
       "native_name": "Mainframe",
@@ -2282,6 +2692,11 @@
       "slug": "sn-25",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -2320,8 +2735,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Perturb",
       "native_name": "Perturb",
@@ -2364,6 +2792,11 @@
       "slug": "sn-26",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -2411,8 +2844,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "monitored_endpoint_count": 5,
       "name": "Nodexo",
       "native_name": "Nodexo",
@@ -2456,6 +2905,9 @@
       "slug": "nodexo",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -2503,8 +2955,26 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "monitored_endpoint_count": 5,
       "name": "gm",
       "native_name": "gm",
@@ -2545,6 +3015,10 @@
       "slug": "gm",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website",
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs"
@@ -2586,8 +3060,19 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 11,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 11,
       "name": "Coldint",
       "native_name": "Coldint",
@@ -2636,6 +3121,10 @@
       "slug": "sn-29",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -2684,8 +3173,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "monitored_endpoint_count": 7,
       "name": "Endure Network",
       "native_name": "Endure Network",
@@ -2729,6 +3234,9 @@
       "slug": "sn-30",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -2776,8 +3284,26 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "monitored_endpoint_count": 5,
       "name": "Recall",
       "native_name": "Recall",
@@ -2818,6 +3344,10 @@
       "slug": "recall",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website",
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs"
@@ -2858,8 +3388,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "ItsAI",
       "native_name": "ItsAI",
@@ -2903,6 +3446,11 @@
       "slug": "sn-32",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -2946,8 +3494,19 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 10,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 10,
       "name": "ReadyAI",
       "native_name": "ReadyAI",
@@ -2995,6 +3554,10 @@
       "slug": "sn-33",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -3041,8 +3604,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "BitMind",
       "native_name": "BitMind",
@@ -3088,6 +3664,11 @@
       "slug": "sn-34",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -3126,8 +3707,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "OxMarkets",
       "native_name": "OxMarkets",
@@ -3170,6 +3764,11 @@
       "slug": "sn-35",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -3208,8 +3807,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Eirel",
       "native_name": "Eirel",
@@ -3252,6 +3864,11 @@
       "slug": "sn-36",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -3290,8 +3907,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Aurelius",
       "native_name": "Aurelius",
@@ -3334,6 +3964,11 @@
       "slug": "sn-37",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -3375,8 +4010,24 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "monitored_endpoint_count": 7,
       "name": "colosseum",
       "native_name": "colosseum",
@@ -3418,6 +4069,9 @@
       "slug": "sn-38",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -3460,8 +4114,21 @@
       "confidence": "low",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Basilica",
       "native_name": "deprecated",
@@ -3505,6 +4172,11 @@
       "slug": "sn-39",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -3551,8 +4223,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 6,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "monitored_endpoint_count": 6,
       "name": "Chunking",
       "native_name": "Chunking",
@@ -3595,6 +4283,9 @@
       "slug": "chunking",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -3632,8 +4323,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Almanac",
       "native_name": "Almanac",
@@ -3676,6 +4380,11 @@
       "slug": "sn-41",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -3724,8 +4433,24 @@
       "confidence": "low",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "monitored_endpoint_count": 7,
       "name": "Gopher",
       "native_name": "Unknown",
@@ -3770,6 +4495,9 @@
       "slug": "sn-42",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -3813,8 +4541,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "Graphite",
       "native_name": "Graphite",
@@ -3859,6 +4600,11 @@
       "slug": "sn-43",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -3897,8 +4643,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Score",
       "native_name": "Score",
@@ -3941,6 +4700,11 @@
       "slug": "sn-44",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -3983,8 +4747,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "Talisman AI",
       "native_name": "Talisman AI",
@@ -4028,6 +4805,11 @@
       "slug": "sn-45",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -4064,8 +4846,19 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 11,
+      "gap_reasons": [
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 11,
       "name": "Zipcode",
       "native_name": "Zipcode",
@@ -4111,6 +4904,7 @@
       "slug": "sn-46",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -4155,8 +4949,22 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "monitored_endpoint_count": 9,
       "name": "EvolAI",
       "native_name": "EvolAI",
@@ -4202,6 +5010,9 @@
       "slug": "sn-47",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -4246,8 +5057,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "Quantum Compute",
       "native_name": "Quantum Compute",
@@ -4291,6 +5115,11 @@
       "slug": "sn-48",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -4334,8 +5163,17 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 11,
+      "gap_reasons": [
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_operational": [
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 10,
       "name": "Nepher Robotics",
       "native_name": "Nepher Robotics",
@@ -4385,6 +5223,7 @@
       "slug": "sn-49",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -4425,8 +5264,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Synth",
       "native_name": "Synth",
@@ -4469,6 +5321,11 @@
       "slug": "sn-50",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -4505,8 +5362,19 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 10,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 10,
       "name": "lium.io",
       "native_name": "lium.io",
@@ -4553,6 +5421,7 @@
       "slug": "sn-51",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -4598,8 +5467,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 10,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 10,
       "name": "Dojo",
       "native_name": "Dojo",
@@ -4646,6 +5528,11 @@
       "slug": "sn-52",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -4693,8 +5580,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "monitored_endpoint_count": 7,
       "name": "EfficientFrontier",
       "native_name": "EfficientFrontier",
@@ -4737,6 +5640,9 @@
       "slug": "efficientfrontier",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -4774,8 +5680,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "Yanez MIID",
       "native_name": "Yanez MIID",
@@ -4819,6 +5738,11 @@
       "slug": "sn-54",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -4857,8 +5781,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "NIOME",
       "native_name": "NIOME",
@@ -4901,6 +5838,11 @@
       "slug": "sn-55",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -4937,8 +5879,19 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 10,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 10,
       "name": "Gradients",
       "native_name": "Gradients",
@@ -4983,6 +5936,10 @@
       "slug": "sn-56",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -5028,8 +5985,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "Sparket",
       "native_name": "gaia",
@@ -5074,6 +6044,11 @@
       "slug": "sn-57",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -5116,8 +6091,17 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 13,
+      "gap_reasons": [
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_operational": [
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 13,
       "name": "Handshake58",
       "native_name": "Pending",
@@ -5169,6 +6153,7 @@
       "slug": "sn-58",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -5207,8 +6192,19 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Babelbit",
       "native_name": "Babelbit",
@@ -5254,6 +6250,7 @@
       "slug": "sn-59",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -5293,8 +6290,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 10,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 10,
       "name": "Bitsec.ai",
       "native_name": "Bitsec.ai",
@@ -5339,6 +6349,11 @@
       "slug": "sn-60",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -5384,8 +6399,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "RedTeam",
       "native_name": "RedTeam",
@@ -5430,6 +6458,11 @@
       "slug": "sn-61",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -5472,8 +6505,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 6,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 6,
       "name": "Ridges",
       "native_name": "Ridges",
@@ -5517,6 +6563,11 @@
       "slug": "sn-62",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -5560,8 +6611,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "Enigma",
       "native_name": "Enigma",
@@ -5605,6 +6669,11 @@
       "slug": "sn-63",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -5647,8 +6716,17 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 17,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-sse"
+      ],
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_operational": [
+        "openapi",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 17,
       "name": "Chutes",
       "native_name": "Chutes",
@@ -5699,6 +6777,7 @@
       "slug": "sn-64",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -5739,8 +6818,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "TAO Private Network",
       "native_name": "TAO Private Network",
@@ -5783,6 +6875,11 @@
       "slug": "sn-65",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -5827,8 +6924,19 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 12,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 12,
       "name": "ninja",
       "native_name": "ninja",
@@ -5877,6 +6985,7 @@
       "slug": "sn-66",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -5916,8 +7025,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "Harnyx",
       "native_name": "Harnyx",
@@ -5961,6 +7083,11 @@
       "slug": "sn-67",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -5997,8 +7124,19 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "NOVA",
       "native_name": "NOVA",
@@ -6043,6 +7181,10 @@
       "slug": "sn-68",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -6089,8 +7231,26 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "monitored_endpoint_count": 5,
       "name": "ain",
       "native_name": "ain",
@@ -6131,6 +7291,10 @@
       "slug": "ain",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website",
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs"
@@ -6165,8 +7329,19 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "NexisGen",
       "native_name": "NexisGen",
@@ -6211,6 +7386,10 @@
       "slug": "sn-70",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -6250,8 +7429,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Leadpoet",
       "native_name": "Leadpoet",
@@ -6294,6 +7486,11 @@
       "slug": "sn-71",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -6338,8 +7535,19 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 12,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 12,
       "name": "StreetVision by NATIX",
       "native_name": "StreetVision by NATIX",
@@ -6387,6 +7595,10 @@
       "slug": "sn-72",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -6436,8 +7648,26 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "monitored_endpoint_count": 5,
       "name": "MetaHash",
       "native_name": "Parked",
@@ -6478,6 +7708,10 @@
       "slug": "metahash",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website",
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs"
@@ -6513,8 +7747,17 @@
       "confidence": "high",
       "curation_level": "adapter-backed",
       "endpoint_count": 16,
+      "gap_reasons": [
+        "missing-subnet-api",
+        "missing-sse"
+      ],
       "interface_count": 7,
       "missing_critical_count": 2,
+      "missing_operational": [
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 16,
       "name": "Gittensor",
       "native_name": "Gittensor",
@@ -6565,6 +7808,7 @@
       "slug": "gittensor",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -6613,8 +7857,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 11,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 11,
       "name": "Hippius",
       "native_name": "Hippius",
@@ -6661,6 +7918,11 @@
       "slug": "sn-75",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -6705,8 +7967,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 6,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "monitored_endpoint_count": 6,
       "name": "Byzantium",
       "native_name": "Byzantium",
@@ -6749,6 +8027,9 @@
       "slug": "sn-76",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -6786,8 +8067,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Liquidity",
       "native_name": "Liquidity",
@@ -6830,6 +8124,11 @@
       "slug": "sn-77",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -6868,8 +8167,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 10,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 10,
       "name": "Vocence",
       "native_name": "Vocence",
@@ -6912,6 +8224,11 @@
       "slug": "sn-78",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -6952,8 +8269,19 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "MVTRX",
       "native_name": "MVTRX",
@@ -7001,6 +8329,10 @@
       "slug": "sn-79",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -7040,8 +8372,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "dogelayer",
       "native_name": "dogelayer",
@@ -7084,6 +8429,11 @@
       "slug": "sn-80",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -7130,8 +8480,24 @@
       "confidence": "low",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "monitored_endpoint_count": 9,
       "name": "Grail",
       "native_name": "deprecated",
@@ -7174,6 +8540,9 @@
       "slug": "sn-81",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -7215,8 +8584,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Compelle",
       "native_name": "Compelle",
@@ -7260,6 +8642,11 @@
       "slug": "sn-82",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -7298,8 +8685,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "CliqueAI",
       "native_name": "CliqueAI",
@@ -7342,6 +8742,11 @@
       "slug": "sn-83",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -7387,8 +8792,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "ansuz",
       "native_name": "ansuz",
@@ -7434,6 +8852,11 @@
       "slug": "sn-84",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -7475,8 +8898,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "Vidaio",
       "native_name": "Vidaio",
@@ -7520,6 +8956,11 @@
       "slug": "sn-85",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -7566,8 +9007,26 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "monitored_endpoint_count": 5,
       "name": "Subnet 86",
       "native_name": "⚒",
@@ -7608,6 +9067,10 @@
       "slug": "sn-86",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website",
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs"
@@ -7653,8 +9116,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "monitored_endpoint_count": 8,
       "name": "Luminar Network",
       "native_name": "unknown",
@@ -7699,6 +9178,9 @@
       "slug": "sn-87",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -7741,8 +9223,19 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Investing",
       "native_name": "Investing",
@@ -7788,6 +9281,10 @@
       "slug": "sn-88",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -7833,8 +9330,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 6,
+      "gap_reasons": [
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "monitored_endpoint_count": 6,
       "name": "InfiniteHash",
       "native_name": "InfiniteHash",
@@ -7877,6 +9390,9 @@
       "slug": "sn-89",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -7922,8 +9438,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "monitored_endpoint_count": 7,
       "name": "DegenBrain",
       "native_name": "ogham",
@@ -7966,6 +9498,9 @@
       "slug": "sn-90",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -8009,8 +9544,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "monitored_endpoint_count": 7,
       "name": "Bitstarter #1",
       "native_name": "Bitstarter #1",
@@ -8054,6 +9605,9 @@
       "slug": "sn-91",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -8099,8 +9653,26 @@
       "confidence": "low",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "monitored_endpoint_count": 5,
       "name": "luis",
       "native_name": "luis",
@@ -8142,6 +9714,10 @@
       "slug": "sn-92",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website",
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs"
@@ -8178,8 +9754,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Bitcast",
       "native_name": "Bitcast",
@@ -8222,6 +9811,11 @@
       "slug": "sn-93",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -8260,8 +9854,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Bitsota",
       "native_name": "Bitsota",
@@ -8304,6 +9911,11 @@
       "slug": "sn-94",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -8345,8 +9957,24 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "monitored_endpoint_count": 7,
       "name": "Actual",
       "native_name": "Actual",
@@ -8388,6 +10016,9 @@
       "slug": "sn-95",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -8430,8 +10061,17 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 12,
+      "gap_reasons": [
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_operational": [
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 12,
       "name": "Verathos",
       "native_name": "Verathos",
@@ -8481,6 +10121,7 @@
       "slug": "sn-96",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -8519,8 +10160,19 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 11,
+      "gap_reasons": [
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 11,
       "name": "Albedo",
       "native_name": "Albedo",
@@ -8567,6 +10219,7 @@
       "slug": "sn-97",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -8611,8 +10264,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "ForeverMoney",
       "native_name": "ForeverMoney",
@@ -8656,6 +10322,11 @@
       "slug": "sn-98",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -8694,8 +10365,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 10,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 10,
       "name": "Leoma",
       "native_name": "Leoma",
@@ -8740,6 +10424,11 @@
       "slug": "sn-99",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -8778,8 +10467,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 10,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 10,
       "name": "Plaτform",
       "native_name": "Plaτform",
@@ -8822,6 +10524,11 @@
       "slug": "sn-100",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -8867,8 +10574,26 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "monitored_endpoint_count": 5,
       "name": "eni",
       "native_name": "eni",
@@ -8909,6 +10634,10 @@
       "slug": "eni",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website",
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs"
@@ -8949,8 +10678,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "ConnitoAI",
       "native_name": "ConnitoAI",
@@ -8994,6 +10736,11 @@
       "slug": "sn-102",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -9036,8 +10783,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "Djinn",
       "native_name": "Djinn",
@@ -9082,6 +10842,11 @@
       "slug": "sn-103",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -9128,8 +10893,26 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "monitored_endpoint_count": 5,
       "name": "for sale (burn to uid1)",
       "native_name": "for sale (burn to uid1)",
@@ -9170,6 +10953,10 @@
       "slug": "for-sale-uid1",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website",
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs"
@@ -9206,8 +10993,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Beam",
       "native_name": "Beam",
@@ -9250,6 +11050,11 @@
       "slug": "sn-105",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -9288,8 +11093,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "VoidAI",
       "native_name": "VoidAI",
@@ -9332,6 +11150,11 @@
       "slug": "sn-106",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -9368,8 +11191,19 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 11,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 11,
       "name": "Minos",
       "native_name": "Minos",
@@ -9415,6 +11249,7 @@
       "slug": "sn-107",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -9454,8 +11289,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "TalkHead",
       "native_name": "TalkHead",
@@ -9498,6 +11346,11 @@
       "slug": "sn-108",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -9542,8 +11395,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 6,
+      "gap_reasons": [
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "monitored_endpoint_count": 6,
       "name": "Academia",
       "native_name": "Academia",
@@ -9586,6 +11455,9 @@
       "slug": "sn-109",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -9624,8 +11496,17 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 11,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-sse"
+      ],
       "interface_count": 6,
       "missing_critical_count": 2,
+      "missing_operational": [
+        "openapi",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 10,
       "name": "Green Compute",
       "native_name": "Green Compute",
@@ -9672,6 +11553,7 @@
       "slug": "sn-110",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -9718,8 +11600,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "oneoneone",
       "native_name": "oneoneone",
@@ -9764,6 +11659,11 @@
       "slug": "sn-111",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -9802,8 +11702,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "minotaur",
       "native_name": "minotaur",
@@ -9846,6 +11759,11 @@
       "slug": "sn-112",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -9890,8 +11808,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "TensorUSD",
       "native_name": "TensorUSD",
@@ -9937,6 +11868,11 @@
       "slug": "sn-113",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -9973,8 +11909,19 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
       "interface_count": 5,
       "missing_critical_count": 3,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "SOMA",
       "native_name": "SOMA",
@@ -10019,6 +11966,10 @@
       "slug": "sn-114",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "data-artifact",
@@ -10064,8 +12015,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 6,
+      "gap_reasons": [
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "monitored_endpoint_count": 6,
       "name": "HashiChain",
       "native_name": "HashiChain",
@@ -10108,6 +12075,9 @@
       "slug": "sn-115",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -10153,8 +12123,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 6,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
       "monitored_endpoint_count": 6,
       "name": "TaoLend",
       "native_name": "hard_sign",
@@ -10196,6 +12182,9 @@
       "slug": "taolend",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -10237,8 +12226,21 @@
       "confidence": "low",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "BrainPlay",
       "native_name": "Unknown",
@@ -10282,6 +12284,11 @@
       "slug": "sn-117",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -10320,8 +12327,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 10,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 10,
       "name": "Ditto",
       "native_name": "Ditto",
@@ -10364,6 +12384,11 @@
       "slug": "sn-118",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -10410,8 +12435,26 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 5,
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 2,
       "missing_critical_count": 6,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
       "monitored_endpoint_count": 5,
       "name": "Satori",
       "native_name": "Satori",
@@ -10452,6 +12495,10 @@
       "slug": "satori",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website",
+        "source-repo"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs"
@@ -10488,8 +12535,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "Affine",
       "native_name": "Affine",
@@ -10533,6 +12593,11 @@
       "slug": "sn-120",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -10575,8 +12640,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "sundae_bar",
       "native_name": "sundae_bar",
@@ -10620,6 +12698,11 @@
       "slug": "sn-121",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -10664,8 +12747,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Bitrecs",
       "native_name": "gamma_small",
@@ -10711,6 +12807,11 @@
       "slug": "sn-122",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -10755,8 +12856,24 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 6,
+      "gap_reasons": [
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 3,
       "missing_critical_count": 5,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "website"
+      ],
       "monitored_endpoint_count": 6,
       "name": "MANTIS",
       "native_name": "MANTIS",
@@ -10799,6 +12916,9 @@
       "slug": "sn-123",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "website"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -10836,8 +12956,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "Swarm",
       "native_name": "Swarm",
@@ -10881,6 +13014,11 @@
       "slug": "sn-124",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -10924,8 +13062,21 @@
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 8,
       "name": "8 Ball",
       "native_name": "8 Ball",
@@ -10969,6 +13120,11 @@
       "slug": "eightball",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -11007,8 +13163,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "Poker44",
       "native_name": "Poker44",
@@ -11051,6 +13220,11 @@
       "slug": "sn-126",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -11089,8 +13263,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 7,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 7,
       "name": "Astrid",
       "native_name": "Astrid",
@@ -11133,6 +13320,11 @@
       "slug": "sn-127",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -11171,8 +13363,21 @@
       "confidence": "medium",
       "curation_level": "machine-verified",
       "endpoint_count": 9,
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
       "interface_count": 4,
       "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
       "monitored_endpoint_count": 9,
       "name": "ByteLeap",
       "native_name": "ByteLeap",
@@ -11215,6 +13420,11 @@
       "slug": "sn-128",
       "status": "active",
       "subnet_type": "application",
+      "suggested_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
       "supported_interface_kinds": [
         "dashboard",
         "docs",
@@ -11228,7 +13438,7 @@
   ],
   "schema_version": 1,
   "summary": {
-    "average_completeness_score": 52,
+    "average_completeness_score": 53,
     "by_confidence": {
       "high": 74,
       "low": 6,
@@ -11237,8 +13447,8 @@
     "by_profile_level": {
       "adapter-backed": 2,
       "directory-only": 27,
-      "identity-complete": 75,
-      "operational": 25
+      "identity-complete": 74,
+      "operational": 26
     },
     "profile_count": 129
   }

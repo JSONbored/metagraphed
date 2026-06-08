@@ -1907,8 +1907,11 @@ export interface components {
             confidence: "low" | "medium" | "high";
             curation_level: components["schemas"]["CurationLevel"];
             endpoint_count: number;
+            gap_reasons: string[];
             interface_count?: number;
             missing_critical_count: number;
+            missing_operational: components["schemas"]["SurfaceKind"][];
+            missing_required: components["schemas"]["SurfaceKind"][];
             monitored_endpoint_count: number;
             name: string;
             native_name?: string | null;
@@ -1927,6 +1930,7 @@ export interface components {
             slug: string;
             status: components["schemas"]["SubnetStatus"];
             subnet_type: components["schemas"]["SubnetType"];
+            suggested_submission_kinds: components["schemas"]["SurfaceKind"][];
             supported_interface_kinds: components["schemas"]["SurfaceKind"][];
             surface_count: number;
             symbol?: string | null;
