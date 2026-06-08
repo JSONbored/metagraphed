@@ -7,6 +7,8 @@ import { CurationChip } from "@/components/metagraphed/chips";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { ShareButton } from "@/components/metagraphed/share-button";
+import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import {
   FilterBar,
   Pagination,
@@ -38,16 +40,23 @@ function SurfacesPage() {
         eyebrow="Registry"
         title="Surfaces"
         description="Verified public interfaces across subnets — filter by kind, provider, and netuid."
-        right={<ResetLink to="/surfaces" />}
+        right={<><ShareButton /><ResetLink to="/surfaces" /></>}
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
           <SurfacesTable />
         </Suspense>
       </QueryErrorBoundary>
+      <section className="mt-8">
+        <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-2">
+          Evidence & sources
+        </h2>
+        <EvidencePanel />
+      </section>
     </AppShell>
   );
 }
+
 
 function SurfacesTable() {
   const search = Route.useSearch();

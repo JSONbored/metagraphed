@@ -7,6 +7,7 @@ import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import {
   subnetProfileQuery,
   subnetSurfacesQuery,
@@ -73,6 +74,10 @@ function SubnetDetailPage() {
               </Suspense>
             </QueryErrorBoundary>
           </Section>
+          <Section title="Evidence & sources">
+            <EvidencePanel netuid={netuid} />
+          </Section>
+
         </div>
         <aside className="space-y-6">
           <Section title="Health">

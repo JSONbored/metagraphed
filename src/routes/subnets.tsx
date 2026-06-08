@@ -6,6 +6,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { ShareButton } from "@/components/metagraphed/share-button";
 import {
   FilterBar,
   Pagination,
@@ -41,7 +42,7 @@ function SubnetsPage() {
         eyebrow="Registry"
         title="Subnets"
         description="Every active Finney netuid — root and application — with curation level, surface count, health, and freshness."
-        right={<ResetLink to="/subnets" />}
+        right={<><ShareButton /><ResetLink to="/subnets" /></>}
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
