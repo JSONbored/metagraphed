@@ -6,6 +6,11 @@ export const tableSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
   sort: fallback(z.string(), "").default(""),
   order: fallback(z.enum(["asc", "desc"]), "asc").default("asc"),
+  // Server-driven cursor pagination. `limit` = page size sent to API;
+  // `cursor` is an opaque token returned in meta.pagination.next_cursor.
+  limit: fallback(z.number().int().min(5).max(200), 25).default(25),
+  cursor: fallback(z.string(), "").default(""),
+  // Legacy client-side pagination kept for back-compat with older callers.
   page: fallback(z.number().int().min(1), 1).default(1),
   pageSize: fallback(z.number().int().min(5).max(200), 25).default(25),
   curation: fallback(z.string(), "").default(""),
