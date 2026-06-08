@@ -5127,46 +5127,13 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Academia TaoMarketCap dashboard is a public dashboard surface for SN109.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/109",
-      "subject": "surface:sn-109-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-109.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Academia source repository is a public source-repo surface for SN109.",
-      "confidence": "medium",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/109",
-      "subject": "surface:sn-109-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-109.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Academia Taopedia article is a public docs surface for SN109.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_109/index.mdx",
-      "subject": "surface:sn-109-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-109.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Academia Tensorplex subnet docs is a public docs surface for SN109.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/109/subnet.json",
-      "subject": "surface:sn-109-tensorplex-docs",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/fx-integral/academia",
+      "subject": "surface:sn-109-academia-source",
       "support_summary": "Listed in curated overlay for sn-109.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -5523,46 +5490,13 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "HashiChain TaoMarketCap dashboard is a public dashboard surface for SN115.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/115",
-      "subject": "surface:sn-115-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-115.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "HashiChain source repository is a public source-repo surface for SN115.",
-      "confidence": "medium",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/115",
-      "subject": "surface:sn-115-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-115.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "HashiChain Taopedia article is a public docs surface for SN115.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_115/index.mdx",
-      "subject": "surface:sn-115-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-115.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "HashiChain Tensorplex subnet docs is a public docs surface for SN115.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/115/subnet.json",
-      "subject": "surface:sn-115-tensorplex-docs",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/hashi115/hashichain",
+      "subject": "surface:sn-115-hashichain-source",
       "support_summary": "Listed in curated overlay for sn-115.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -5600,57 +5534,24 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Subnet 117 TaoMarketCap dashboard is a public dashboard surface for SN117.",
+      "claim": "BrainPlay public app is a public website surface for SN117.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/117",
-      "subject": "surface:sn-117-taomarketcap-dashboard",
+      "source_type": "provider-claimed",
+      "source_url": "https://github.com/shiftlayer-llc/brainplay-subnet",
+      "subject": "surface:sn-117-brainplay-app",
       "support_summary": "Listed in curated overlay for sn-117.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Unknown source repository is a public source-repo surface for SN117.",
+      "claim": "BrainPlay source repository is a public source-repo surface for SN117.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/117",
-      "subject": "surface:sn-117-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-117.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Subnet 117 Taopedia article is a public docs surface for SN117.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_117/index.mdx",
-      "subject": "surface:sn-117-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-117.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Subnet 117 Tensorplex subnet docs is a public docs surface for SN117.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/117/subnet.json",
-      "subject": "surface:sn-117-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-117.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Subnet 117 source repository is a public source-repo surface for SN117.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/117/subnet.json",
-      "subject": "surface:sn-117-tensorplex-source-repo-1",
+      "source_type": "provider-claimed",
+      "source_url": "https://github.com/shiftlayer-llc/brainplay-subnet",
+      "subject": "surface:sn-117-brainplay-source",
       "support_summary": "Listed in curated overlay for sn-117.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -5919,46 +5820,13 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "MANTIS TaoMarketCap dashboard is a public dashboard surface for SN123.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/123",
-      "subject": "surface:sn-123-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-123.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "MANTIS source repository is a public source-repo surface for SN123.",
-      "confidence": "medium",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/123",
-      "subject": "surface:sn-123-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-123.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "MANTIS Taopedia article is a public docs surface for SN123.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_123/index.mdx",
-      "subject": "surface:sn-123-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-123.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "MANTIS Tensorplex subnet docs is a public docs surface for SN123.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/123/subnet.json",
-      "subject": "surface:sn-123-tensorplex-docs",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/Barbariandev/MANTIS",
+      "subject": "surface:sn-123-mantis-source",
       "support_summary": "Listed in curated overlay for sn-123.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11755,8 +11623,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1068,
+    "claim_count": 1056,
     "subnet_claim_count": 129,
-    "surface_claim_count": 689
+    "surface_claim_count": 677
   }
 }

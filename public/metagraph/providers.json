@@ -3,6 +3,16 @@
   "providers": [
     {
       "authority": "official",
+      "github_url": "https://github.com/fx-integral/academia",
+      "id": "academia",
+      "kind": "subnet-team",
+      "name": "Academia",
+      "notes": "Provider entry for the Academia SN109 public source repository. No standalone website, docs site, or machine-readable API schema has been verified yet.",
+      "schema_version": 1,
+      "website_url": "https://github.com/fx-integral/academia"
+    },
+    {
+      "authority": "official",
       "github_url": "https://github.com/ippcteam/SN21-adtao",
       "id": "adtao",
       "kind": "subnet-team",
@@ -256,6 +266,16 @@
     },
     {
       "authority": "official",
+      "github_url": "https://github.com/hashi115/hashichain",
+      "id": "hashichain",
+      "kind": "subnet-team",
+      "name": "HashiChain",
+      "notes": "Provider entry for the HashiChain SN115 public source repository. No standalone website, docs site, or machine-readable API schema has been verified yet.",
+      "schema_version": 1,
+      "website_url": "https://github.com/hashi115/hashichain"
+    },
+    {
+      "authority": "official",
       "docs_url": "https://docs.hippius.com/",
       "github_url": "https://github.com/thenervelab/hippius-validator",
       "id": "hippius",
@@ -305,6 +325,16 @@
       "notes": "Provider entry for Macrocosmos SN13 Data Universe website, documentation, source repositories, and public product surfaces.",
       "schema_version": 1,
       "website_url": "https://www.macrocosmos.ai/"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/Barbariandev/MANTIS",
+      "id": "mantis",
+      "kind": "subnet-team",
+      "name": "MANTIS",
+      "notes": "Provider entry for the MANTIS SN123 public source repository. No standalone website, docs site, or machine-readable API schema has been verified yet.",
+      "schema_version": 1,
+      "website_url": "https://github.com/Barbariandev/MANTIS"
     },
     {
       "authority": "registry-observed",
@@ -439,6 +469,16 @@
       "notes": "Provider entry for Ridges SN62 source repository. The public website currently rate-limits simple probes and is not promoted as a monitored surface in this overlay.",
       "schema_version": 1,
       "website_url": "https://www.ridges.ai/"
+    },
+    {
+      "authority": "provider-claimed",
+      "github_url": "https://github.com/shiftlayer-llc/brainplay-subnet",
+      "id": "shiftlayer",
+      "kind": "subnet-team",
+      "name": "Shiftlayer",
+      "notes": "Provider entry for the BrainPlay SN117 public repository and app surface. SN117 has conflicting public directory evidence, so this provider remains reviewed as an identity-dispute case rather than a fully settled subnet identity.",
+      "schema_version": 1,
+      "website_url": "https://play.shiftlayer.ai/"
     },
     {
       "authority": "official",

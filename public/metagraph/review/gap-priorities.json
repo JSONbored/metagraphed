@@ -586,21 +586,21 @@
     },
     {
       "candidate_count": 5,
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "missing_kinds": [
-        "website",
+        "docs",
         "openapi",
         "subnet-api",
         "sse",
         "data-artifact"
       ],
-      "name": "Subnet 117",
+      "name": "BrainPlay",
       "netuid": 117,
       "priority_score": 61,
-      "review_state": "machine-generated",
+      "review_state": "needs-review",
       "slug": "sn-117",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 5,
+      "surface_count": 2,
       "verified_candidate_count": 5
     },
     {
@@ -691,63 +691,6 @@
       "priority_score": 60,
       "review_state": "machine-generated",
       "slug": "sn-92",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "candidate_count": 4,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Academia",
-      "netuid": 109,
-      "priority_score": 60,
-      "review_state": "machine-generated",
-      "slug": "sn-109",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "candidate_count": 4,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "HashiChain",
-      "netuid": 115,
-      "priority_score": 60,
-      "review_state": "machine-generated",
-      "slug": "sn-115",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "candidate_count": 4,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "MANTIS",
-      "netuid": 123,
-      "priority_score": 60,
-      "review_state": "machine-generated",
-      "slug": "sn-123",
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 4,
       "verified_candidate_count": 4
@@ -1811,6 +1754,66 @@
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 2,
       "verified_candidate_count": 10
+    },
+    {
+      "candidate_count": 4,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Academia",
+      "netuid": 109,
+      "priority_score": 27,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-109",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 1,
+      "verified_candidate_count": 4
+    },
+    {
+      "candidate_count": 4,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "HashiChain",
+      "netuid": 115,
+      "priority_score": 27,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-115",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 1,
+      "verified_candidate_count": 4
+    },
+    {
+      "candidate_count": 4,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "MANTIS",
+      "netuid": 123,
+      "priority_score": 27,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-123",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 1,
+      "verified_candidate_count": 4
     },
     {
       "candidate_count": 21,

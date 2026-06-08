@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "mantis",
+  "name": "MANTIS",
+  "kind": "subnet-team",
+  "website_url": "https://github.com/Barbariandev/MANTIS",
+  "github_url": "https://github.com/Barbariandev/MANTIS",
+  "authority": "official",
+  "notes": "Provider entry for the MANTIS SN123 public source repository. No standalone website, docs site, or machine-readable API schema has been verified yet."
+}

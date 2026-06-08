@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "netuid": 109,
+  "name": "Academia",
+  "slug": "sn-109",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo"
+  ],
+  "source_repo": "https://github.com/fx-integral/academia",
+  "dashboard_url": "https://taomarketcap.com/subnets/109",
+  "website_url": null,
+  "notes": "Reviewed overlay for SN109 using the live Academia source repository. No standalone website, docs site, API, OpenAPI, SSE, or data artifact has been verified yet.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:50:00.000Z",
+    "verified_at": "2026-06-08T10:50:00.000Z",
+    "source_count": 4,
+    "gap_notes": [
+      "No verified standalone website yet.",
+      "No verified docs site yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-109-academia-source",
+      "name": "Academia source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/fx-integral/academia",
+      "provider": "academia",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/fx-integral/academia",
+        "https://api.taomarketcap.com/public/v1/subnets/109"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Academia source repository for SN109."
+    }
+  ]
+}

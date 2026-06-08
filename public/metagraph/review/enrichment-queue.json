@@ -1714,68 +1714,6 @@
     },
     {
       "adapter_score": 0,
-      "candidate_count": 5,
-      "candidate_evidence_summary": {
-        "candidate_count": 0,
-        "kinds_with_candidates": [],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 35,
-      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "website"
-      ],
-      "endpoint_count": 5,
-      "evidence_action": "submit-new-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "Subnet 117",
-      "netuid": 117,
-      "operational_interface_count": 0,
-      "priority_score": 125,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-website",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-117-taomarketcap-dashboard",
-        "sn-117-taomarketcap-source-repo",
-        "sn-117-taopedia-article",
-        "sn-117-tensorplex-docs",
-        "sn-117-tensorplex-source-repo-1"
-      ],
-      "slug": "sn-117",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/117",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_117/index.mdx",
-        "https://github.com/helionlink/Chi",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/117/subnet.json",
-        "https://taomarketcap.com/subnets/117"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 5,
-      "verified_candidate_count": 5
-    },
-    {
-      "adapter_score": 0,
       "candidate_count": 4,
       "candidate_evidence_summary": {
         "candidate_count": 0,
@@ -1891,189 +1829,6 @@
         "https://github.com/tensorclaw/tensorclaw",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json",
         "https://taomarketcap.com/subnets/92"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "adapter_score": 0,
-      "candidate_count": 4,
-      "candidate_evidence_summary": {
-        "candidate_count": 0,
-        "kinds_with_candidates": [],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 35,
-      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "website"
-      ],
-      "endpoint_count": 4,
-      "evidence_action": "submit-new-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "Academia",
-      "netuid": 109,
-      "operational_interface_count": 0,
-      "priority_score": 124,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-website",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-109-taomarketcap-dashboard",
-        "sn-109-taomarketcap-source-repo",
-        "sn-109-taopedia-article",
-        "sn-109-tensorplex-docs"
-      ],
-      "slug": "sn-109",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/109",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_109/index.mdx",
-        "https://github.com/fx-integral/academia",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/109/subnet.json",
-        "https://taomarketcap.com/subnets/109"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "adapter_score": 0,
-      "candidate_count": 4,
-      "candidate_evidence_summary": {
-        "candidate_count": 0,
-        "kinds_with_candidates": [],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 35,
-      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "website"
-      ],
-      "endpoint_count": 4,
-      "evidence_action": "submit-new-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "HashiChain",
-      "netuid": 115,
-      "operational_interface_count": 0,
-      "priority_score": 124,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-website",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-115-taomarketcap-dashboard",
-        "sn-115-taomarketcap-source-repo",
-        "sn-115-taopedia-article",
-        "sn-115-tensorplex-docs"
-      ],
-      "slug": "sn-115",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/115",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_115/index.mdx",
-        "https://github.com/hashi115/hashichain",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/115/subnet.json",
-        "https://taomarketcap.com/subnets/115"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "adapter_score": 0,
-      "candidate_count": 4,
-      "candidate_evidence_summary": {
-        "candidate_count": 0,
-        "kinds_with_candidates": [],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 35,
-      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "website"
-      ],
-      "endpoint_count": 4,
-      "evidence_action": "submit-new-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "MANTIS",
-      "netuid": 123,
-      "operational_interface_count": 0,
-      "priority_score": 124,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-website",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-123-taomarketcap-dashboard",
-        "sn-123-taomarketcap-source-repo",
-        "sn-123-taopedia-article",
-        "sn-123-tensorplex-docs"
-      ],
-      "slug": "sn-123",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/123",
-        "https://github.com/Barbariandev/MANTIS",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_123/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/123/subnet.json",
-        "https://taomarketcap.com/subnets/123"
       ],
       "stale_candidate_count": 0,
       "surface_count": 4,
@@ -3709,6 +3464,195 @@
       "verified_candidate_count": 10
     },
     {
+      "adapter_score": 0,
+      "candidate_count": 4,
+      "candidate_evidence_summary": {
+        "candidate_count": 2,
+        "kinds_with_candidates": [
+          "docs"
+        ],
+        "live_kinds": [
+          "docs"
+        ],
+        "live_or_redirected_count": 2,
+        "reviewable_count": 2,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 25,
+      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "website"
+      ],
+      "endpoint_count": 1,
+      "evidence_action": "submit-new-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "docs",
+        "openapi",
+        "sse",
+        "subnet-api",
+        "website"
+      ],
+      "name": "Academia",
+      "netuid": 109,
+      "operational_interface_count": 0,
+      "priority_score": 117,
+      "profile_level": "directory-only",
+      "reason_codes": [
+        "directory-only-profile",
+        "missing-website"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-109-taomarketcap-dashboard",
+        "sn-109-taomarketcap-source-repo",
+        "sn-109-taopedia-article",
+        "sn-109-tensorplex-docs"
+      ],
+      "slug": "sn-109",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/109",
+        "https://github.com/fx-integral/academia",
+        "https://taomarketcap.com/subnets/109"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 1,
+      "verified_candidate_count": 4
+    },
+    {
+      "adapter_score": 0,
+      "candidate_count": 4,
+      "candidate_evidence_summary": {
+        "candidate_count": 2,
+        "kinds_with_candidates": [
+          "docs"
+        ],
+        "live_kinds": [
+          "docs"
+        ],
+        "live_or_redirected_count": 2,
+        "reviewable_count": 2,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 25,
+      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "website"
+      ],
+      "endpoint_count": 1,
+      "evidence_action": "submit-new-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "docs",
+        "openapi",
+        "sse",
+        "subnet-api",
+        "website"
+      ],
+      "name": "HashiChain",
+      "netuid": 115,
+      "operational_interface_count": 0,
+      "priority_score": 117,
+      "profile_level": "directory-only",
+      "reason_codes": [
+        "directory-only-profile",
+        "missing-website"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-115-taomarketcap-dashboard",
+        "sn-115-taomarketcap-source-repo",
+        "sn-115-taopedia-article",
+        "sn-115-tensorplex-docs"
+      ],
+      "slug": "sn-115",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/115",
+        "https://github.com/hashi115/hashichain",
+        "https://taomarketcap.com/subnets/115"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 1,
+      "verified_candidate_count": 4
+    },
+    {
+      "adapter_score": 0,
+      "candidate_count": 4,
+      "candidate_evidence_summary": {
+        "candidate_count": 2,
+        "kinds_with_candidates": [
+          "docs"
+        ],
+        "live_kinds": [
+          "docs"
+        ],
+        "live_or_redirected_count": 2,
+        "reviewable_count": 2,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 25,
+      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "website"
+      ],
+      "endpoint_count": 1,
+      "evidence_action": "submit-new-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "docs",
+        "openapi",
+        "sse",
+        "subnet-api",
+        "website"
+      ],
+      "name": "MANTIS",
+      "netuid": 123,
+      "operational_interface_count": 0,
+      "priority_score": 117,
+      "profile_level": "directory-only",
+      "reason_codes": [
+        "directory-only-profile",
+        "missing-website"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-123-taomarketcap-dashboard",
+        "sn-123-taomarketcap-source-repo",
+        "sn-123-taopedia-article",
+        "sn-123-tensorplex-docs"
+      ],
+      "slug": "sn-123",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/123",
+        "https://github.com/Barbariandev/MANTIS",
+        "https://taomarketcap.com/subnets/123"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 1,
+      "verified_candidate_count": 4
+    },
+    {
       "adapter_score": 6,
       "candidate_count": 15,
       "candidate_evidence_summary": {
@@ -4478,6 +4422,74 @@
       "stale_candidate_count": 6,
       "surface_count": 2,
       "verified_candidate_count": 13
+    },
+    {
+      "adapter_score": 0,
+      "candidate_count": 5,
+      "candidate_evidence_summary": {
+        "candidate_count": 2,
+        "kinds_with_candidates": [
+          "docs"
+        ],
+        "live_kinds": [
+          "docs"
+        ],
+        "live_or_redirected_count": 2,
+        "reviewable_count": 2,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 40,
+      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
+      "endpoint_count": 2,
+      "evidence_action": "submit-new-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "docs",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "BrainPlay",
+      "netuid": 117,
+      "operational_interface_count": 0,
+      "priority_score": 115,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "needs-review",
+      "sample_candidate_ids": [
+        "sn-117-taomarketcap-dashboard",
+        "sn-117-taomarketcap-source-repo",
+        "sn-117-taopedia-article",
+        "sn-117-tensorplex-docs",
+        "sn-117-tensorplex-source-repo-1"
+      ],
+      "slug": "sn-117",
+      "source_urls": [
+        "https://github.com/shiftlayer-llc/brainplay-subnet",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/117/subnet.json",
+        "https://play.shiftlayer.ai/",
+        "https://taomarketcap.com/subnets/117"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 2,
+      "verified_candidate_count": 5
     },
     {
       "adapter_score": 5,
@@ -8629,11 +8641,11 @@
     "queue_count": 129,
     "subnet_count": 129,
     "top_direct_submission_kinds": {
-      "data-artifact": 54,
-      "openapi": 64,
+      "data-artifact": 55,
+      "openapi": 65,
       "source-repo": 21,
-      "subnet-api": 64,
-      "website": 26
+      "subnet-api": 65,
+      "website": 25
     }
   }
 }

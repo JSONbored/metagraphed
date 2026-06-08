@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "netuid": 117,
+  "name": "BrainPlay",
+  "slug": "sn-117",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-dispute",
+    "identity-reviewed",
+    "official-source-repo"
+  ],
+  "source_repo": "https://github.com/shiftlayer-llc/brainplay-subnet",
+  "dashboard_url": "https://taomarketcap.com/subnets/117",
+  "website_url": "https://play.shiftlayer.ai/",
+  "notes": "Reviewed overlay for SN117 using the BrainPlay repository, whose metadata identifies it as BrainPlay SN117. Public directory evidence is conflicting: TaoMarketCap points to a Chi repository while Tensorplex points to BrainPlay, and the native chain name is currently a placeholder. The BrainPlay surfaces are promoted as reviewed public evidence, but the identity conflict remains explicit.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "needs-review",
+    "reviewed_at": "2026-06-08T10:50:00.000Z",
+    "verified_at": "2026-06-08T10:50:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "Native chain name is a placeholder.",
+      "TaoMarketCap and Tensorplex currently disagree on the SN117 source repository.",
+      "No verified docs site yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-117-brainplay-source",
+      "name": "BrainPlay source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/shiftlayer-llc/brainplay-subnet",
+      "provider": "shiftlayer",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/shiftlayer-llc/brainplay-subnet",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/117/subnet.json"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "BrainPlay repository metadata identifies this as SN117, but public directory sources conflict."
+    },
+    {
+      "id": "sn-117-brainplay-app",
+      "name": "BrainPlay public app",
+      "kind": "website",
+      "url": "https://play.shiftlayer.ai/",
+      "provider": "shiftlayer",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/shiftlayer-llc/brainplay-subnet",
+        "https://play.shiftlayer.ai/"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public BrainPlay app URL from repository homepage metadata."
+    }
+  ]
+}
