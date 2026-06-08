@@ -177,7 +177,7 @@ function ProviderCountsRow({ counts }: { counts?: { surfaces: number; endpoints:
   );
 }
 
-function CountTile({ icon, label, value }: { icon?: React.ReactNode; label: string; value: number }) {
+function CountTile({ icon, label, value }: { icon?: ReactNode; label: string; value: number }) {
   return (
     <div className="flex flex-col">
       <span className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-ink-muted">
