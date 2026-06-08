@@ -1,96 +1,79 @@
-# Plan
+# Charcoal & Ember redesign + taostats-style microinteractions
 
-## 1. Pagination hardening for /subnets and /surfaces
+## 1. Color system overhaul (`src/styles.css`)
 
-**Validate next_cursor in the client**
-- In `src/lib/metagraphed/queries.ts`, replace the loose `extractNextCursor` with a strict validator:
-  - Accept only non-empty strings or finite numbers; reject `false`, `null`, objects, arrays, NaN.
-  - Reject a cursor that equals the cursor we just sent (would cause an infinite loop).
-  - On invalid shape, log a single dev-mode warning and treat as "no more pages".
-- Surface a typed sentinel on the page object (e.g. `cursorInvalid: true`) when the API returned next_cursor but it failed validation, so the UI can show a friendly banner.
+Replace the current slate/cyan tokens with a Charcoal & Ember palette, tuned to accent intensity 3 (moderate — present but not neon). Light + dark both first-class, follow-system default already wired via `src/lib/theme.ts` (no logic changes needed there).
 
-**Friendly errors during cursor fetches**
-- In `src/components/metagraphed/list-shell.tsx` extend `LoadMore` to accept `error?: Error | null` and render an inline retry strip ("Couldn't load more — Retry") instead of the page-level error boundary, so already-loaded rows stay visible.
-- `/subnets` and `/surfaces` route components pass `isFetchNextPageError`, `fetchNextPageError`, and a retry callback (`fetchNextPage`) down.
+**Dark mode (the primary, taostats-like surface)**
+- `--paper`        near-black charcoal — `oklch(0.16 0.004 40)`
+- `--surface`      panel               — `oklch(0.20 0.004 40)`
+- `--card`         raised card         — `oklch(0.235 0.005 40)`
+- `--border`       hairline            — `color-mix(in oklab, var(--ink-strong) 12%, transparent)`
+- `--ink-strong`   `oklch(0.985 0.003 40)`
+- `--ink`          `oklch(0.90 0.004 40)`
+- `--ink-muted`    `oklch(0.66 0.006 40)`
+- `--ink-subtle`   `oklch(0.45 0.006 40)`
+- `--accent`       muted ember         — `oklch(0.68 0.13 38)` (intensity 3: warm orange, not neon)
+- `--accent-foreground` `oklch(0.14 0.01 40)`
+- `--ring`         `color-mix(in oklab, var(--accent) 45%, transparent)`
 
-**Skeleton load-more UX**
-- `LoadMore` renders 3 skeleton table rows (desktop) and 2 skeleton cards (mobile) while `isFetchingNextPage`, using the existing `Skeleton` primitive in `states.tsx`.
-- Add a subtle "stale" tint (border-muted) on previously loaded rows while a background refetch is in flight (`isFetching && !isFetchingNextPage`), to make the refresh legible without flashing.
+**Light mode**
+- `--paper`        warm off-white — `oklch(0.985 0.004 60)`
+- `--surface`      `oklch(0.965 0.005 60)`
+- `--card`         `oklch(1 0 0)`
+- `--ink-strong`   `oklch(0.16 0.008 40)`
+- `--ink`          `oklch(0.28 0.008 40)`
+- `--ink-muted`    `oklch(0.50 0.008 40)`
+- `--ink-subtle`   `oklch(0.70 0.006 40)`
+- `--accent`       `oklch(0.58 0.16 38)` (ember holds up on light)
 
-## 2. Page-size (limit) control + cursor reset
+**Health (traffic-light preserved per user)** — re-tuned slightly warmer to live next to ember without clashing:
+- ok: `oklch(0.72 0.16 150)` dark / `oklch(0.55 0.18 150)` light
+- warn: `oklch(0.80 0.14 75)` dark / `oklch(0.65 0.16 65)` light
+- down: `oklch(0.70 0.20 28)` dark / `oklch(0.55 0.22 28)` light
+- unknown: neutral charcoal
 
-- Add `PageSizeSelect` to `src/components/metagraphed/table-controls.tsx` with options 10/25/50/100/200.
-- Place it in the FilterBar slot on both routes alongside the existing filters.
-- Changing `limit` calls `navigate({ search: prev => ({ ...prev, limit, cursor: "" }) })` — same cursor-reset rule used by sort/filter changes.
+**Curation tokens** re-mapped onto the charcoal/ember family so chips no longer read as cyan/slate.
 
-## 3. Shareable cursor / next_cursor state
+## 2. Taostats-style microinteractions
 
-- `tableSearchSchema` already has `cursor`. Add `cursorChain` (comma-joined opaque strings) so a shared URL can rehydrate the full sequence of pages the user had loaded.
-- On `fetchNextPage`, append the resolved page's cursor to `cursorChain` in the URL.
-- On route mount, if `cursorChain` is non-empty, seed `useSuspenseInfiniteQuery` via `initialData` / `initialPageParam` so all referenced pages reload in order; otherwise honor a single `cursor` for a "jump to this page" link.
-- `ShareButton` already copies the full URL — just confirm `cursor` / `cursorChain` survive the share toast.
+Two reusable primitives, both motion-safe (`prefers-reduced-motion` falls back to instant swap).
 
-## 4. "Reset filters" control
+**a. `<AnimatedNumber />`** — `src/components/metagraphed/animated-number.tsx`
+- Tween between previous and next numeric value over ~600ms with `requestAnimationFrame` and ease-out.
+- Formats via existing `format.ts` helpers (compact, percent, latency ms).
+- Brief flash of `--accent` on increase, `--health-down` on decrease (subtle, 250ms fade), opt-in via `flashOnChange`.
+- Used in: `/health` summary tiles, `/subnets` row latency/participant counts, `/` overview KPIs, freshness countdowns.
 
-- Replace the current `ResetLink` text with a clearer `ResetFiltersButton` (icon + label) in `table-controls.tsx`.
-- Clears `q`, `sort`, `order`, `curation`, `health`, `kind`, `provider`, `cursor`, `cursorChain` but preserves `limit` (user's display preference).
-- Hidden when no filters are active to keep the bar quiet.
-- Hooked into both `/subnets` and `/surfaces` PageHeading right slot, replacing today's `<ResetLink/>`.
+**b. `<LiveDot />` + smooth refresh** — replace abrupt list refreshes with crossfade.
+- Wrap the auto-refreshing tables/cards in a `data-refreshing` container; existing rows fade to 70% then back instead of unmount/remount flash.
+- The countdown timer on `/health` already exists — swap its raw text for `<AnimatedNumber />` so the seconds tick smoothly.
 
-## 5. Color system overhaul — taostats-inspired, light + dark
+**c. Hairline interactions**
+- Row hover: 120ms `background-color` to `color-mix(var(--ink-strong) 4%, transparent)` — taostats-style quiet hover.
+- Sort header active state: tiny ember underline (1px) instead of color swap.
+- Chips: 100ms scale 0.98→1 on first render via existing `animate-fade-in`.
 
-**Tokens** (defined in `src/styles.css` per Tailwind v4 rules)
-- Define `:root` (light) and `.dark` token sets, then map them inside `@theme inline` so every existing semantic class (`bg-paper`, `text-ink`, `border-border`, `bg-card`, `text-ink-muted`, `text-ink-strong`, `text-ink-subtle`, `bg-surface`, accents) keeps working without touching components.
-- Palette direction (taostats reference: deep slate-navy backdrop, near-white ink, teal/cyan accent, traffic-light health preserved):
+## 3. Component audit pass
 
-  Dark mode (default for `prefers-color-scheme: dark`)
-  - `--paper`        oklch(0.16 0.02 250)   near-black slate
-  - `--surface`      oklch(0.20 0.02 250)   panel
-  - `--card`         oklch(0.22 0.02 250)   raised card
-  - `--border`       oklch(0.30 0.02 250)
-  - `--ink`          oklch(0.92 0.01 250)
-  - `--ink-strong`   oklch(0.98 0.01 250)
-  - `--ink-muted`    oklch(0.68 0.02 250)
-  - `--ink-subtle`   oklch(0.45 0.02 250)
-  - `--accent`       oklch(0.78 0.14 195)   teal/cyan (taostats-like)
+Walk the components that currently lean cyan/slate and confirm they read correctly under ember:
+- `chips.tsx` — health dot, curation chips, freshness chip
+- `app-shell.tsx` — sidebar active state uses `--accent` (now ember, looks right)
+- `theme-toggle.tsx` — already token-driven, no change
+- `list-shell.tsx` — skeleton tint, stale tint, retry strip
+- `evidence-panel.tsx`, `share-button.tsx`, `freshness.tsx` — verify no hardcoded colors
 
-  Light mode
-  - `--paper`        oklch(0.985 0.003 250)
-  - `--surface`      oklch(0.965 0.005 250)
-  - `--card`         oklch(1.00 0 0)
-  - `--border`       oklch(0.90 0.01 250)
-  - `--ink`          oklch(0.25 0.02 250)
-  - `--ink-strong`   oklch(0.12 0.02 250)
-  - `--ink-muted`    oklch(0.50 0.02 250)
-  - `--ink-subtle`   oklch(0.70 0.02 250)
-  - `--accent`       oklch(0.55 0.13 200)
+No structural changes to routes, queries, pagination, or URL state — this pass is purely visual + microinteraction.
 
-  Health (traffic-light, tuned per mode)
-  - `--health-ok`      green oklch(~0.72 0.16 150 dark / 0.55 0.18 150 light)
-  - `--health-warn`    amber oklch(~0.80 0.14 80  / 0.65 0.16 70)
-  - `--health-down`    red   oklch(~0.70 0.20 25  / 0.55 0.22 25)
-  - `--health-unknown` slate oklch(~0.55 0.02 250 / 0.60 0.02 250)
+## 4. Verification
 
-**Mode plumbing (follow-system + manual override)**
-- Add `src/lib/theme.ts` with a `useTheme()` hook: reads `localStorage("mg-theme")` (`"light" | "dark" | "system"`), falls back to `"system"`, and toggles the `.dark` class on `documentElement` based on either the choice or `matchMedia("(prefers-color-scheme: dark)")`. Listens for system changes when in `system` mode.
-- Add a `ThemeToggle` component (Sun / Moon / Monitor icons) to the AppShell header.
-- Inject a tiny pre-hydration `<script>` in `src/routes/__root.tsx` `<head>` that sets the `.dark` class before first paint to prevent a flash.
+- `bunx tsc --noEmit`
+- Preview pass: toggle light/dark/system, confirm contrast on `/`, `/subnets`, `/subnets/:netuid`, `/health`, `/surfaces`, `/endpoints`.
+- Trigger `/health` auto-refresh, confirm countdown ticks smoothly and KPI tiles tween rather than snap.
+- Reduced-motion: enable OS setting, confirm animations no-op and numbers swap instantly.
 
-**Component touch-ups for two-mode parity**
-- Audit existing components that hardcode colors outside tokens (chips, freshness dots, health pulse animation in `styles.css`, evidence-panel, share-toast). Replace stray Tailwind color literals with semantic tokens.
-- Verify Tailwind v4 `@theme inline` mappings exist for every token actually referenced (`bg-paper`, `bg-surface`, `bg-card`, `text-ink*`, `border-border`, `text-health-*`, `bg-health-*`).
+## Out of scope
 
-## 6. Verification
-
-- `bunx tsc --noEmit` after each file batch.
-- Manual preview pass on /subnets and /surfaces:
-  - Page-size change resets cursor.
-  - Reset filters clears search + sort + chain.
-  - Bad/missing next_cursor → graceful "end of list" with no infinite loader.
-  - Toggle theme + reload → no FOUC, mode persists.
-
-## Out of scope for this pass
-
-- Server-side cursor signing/HMAC (backend concern).
-- Per-row deep-link from a /surfaces row.
-- Migrating other list routes (/endpoints, /providers, /gaps) to ListShell — already tracked separately.
+- Replacing TanStack Query's refetch lifecycle (the crossfade is a visual wrapper, not a data-fetch rewrite).
+- Sparkline/chart animations (would need a chart lib pass — separate ticket).
+- Sidebar/route hierarchy changes — already shipped in earlier passes.
