@@ -61,7 +61,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/freshness.json",
       "latest_key": "latest/freshness.json",
       "path": "/metagraph/freshness.json",
-      "sha256": "0d8285b702ba20390cbb3f43b1c10f936f3bc9eb28721e2172a204e31d1e4082",
+      "sha256": "d6aab1867ab01487bae994dd738e20ac4a749aeb93c375eb639dfc8bf65d1209",
       "size_bytes": 7081,
       "storage_tier": "dual"
     },
@@ -169,7 +169,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/schema-drift.json",
       "latest_key": "latest/schema-drift.json",
       "path": "/metagraph/schema-drift.json",
-      "sha256": "e17212ca0a4634c7492aa1addd31e890cb19a1950d6a07428192d751a72d459e",
+      "sha256": "6a840d32f692854a3baa0555eff0e2c5b8e696123b8a371114f46a2e83aaa1a2",
       "size_bytes": 6298,
       "storage_tier": "dual"
     },
@@ -178,7 +178,7 @@
       "key": "runs/1970-01-01T00-00-00-000Z/schemas/index.json",
       "latest_key": "latest/schemas/index.json",
       "path": "/metagraph/schemas/index.json",
-      "sha256": "f651923769017ea7e3abeb3e9a98b63ae615910ea18531fdafff6b2b6dc38df7",
+      "sha256": "49f646216354ce73c884d60c20f42967b6ad7281a7f996d88bb43d2edcdb1875",
       "size_bytes": 18325,
       "storage_tier": "dual"
     },
