@@ -603,11 +603,41 @@ export const endpointIncidentsQuery = () =>
     staleTime: STALE_SHORT,
   });
 
+function normalizeProviderListItem(raw: unknown): Provider {
+  const r = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}) as Record<
+    string,
+    unknown
+  >;
+  const slug = pickStr(r.slug, r.id) ?? "";
+  const website = pickStr(r.website_url, r.website, r.homepage);
+  const docs = pickStr(r.docs_url, r.docs);
+  const repo = pickStr(r.github_url, r.repo, r.repository);
+  return {
+    ...r,
+    slug,
+    name: pickStr(r.name) ?? slug,
+    kind: pickStr(r.kind),
+    authority: pickStr(r.authority),
+    homepage: website,
+    website,
+    docs,
+    repo,
+    notes: pickStr(r.notes, r.public_notes),
+  } as Provider;
+}
+
 export const providersQuery = () =>
   queryOptions({
     queryKey: k("providers"),
-    queryFn: ({ signal }) =>
-      fetchList<Provider>("/api/v1/providers", "providers", undefined, signal),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>(
+        "/api/v1/providers",
+        "providers",
+        undefined,
+        signal,
+      );
+      return { ...res, data: res.data.map(normalizeProviderListItem) } as ApiResult<Provider[]>;
+    },
     staleTime: STALE_MED,
   });
 

@@ -66,27 +66,30 @@ export function ProfileHero({
       {links ? <div className="mt-3">{links}</div> : null}
 
       {visibleStats.length > 0 ? (
-        <div
-          className={classNames(
-            "mt-4 grid gap-px overflow-hidden rounded border border-border bg-border",
-            "grid-cols-2 sm:grid-cols-3 md:grid-cols-4",
-            visibleStats.length >= 6 && "lg:grid-cols-6",
-            visibleStats.length === 5 && "lg:grid-cols-5",
-          )}
-        >
-          {visibleStats.map((s) => (
-            <div key={s.label} className="bg-card p-3 mg-kpi">
-              <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                {s.label}
+        <div className="mt-4 rounded border border-border overflow-hidden">
+          <div className="h-[2px] w-full bg-gradient-to-r from-accent via-accent/60 to-transparent" />
+          <div
+            className={classNames(
+              "grid gap-px bg-border",
+              "grid-cols-2 sm:grid-cols-3 md:grid-cols-4",
+              visibleStats.length >= 6 && "lg:grid-cols-6",
+              visibleStats.length === 5 && "lg:grid-cols-5",
+            )}
+          >
+            {visibleStats.map((s) => (
+              <div key={s.label} className="bg-card p-3 mg-kpi">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+                  {s.label}
+                </div>
+                <div className="font-display text-lg font-semibold text-ink-strong tabular-nums">
+                  {s.value}
+                </div>
+                {s.hint ? (
+                  <div className="mt-0.5 text-[10px] text-ink-muted">{s.hint}</div>
+                ) : null}
               </div>
-              <div className="font-display text-lg font-semibold text-ink-strong tabular-nums">
-                {s.value}
-              </div>
-              {s.hint ? (
-                <div className="mt-0.5 text-[10px] text-ink-muted">{s.hint}</div>
-              ) : null}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ) : null}
     </header>

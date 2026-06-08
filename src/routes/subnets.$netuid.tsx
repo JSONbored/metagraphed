@@ -6,7 +6,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { CandidateChip, CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
-import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { EmptyState, PageHeading, Skeleton, StaleBanner, RECOVERY } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
 import { FreshnessIndicator } from "@/components/metagraphed/freshness";
@@ -279,10 +279,12 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
 
 function EndpointsGlanceLoader({ netuid }: { netuid: number }) {
   const { data } = useSuspenseQuery(subnetEndpointsQuery(netuid));
+  const meta = data.meta;
   const rows = (data.data ?? []) as Endpoint[];
   return (
     <EndpointsGlance
       endpoints={rows}
+      lastChecked={meta?.generated_at}
       fullList={() => <EndpointList rows={rows} showProvider />}
     />
   );
@@ -425,7 +427,7 @@ function EndpointsTableLoader({ netuid }: { netuid: number }) {
         title="No endpoints recorded"
         description="This subnet has no tracked endpoints yet."
         lastChecked={meta?.generated_at}
-        action={{ label: "Browse all endpoints", href: "/endpoints" }}
+        action={RECOVERY.endpoints}
       />
     );
   }
@@ -471,7 +473,7 @@ function GapsPanel({
         <EmptyState
           title="No outstanding gaps"
           description="Profile looks complete."
-          action={{ label: "Browse registry gaps", href: "/gaps" }}
+          action={RECOVERY.gaps}
         />
       </SectionAnchor>
     );
@@ -578,7 +580,7 @@ function SurfacesList({ netuid, compact }: { netuid: number; compact?: boolean }
         title="No verified surfaces yet"
         description="Candidates may exist — check the Candidates tab."
         lastChecked={meta?.generated_at}
-        action={{ label: "Browse all surfaces", href: "/surfaces" }}
+        action={RECOVERY.surfaces}
       />
     );
 

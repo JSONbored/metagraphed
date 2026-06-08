@@ -58,9 +58,9 @@ export function SectionAnchor({
               type="button"
               onClick={onCopy}
               aria-label={`Copy link to ${typeof title === "string" ? title : id} section`}
-              className="mg-anchor-btn inline-flex items-center text-ink-muted hover:text-ink-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded p-0.5"
+              className="mg-anchor-btn inline-flex items-center text-ink-muted hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded p-0.5"
             >
-              {copied ? <Check className="size-3.5" /> : <Link2 className="size-3.5" />}
+              {copied ? <Check className="size-3.5 text-accent" /> : <Link2 className="size-3.5" />}
             </button>
           </div>
           {subtitle ? (

@@ -122,6 +122,20 @@ export function Skeleton({ className = "h-4 w-full" }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-surface ${className}`} />;
 }
 
+/**
+ * Standardized recovery links used by EmptyState / ErrorState across profile
+ * pages. Keep labels identical everywhere so the UI feels consistent.
+ */
+export const RECOVERY = {
+  schemas:   { label: "Browse all schemas",   href: "/schemas" },
+  endpoints: { label: "Browse all endpoints", href: "/endpoints" },
+  providers: { label: "Browse all providers", href: "/providers" },
+  subnets:   { label: "Browse all subnets",   href: "/subnets" },
+  surfaces:  { label: "Browse all surfaces",  href: "/surfaces" },
+  openapi:   { label: "Open API reference",   href: "/schemas#openapi" },
+  gaps:      { label: "Browse registry gaps", href: "/gaps" },
+} as const;
+
 export function PageHeading({
   eyebrow,
   title,
