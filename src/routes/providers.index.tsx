@@ -3,7 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
 import { Globe, Github, BookOpen, Radio, Layers } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
+import { BrandIcon, prefetchBrandIcon } from "@/components/metagraphed/brand-icon";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
