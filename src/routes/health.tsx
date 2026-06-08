@@ -8,6 +8,7 @@ import { HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { FreshnessIndicator } from "@/components/metagraphed/freshness";
+import { TimeAgo } from "@/components/metagraphed/time-ago";
 import {
   healthQuery,
   freshnessQuery,
@@ -236,7 +237,7 @@ function GlobalHealth({ interval }: { interval: number | false }) {
         <Cell label="Stale sources" num={f?.stale_count} />
       </div>
       <div className="text-[11px] font-mono text-ink-muted">
-        snapshot {formatRelative(hRes.meta?.generated_at)}
+        snapshot <TimeAgo at={hRes.meta?.generated_at} />
       </div>
     </div>
   );
@@ -284,7 +285,7 @@ function SourceHealth({ interval }: { interval: number | false }) {
               <td className="px-3 py-2 font-medium">{s.name}</td>
               <td className="px-3 py-2"><HealthPill state={s.ok === false ? "down" : s.ok ? "ok" : "unknown"} /></td>
               <td className="px-3 py-2"><FreshnessIndicator at={s.last_seen} dotOnly /></td>
-              <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">{formatRelative(s.last_seen)}</td>
+              <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted"><TimeAgo at={s.last_seen} /></td>
             </tr>
           ))}
         </tbody>
@@ -334,8 +335,8 @@ function Incidents({ interval }: { interval: number | false }) {
               <p className="text-[12px] text-ink-muted line-clamp-2">{i.message}</p>
             ) : null}
             <div className="flex items-center justify-between font-mono text-[10px] text-ink-muted">
-              <span>started {formatRelative(i.started_at)}</span>
-              <span>{i.ended_at ? `ended ${formatRelative(i.ended_at)}` : "—"}</span>
+              <span>started <TimeAgo at={i.started_at} /></span>
+              <span>{i.ended_at ? `ended $<TimeAgo at={i.ended_at} />` : "—"}</span>
             </div>
           </li>
         );

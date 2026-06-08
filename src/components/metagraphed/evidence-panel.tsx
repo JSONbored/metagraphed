@@ -140,7 +140,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
               {source}
             </span>
             <span className="flex items-center gap-2 font-mono text-[10px] text-ink-muted">
-              <span>latest {formatRelative(items[0]?.recorded_at)}</span>
+              <span>latest <TimeAgo at={items[0]?.recorded_at} /></span>
               <span>·</span>
               <span>{items.length} item{items.length === 1 ? "" : "s"}</span>
             </span>
@@ -160,7 +160,7 @@ export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
                         <div className="font-mono text-[10px] text-ink break-all">{item.url}</div>
                       ) : null}
                       <div className="font-mono text-[10px] text-ink-muted">
-                        recorded {formatRelative(item.recorded_at)}
+                        recorded <TimeAgo at={item.recorded_at} />
                       </div>
                     </div>
                   }

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { fallback } from "@tanstack/zod-adapter";
 import { ChevronDown, ChevronRight, FileCode } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
@@ -154,7 +155,7 @@ function SchemaRow({ schema, initiallyOpen }: { schema: SchemaInfo; initiallyOpe
           </div>
           <div className="font-mono text-[10px] text-ink-muted truncate">{schema.url ?? schema.id}</div>
         </div>
-        <span className="font-mono text-[10px] text-ink-muted shrink-0">{formatRelative(schema.updated_at)}</span>
+        <span className="font-mono text-[10px] text-ink-muted shrink-0"><TimeAgo at={schema.updated_at} /></span>
       </button>
       {open ? (
         <div className="border-t border-border bg-paper">
@@ -290,7 +291,7 @@ function DriftView({ schema }: { schema: SchemaInfo }) {
           <div className="flex items-center gap-3 text-[11px] font-mono text-ink-muted">
             <span>current: {data.current_version ?? "—"}</span>
             <span>·</span>
-            <span>captured {formatRelative(data.current_at)}</span>
+            <span>captured <TimeAgo at={data.current_at} /></span>
           </div>
           <EmptyState title="No previous version recorded" description="Drift can only be shown once a second snapshot is published." />
           {currentStr ? (
@@ -321,9 +322,9 @@ function DiffPanel({
   return (
     <>
       <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono">
-        <span className="text-ink-muted">previous: {data.previous_version ?? "—"} · {formatRelative(data.previous_at)}</span>
+        <span className="text-ink-muted">previous: {data.previous_version ?? "—"} · <TimeAgo at={data.previous_at} /></span>
         <span className="text-ink-muted">→</span>
-        <span className="text-ink-strong">current: {data.current_version ?? "—"} · {formatRelative(data.current_at)}</span>
+        <span className="text-ink-strong">current: {data.current_version ?? "—"} · <TimeAgo at={data.current_at} /></span>
         <span className="ml-auto inline-flex items-center gap-2">
           <span className="text-health-ok">+{stats.added}</span>
           <span className="text-health-down">−{stats.removed}</span>

@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { HealthPill } from "@/components/metagraphed/chips";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
@@ -99,7 +100,7 @@ function ProviderEndpoints({ slug }: { slug: string }) {
               <td className="px-3 py-2 font-mono text-[11px] truncate max-w-[32ch]">{e.url ?? "—"}</td>
               <td className="px-3 py-2"><HealthPill state={e.health} /></td>
               <td className="px-3 py-2 text-right font-mono text-[11px]">{e.latency_ms != null ? `${e.latency_ms}ms` : "—"}</td>
-              <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">{formatRelative(e.last_probed_at)}</td>
+              <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted"><TimeAgo at={e.last_probed_at} /></td>
             </tr>
           ))}
         </tbody>

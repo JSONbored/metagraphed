@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
@@ -128,7 +129,7 @@ function EndpointsTable() {
               <td className="px-3 py-2 text-[12px]">{e.region ?? "—"}</td>
               <td className="px-3 py-2"><HealthPill state={e.health} /></td>
               <td className="px-3 py-2 text-right font-mono text-[11px]">{e.latency_ms != null ? `${e.latency_ms}ms` : "—"}</td>
-              <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">{formatRelative(e.last_probed_at)}</td>
+              <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted"><TimeAgo at={e.last_probed_at} /></td>
             </tr>
           ))}
         </tbody>
@@ -169,8 +170,8 @@ function IncidentsTable() {
             </div>
             {i.message ? <p className="text-[12px] text-ink-muted line-clamp-2">{i.message}</p> : null}
             <div className="flex items-center justify-between font-mono text-[10px] text-ink-muted">
-              <span>started {formatRelative(i.started_at)}</span>
-              <span>{i.ended_at ? `ended ${formatRelative(i.ended_at)}` : "—"}</span>
+              <span>started <TimeAgo at={i.started_at} /></span>
+              <span>{i.ended_at ? `ended $<TimeAgo at={i.ended_at} />` : "—"}</span>
             </div>
           </li>
         );
