@@ -242,7 +242,7 @@ export const subnetHealthQuery = (netuid: number) =>
       const res = await apiFetch<Record<string, unknown>>(`/api/v1/subnets/${netuid}/health`, { signal });
       const d = (res.data ?? {}) as Record<string, unknown>;
       const summary = (d.summary as Record<string, unknown> | undefined) ?? {};
-      const merged = { ...summary, ...d } as HealthSummary;
+      const merged = normalizeHealthBlock({ ...d, ...summary });
       return { data: merged, meta: res.meta, url: res.url };
     },
     staleTime: STALE_SHORT,
