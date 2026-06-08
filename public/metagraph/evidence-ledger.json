@@ -4709,6 +4709,39 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Swap source repository is a public source-repo surface for SN10.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/Swap-Subnet/swap-subnet",
+      "subject": "surface:sn-10-swap-source",
+      "support_summary": "Listed in curated overlay for sn-10.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TaoFi docs is a public docs surface for SN10.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://docs.taofi.com/",
+      "subject": "surface:sn-10-taofi-docs",
+      "support_summary": "Listed in curated overlay for sn-10.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TaoFi pool is a public website surface for SN10.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.taofi.com/pool",
+      "subject": "surface:sn-10-taofi-pool",
+      "support_summary": "Listed in curated overlay for sn-10.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Swap TaoMarketCap dashboard is a public dashboard surface for SN10.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -4716,28 +4749,6 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/10",
       "subject": "surface:sn-10-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-10.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Swap source repository is a public source-repo surface for SN10.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/10",
-      "subject": "surface:sn-10-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-10.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Swap website is a public website surface for SN10.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/10",
-      "subject": "surface:sn-10-taomarketcap-website",
       "support_summary": "Listed in curated overlay for sn-10.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -4760,17 +4771,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/10/subnet.json",
       "subject": "surface:sn-10-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-10.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Swap docs subdomain is a public docs surface for SN10.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.taofi.com/pool",
-      "subject": "surface:sn-10-website-subdomain-docs-docs-taofi-com",
       "support_summary": "Listed in curated overlay for sn-10.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -5644,28 +5644,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "TrajectoryRL source repository is a public source-repo surface for SN11.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/11",
-      "subject": "surface:sn-11-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-11.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "TrajectoryRL website is a public website surface for SN11.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/11",
-      "subject": "surface:sn-11-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-11.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "TrajectoryRL Taopedia article is a public docs surface for SN11.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5688,13 +5666,79 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "TrajectoryRL docs is a public docs surface for SN11.",
-      "confidence": "medium",
+      "claim": "TrajectoryRL benchmark is a public dashboard surface for SN11.",
+      "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
       "source_url": "https://trajrl.com/",
-      "subject": "surface:sn-11-website-common-docs",
+      "subject": "surface:sn-11-trajectoryrl-bench",
+      "support_summary": "Listed in curated overlay for sn-11.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TrajectoryRL docs is a public docs surface for SN11.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://trajrl.com/docs",
+      "subject": "surface:sn-11-trajectoryrl-docs",
+      "support_summary": "Listed in curated overlay for sn-11.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TrajectoryRL leaderboard is a public dashboard surface for SN11.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://trajrl.com/",
+      "subject": "surface:sn-11-trajectoryrl-leaderboard",
+      "support_summary": "Listed in curated overlay for sn-11.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TrajectoryRL live is a public dashboard surface for SN11.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://trajrl.com/",
+      "subject": "surface:sn-11-trajectoryrl-live",
+      "support_summary": "Listed in curated overlay for sn-11.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TrajectoryRL source repository is a public source-repo surface for SN11.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/trajectoryRL/trajectoryRL",
+      "subject": "surface:sn-11-trajectoryrl-source",
+      "support_summary": "Listed in curated overlay for sn-11.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TrajectoryRL website is a public website surface for SN11.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://trajrl.com/",
+      "subject": "surface:sn-11-trajectoryrl-website",
+      "support_summary": "Listed in curated overlay for sn-11.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TrajectoryRL winners is a public dashboard surface for SN11.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://trajrl.com/",
+      "subject": "surface:sn-11-trajectoryrl-winners",
       "support_summary": "Listed in curated overlay for sn-11.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7811,6 +7855,39 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "BitAds docs is a public docs surface for SN16.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://bitads.ai/docs",
+      "subject": "surface:sn-16-bitads-docs",
+      "support_summary": "Listed in curated overlay for sn-16.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds source repository is a public source-repo surface for SN16.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/FirstTensorLabs/BitAds",
+      "subject": "surface:sn-16-bitads-source",
+      "support_summary": "Listed in curated overlay for sn-16.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds website is a public website surface for SN16.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://bitads.ai/",
+      "subject": "surface:sn-16-bitads-website",
+      "support_summary": "Listed in curated overlay for sn-16.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "BitAds SubnetRadar dashboard is a public dashboard surface for SN16.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7833,28 +7910,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "BitAds source repository is a public source-repo surface for SN16.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/16",
-      "subject": "surface:sn-16-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-16.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds website is a public website surface for SN16.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/16",
-      "subject": "surface:sn-16-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-16.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "BitAds Taopedia article is a public docs surface for SN16.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7873,17 +7928,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/16/subnet.json",
       "subject": "surface:sn-16-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-16.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds docs is a public docs surface for SN16.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://bitads.ai/",
-      "subject": "surface:sn-16-website-common-docs",
       "support_summary": "Listed in curated overlay for sn-16.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11276,6 +11320,61 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Hone network is a public dashboard surface for SN5.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.hone.training/",
+      "subject": "surface:sn-5-hone-network",
+      "support_summary": "Listed in curated overlay for sn-5.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Hone nodes is a public dashboard surface for SN5.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.hone.training/",
+      "subject": "surface:sn-5-hone-nodes",
+      "support_summary": "Listed in curated overlay for sn-5.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Hone projects is a public dashboard surface for SN5.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.hone.training/",
+      "subject": "surface:sn-5-hone-projects",
+      "support_summary": "Listed in curated overlay for sn-5.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Hone source repository is a public source-repo surface for SN5.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/manifold-inc/hone",
+      "subject": "surface:sn-5-hone-source",
+      "support_summary": "Listed in curated overlay for sn-5.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Hone website is a public website surface for SN5.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.hone.training/",
+      "subject": "surface:sn-5-hone-website",
+      "support_summary": "Listed in curated overlay for sn-5.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Hone SubnetRadar dashboard is a public dashboard surface for SN5.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -11294,28 +11393,6 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/5",
       "subject": "surface:sn-5-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-5.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Hone source repository is a public source-repo surface for SN5.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/5",
-      "subject": "surface:sn-5-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-5.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Hone website is a public website surface for SN5.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/5",
-      "subject": "surface:sn-5-taomarketcap-website",
       "support_summary": "Listed in curated overlay for sn-5.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -14499,28 +14576,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Vanta source repository is a public source-repo surface for SN8.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/8",
-      "subject": "surface:sn-8-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-8.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Vanta website is a public website surface for SN8.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/8",
-      "subject": "surface:sn-8-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-8.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Vanta Taopedia article is a public docs surface for SN8.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -14539,6 +14594,61 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json",
       "subject": "surface:sn-8-tensorplex-docs",
+      "support_summary": "Listed in curated overlay for sn-8.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Vanta dashboard is a public dashboard surface for SN8.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.vantanetwork.io/",
+      "subject": "surface:sn-8-vanta-dashboard",
+      "support_summary": "Listed in curated overlay for sn-8.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Vanta Network source repository is a public source-repo surface for SN8.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/taoshidev/vanta-network",
+      "subject": "surface:sn-8-vanta-source",
+      "support_summary": "Listed in curated overlay for sn-8.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Vanta tokenomics is a public docs surface for SN8.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.vantanetwork.io/",
+      "subject": "surface:sn-8-vanta-tokenomics",
+      "support_summary": "Listed in curated overlay for sn-8.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Vanta transparency is a public docs surface for SN8.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.vantanetwork.io/",
+      "subject": "surface:sn-8-vanta-transparency",
+      "support_summary": "Listed in curated overlay for sn-8.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Vanta Network website is a public website surface for SN8.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://www.vantanetwork.io/",
+      "subject": "surface:sn-8-vanta-website",
       "support_summary": "Listed in curated overlay for sn-8.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -16463,8 +16573,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1496,
+    "claim_count": 1506,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1117
+    "surface_claim_count": 1127
   }
 }

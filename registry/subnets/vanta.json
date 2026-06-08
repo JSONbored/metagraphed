@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "netuid": 8,
+  "name": "Vanta",
+  "slug": "sn-8",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "website_url": "https://www.vantanetwork.io/",
+  "source_repo": "https://github.com/taoshidev/vanta-network",
+  "dashboard_url": "https://www.vantanetwork.io/dashboard",
+  "baseline_excluded_surface_ids": [
+    "sn-8-taomarketcap-source-repo",
+    "sn-8-taomarketcap-website",
+    "sn-8-website-common-api",
+    "sn-8-website-common-docs",
+    "sn-8-website-common-health",
+    "sn-8-website-common-openapi-json",
+    "sn-8-website-common-swagger",
+    "sn-8-website-common-swagger-json",
+    "sn-8-website-link-www-vantanetwork-io-dashboard-1",
+    "sn-8-website-link-www-vantanetwork-io-website-2",
+    "sn-8-website-link-www-vantanetwork-io-website-3"
+  ],
+  "notes": "Reviewed overlay for SN8 Vanta using the official Vanta Network website, dashboard, transparency, tokenomics, and source repository. Common docs/API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T20:25:00.000Z",
+    "verified_at": "2026-06-08T20:25:00.000Z",
+    "source_count": 6,
+    "gap_notes": [
+      "Official website, dashboard, transparency page, tokenomics page, and source repository are verified live.",
+      "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404.",
+      "No verified docs site yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-8-vanta-website",
+      "name": "Vanta Network website",
+      "kind": "website",
+      "url": "https://www.vantanetwork.io/",
+      "provider": "vanta",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.vantanetwork.io/",
+        "https://github.com/taoshidev/vanta-network"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Vanta Network website."
+    },
+    {
+      "id": "sn-8-vanta-dashboard",
+      "name": "Vanta dashboard",
+      "kind": "dashboard",
+      "url": "https://www.vantanetwork.io/dashboard",
+      "provider": "vanta",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://www.vantanetwork.io/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Vanta dashboard page."
+    },
+    {
+      "id": "sn-8-vanta-tokenomics",
+      "name": "Vanta tokenomics",
+      "kind": "docs",
+      "url": "https://www.vantanetwork.io/tokenomics",
+      "provider": "vanta",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://www.vantanetwork.io/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Vanta tokenomics information page."
+    },
+    {
+      "id": "sn-8-vanta-transparency",
+      "name": "Vanta transparency",
+      "kind": "docs",
+      "url": "https://www.vantanetwork.io/transparency",
+      "provider": "vanta",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://www.vantanetwork.io/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Vanta transparency page for open-source scoring rules."
+    },
+    {
+      "id": "sn-8-vanta-source",
+      "name": "Vanta Network source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/taoshidev/vanta-network",
+      "provider": "vanta",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/taoshidev/vanta-network"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Vanta Network source repository."
+    }
+  ]
+}

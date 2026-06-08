@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "netuid": 11,
+  "name": "TrajectoryRL",
+  "slug": "sn-11",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
+  "website_url": "https://trajrl.com/",
+  "docs_url": "https://trajrl.com/docs",
+  "source_repo": "https://github.com/trajectoryRL/trajectoryRL",
+  "dashboard_url": "https://trajrl.com/leaderboard",
+  "baseline_excluded_surface_ids": [
+    "sn-11-taomarketcap-source-repo",
+    "sn-11-taomarketcap-website",
+    "sn-11-website-common-api",
+    "sn-11-website-common-docs",
+    "sn-11-website-common-health",
+    "sn-11-website-common-openapi-json",
+    "sn-11-website-common-swagger",
+    "sn-11-website-common-swagger-json",
+    "sn-11-website-link-trajrl-com-dashboard-3",
+    "sn-11-website-link-trajrl-com-website-1",
+    "sn-11-website-link-trajrl-com-website-2",
+    "sn-11-website-link-trajrl-com-website-4"
+  ],
+  "notes": "Reviewed overlay for SN11 TrajectoryRL using the official website, docs, leaderboard, live, winners, benchmark pages, and source repository. Common API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T20:25:00.000Z",
+    "verified_at": "2026-06-08T20:25:00.000Z",
+    "source_count": 8,
+    "gap_notes": [
+      "Official website, docs, leaderboard, live, winners, benchmark pages, and source repository are verified live.",
+      "Common /api, /health, /openapi.json, and Swagger paths currently return 404.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-11-trajectoryrl-website",
+      "name": "TrajectoryRL website",
+      "kind": "website",
+      "url": "https://trajrl.com/",
+      "provider": "trajectoryrl",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://trajrl.com/",
+        "https://github.com/trajectoryRL/trajectoryRL"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official TrajectoryRL website."
+    },
+    {
+      "id": "sn-11-trajectoryrl-docs",
+      "name": "TrajectoryRL docs",
+      "kind": "docs",
+      "url": "https://trajrl.com/docs",
+      "provider": "trajectoryrl",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://trajrl.com/docs"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official TrajectoryRL documentation."
+    },
+    {
+      "id": "sn-11-trajectoryrl-leaderboard",
+      "name": "TrajectoryRL leaderboard",
+      "kind": "dashboard",
+      "url": "https://trajrl.com/leaderboard",
+      "provider": "trajectoryrl",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://trajrl.com/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official TrajectoryRL leaderboard."
+    },
+    {
+      "id": "sn-11-trajectoryrl-live",
+      "name": "TrajectoryRL live",
+      "kind": "dashboard",
+      "url": "https://trajrl.com/live",
+      "provider": "trajectoryrl",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://trajrl.com/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official TrajectoryRL live page."
+    },
+    {
+      "id": "sn-11-trajectoryrl-winners",
+      "name": "TrajectoryRL winners",
+      "kind": "dashboard",
+      "url": "https://trajrl.com/winners",
+      "provider": "trajectoryrl",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://trajrl.com/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official TrajectoryRL winners page."
+    },
+    {
+      "id": "sn-11-trajectoryrl-bench",
+      "name": "TrajectoryRL benchmark",
+      "kind": "dashboard",
+      "url": "https://trajrl.com/bench",
+      "provider": "trajectoryrl",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://trajrl.com/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official TrajectoryRL benchmark page."
+    },
+    {
+      "id": "sn-11-trajectoryrl-source",
+      "name": "TrajectoryRL source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/trajectoryRL/trajectoryRL",
+      "provider": "trajectoryrl",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/trajectoryRL/trajectoryRL"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official TrajectoryRL source repository."
+    }
+  ]
+}

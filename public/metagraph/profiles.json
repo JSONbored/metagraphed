@@ -557,10 +557,14 @@
     {
       "candidate_count": 18,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-source-repo",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-openapi",
           "missing-subnet-api",
@@ -579,12 +583,12 @@
         ],
         "missing_required": [],
         "profile_level": "identity-complete",
-        "score": 50
+        "score": 55
       },
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 7,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 10,
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -603,7 +607,7 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "monitored_endpoint_count": 7,
+      "monitored_endpoint_count": 10,
       "name": "Hone",
       "native_name": "Hone",
       "native_name_quality": "chain",
@@ -611,14 +615,14 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-5-taomarketcap-website",
+        "id": "sn-5-hone-website",
         "kind": "website",
         "name": "Hone website",
-        "provider": "taomarketcap",
+        "provider": "hone",
         "url": "https://www.hone.training/"
       },
       "primary_links": {
-        "dashboard_url": "https://backprop.finance/dtao/subnets/5-hone",
+        "dashboard_url": "https://taomarketcap.com/subnets/5",
         "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx",
         "source_repo": "https://github.com/manifold-inc/hone",
         "website_url": "https://www.hone.training/"
@@ -626,11 +630,11 @@
       "profile_level": "identity-complete",
       "project_name": "Hone",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 8,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T20:25:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/5",
           "https://backprop.finance/dtao/subnets/5-hone",
@@ -638,10 +642,11 @@
           "https://github.com/manifold-inc/hone",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/5/subnet.json",
           "https://subnetradar.com/subnet/5",
+          "https://taomarketcap.com/subnets/5",
           "https://www.hone.training/"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-5",
       "status": "active",
       "subnet_type": "application",
@@ -656,7 +661,7 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 7,
+      "surface_count": 10,
       "symbol": "ε",
       "team": null
     },
@@ -873,10 +878,14 @@
     {
       "candidate_count": 17,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-source-repo",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-openapi",
           "missing-subnet-api",
@@ -895,12 +904,12 @@
         ],
         "missing_required": [],
         "profile_level": "identity-complete",
-        "score": 50
+        "score": 55
       },
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 7,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 10,
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -919,7 +928,7 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "monitored_endpoint_count": 7,
+      "monitored_endpoint_count": 10,
       "name": "Vanta",
       "native_name": "Vanta",
       "native_name_quality": "chain",
@@ -927,14 +936,14 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-8-taomarketcap-website",
+        "id": "sn-8-vanta-website",
         "kind": "website",
-        "name": "Vanta website",
-        "provider": "taomarketcap",
+        "name": "Vanta Network website",
+        "provider": "vanta",
         "url": "https://www.vantanetwork.io/"
       },
       "primary_links": {
-        "dashboard_url": "https://backprop.finance/dtao/subnets/8-vanta",
+        "dashboard_url": "https://www.vantanetwork.io/dashboard",
         "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx",
         "source_repo": "https://github.com/taoshidev/vanta-network",
         "website_url": "https://www.vantanetwork.io/"
@@ -942,11 +951,11 @@
       "profile_level": "identity-complete",
       "project_name": "Vanta",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 8,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T20:25:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/8",
           "https://backprop.finance/dtao/subnets/8-vanta",
@@ -954,10 +963,11 @@
           "https://github.com/taoshidev/vanta-network",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json",
           "https://subnetradar.com/subnet/8",
-          "https://www.vantanetwork.io/"
+          "https://www.vantanetwork.io/",
+          "https://www.vantanetwork.io/dashboard"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-8",
       "status": "active",
       "subnet_type": "application",
@@ -972,7 +982,7 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 7,
+      "surface_count": 10,
       "symbol": "θ",
       "team": null
     },
@@ -1092,10 +1102,15 @@
     {
       "candidate_count": 15,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-openapi",
           "missing-subnet-api",
@@ -1114,11 +1129,11 @@
         ],
         "missing_required": [],
         "profile_level": "identity-complete",
-        "score": 50
+        "score": 55
       },
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
       "gap_reasons": [
         "missing-openapi",
@@ -1146,37 +1161,39 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-10-taomarketcap-website",
+        "id": "sn-10-taofi-pool",
         "kind": "website",
-        "name": "Swap website",
-        "provider": "taomarketcap",
+        "name": "TaoFi pool",
+        "provider": "taofi",
         "url": "https://www.taofi.com/pool"
       },
       "primary_links": {
-        "dashboard_url": "https://backprop.finance/dtao/subnets/10-swap",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_10/index.mdx",
+        "dashboard_url": "https://taomarketcap.com/subnets/10",
+        "docs_url": "https://docs.taofi.com/",
         "source_repo": "https://github.com/Swap-Subnet/swap-subnet",
         "website_url": "https://www.taofi.com/pool"
       },
       "profile_level": "identity-complete",
       "project_name": "Swap",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 9,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T20:25:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/10",
           "https://backprop.finance/dtao/subnets/10-swap",
+          "https://docs.taofi.com/",
           "https://github.com/Swap-Subnet/swap-subnet",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_10/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/10/subnet.json",
           "https://subnetradar.com/subnet/10",
+          "https://taomarketcap.com/subnets/10",
           "https://www.taofi.com/pool"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-10",
       "status": "active",
       "subnet_type": "application",
@@ -1198,10 +1215,15 @@
     {
       "candidate_count": 18,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-openapi",
           "missing-subnet-api",
@@ -1220,12 +1242,12 @@
         ],
         "missing_required": [],
         "profile_level": "identity-complete",
-        "score": 50
+        "score": 55
       },
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 8,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 12,
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -1244,7 +1266,7 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "monitored_endpoint_count": 8,
+      "monitored_endpoint_count": 12,
       "name": "TrajectoryRL",
       "native_name": "TrajectoryRL",
       "native_name_quality": "chain",
@@ -1252,26 +1274,26 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-11-taomarketcap-website",
+        "id": "sn-11-trajectoryrl-website",
         "kind": "website",
         "name": "TrajectoryRL website",
-        "provider": "taomarketcap",
+        "provider": "trajectoryrl",
         "url": "https://trajrl.com/"
       },
       "primary_links": {
-        "dashboard_url": "https://backprop.finance/dtao/subnets/11-trajectoryrl",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx",
+        "dashboard_url": "https://trajrl.com/leaderboard",
+        "docs_url": "https://trajrl.com/docs",
         "source_repo": "https://github.com/trajectoryRL/trajectoryRL",
         "website_url": "https://trajrl.com/"
       },
       "profile_level": "identity-complete",
       "project_name": "TrajectoryRL",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 9,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T20:25:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/11",
           "https://backprop.finance/dtao/subnets/11-trajectoryrl",
@@ -1279,10 +1301,12 @@
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/11/subnet.json",
           "https://github.com/trajectoryRL/trajectoryRL",
           "https://subnetradar.com/subnet/11",
-          "https://trajrl.com/"
+          "https://trajrl.com/",
+          "https://trajrl.com/docs",
+          "https://trajrl.com/leaderboard"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-11",
       "status": "active",
       "subnet_type": "application",
@@ -1297,7 +1321,7 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 8,
+      "surface_count": 12,
       "symbol": "λ",
       "team": null
     },
@@ -1763,10 +1787,15 @@
     {
       "candidate_count": 14,
       "categories": [
-        "baseline-curated"
+        "baseline-augmented",
+        "baseline-curated",
+        "identity-reviewed",
+        "official-docs",
+        "official-source-repo",
+        "official-website"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
           "missing-openapi",
           "missing-subnet-api",
@@ -1785,11 +1814,11 @@
         ],
         "missing_required": [],
         "profile_level": "identity-complete",
-        "score": 50
+        "score": 55
       },
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
       "endpoint_count": 8,
       "gap_reasons": [
         "missing-openapi",
@@ -1817,37 +1846,39 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-16-taomarketcap-website",
+        "id": "sn-16-bitads-website",
         "kind": "website",
         "name": "BitAds website",
-        "provider": "taomarketcap",
+        "provider": "bitads",
         "url": "https://bitads.ai/"
       },
       "primary_links": {
-        "dashboard_url": "https://backprop.finance/dtao/subnets/16-bitads",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_16/index.mdx",
+        "dashboard_url": "https://taomarketcap.com/subnets/16",
+        "docs_url": "https://bitads.ai/docs",
         "source_repo": "https://github.com/FirstTensorLabs/BitAds",
         "website_url": "https://bitads.ai/"
       },
       "profile_level": "identity-complete",
       "project_name": "BitAds",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "interface_source_count": 9,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T20:25:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/16",
           "https://backprop.finance/dtao/subnets/16-bitads",
           "https://bitads.ai/",
+          "https://bitads.ai/docs",
           "https://github.com/FirstTensorLabs/BitAds",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_16/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/16/subnet.json",
-          "https://subnetradar.com/subnet/16"
+          "https://subnetradar.com/subnet/16",
+          "https://taomarketcap.com/subnets/16"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "maintainer-reviewed",
       "slug": "sn-16",
       "status": "active",
       "subnet_type": "application",
@@ -14392,9 +14423,9 @@
   "summary": {
     "average_completeness_score": 53,
     "by_confidence": {
-      "high": 81,
+      "high": 86,
       "low": 5,
-      "medium": 43
+      "medium": 38
     },
     "by_identity_level": {
       "complete": 100,

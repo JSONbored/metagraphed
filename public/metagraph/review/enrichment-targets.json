@@ -81,20 +81,20 @@
         "sn-108-surface-candidate-data-artifact",
         "sn-18-surface-candidate-data-artifact",
         "sn-37-surface-candidate-data-artifact",
-        "sn-11-surface-candidate-data-artifact",
         "sn-26-surface-candidate-data-artifact",
         "sn-36-surface-candidate-data-artifact",
-        "sn-5-surface-candidate-data-artifact",
         "sn-55-surface-candidate-data-artifact",
         "sn-99-surface-candidate-data-artifact",
         "sn-126-surface-candidate-data-artifact",
         "sn-60-surface-candidate-data-artifact",
         "sn-78-surface-candidate-data-artifact",
         "sn-94-surface-candidate-data-artifact",
-        "sn-8-surface-candidate-data-artifact",
         "sn-35-surface-candidate-data-artifact",
         "sn-44-surface-candidate-data-artifact",
-        "sn-54-surface-candidate-data-artifact"
+        "sn-54-surface-candidate-data-artifact",
+        "sn-67-surface-candidate-data-artifact",
+        "sn-80-surface-candidate-data-artifact",
+        "sn-112-surface-candidate-data-artifact"
       ],
       "target_type": "surface-candidate",
       "top_netuids": [
@@ -104,10 +104,10 @@
         108,
         18,
         37,
-        11,
         26,
         36,
-        5
+        55,
+        99
       ]
     },
     {
@@ -125,17 +125,17 @@
         "sn-108-surface-candidate-openapi",
         "sn-18-surface-candidate-openapi",
         "sn-37-surface-candidate-openapi",
-        "sn-11-surface-candidate-openapi",
         "sn-26-surface-candidate-openapi",
         "sn-36-surface-candidate-openapi",
-        "sn-5-surface-candidate-openapi",
         "sn-55-surface-candidate-openapi",
         "sn-99-surface-candidate-openapi",
         "sn-126-surface-candidate-openapi",
         "sn-60-surface-candidate-openapi",
         "sn-78-surface-candidate-openapi",
         "sn-94-surface-candidate-openapi",
-        "sn-8-surface-candidate-openapi"
+        "sn-35-surface-candidate-openapi",
+        "sn-44-surface-candidate-openapi",
+        "sn-54-surface-candidate-openapi"
       ],
       "target_type": "surface-candidate",
       "top_netuids": [
@@ -148,7 +148,7 @@
         108,
         18,
         37,
-        11
+        26
       ]
     },
     {
@@ -207,17 +207,17 @@
         "sn-108-surface-candidate-subnet-api",
         "sn-18-surface-candidate-subnet-api",
         "sn-37-surface-candidate-subnet-api",
-        "sn-11-surface-candidate-subnet-api",
         "sn-26-surface-candidate-subnet-api",
         "sn-36-surface-candidate-subnet-api",
-        "sn-5-surface-candidate-subnet-api",
         "sn-55-surface-candidate-subnet-api",
         "sn-99-surface-candidate-subnet-api",
         "sn-126-surface-candidate-subnet-api",
         "sn-60-surface-candidate-subnet-api",
         "sn-78-surface-candidate-subnet-api",
         "sn-94-surface-candidate-subnet-api",
-        "sn-8-surface-candidate-subnet-api"
+        "sn-35-surface-candidate-subnet-api",
+        "sn-44-surface-candidate-subnet-api",
+        "sn-54-surface-candidate-subnet-api"
       ],
       "target_type": "surface-candidate",
       "top_netuids": [
@@ -230,7 +230,7 @@
         108,
         18,
         37,
-        11
+        26
       ]
     },
     {
@@ -3057,72 +3057,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 11 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "data-artifact",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "TrajectoryRL",
-      "netuid": 11,
-      "priority_score": 123,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
-      "slug": "sn-11",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/11",
-        "https://backprop.finance/dtao/subnets/11-trajectoryrl",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-11-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 26 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -3251,78 +3185,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-36-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 11 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "dead": 3
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-11-website-common-openapi-json",
-          "sn-11-website-common-swagger",
-          "sn-11-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "openapi",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "TrajectoryRL",
-      "netuid": 11,
-      "priority_score": 123,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
-      "slug": "sn-11",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/11",
-        "https://backprop.finance/dtao/subnets/11-trajectoryrl",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-11-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -3467,77 +3329,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-36-surface-candidate-openapi",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 11 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "dead": 2
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-11-website-common-api",
-          "sn-11-website-common-health"
-        ],
-        "stale_or_failed_count": 2,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "subnet-api",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "TrajectoryRL",
-      "netuid": 11,
-      "priority_score": 123,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json",
-        "sn-11-website-common-api",
-        "sn-11-website-common-health"
-      ],
-      "slug": "sn-11",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/11",
-        "https://backprop.finance/dtao/subnets/11-trajectoryrl",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-11-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {
@@ -3782,72 +3573,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 5 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "data-artifact",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Hone",
-      "netuid": 5,
-      "priority_score": 122,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
-      "slug": "sn-5",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/5",
-        "https://backprop.finance/dtao/subnets/5-hone",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-5-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 55 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -4044,78 +3769,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-126-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 5 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "dead": 3
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-5-website-common-openapi-json",
-          "sn-5-website-common-swagger",
-          "sn-5-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "openapi",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Hone",
-      "netuid": 5,
-      "priority_score": 122,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
-      "slug": "sn-5",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/5",
-        "https://backprop.finance/dtao/subnets/5-hone",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-5-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -4334,77 +3987,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-126-surface-candidate-openapi",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 5 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "dead": 2
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-5-website-common-api",
-          "sn-5-website-common-health"
-        ],
-        "stale_or_failed_count": 2,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "subnet-api",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Hone",
-      "netuid": 5,
-      "priority_score": 122,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json",
-        "sn-5-website-common-api",
-        "sn-5-website-common-health"
-      ],
-      "slug": "sn-5",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/5",
-        "https://backprop.finance/dtao/subnets/5-hone",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-5-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {
@@ -5417,72 +4999,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 8 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "data-artifact",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Vanta",
-      "netuid": 8,
-      "priority_score": 120,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
-      "slug": "sn-8",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/8",
-        "https://backprop.finance/dtao/subnets/8-vanta",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-8-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 35 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -5942,78 +5458,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-127-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 8 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "dead": 3
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-8-website-common-openapi-json",
-          "sn-8-website-common-swagger",
-          "sn-8-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "openapi",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Vanta",
-      "netuid": 8,
-      "priority_score": 120,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
-      "slug": "sn-8",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/8",
-        "https://backprop.finance/dtao/subnets/8-vanta",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-8-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -6524,77 +5968,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 8 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "dead": 2
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-8-website-common-api",
-          "sn-8-website-common-health"
-        ],
-        "stale_or_failed_count": 2,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "subnet-api",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Vanta",
-      "netuid": 8,
-      "priority_score": 120,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json",
-        "sn-8-website-common-api",
-        "sn-8-website-common-health"
-      ],
-      "slug": "sn-8",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/8",
-        "https://backprop.finance/dtao/subnets/8-vanta",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-8-surface-candidate-subnet-api",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 35 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 2,
@@ -7094,72 +6467,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 10 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "data-artifact",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Swap",
-      "netuid": 10,
-      "priority_score": 118,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "slug": "sn-10",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/10",
-        "https://backprop.finance/dtao/subnets/10-swap",
-        "https://github.com/Swap-Subnet/swap-subnet"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-10-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 41 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -7425,78 +6732,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-128-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 10 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "dead": 3
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-10-website-common-openapi-json",
-          "sn-10-website-common-swagger",
-          "sn-10-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "openapi",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Swap",
-      "netuid": 10,
-      "priority_score": 118,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "slug": "sn-10",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/10",
-        "https://backprop.finance/dtao/subnets/10-swap",
-        "https://github.com/Swap-Subnet/swap-subnet"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-10-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -7915,77 +7150,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 10 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "dead": 2
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-10-website-common-api",
-          "sn-10-website-common-health"
-        ],
-        "stale_or_failed_count": 2,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "subnet-api",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Swap",
-      "netuid": 10,
-      "priority_score": 118,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-10-website-common-openapi-json",
-        "sn-10-website-common-swagger",
-        "sn-10-website-common-swagger-json",
-        "sn-10-website-common-api",
-        "sn-10-website-common-health"
-      ],
-      "slug": "sn-10",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/10",
-        "https://backprop.finance/dtao/subnets/10-swap",
-        "https://github.com/Swap-Subnet/swap-subnet"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-10-surface-candidate-subnet-api",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 41 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 2,
@@ -8272,73 +7436,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-128-surface-candidate-subnet-api",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 16 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "data-artifact",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "BitAds",
-      "netuid": 16,
-      "priority_score": 117,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health",
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
-      "slug": "sn-16",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/16",
-        "https://backprop.finance/dtao/subnets/16-bitads",
-        "https://bitads.ai/"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-16-surface-candidate-data-artifact",
       "target_type": "surface-candidate"
     },
     {
@@ -8739,79 +7836,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-120-surface-candidate-data-artifact",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 16 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 3,
-        "classifications": {
-          "content-mismatch": 3
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 3,
-        "sample_candidate_ids": [
-          "sn-16-website-common-openapi-json",
-          "sn-16-website-common-swagger",
-          "sn-16-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "openapi",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "BitAds",
-      "netuid": 16,
-      "priority_score": 117,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health",
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
-      "slug": "sn-16",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/16",
-        "https://backprop.finance/dtao/subnets/16-bitads",
-        "https://bitads.ai/"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-16-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -9250,78 +8274,6 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-120-surface-candidate-openapi",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 16 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "live": 2
-        },
-        "live_or_redirected_count": 2,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-16-website-common-api",
-          "sn-16-website-common-health"
-        ],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "subnet-api",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "BitAds",
-      "netuid": 16,
-      "priority_score": 117,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-16-website-common-api",
-        "sn-16-website-common-health",
-        "sn-16-website-common-openapi-json",
-        "sn-16-website-common-swagger",
-        "sn-16-website-common-swagger-json"
-      ],
-      "slug": "sn-16",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/16",
-        "https://backprop.finance/dtao/subnets/16-bitads",
-        "https://bitads.ai/"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-16-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {
@@ -16304,6 +15256,71 @@
     },
     {
       "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 11 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "data-artifact",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "TrajectoryRL",
+      "netuid": 11,
+      "priority_score": 97,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-11-website-common-openapi-json",
+        "sn-11-website-common-swagger",
+        "sn-11-website-common-swagger-json",
+        "sn-11-website-common-api",
+        "sn-11-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-11-website-common-openapi-json",
+        "sn-11-website-common-swagger",
+        "sn-11-website-common-swagger-json",
+        "sn-11-website-common-api",
+        "sn-11-website-common-health"
+      ],
+      "slug": "sn-11",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/11",
+        "https://backprop.finance/dtao/subnets/11-trajectoryrl",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-11-surface-candidate-data-artifact",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 102 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 0,
@@ -16419,6 +15436,77 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "submit-new-candidate",
       "target_id": "sn-3-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 11 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 3,
+        "classifications": {
+          "dead": 3
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 3,
+        "sample_candidate_ids": [
+          "sn-11-website-common-openapi-json",
+          "sn-11-website-common-swagger",
+          "sn-11-website-common-swagger-json"
+        ],
+        "stale_or_failed_count": 3,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "openapi",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "TrajectoryRL",
+      "netuid": 11,
+      "priority_score": 97,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-11-website-common-openapi-json",
+        "sn-11-website-common-swagger",
+        "sn-11-website-common-swagger-json",
+        "sn-11-website-common-api",
+        "sn-11-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-11-website-common-openapi-json",
+        "sn-11-website-common-swagger",
+        "sn-11-website-common-swagger-json",
+        "sn-11-website-common-api",
+        "sn-11-website-common-health"
+      ],
+      "slug": "sn-11",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/11",
+        "https://backprop.finance/dtao/subnets/11-trajectoryrl",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-11-surface-candidate-openapi",
       "target_type": "surface-candidate"
     },
     {
@@ -16548,6 +15636,76 @@
     },
     {
       "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 11 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 2,
+        "classifications": {
+          "dead": 2
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 2,
+        "sample_candidate_ids": [
+          "sn-11-website-common-api",
+          "sn-11-website-common-health"
+        ],
+        "stale_or_failed_count": 2,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "subnet-api",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "TrajectoryRL",
+      "netuid": 11,
+      "priority_score": 97,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-11-website-common-openapi-json",
+        "sn-11-website-common-swagger",
+        "sn-11-website-common-swagger-json",
+        "sn-11-website-common-api",
+        "sn-11-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-11-website-common-openapi-json",
+        "sn-11-website-common-swagger",
+        "sn-11-website-common-swagger-json",
+        "sn-11-website-common-api",
+        "sn-11-website-common-health"
+      ],
+      "slug": "sn-11",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/11",
+        "https://backprop.finance/dtao/subnets/11-trajectoryrl",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-11-surface-candidate-subnet-api",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 102 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 2,
@@ -16614,6 +15772,418 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-102-surface-candidate-subnet-api",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 5 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "data-artifact",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Hone",
+      "netuid": 5,
+      "priority_score": 96,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-5-website-common-openapi-json",
+        "sn-5-website-common-swagger",
+        "sn-5-website-common-swagger-json",
+        "sn-5-website-common-api",
+        "sn-5-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-5-website-common-openapi-json",
+        "sn-5-website-common-swagger",
+        "sn-5-website-common-swagger-json",
+        "sn-5-website-common-api",
+        "sn-5-website-common-health"
+      ],
+      "slug": "sn-5",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/5",
+        "https://backprop.finance/dtao/subnets/5-hone",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-5-surface-candidate-data-artifact",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 5 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 3,
+        "classifications": {
+          "dead": 3
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 3,
+        "sample_candidate_ids": [
+          "sn-5-website-common-openapi-json",
+          "sn-5-website-common-swagger",
+          "sn-5-website-common-swagger-json"
+        ],
+        "stale_or_failed_count": 3,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "openapi",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Hone",
+      "netuid": 5,
+      "priority_score": 96,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-5-website-common-openapi-json",
+        "sn-5-website-common-swagger",
+        "sn-5-website-common-swagger-json",
+        "sn-5-website-common-api",
+        "sn-5-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-5-website-common-openapi-json",
+        "sn-5-website-common-swagger",
+        "sn-5-website-common-swagger-json",
+        "sn-5-website-common-api",
+        "sn-5-website-common-health"
+      ],
+      "slug": "sn-5",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/5",
+        "https://backprop.finance/dtao/subnets/5-hone",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-5-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 5 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 2,
+        "classifications": {
+          "dead": 2
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 2,
+        "sample_candidate_ids": [
+          "sn-5-website-common-api",
+          "sn-5-website-common-health"
+        ],
+        "stale_or_failed_count": 2,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "subnet-api",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Hone",
+      "netuid": 5,
+      "priority_score": 96,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-5-website-common-openapi-json",
+        "sn-5-website-common-swagger",
+        "sn-5-website-common-swagger-json",
+        "sn-5-website-common-api",
+        "sn-5-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-5-website-common-openapi-json",
+        "sn-5-website-common-swagger",
+        "sn-5-website-common-swagger-json",
+        "sn-5-website-common-api",
+        "sn-5-website-common-health"
+      ],
+      "slug": "sn-5",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/5",
+        "https://backprop.finance/dtao/subnets/5-hone",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-5-surface-candidate-subnet-api",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 8 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "data-artifact",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Vanta",
+      "netuid": 8,
+      "priority_score": 95,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-8-website-common-openapi-json",
+        "sn-8-website-common-swagger",
+        "sn-8-website-common-swagger-json",
+        "sn-8-website-common-api",
+        "sn-8-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-8-website-common-openapi-json",
+        "sn-8-website-common-swagger",
+        "sn-8-website-common-swagger-json",
+        "sn-8-website-common-api",
+        "sn-8-website-common-health"
+      ],
+      "slug": "sn-8",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/8",
+        "https://backprop.finance/dtao/subnets/8-vanta",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-8-surface-candidate-data-artifact",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 8 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 3,
+        "classifications": {
+          "dead": 3
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 3,
+        "sample_candidate_ids": [
+          "sn-8-website-common-openapi-json",
+          "sn-8-website-common-swagger",
+          "sn-8-website-common-swagger-json"
+        ],
+        "stale_or_failed_count": 3,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "openapi",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Vanta",
+      "netuid": 8,
+      "priority_score": 95,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-8-website-common-openapi-json",
+        "sn-8-website-common-swagger",
+        "sn-8-website-common-swagger-json",
+        "sn-8-website-common-api",
+        "sn-8-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-8-website-common-openapi-json",
+        "sn-8-website-common-swagger",
+        "sn-8-website-common-swagger-json",
+        "sn-8-website-common-api",
+        "sn-8-website-common-health"
+      ],
+      "slug": "sn-8",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/8",
+        "https://backprop.finance/dtao/subnets/8-vanta",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-8-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 8 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 2,
+        "classifications": {
+          "dead": 2
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 2,
+        "sample_candidate_ids": [
+          "sn-8-website-common-api",
+          "sn-8-website-common-health"
+        ],
+        "stale_or_failed_count": 2,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "subnet-api",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Vanta",
+      "netuid": 8,
+      "priority_score": 95,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-8-website-common-openapi-json",
+        "sn-8-website-common-swagger",
+        "sn-8-website-common-swagger-json",
+        "sn-8-website-common-api",
+        "sn-8-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-8-website-common-openapi-json",
+        "sn-8-website-common-swagger",
+        "sn-8-website-common-swagger-json",
+        "sn-8-website-common-api",
+        "sn-8-website-common-health"
+      ],
+      "slug": "sn-8",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/8",
+        "https://backprop.finance/dtao/subnets/8-vanta",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-8-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {
@@ -17029,6 +16599,421 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-61-surface-candidate-subnet-api",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 10 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "data-artifact",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Swap",
+      "netuid": 10,
+      "priority_score": 91,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-10-website-common-openapi-json",
+        "sn-10-website-common-swagger",
+        "sn-10-website-common-swagger-json",
+        "sn-10-website-common-api",
+        "sn-10-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-10-website-common-openapi-json",
+        "sn-10-website-common-swagger",
+        "sn-10-website-common-swagger-json",
+        "sn-10-website-common-api",
+        "sn-10-website-common-health"
+      ],
+      "slug": "sn-10",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/10",
+        "https://backprop.finance/dtao/subnets/10-swap",
+        "https://docs.taofi.com/"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-10-surface-candidate-data-artifact",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 10 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 3,
+        "classifications": {
+          "dead": 3
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 3,
+        "sample_candidate_ids": [
+          "sn-10-website-common-openapi-json",
+          "sn-10-website-common-swagger",
+          "sn-10-website-common-swagger-json"
+        ],
+        "stale_or_failed_count": 3,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "openapi",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Swap",
+      "netuid": 10,
+      "priority_score": 91,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-10-website-common-openapi-json",
+        "sn-10-website-common-swagger",
+        "sn-10-website-common-swagger-json",
+        "sn-10-website-common-api",
+        "sn-10-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-10-website-common-openapi-json",
+        "sn-10-website-common-swagger",
+        "sn-10-website-common-swagger-json",
+        "sn-10-website-common-api",
+        "sn-10-website-common-health"
+      ],
+      "slug": "sn-10",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/10",
+        "https://backprop.finance/dtao/subnets/10-swap",
+        "https://docs.taofi.com/"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-10-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 10 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 2,
+        "classifications": {
+          "dead": 2
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 2,
+        "sample_candidate_ids": [
+          "sn-10-website-common-api",
+          "sn-10-website-common-health"
+        ],
+        "stale_or_failed_count": 2,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "subnet-api",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Swap",
+      "netuid": 10,
+      "priority_score": 91,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-10-website-common-openapi-json",
+        "sn-10-website-common-swagger",
+        "sn-10-website-common-swagger-json",
+        "sn-10-website-common-api",
+        "sn-10-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-10-website-common-openapi-json",
+        "sn-10-website-common-swagger",
+        "sn-10-website-common-swagger-json",
+        "sn-10-website-common-api",
+        "sn-10-website-common-health"
+      ],
+      "slug": "sn-10",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/10",
+        "https://backprop.finance/dtao/subnets/10-swap",
+        "https://docs.taofi.com/"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-10-surface-candidate-subnet-api",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 16 --kind data-artifact --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 0,
+        "classifications": {},
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "sample_candidate_ids": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public data-artifact evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "data-artifact",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "BitAds",
+      "netuid": 16,
+      "priority_score": 89,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [
+        "sn-16-website-common-api",
+        "sn-16-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-16-website-common-openapi-json",
+        "sn-16-website-common-swagger",
+        "sn-16-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-16-website-common-api",
+        "sn-16-website-common-health",
+        "sn-16-website-common-openapi-json",
+        "sn-16-website-common-swagger",
+        "sn-16-website-common-swagger-json"
+      ],
+      "slug": "sn-16",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/16",
+        "https://backprop.finance/dtao/subnets/16-bitads",
+        "https://bitads.ai/"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-16-surface-candidate-data-artifact",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 16 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 3,
+        "classifications": {
+          "content-mismatch": 3
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 3,
+        "sample_candidate_ids": [
+          "sn-16-website-common-openapi-json",
+          "sn-16-website-common-swagger",
+          "sn-16-website-common-swagger-json"
+        ],
+        "stale_or_failed_count": 3,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "openapi",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "BitAds",
+      "netuid": 16,
+      "priority_score": 89,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [
+        "sn-16-website-common-api",
+        "sn-16-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-16-website-common-openapi-json",
+        "sn-16-website-common-swagger",
+        "sn-16-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-16-website-common-api",
+        "sn-16-website-common-health",
+        "sn-16-website-common-openapi-json",
+        "sn-16-website-common-swagger",
+        "sn-16-website-common-swagger-json"
+      ],
+      "slug": "sn-16",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/16",
+        "https://backprop.finance/dtao/subnets/16-bitads",
+        "https://bitads.ai/"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-16-surface-candidate-openapi",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 16 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 2,
+        "classifications": {
+          "live": 2
+        },
+        "live_or_redirected_count": 2,
+        "reviewable_count": 2,
+        "sample_candidate_ids": [
+          "sn-16-website-common-api",
+          "sn-16-website-common-health"
+        ],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "kind": "subnet-api",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "BitAds",
+      "netuid": 16,
+      "priority_score": 89,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "sample_live_candidate_ids": [
+        "sn-16-website-common-api",
+        "sn-16-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-16-website-common-openapi-json",
+        "sn-16-website-common-swagger",
+        "sn-16-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-16-website-common-api",
+        "sn-16-website-common-health",
+        "sn-16-website-common-openapi-json",
+        "sn-16-website-common-swagger",
+        "sn-16-website-common-swagger-json"
+      ],
+      "slug": "sn-16",
+      "source_requirements": [
+        "The URL must be public-safe and read-only.",
+        "The source URL must document or link the interface.",
+        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/16",
+        "https://backprop.finance/dtao/subnets/16-bitads",
+        "https://bitads.ai/"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-16-surface-candidate-subnet-api",
       "target_type": "surface-candidate"
     },
     {

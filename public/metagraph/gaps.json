@@ -142,13 +142,16 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, network pages, and source repository are verified live.",
+          "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404.",
+          "No verified docs site yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -220,13 +223,16 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, dashboard, transparency page, tokenomics page, and source repository are verified live.",
+          "Common /docs, /api, /health, /openapi.json, and Swagger paths currently return 404.",
+          "No verified docs site yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -275,13 +281,15 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official TaoFi pool page, docs, and Swap source repository are verified live.",
+          "Common /api, /health, /openapi.json, and Swagger paths currently return 404.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -302,13 +310,15 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs, leaderboard, live, winners, benchmark pages, and source repository are verified live.",
+          "Common /api, /health, /openapi.json, and Swagger paths currently return 404.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -440,13 +450,15 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Official website, docs page, and source repository are verified live.",
+          "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths return marketing-site HTML rather than API/schema payloads.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",

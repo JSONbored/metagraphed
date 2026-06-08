@@ -1447,6 +1447,122 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-5-hone-network",
+      "kind": "dashboard",
+      "name": "Hone network",
+      "netuid": 5,
+      "notes": "Official Hone public network page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hone",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "subnet_name": "Hone",
+      "subnet_slug": "sn-5",
+      "url": "https://www.hone.training/network"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-5-hone-nodes",
+      "kind": "dashboard",
+      "name": "Hone nodes",
+      "netuid": 5,
+      "notes": "Official Hone public nodes page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hone",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "subnet_name": "Hone",
+      "subnet_slug": "sn-5",
+      "url": "https://www.hone.training/nodes"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-5-hone-projects",
+      "kind": "dashboard",
+      "name": "Hone projects",
+      "netuid": 5,
+      "notes": "Official Hone public projects page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hone",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "subnet_name": "Hone",
+      "subnet_slug": "sn-5",
+      "url": "https://www.hone.training/projects"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-5-hone-source",
+      "kind": "source-repo",
+      "name": "Hone source repository",
+      "netuid": 5,
+      "notes": "Official Hone source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hone",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/manifold-inc/hone"
+      ],
+      "subnet_name": "Hone",
+      "subnet_slug": "sn-5",
+      "url": "https://github.com/manifold-inc/hone"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-5-hone-website",
+      "kind": "website",
+      "name": "Hone website",
+      "netuid": 5,
+      "notes": "Official Hone website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hone",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.hone.training/",
+        "https://github.com/manifold-inc/hone"
+      ],
+      "subnet_name": "Hone",
+      "subnet_slug": "sn-5",
+      "url": "https://www.hone.training/"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-5-subnetradar-dashboard",
       "kind": "dashboard",
@@ -1508,70 +1624,6 @@
       "subnet_name": "Hone",
       "subnet_slug": "sn-5",
       "url": "https://taomarketcap.com/subnets/5"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-5-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Hone source repository",
-      "netuid": 5,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "third-party-index"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/5",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/5/subnet.json"
-      ],
-      "subnet_name": "Hone",
-      "subnet_slug": "sn-5",
-      "url": "https://github.com/manifold-inc/hone"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-5-taomarketcap-website",
-      "kind": "website",
-      "name": "Hone website",
-      "netuid": 5,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/5"
-      ],
-      "subnet_name": "Hone",
-      "subnet_slug": "sn-5",
-      "url": "https://www.hone.training/"
     },
     {
       "auth_required": false,
@@ -2542,70 +2594,6 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-8-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Vanta source repository",
-      "netuid": 8,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "third-party-index"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/8",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json"
-      ],
-      "subnet_name": "Vanta",
-      "subnet_slug": "sn-8",
-      "url": "https://github.com/taoshidev/vanta-network"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-8-taomarketcap-website",
-      "kind": "website",
-      "name": "Vanta website",
-      "netuid": 8,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/8"
-      ],
-      "subnet_name": "Vanta",
-      "subnet_slug": "sn-8",
-      "url": "https://www.vantanetwork.io/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-8-taopedia-article",
       "kind": "docs",
       "name": "Vanta Taopedia article",
@@ -2666,6 +2654,122 @@
       "subnet_name": "Vanta",
       "subnet_slug": "sn-8",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/8"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-8-vanta-dashboard",
+      "kind": "dashboard",
+      "name": "Vanta dashboard",
+      "netuid": 8,
+      "notes": "Official Vanta dashboard page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vanta",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.vantanetwork.io/"
+      ],
+      "subnet_name": "Vanta",
+      "subnet_slug": "sn-8",
+      "url": "https://www.vantanetwork.io/dashboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-8-vanta-source",
+      "kind": "source-repo",
+      "name": "Vanta Network source repository",
+      "netuid": 8,
+      "notes": "Official Vanta Network source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vanta",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/taoshidev/vanta-network"
+      ],
+      "subnet_name": "Vanta",
+      "subnet_slug": "sn-8",
+      "url": "https://github.com/taoshidev/vanta-network"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-8-vanta-tokenomics",
+      "kind": "docs",
+      "name": "Vanta tokenomics",
+      "netuid": 8,
+      "notes": "Official Vanta tokenomics information page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vanta",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.vantanetwork.io/"
+      ],
+      "subnet_name": "Vanta",
+      "subnet_slug": "sn-8",
+      "url": "https://www.vantanetwork.io/tokenomics"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-8-vanta-transparency",
+      "kind": "docs",
+      "name": "Vanta transparency",
+      "netuid": 8,
+      "notes": "Official Vanta transparency page for open-source scoring rules.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vanta",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.vantanetwork.io/"
+      ],
+      "subnet_name": "Vanta",
+      "subnet_slug": "sn-8",
+      "url": "https://www.vantanetwork.io/transparency"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-8-vanta-website",
+      "kind": "website",
+      "name": "Vanta Network website",
+      "netuid": 8,
+      "notes": "Official Vanta Network website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vanta",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.vantanetwork.io/",
+        "https://github.com/taoshidev/vanta-network"
+      ],
+      "subnet_name": "Vanta",
+      "subnet_slug": "sn-8",
+      "url": "https://www.vantanetwork.io/"
     },
     {
       "auth_required": false,
@@ -2994,6 +3098,76 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-10-swap-source",
+      "kind": "source-repo",
+      "name": "Swap source repository",
+      "netuid": 10,
+      "notes": "Official Swap subnet source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taofi",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/Swap-Subnet/swap-subnet"
+      ],
+      "subnet_name": "Swap",
+      "subnet_slug": "sn-10",
+      "url": "https://github.com/Swap-Subnet/swap-subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-10-taofi-docs",
+      "kind": "docs",
+      "name": "TaoFi docs",
+      "netuid": 10,
+      "notes": "Official TaoFi documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taofi",
+      "public_safe": true,
+      "source_urls": [
+        "https://docs.taofi.com/"
+      ],
+      "subnet_name": "Swap",
+      "subnet_slug": "sn-10",
+      "url": "https://docs.taofi.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-10-taofi-pool",
+      "kind": "website",
+      "name": "TaoFi pool",
+      "netuid": 10,
+      "notes": "Official TaoFi pool page for SN10 Swap.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taofi",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.taofi.com/pool",
+        "https://github.com/Swap-Subnet/swap-subnet"
+      ],
+      "subnet_name": "Swap",
+      "subnet_slug": "sn-10",
+      "url": "https://www.taofi.com/pool"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-10-taomarketcap-dashboard",
       "kind": "dashboard",
@@ -3023,70 +3197,6 @@
       "subnet_name": "Swap",
       "subnet_slug": "sn-10",
       "url": "https://taomarketcap.com/subnets/10"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-10-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Swap source repository",
-      "netuid": 10,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "third-party-index"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/10",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/10/subnet.json"
-      ],
-      "subnet_name": "Swap",
-      "subnet_slug": "sn-10",
-      "url": "https://github.com/Swap-Subnet/swap-subnet"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-10-taomarketcap-website",
-      "kind": "website",
-      "name": "Swap website",
-      "netuid": 10,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/10"
-      ],
-      "subnet_name": "Swap",
-      "subnet_slug": "sn-10",
-      "url": "https://www.taofi.com/pool"
     },
     {
       "auth_required": false,
@@ -3151,38 +3261,6 @@
       "subnet_name": "Swap",
       "subnet_slug": "sn-10",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/10"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-10-website-subdomain-docs-docs-taofi-com",
-      "kind": "docs",
-      "name": "Swap docs subdomain",
-      "netuid": 10,
-      "notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://www.taofi.com/pool"
-      ],
-      "subnet_name": "Swap",
-      "subnet_slug": "sn-10",
-      "url": "https://docs.taofi.com/"
     },
     {
       "auth_required": false,
@@ -3283,70 +3361,6 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-11-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "TrajectoryRL source repository",
-      "netuid": 11,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "third-party-index"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/11",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/11/subnet.json"
-      ],
-      "subnet_name": "TrajectoryRL",
-      "subnet_slug": "sn-11",
-      "url": "https://github.com/trajectoryRL/trajectoryRL"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-11-taomarketcap-website",
-      "kind": "website",
-      "name": "TrajectoryRL website",
-      "netuid": 11,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/11"
-      ],
-      "subnet_name": "TrajectoryRL",
-      "subnet_slug": "sn-11",
-      "url": "https://trajrl.com/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-11-taopedia-article",
       "kind": "docs",
       "name": "TrajectoryRL Taopedia article",
@@ -3410,35 +3424,165 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-11-website-common-docs",
+      "authority": "official",
+      "id": "sn-11-trajectoryrl-bench",
+      "kind": "dashboard",
+      "name": "TrajectoryRL benchmark",
+      "netuid": 11,
+      "notes": "Official TrajectoryRL benchmark page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "trajectoryrl",
+      "public_safe": true,
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "subnet_name": "TrajectoryRL",
+      "subnet_slug": "sn-11",
+      "url": "https://trajrl.com/bench"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-11-trajectoryrl-docs",
       "kind": "docs",
       "name": "TrajectoryRL docs",
       "netuid": 11,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "notes": "Official TrajectoryRL documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "trajectoryrl",
+      "public_safe": true,
+      "source_urls": [
+        "https://trajrl.com/docs"
+      ],
+      "subnet_name": "TrajectoryRL",
+      "subnet_slug": "sn-11",
+      "url": "https://trajrl.com/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-11-trajectoryrl-leaderboard",
+      "kind": "dashboard",
+      "name": "TrajectoryRL leaderboard",
+      "netuid": 11,
+      "notes": "Official TrajectoryRL leaderboard.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "trajectoryrl",
+      "public_safe": true,
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "subnet_name": "TrajectoryRL",
+      "subnet_slug": "sn-11",
+      "url": "https://trajrl.com/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-11-trajectoryrl-live",
+      "kind": "dashboard",
+      "name": "TrajectoryRL live",
+      "netuid": 11,
+      "notes": "Official TrajectoryRL live page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "trajectoryrl",
+      "public_safe": true,
+      "source_urls": [
+        "https://trajrl.com/"
+      ],
+      "subnet_name": "TrajectoryRL",
+      "subnet_slug": "sn-11",
+      "url": "https://trajrl.com/live"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-11-trajectoryrl-source",
+      "kind": "source-repo",
+      "name": "TrajectoryRL source repository",
+      "netuid": 11,
+      "notes": "Official TrajectoryRL source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "trajectoryrl",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
+      "source_urls": [
+        "https://github.com/trajectoryRL/trajectoryRL"
+      ],
+      "subnet_name": "TrajectoryRL",
+      "subnet_slug": "sn-11",
+      "url": "https://github.com/trajectoryRL/trajectoryRL"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-11-trajectoryrl-website",
+      "kind": "website",
+      "name": "TrajectoryRL website",
+      "netuid": 11,
+      "notes": "Official TrajectoryRL website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
       },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "provider": "trajectoryrl",
+      "public_safe": true,
+      "source_urls": [
+        "https://trajrl.com/",
+        "https://github.com/trajectoryRL/trajectoryRL"
+      ],
+      "subnet_name": "TrajectoryRL",
+      "subnet_slug": "sn-11",
+      "url": "https://trajrl.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-11-trajectoryrl-winners",
+      "kind": "dashboard",
+      "name": "TrajectoryRL winners",
+      "netuid": 11,
+      "notes": "Official TrajectoryRL winners page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "trajectoryrl",
+      "public_safe": true,
       "source_urls": [
         "https://trajrl.com/"
       ],
       "subnet_name": "TrajectoryRL",
       "subnet_slug": "sn-11",
-      "url": "https://trajrl.com/docs"
+      "url": "https://trajrl.com/winners"
     },
     {
       "auth_required": false,
@@ -4635,6 +4779,76 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "id": "sn-16-bitads-docs",
+      "kind": "docs",
+      "name": "BitAds docs",
+      "netuid": 16,
+      "notes": "Official BitAds documentation page.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitads",
+      "public_safe": true,
+      "source_urls": [
+        "https://bitads.ai/docs"
+      ],
+      "subnet_name": "BitAds",
+      "subnet_slug": "sn-16",
+      "url": "https://bitads.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-16-bitads-source",
+      "kind": "source-repo",
+      "name": "BitAds source repository",
+      "netuid": 16,
+      "notes": "Official BitAds source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitads",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/FirstTensorLabs/BitAds"
+      ],
+      "subnet_name": "BitAds",
+      "subnet_slug": "sn-16",
+      "url": "https://github.com/FirstTensorLabs/BitAds"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-16-bitads-website",
+      "kind": "website",
+      "name": "BitAds website",
+      "netuid": 16,
+      "notes": "Official BitAds website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitads",
+      "public_safe": true,
+      "source_urls": [
+        "https://bitads.ai/",
+        "https://github.com/FirstTensorLabs/BitAds"
+      ],
+      "subnet_name": "BitAds",
+      "subnet_slug": "sn-16",
+      "url": "https://bitads.ai/"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-16-subnetradar-dashboard",
       "kind": "dashboard",
@@ -4700,69 +4914,6 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-16-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "BitAds source repository",
-      "netuid": 16,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "third-party-index"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/16"
-      ],
-      "subnet_name": "BitAds",
-      "subnet_slug": "sn-16",
-      "url": "https://github.com/FirstTensorLabs/BitAds"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-16-taomarketcap-website",
-      "kind": "website",
-      "name": "BitAds website",
-      "netuid": 16,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/16"
-      ],
-      "subnet_name": "BitAds",
-      "subnet_slug": "sn-16",
-      "url": "https://bitads.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
       "id": "sn-16-taopedia-article",
       "kind": "docs",
       "name": "BitAds Taopedia article",
@@ -4823,38 +4974,6 @@
       "subnet_name": "BitAds",
       "subnet_slug": "sn-16",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/16"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-16-website-common-docs",
-      "kind": "docs",
-      "name": "BitAds docs",
-      "netuid": 16,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://bitads.ai/"
-      ],
-      "subnet_name": "BitAds",
-      "subnet_slug": "sn-16",
-      "url": "https://bitads.ai/docs"
     },
     {
       "auth_required": false,

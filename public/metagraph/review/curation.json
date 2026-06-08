@@ -1013,6 +1013,33 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
+        "sn-11-website-common-api",
+        "sn-11-website-common-health",
+        "sn-11-website-common-openapi-json",
+        "sn-11-website-common-swagger",
+        "sn-11-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "TrajectoryRL",
+      "netuid": 11,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 12,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-11",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
         "sn-118-website-common-api",
         "sn-118-website-common-health",
         "sn-118-website-common-openapi-json",
@@ -1118,6 +1145,60 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-4",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-5-website-common-api",
+        "sn-5-website-common-health",
+        "sn-5-website-common-openapi-json",
+        "sn-5-website-common-swagger",
+        "sn-5-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "Hone",
+      "netuid": 5,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 10,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-5",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-8-website-common-api",
+        "sn-8-website-common-health",
+        "sn-8-website-common-openapi-json",
+        "sn-8-website-common-swagger",
+        "sn-8-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "Vanta",
+      "netuid": 8,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 10,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "sn-8",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -1649,7 +1730,7 @@
         "openapi",
         "subnet-api"
       ],
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "name": "Swap",
       "netuid": 10,
       "operational_kinds": [],
@@ -1661,33 +1742,6 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-10",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-11-website-common-api",
-        "sn-11-website-common-health",
-        "sn-11-website-common-openapi-json",
-        "sn-11-website-common-swagger",
-        "sn-11-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "machine-verified",
-      "name": "TrajectoryRL",
-      "netuid": 11,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 8,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-11",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -1725,7 +1779,7 @@
         "openapi",
         "subnet-api"
       ],
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "name": "BitAds",
       "netuid": 16,
       "operational_kinds": [],
@@ -2332,60 +2386,6 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-124",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-5-website-common-api",
-        "sn-5-website-common-health",
-        "sn-5-website-common-openapi-json",
-        "sn-5-website-common-swagger",
-        "sn-5-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "machine-verified",
-      "name": "Hone",
-      "netuid": 5,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 7,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-5",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-8-website-common-api",
-        "sn-8-website-common-health",
-        "sn-8-website-common-openapi-json",
-        "sn-8-website-common-swagger",
-        "sn-8-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "machine-verified",
-      "name": "Vanta",
-      "netuid": 8,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 7,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-8",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -3097,42 +3097,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "Hone",
-      "netuid": 5,
-      "priority_score": 62,
-      "review_state": "machine-generated",
-      "slug": "sn-5",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 7,
-      "verified_candidate_count": 11
-    },
-    {
-      "candidate_count": 18,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "TrajectoryRL",
-      "netuid": 11,
-      "priority_score": 62,
-      "review_state": "machine-generated",
-      "slug": "sn-11",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 13
-    },
-    {
-      "candidate_count": 18,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "Perturb",
       "netuid": 26,
       "priority_score": 62,
@@ -3231,24 +3195,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 11,
       "verified_candidate_count": 15
-    },
-    {
-      "candidate_count": 17,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Vanta",
-      "netuid": 8,
-      "priority_score": 61,
-      "review_state": "machine-generated",
-      "slug": "sn-8",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 7,
-      "verified_candidate_count": 11
     },
     {
       "candidate_count": 17,
@@ -3474,24 +3420,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "Swap",
-      "netuid": 10,
-      "priority_score": 59,
-      "review_state": "machine-generated",
-      "slug": "sn-10",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 9
-    },
-    {
-      "candidate_count": 15,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "Almanac",
       "netuid": 41,
       "priority_score": 59,
@@ -3589,24 +3517,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 11,
       "verified_candidate_count": 15
-    },
-    {
-      "candidate_count": 14,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "BitAds",
-      "netuid": 16,
-      "priority_score": 58,
-      "review_state": "machine-generated",
-      "slug": "sn-16",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 11
     },
     {
       "candidate_count": 14,
@@ -4811,6 +4721,42 @@
       "verified_candidate_count": 7
     },
     {
+      "candidate_count": 18,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Hone",
+      "netuid": 5,
+      "priority_score": 17,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-5",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 10,
+      "verified_candidate_count": 11
+    },
+    {
+      "candidate_count": 18,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "TrajectoryRL",
+      "netuid": 11,
+      "priority_score": 17,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-11",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 12,
+      "verified_candidate_count": 13
+    },
+    {
       "candidate_count": 6,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -4865,6 +4811,24 @@
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 8,
       "verified_candidate_count": 14
+    },
+    {
+      "candidate_count": 17,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Vanta",
+      "netuid": 8,
+      "priority_score": 16,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-8",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 10,
+      "verified_candidate_count": 11
     },
     {
       "candidate_count": 9,
@@ -4933,6 +4897,42 @@
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 11,
       "verified_candidate_count": 13
+    },
+    {
+      "candidate_count": 15,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Swap",
+      "netuid": 10,
+      "priority_score": 14,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-10",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 8,
+      "verified_candidate_count": 9
+    },
+    {
+      "candidate_count": 14,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "BitAds",
+      "netuid": 16,
+      "priority_score": 13,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-16",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 8,
+      "verified_candidate_count": 11
     },
     {
       "candidate_count": 14,
@@ -5253,7 +5253,7 @@
       "website": 16
     },
     "maintainer_decision_count": 3,
-    "needs_maintainer_review_count": 48,
+    "needs_maintainer_review_count": 43,
     "subnet_count": 129
   }
 }

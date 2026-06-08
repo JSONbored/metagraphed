@@ -221,42 +221,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "Hone",
-      "netuid": 5,
-      "priority_score": 62,
-      "review_state": "machine-generated",
-      "slug": "sn-5",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 7,
-      "verified_candidate_count": 11
-    },
-    {
-      "candidate_count": 18,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "TrajectoryRL",
-      "netuid": 11,
-      "priority_score": 62,
-      "review_state": "machine-generated",
-      "slug": "sn-11",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 13
-    },
-    {
-      "candidate_count": 18,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "Perturb",
       "netuid": 26,
       "priority_score": 62,
@@ -355,24 +319,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 11,
       "verified_candidate_count": 15
-    },
-    {
-      "candidate_count": 17,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Vanta",
-      "netuid": 8,
-      "priority_score": 61,
-      "review_state": "machine-generated",
-      "slug": "sn-8",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 7,
-      "verified_candidate_count": 11
     },
     {
       "candidate_count": 17,
@@ -598,24 +544,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "Swap",
-      "netuid": 10,
-      "priority_score": 59,
-      "review_state": "machine-generated",
-      "slug": "sn-10",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 9
-    },
-    {
-      "candidate_count": 15,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "Almanac",
       "netuid": 41,
       "priority_score": 59,
@@ -713,24 +641,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 11,
       "verified_candidate_count": 15
-    },
-    {
-      "candidate_count": 14,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "BitAds",
-      "netuid": 16,
-      "priority_score": 58,
-      "review_state": "machine-generated",
-      "slug": "sn-16",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 11
     },
     {
       "candidate_count": 14,
@@ -1935,6 +1845,42 @@
       "verified_candidate_count": 7
     },
     {
+      "candidate_count": 18,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Hone",
+      "netuid": 5,
+      "priority_score": 17,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-5",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 10,
+      "verified_candidate_count": 11
+    },
+    {
+      "candidate_count": 18,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "TrajectoryRL",
+      "netuid": 11,
+      "priority_score": 17,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-11",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 12,
+      "verified_candidate_count": 13
+    },
+    {
       "candidate_count": 6,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -1989,6 +1935,24 @@
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 8,
       "verified_candidate_count": 14
+    },
+    {
+      "candidate_count": 17,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Vanta",
+      "netuid": 8,
+      "priority_score": 16,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-8",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 10,
+      "verified_candidate_count": 11
     },
     {
       "candidate_count": 9,
@@ -2057,6 +2021,42 @@
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 11,
       "verified_candidate_count": 13
+    },
+    {
+      "candidate_count": 15,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Swap",
+      "netuid": 10,
+      "priority_score": 14,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-10",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 8,
+      "verified_candidate_count": 9
+    },
+    {
+      "candidate_count": 14,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "BitAds",
+      "netuid": 16,
+      "priority_score": 13,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-16",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 8,
+      "verified_candidate_count": 11
     },
     {
       "candidate_count": 14,

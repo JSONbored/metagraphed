@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1330,
+  "document_count": 1345,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -91,6 +91,20 @@
       ],
       "type": "provider",
       "url": "https://backprop.finance"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:bitads",
+      "subtitle": "subnet-team",
+      "title": "BitAds",
+      "tokens": [
+        "bitads",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://bitads.ai/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -534,6 +548,20 @@
       ],
       "type": "provider",
       "url": "https://hippius.com/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:hone",
+      "subtitle": "subnet-team",
+      "title": "Hone",
+      "tokens": [
+        "hone",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://www.hone.training/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -1002,6 +1030,20 @@
     },
     {
       "artifact_path": "/metagraph/providers.json",
+      "id": "provider:taofi",
+      "subtitle": "subnet-team",
+      "title": "TaoFi",
+      "tokens": [
+        "official",
+        "subnet",
+        "taofi",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://www.taofi.com/pool"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
       "id": "provider:taolend",
       "subtitle": "subnet-team",
       "title": "TaoLend",
@@ -1147,6 +1189,20 @@
     },
     {
       "artifact_path": "/metagraph/providers.json",
+      "id": "provider:trajectoryrl",
+      "subtitle": "subnet-team",
+      "title": "TrajectoryRL",
+      "tokens": [
+        "official",
+        "subnet",
+        "team",
+        "trajectoryrl"
+      ],
+      "type": "provider",
+      "url": "https://trajrl.com/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
       "id": "provider:trishool",
       "subtitle": "subnet-team",
       "title": "Trishool",
@@ -1172,6 +1228,21 @@
       ],
       "type": "provider",
       "url": "https://ninja.arbos.life/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:vanta",
+      "subtitle": "subnet-team",
+      "title": "Vanta Network",
+      "tokens": [
+        "network",
+        "official",
+        "subnet",
+        "team",
+        "vanta"
+      ],
+      "type": "provider",
+      "url": "https://www.vantanetwork.io/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -1575,10 +1646,18 @@
       "title": "BitAds",
       "tokens": [
         "16",
+        "augmented",
         "baseline",
         "bitads",
         "curated",
-        "sn"
+        "docs",
+        "identity",
+        "official",
+        "repo",
+        "reviewed",
+        "sn",
+        "source",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/16"
@@ -2701,10 +2780,17 @@
       "title": "Hone",
       "tokens": [
         "5",
+        "augmented",
         "baseline",
         "curated",
         "hone",
-        "sn"
+        "identity",
+        "official",
+        "repo",
+        "reviewed",
+        "sn",
+        "source",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/5"
@@ -3693,10 +3779,18 @@
       "title": "Swap",
       "tokens": [
         "10",
+        "augmented",
         "baseline",
         "curated",
+        "docs",
+        "identity",
+        "official",
+        "repo",
+        "reviewed",
         "sn",
-        "swap"
+        "source",
+        "swap",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/10"
@@ -3904,10 +3998,18 @@
       "title": "TrajectoryRL",
       "tokens": [
         "11",
+        "augmented",
         "baseline",
         "curated",
+        "docs",
+        "identity",
+        "official",
+        "repo",
+        "reviewed",
         "sn",
-        "trajectoryrl"
+        "source",
+        "trajectoryrl",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/11"
@@ -3948,10 +4050,17 @@
       "title": "Vanta",
       "tokens": [
         "8",
+        "augmented",
         "baseline",
         "curated",
+        "identity",
+        "official",
+        "repo",
+        "reviewed",
         "sn",
-        "vanta"
+        "source",
+        "vanta",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/8"
@@ -6517,27 +6626,26 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-16-website-common-docs",
+      "id": "surface:sn-16-bitads-docs",
       "netuid": 16,
       "slug": "sn-16",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / bitads",
       "title": "BitAds docs",
       "tokens": [
         "16",
         "bitads",
         "docs",
-        "sn",
-        "taomarketcap"
+        "sn"
       ],
       "type": "surface",
       "url": "https://bitads.ai/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-16-taomarketcap-source-repo",
+      "id": "surface:sn-16-bitads-source",
       "netuid": 16,
       "slug": "sn-16",
-      "subtitle": "source-repo / taomarketcap",
+      "subtitle": "source-repo / bitads",
       "title": "BitAds source repository",
       "tokens": [
         "16",
@@ -6545,8 +6653,7 @@
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/FirstTensorLabs/BitAds"
@@ -6624,16 +6731,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-16-taomarketcap-website",
+      "id": "surface:sn-16-bitads-website",
       "netuid": 16,
       "slug": "sn-16",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / bitads",
       "title": "BitAds website",
       "tokens": [
         "16",
         "bitads",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -14401,10 +14507,61 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-5-taomarketcap-source-repo",
+      "id": "surface:sn-5-hone-network",
       "netuid": 5,
       "slug": "sn-5",
-      "subtitle": "source-repo / taomarketcap",
+      "subtitle": "dashboard / hone",
+      "title": "Hone network",
+      "tokens": [
+        "5",
+        "dashboard",
+        "hone",
+        "network",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://www.hone.training/network"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-5-hone-nodes",
+      "netuid": 5,
+      "slug": "sn-5",
+      "subtitle": "dashboard / hone",
+      "title": "Hone nodes",
+      "tokens": [
+        "5",
+        "dashboard",
+        "hone",
+        "nodes",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://www.hone.training/nodes"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-5-hone-projects",
+      "netuid": 5,
+      "slug": "sn-5",
+      "subtitle": "dashboard / hone",
+      "title": "Hone projects",
+      "tokens": [
+        "5",
+        "dashboard",
+        "hone",
+        "projects",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://www.hone.training/projects"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-5-hone-source",
+      "netuid": 5,
+      "slug": "sn-5",
+      "subtitle": "source-repo / hone",
       "title": "Hone source repository",
       "tokens": [
         "5",
@@ -14412,8 +14569,7 @@
         "repo",
         "repository",
         "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/manifold-inc/hone"
@@ -14491,16 +14647,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-5-taomarketcap-website",
+      "id": "surface:sn-5-hone-website",
       "netuid": 5,
       "slug": "sn-5",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / hone",
       "title": "Hone website",
       "tokens": [
         "5",
         "hone",
         "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -20967,28 +21122,10 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-10-website-subdomain-docs-docs-taofi-com",
+      "id": "surface:sn-10-swap-source",
       "netuid": 10,
       "slug": "sn-10",
-      "subtitle": "docs / taomarketcap",
-      "title": "Swap docs subdomain",
-      "tokens": [
-        "10",
-        "docs",
-        "sn",
-        "subdomain",
-        "swap",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://docs.taofi.com/"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-10-taomarketcap-source-repo",
-      "netuid": 10,
-      "slug": "sn-10",
-      "subtitle": "source-repo / taomarketcap",
+      "subtitle": "source-repo / taofi",
       "title": "Swap source repository",
       "tokens": [
         "10",
@@ -20997,7 +21134,7 @@
         "sn",
         "source",
         "swap",
-        "taomarketcap"
+        "taofi"
       ],
       "type": "surface",
       "url": "https://github.com/Swap-Subnet/swap-subnet"
@@ -21072,23 +21209,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/10"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-10-taomarketcap-website",
-      "netuid": 10,
-      "slug": "sn-10",
-      "subtitle": "website / taomarketcap",
-      "title": "Swap website",
-      "tokens": [
-        "10",
-        "sn",
-        "swap",
-        "taomarketcap",
-        "website"
-      ],
-      "type": "surface",
-      "url": "https://www.taofi.com/pool"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -21861,6 +21981,41 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-10-taofi-docs",
+      "netuid": 10,
+      "slug": "sn-10",
+      "subtitle": "docs / taofi",
+      "title": "TaoFi docs",
+      "tokens": [
+        "10",
+        "docs",
+        "sn",
+        "swap",
+        "taofi"
+      ],
+      "type": "surface",
+      "url": "https://docs.taofi.com/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-10-taofi-pool",
+      "netuid": 10,
+      "slug": "sn-10",
+      "subtitle": "website / taofi",
+      "title": "TaoFi pool",
+      "tokens": [
+        "10",
+        "pool",
+        "sn",
+        "swap",
+        "taofi",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://www.taofi.com/pool"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-116-taolend-website",
       "netuid": 116,
       "slug": "taolend",
@@ -22413,16 +22568,32 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-11-website-common-docs",
+      "id": "surface:sn-11-trajectoryrl-bench",
       "netuid": 11,
       "slug": "sn-11",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "dashboard / trajectoryrl",
+      "title": "TrajectoryRL benchmark",
+      "tokens": [
+        "11",
+        "benchmark",
+        "dashboard",
+        "sn",
+        "trajectoryrl"
+      ],
+      "type": "surface",
+      "url": "https://trajrl.com/bench"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-11-trajectoryrl-docs",
+      "netuid": 11,
+      "slug": "sn-11",
+      "subtitle": "docs / trajectoryrl",
       "title": "TrajectoryRL docs",
       "tokens": [
         "11",
         "docs",
         "sn",
-        "taomarketcap",
         "trajectoryrl"
       ],
       "type": "surface",
@@ -22430,10 +22601,44 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-11-taomarketcap-source-repo",
+      "id": "surface:sn-11-trajectoryrl-leaderboard",
       "netuid": 11,
       "slug": "sn-11",
-      "subtitle": "source-repo / taomarketcap",
+      "subtitle": "dashboard / trajectoryrl",
+      "title": "TrajectoryRL leaderboard",
+      "tokens": [
+        "11",
+        "dashboard",
+        "leaderboard",
+        "sn",
+        "trajectoryrl"
+      ],
+      "type": "surface",
+      "url": "https://trajrl.com/leaderboard"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-11-trajectoryrl-live",
+      "netuid": 11,
+      "slug": "sn-11",
+      "subtitle": "dashboard / trajectoryrl",
+      "title": "TrajectoryRL live",
+      "tokens": [
+        "11",
+        "dashboard",
+        "live",
+        "sn",
+        "trajectoryrl"
+      ],
+      "type": "surface",
+      "url": "https://trajrl.com/live"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-11-trajectoryrl-source",
+      "netuid": 11,
+      "slug": "sn-11",
+      "subtitle": "source-repo / trajectoryrl",
       "title": "TrajectoryRL source repository",
       "tokens": [
         "11",
@@ -22441,7 +22646,6 @@
         "repository",
         "sn",
         "source",
-        "taomarketcap",
         "trajectoryrl"
       ],
       "type": "surface",
@@ -22520,20 +22724,36 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-11-taomarketcap-website",
+      "id": "surface:sn-11-trajectoryrl-website",
       "netuid": 11,
       "slug": "sn-11",
-      "subtitle": "website / taomarketcap",
+      "subtitle": "website / trajectoryrl",
       "title": "TrajectoryRL website",
       "tokens": [
         "11",
         "sn",
-        "taomarketcap",
         "trajectoryrl",
         "website"
       ],
       "type": "surface",
       "url": "https://trajrl.com/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-11-trajectoryrl-winners",
+      "netuid": 11,
+      "slug": "sn-11",
+      "subtitle": "dashboard / trajectoryrl",
+      "title": "TrajectoryRL winners",
+      "tokens": [
+        "11",
+        "dashboard",
+        "sn",
+        "trajectoryrl",
+        "winners"
+      ],
+      "type": "surface",
+      "url": "https://trajrl.com/winners"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -22773,22 +22993,55 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-8-taomarketcap-source-repo",
+      "id": "surface:sn-8-vanta-dashboard",
       "netuid": 8,
       "slug": "sn-8",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "Vanta source repository",
+      "subtitle": "dashboard / vanta",
+      "title": "Vanta dashboard",
       "tokens": [
         "8",
+        "dashboard",
+        "sn",
+        "vanta"
+      ],
+      "type": "surface",
+      "url": "https://www.vantanetwork.io/dashboard"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-8-vanta-source",
+      "netuid": 8,
+      "slug": "sn-8",
+      "subtitle": "source-repo / vanta",
+      "title": "Vanta Network source repository",
+      "tokens": [
+        "8",
+        "network",
         "repo",
         "repository",
         "sn",
         "source",
-        "taomarketcap",
         "vanta"
       ],
       "type": "surface",
       "url": "https://github.com/taoshidev/vanta-network"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-8-vanta-website",
+      "netuid": 8,
+      "slug": "sn-8",
+      "subtitle": "website / vanta",
+      "title": "Vanta Network website",
+      "tokens": [
+        "8",
+        "network",
+        "sn",
+        "vanta",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://www.vantanetwork.io/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -22863,20 +23116,37 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-8-taomarketcap-website",
+      "id": "surface:sn-8-vanta-tokenomics",
       "netuid": 8,
       "slug": "sn-8",
-      "subtitle": "website / taomarketcap",
-      "title": "Vanta website",
+      "subtitle": "docs / vanta",
+      "title": "Vanta tokenomics",
       "tokens": [
         "8",
+        "docs",
         "sn",
-        "taomarketcap",
-        "vanta",
-        "website"
+        "tokenomics",
+        "vanta"
       ],
       "type": "surface",
-      "url": "https://www.vantanetwork.io/"
+      "url": "https://www.vantanetwork.io/tokenomics"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-8-vanta-transparency",
+      "netuid": 8,
+      "slug": "sn-8",
+      "subtitle": "docs / vanta",
+      "title": "Vanta transparency",
+      "tokens": [
+        "8",
+        "docs",
+        "sn",
+        "transparency",
+        "vanta"
+      ],
+      "type": "surface",
+      "url": "https://www.vantanetwork.io/transparency"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

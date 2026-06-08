@@ -53,6 +53,18 @@
     },
     {
       "authority": "official",
+      "docs_url": "https://bitads.ai/docs",
+      "github_url": "https://github.com/FirstTensorLabs/BitAds",
+      "id": "bitads",
+      "kind": "subnet-team",
+      "name": "BitAds",
+      "notes": "Common API/OpenAPI probe paths currently return website HTML rather than machine-readable API/schema responses, so they are not promoted.",
+      "public_notes": "Provider profile for BitAds / SN16. Public surfaces include the BitAds website, docs page, and source repository.",
+      "schema_version": 1,
+      "website_url": "https://bitads.ai/"
+    },
+    {
+      "authority": "official",
       "docs_url": "https://docs.bitmind.ai/",
       "github_url": "https://github.com/BitMind-AI",
       "id": "bitmind",
@@ -379,6 +391,17 @@
       "notes": "Provider entry for Hippius SN75 website, docs, blockchain API docs, validator repository, and storage miner repository.",
       "schema_version": 1,
       "website_url": "https://hippius.com/"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/manifold-inc/hone",
+      "id": "hone",
+      "kind": "subnet-team",
+      "name": "Hone",
+      "notes": "No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact has been verified yet.",
+      "public_notes": "Provider profile for Hone / SN5. Public surfaces include the Hone website, network pages, and source repository.",
+      "schema_version": 1,
+      "website_url": "https://www.hone.training/"
     },
     {
       "authority": "official",
@@ -711,6 +734,18 @@
       "website_url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
     },
     {
+      "authority": "official",
+      "docs_url": "https://docs.taofi.com/",
+      "github_url": "https://github.com/Swap-Subnet/swap-subnet",
+      "id": "taofi",
+      "kind": "subnet-team",
+      "name": "TaoFi",
+      "notes": "No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact has been verified yet.",
+      "public_notes": "Provider profile for Swap / SN10 through TaoFi. Public surfaces include the TaoFi pool page, docs, and source repository.",
+      "schema_version": 1,
+      "website_url": "https://www.taofi.com/pool"
+    },
+    {
       "authority": "provider-claimed",
       "id": "taolend",
       "kind": "subnet-team",
@@ -816,6 +851,18 @@
     },
     {
       "authority": "official",
+      "docs_url": "https://trajrl.com/docs",
+      "github_url": "https://github.com/trajectoryRL/trajectoryRL",
+      "id": "trajectoryrl",
+      "kind": "subnet-team",
+      "name": "TrajectoryRL",
+      "notes": "No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact has been verified yet.",
+      "public_notes": "Provider profile for TrajectoryRL / SN11. Public surfaces include the TrajectoryRL website, docs, leaderboard, live, winners, benchmark pages, and source repository.",
+      "schema_version": 1,
+      "website_url": "https://trajrl.com/"
+    },
+    {
+      "authority": "official",
       "github_url": "https://github.com/TrishoolAI/trishool-phase2",
       "id": "trishool",
       "kind": "subnet-team",
@@ -834,6 +881,17 @@
       "notes": "Provider entry for Unarbos Ninja SN66 website, source repositories, public health surface, and Swagger UI.",
       "schema_version": 1,
       "website_url": "https://ninja.arbos.life/"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/taoshidev/vanta-network",
+      "id": "vanta",
+      "kind": "subnet-team",
+      "name": "Vanta Network",
+      "notes": "No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact has been verified yet.",
+      "public_notes": "Provider profile for Vanta Network / SN8. Public surfaces include the Vanta website, dashboard, transparency page, tokenomics page, and source repository.",
+      "schema_version": 1,
+      "website_url": "https://www.vantanetwork.io/"
     },
     {
       "authority": "provider-claimed",
