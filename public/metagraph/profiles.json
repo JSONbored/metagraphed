@@ -651,10 +651,10 @@
       "completeness_score": 97,
       "confidence": "high",
       "curation_level": "adapter-backed",
-      "endpoint_count": 23,
+      "endpoint_count": 22,
       "interface_count": 7,
       "missing_critical_count": 1,
-      "monitored_endpoint_count": 22,
+      "monitored_endpoint_count": 21,
       "name": "Allways",
       "native_name": "Allways",
       "native_name_quality": "chain",
@@ -711,7 +711,7 @@
         "subnet-api",
         "website"
       ],
-      "surface_count": 23,
+      "surface_count": 22,
       "symbol": "η",
       "team": null
     },
@@ -1421,41 +1421,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 9,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 9,
+      "endpoint_count": 8,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 8,
       "name": "BitAds",
       "native_name": "BitAds",
       "native_name_quality": "chain",
       "netuid": 16,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-16-website-common-swagger",
-        "kind": "openapi",
-        "name": "BitAds Swagger UI",
+        "id": "sn-16-taomarketcap-website",
+        "kind": "website",
+        "name": "BitAds website",
         "provider": "taomarketcap",
-        "url": "https://bitads.ai/swagger"
+        "url": "https://bitads.ai/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/16-bitads",
@@ -1463,7 +1463,7 @@
         "source_repo": "https://github.com/FirstTensorLabs/BitAds",
         "website_url": "https://bitads.ai/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "BitAds",
       "provenance": {
         "curation_level": "machine-verified",
@@ -1488,11 +1488,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 8,
       "symbol": "π",
       "team": null
     },
@@ -1957,10 +1956,10 @@
       "completeness_score": 85,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 16,
+      "endpoint_count": 15,
       "interface_count": 6,
       "missing_critical_count": 2,
-      "monitored_endpoint_count": 15,
+      "monitored_endpoint_count": 14,
       "name": "Desearch",
       "native_name": "Desearch",
       "native_name_quality": "chain",
@@ -2018,7 +2017,7 @@
         "subnet-api",
         "website"
       ],
-      "surface_count": 16,
+      "surface_count": 15,
       "symbol": "χ",
       "team": null
     },
@@ -3353,60 +3352,62 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-source-repo",
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 5,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
-        "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "missing_required": [
+          "source-repo"
+        ],
+        "profile_level": "directory-only",
+        "score": 35
       },
-      "completeness_score": 65,
+      "completeness_score": 35,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 9,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 9,
+      "endpoint_count": 7,
+      "interface_count": 3,
+      "missing_critical_count": 5,
+      "monitored_endpoint_count": 7,
       "name": "colosseum",
       "native_name": "colosseum",
       "native_name_quality": "chain",
       "netuid": 38,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-38-website-common-swagger",
-        "kind": "openapi",
-        "name": "colosseum Swagger UI",
+        "id": "sn-38-taomarketcap-website",
+        "kind": "website",
+        "name": "colosseum website",
         "provider": "taomarketcap",
-        "url": "https://www.taocolosseum.com/swagger"
+        "url": "https://www.taocolosseum.com/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/38-colosseum",
         "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx",
-        "source_repo": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
+        "source_repo": null,
         "website_url": "https://www.taocolosseum.com/"
       },
-      "profile_level": "operational",
+      "profile_level": "directory-only",
       "project_name": "colosseum",
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 7,
+        "interface_source_count": 6,
         "review_state": "machine-generated",
         "reviewed_at": null,
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/38",
           "https://backprop.finance/dtao/subnets/38-colosseum",
-          "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json",
           "https://subnetradar.com/subnet/38",
@@ -3420,11 +3421,9 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
-        "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 7,
       "symbol": "ם",
       "team": null
     },
@@ -3613,41 +3612,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 9,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 9,
+      "endpoint_count": 8,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 8,
       "name": "Almanac",
       "native_name": "Almanac",
       "native_name_quality": "chain",
       "netuid": 41,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-41-website-common-swagger",
-        "kind": "openapi",
-        "name": "Almanac Swagger UI",
+        "id": "sn-41-taomarketcap-website",
+        "kind": "website",
+        "name": "Almanac website",
         "provider": "taomarketcap",
-        "url": "https://almanac.market/swagger"
+        "url": "https://almanac.market/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/41-almanac",
@@ -3655,7 +3654,7 @@
         "source_repo": "https://github.com/sportstensor/sn41",
         "website_url": "https://almanac.market/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "Almanac",
       "provenance": {
         "curation_level": "machine-verified",
@@ -3680,11 +3679,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 8,
       "symbol": "נ",
       "team": null
     },
@@ -4407,41 +4405,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 9,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 9,
+      "endpoint_count": 8,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 8,
       "name": "Synth",
       "native_name": "Synth",
       "native_name_quality": "chain",
       "netuid": 50,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-50-website-common-swagger",
-        "kind": "openapi",
-        "name": "Synth Swagger UI",
+        "id": "sn-50-taomarketcap-website",
+        "kind": "website",
+        "name": "Synth website",
         "provider": "taomarketcap",
-        "url": "https://synthdata.co/swagger"
+        "url": "https://synthdata.co/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/50-synth",
@@ -4449,7 +4447,7 @@
         "source_repo": "https://github.com/mode-network/synth-subnet",
         "website_url": "https://synthdata.co/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "Synth",
       "provenance": {
         "curation_level": "machine-verified",
@@ -4474,11 +4472,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 8,
       "symbol": "ש",
       "team": null
     },
@@ -4922,40 +4919,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse"
         ],
-        "missing_critical_count": 2,
+        "missing_critical_count": 3,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse"
         ],
         "missing_required": [],
         "profile_level": "operational",
-        "score": 73
+        "score": 58
       },
-      "completeness_score": 73,
+      "completeness_score": 58,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 11,
-      "interface_count": 6,
-      "missing_critical_count": 2,
-      "monitored_endpoint_count": 11,
+      "endpoint_count": 10,
+      "interface_count": 5,
+      "missing_critical_count": 3,
+      "monitored_endpoint_count": 10,
       "name": "Gradients",
       "native_name": "Gradients",
       "native_name_quality": "chain",
       "netuid": 56,
-      "operational_interface_count": 2,
+      "operational_interface_count": 1,
       "operational_interface_kinds": [
-        "data-artifact",
-        "openapi"
+        "data-artifact"
       ],
       "primary_app_surface": {
-        "id": "sn-56-website-common-swagger",
-        "kind": "openapi",
-        "name": "Gradients Swagger UI",
+        "id": "sn-56-website-link-www-gradients-io-data-artifact-9",
+        "kind": "data-artifact",
+        "name": "Gradients data artifact",
         "provider": "taomarketcap",
-        "url": "https://www.gradients.io/swagger"
+        "url": "https://www.gradients.io/app/my-models"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/56-gradients",
@@ -4989,11 +4987,10 @@
         "dashboard",
         "data-artifact",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 11,
+      "surface_count": 10,
       "symbol": "ج",
       "team": null
     },
@@ -5276,41 +5273,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 11,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 11,
+      "endpoint_count": 10,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 10,
       "name": "Bitsec.ai",
       "native_name": "Bitsec.ai",
       "native_name_quality": "chain",
       "netuid": 60,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-60-website-common-swagger",
-        "kind": "openapi",
-        "name": "Bitsec.ai Swagger UI",
+        "id": "sn-60-taomarketcap-website",
+        "kind": "website",
+        "name": "Bitsec.ai website",
         "provider": "taomarketcap",
-        "url": "https://bitsec.ai/swagger"
+        "url": "https://bitsec.ai/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/60-bitsec-ai",
@@ -5318,7 +5315,7 @@
         "source_repo": "https://github.com/Bitsec-AI/sandbox",
         "website_url": "https://bitsec.ai/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "Bitsec.ai",
       "provenance": {
         "curation_level": "machine-verified",
@@ -5345,11 +5342,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 11,
+      "surface_count": 10,
       "symbol": "ذ",
       "team": null
     },
@@ -5723,41 +5719,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 10,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 10,
+      "endpoint_count": 9,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 9,
       "name": "TAO Private Network",
       "native_name": "TAO Private Network",
       "native_name_quality": "chain",
       "netuid": 65,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-65-website-common-swagger",
-        "kind": "openapi",
-        "name": "TAO Private Network Swagger UI",
+        "id": "sn-65-taomarketcap-website",
+        "kind": "website",
+        "name": "TAO Private Network website",
         "provider": "taomarketcap",
-        "url": "https://tpn.taofu.xyz/swagger"
+        "url": "https://tpn.taofu.xyz/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/65-tao-private-network",
@@ -5765,7 +5761,7 @@
         "source_repo": "https://github.com/taofu-labs/tpn-subnet",
         "website_url": "https://tpn.taofu.xyz/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "TAO Private Network",
       "provenance": {
         "curation_level": "machine-verified",
@@ -5790,11 +5786,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 10,
+      "surface_count": 9,
       "symbol": "ص",
       "team": null
     },
@@ -5814,32 +5809,33 @@
       "completeness": {
         "confidence": "high",
         "gap_reasons": [
+          "missing-openapi",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 2,
+        "missing_critical_count": 3,
         "missing_operational": [
+          "openapi",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
         "profile_level": "operational",
-        "score": 85
+        "score": 70
       },
-      "completeness_score": 85,
+      "completeness_score": 70,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 13,
-      "interface_count": 6,
-      "missing_critical_count": 2,
-      "monitored_endpoint_count": 13,
+      "endpoint_count": 12,
+      "interface_count": 5,
+      "missing_critical_count": 3,
+      "monitored_endpoint_count": 12,
       "name": "ninja",
       "native_name": "ninja",
       "native_name_quality": "chain",
       "netuid": 66,
-      "operational_interface_count": 2,
+      "operational_interface_count": 1,
       "operational_interface_kinds": [
-        "openapi",
         "subnet-api"
       ],
       "primary_app_surface": {
@@ -5884,12 +5880,11 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "subnet-api",
         "website"
       ],
-      "surface_count": 13,
+      "surface_count": 12,
       "symbol": "ض",
       "team": null
     },
@@ -6235,41 +6230,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 9,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 9,
+      "endpoint_count": 8,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 8,
       "name": "Leadpoet",
       "native_name": "Leadpoet",
       "native_name_quality": "chain",
       "netuid": 71,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-71-website-common-swagger",
-        "kind": "openapi",
-        "name": "Leadpoet Swagger UI",
+        "id": "sn-71-taomarketcap-website",
+        "kind": "website",
+        "name": "Leadpoet website",
         "provider": "taomarketcap",
-        "url": "https://leadpoet.com/swagger"
+        "url": "https://leadpoet.com/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/71-leadpoet",
@@ -6277,7 +6272,7 @@
         "source_repo": "https://github.com/leadpoet/leadpoet",
         "website_url": "https://leadpoet.com/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "Leadpoet",
       "provenance": {
         "curation_level": "machine-verified",
@@ -6302,11 +6297,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 8,
       "symbol": "ㄴ",
       "team": null
     },
@@ -6518,10 +6512,10 @@
       "completeness_score": 83,
       "confidence": "high",
       "curation_level": "adapter-backed",
-      "endpoint_count": 17,
+      "endpoint_count": 16,
       "interface_count": 7,
       "missing_critical_count": 2,
-      "monitored_endpoint_count": 17,
+      "monitored_endpoint_count": 16,
       "name": "Gittensor",
       "native_name": "Gittensor",
       "native_name_quality": "chain",
@@ -6580,7 +6574,7 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 17,
+      "surface_count": 16,
       "symbol": "ل",
       "team": null
     },
@@ -6772,41 +6766,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 9,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 9,
+      "endpoint_count": 8,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 8,
       "name": "Liquidity",
       "native_name": "Liquidity",
       "native_name_quality": "chain",
       "netuid": 77,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-77-website-common-swagger",
-        "kind": "openapi",
-        "name": "Liquidity Swagger UI",
+        "id": "sn-77-taomarketcap-website",
+        "kind": "website",
+        "name": "Liquidity website",
         "provider": "taomarketcap",
-        "url": "https://sn77.xyz/swagger"
+        "url": "https://sn77.xyz/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/77-liquidity",
@@ -6814,7 +6808,7 @@
         "source_repo": "https://github.com/creativebuilds/sn77",
         "website_url": "https://sn77.xyz/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "Liquidity",
       "provenance": {
         "curation_level": "machine-verified",
@@ -6839,11 +6833,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 8,
       "symbol": "ه",
       "team": null
     },
@@ -6855,41 +6848,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 11,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 11,
+      "endpoint_count": 10,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 10,
       "name": "Vocence",
       "native_name": "Vocence",
       "native_name_quality": "chain",
       "netuid": 78,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-78-website-common-swagger",
-        "kind": "openapi",
-        "name": "Vocence Swagger UI",
+        "id": "sn-78-taomarketcap-website",
+        "kind": "website",
+        "name": "Vocence website",
         "provider": "taomarketcap",
-        "url": "https://www.vocence.ai/swagger"
+        "url": "https://www.vocence.ai/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/78-vocence",
@@ -6897,7 +6890,7 @@
         "source_repo": "https://github.com/vocence-78/vocence",
         "website_url": "https://www.vocence.ai/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "Vocence",
       "provenance": {
         "curation_level": "machine-verified",
@@ -6922,11 +6915,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 11,
+      "surface_count": 10,
       "symbol": "و",
       "team": null
     },
@@ -7028,41 +7020,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 10,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 10,
+      "endpoint_count": 9,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 9,
       "name": "dogelayer",
       "native_name": "dogelayer",
       "native_name_quality": "chain",
       "netuid": 80,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-80-website-common-swagger",
-        "kind": "openapi",
-        "name": "dogelayer Swagger UI",
+        "id": "sn-80-taomarketcap-website",
+        "kind": "website",
+        "name": "dogelayer website",
         "provider": "taomarketcap",
-        "url": "https://dogelayer.ai/swagger"
+        "url": "https://dogelayer.ai/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/80-dogelayer",
@@ -7070,7 +7062,7 @@
         "source_repo": "https://github.com/dogelayer-ai/dogelayer",
         "website_url": "https://dogelayer.ai/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "dogelayer",
       "provenance": {
         "curation_level": "machine-verified",
@@ -7095,11 +7087,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 10,
+      "surface_count": 9,
       "symbol": "ى",
       "team": null
     },
@@ -7287,41 +7278,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 9,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 9,
+      "endpoint_count": 8,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 8,
       "name": "CliqueAI",
       "native_name": "CliqueAI",
       "native_name_quality": "chain",
       "netuid": 83,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-83-website-common-swagger",
-        "kind": "openapi",
-        "name": "CliqueAI Swagger UI",
+        "id": "sn-83-taomarketcap-website",
+        "kind": "website",
+        "name": "CliqueAI website",
         "provider": "taomarketcap",
-        "url": "https://cliqueai.toptensor.ai/swagger"
+        "url": "https://cliqueai.toptensor.ai/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/83-cliqueai",
@@ -7329,7 +7320,7 @@
         "source_repo": "https://github.com/toptensor/CliqueAI",
         "website_url": "https://cliqueai.toptensor.ai/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "CliqueAI",
       "provenance": {
         "curation_level": "machine-verified",
@@ -7354,11 +7345,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 8,
       "symbol": "ᚦ",
       "team": null
     },
@@ -8168,41 +8158,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 9,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 9,
+      "endpoint_count": 8,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 8,
       "name": "Bitcast",
       "native_name": "Bitcast",
       "native_name_quality": "chain",
       "netuid": 93,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-93-website-common-swagger",
-        "kind": "openapi",
-        "name": "Bitcast Swagger UI",
+        "id": "sn-93-taomarketcap-website",
+        "kind": "website",
+        "name": "Bitcast website",
         "provider": "taomarketcap",
-        "url": "https://stats.bitcast.network/swagger"
+        "url": "https://stats.bitcast.network/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/93-bitcast",
@@ -8210,7 +8200,7 @@
         "source_repo": "https://github.com/bitcast-network/bitcast",
         "website_url": "https://stats.bitcast.network/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "Bitcast",
       "provenance": {
         "curation_level": "machine-verified",
@@ -8235,11 +8225,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 8,
       "symbol": "ᚃ",
       "team": null
     },
@@ -8334,12 +8323,14 @@
         "confidence": "medium",
         "gap_reasons": [
           "missing-source-repo",
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 4,
+        "missing_critical_count": 5,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -8347,30 +8338,28 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "operational",
-        "score": 50
+        "profile_level": "directory-only",
+        "score": 35
       },
-      "completeness_score": 50,
+      "completeness_score": 35,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 8,
-      "interface_count": 4,
-      "missing_critical_count": 4,
-      "monitored_endpoint_count": 8,
+      "endpoint_count": 7,
+      "interface_count": 3,
+      "missing_critical_count": 5,
+      "monitored_endpoint_count": 7,
       "name": "Actual",
       "native_name": "Actual",
       "native_name_quality": "chain",
       "netuid": 95,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-95-website-common-swagger",
-        "kind": "openapi",
-        "name": "Actual Swagger UI",
+        "id": "sn-95-taomarketcap-website",
+        "kind": "website",
+        "name": "Actual website",
         "provider": "taomarketcap",
-        "url": "https://actual.inc/swagger"
+        "url": "https://actual.inc/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/95-actual",
@@ -8378,7 +8367,7 @@
         "source_repo": null,
         "website_url": "https://actual.inc/"
       },
-      "profile_level": "operational",
+      "profile_level": "directory-only",
       "project_name": "Actual",
       "provenance": {
         "curation_level": "machine-verified",
@@ -8402,10 +8391,9 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "website"
       ],
-      "surface_count": 8,
+      "surface_count": 7,
       "symbol": "ᚅ",
       "team": null
     },
@@ -8441,10 +8429,10 @@
       "completeness_score": 85,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 13,
+      "endpoint_count": 12,
       "interface_count": 6,
       "missing_critical_count": 2,
-      "monitored_endpoint_count": 13,
+      "monitored_endpoint_count": 12,
       "name": "Verathos",
       "native_name": "Verathos",
       "native_name_quality": "chain",
@@ -8501,7 +8489,7 @@
         "subnet-api",
         "website"
       ],
-      "surface_count": 13,
+      "surface_count": 12,
       "symbol": "᚛",
       "team": null
     },
@@ -8686,41 +8674,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 11,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 11,
+      "endpoint_count": 10,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 10,
       "name": "Leoma",
       "native_name": "Leoma",
       "native_name_quality": "chain",
       "netuid": 99,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-99-website-common-swagger",
-        "kind": "openapi",
-        "name": "Leoma Swagger UI",
+        "id": "sn-99-taomarketcap-website",
+        "kind": "website",
+        "name": "Leoma website",
         "provider": "taomarketcap",
-        "url": "https://leoma.ai/swagger"
+        "url": "https://leoma.ai/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/99-leoma",
@@ -8728,7 +8716,7 @@
         "source_repo": "https://github.com/RendixNetwork/leoma",
         "website_url": "https://leoma.ai/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "Leoma",
       "provenance": {
         "curation_level": "machine-verified",
@@ -8755,11 +8743,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 11,
+      "surface_count": 10,
       "symbol": "გ",
       "team": null
     },
@@ -9199,41 +9186,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 9,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 9,
+      "endpoint_count": 8,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 8,
       "name": "Beam",
       "native_name": "Beam",
       "native_name_quality": "chain",
       "netuid": 105,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-105-website-common-swagger",
-        "kind": "openapi",
-        "name": "Beam Swagger UI",
+        "id": "sn-105-taomarketcap-website",
+        "kind": "website",
+        "name": "Beam website",
         "provider": "taomarketcap",
-        "url": "https://b1m.ai/swagger"
+        "url": "https://b1m.ai/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/105-beam",
@@ -9241,7 +9228,7 @@
         "source_repo": "https://github.com/orgs/Beam-Network/repositories",
         "website_url": "https://b1m.ai/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "Beam",
       "provenance": {
         "curation_level": "machine-verified",
@@ -9266,11 +9253,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 8,
       "symbol": "Գ",
       "team": null
     },
@@ -10830,41 +10816,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 9,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 9,
+      "endpoint_count": 8,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 8,
       "name": "Swarm",
       "native_name": "Swarm",
       "native_name_quality": "chain",
       "netuid": 124,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-124-website-common-swagger",
-        "kind": "openapi",
-        "name": "Swarm Swagger UI",
+        "id": "sn-124-taomarketcap-website",
+        "kind": "website",
+        "name": "Swarm website",
         "provider": "taomarketcap",
-        "url": "https://www.swarm124.com/swagger"
+        "url": "https://www.swarm124.com/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/124-swarm",
@@ -10872,7 +10858,7 @@
         "source_repo": "https://github.com/swarm-subnet/swarm",
         "website_url": "https://www.swarm124.com/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "Swarm",
       "provenance": {
         "curation_level": "machine-verified",
@@ -10898,11 +10884,10 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 8,
       "symbol": "𑀁",
       "team": null
     },
@@ -11166,41 +11151,41 @@
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
+          "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 3,
+        "missing_critical_count": 4,
         "missing_operational": [
+          "openapi",
           "subnet-api",
           "sse",
           "data-artifact"
         ],
         "missing_required": [],
-        "profile_level": "operational",
-        "score": 65
+        "profile_level": "identity-complete",
+        "score": 50
       },
-      "completeness_score": 65,
+      "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 10,
-      "interface_count": 5,
-      "missing_critical_count": 3,
-      "monitored_endpoint_count": 10,
+      "endpoint_count": 9,
+      "interface_count": 4,
+      "missing_critical_count": 4,
+      "monitored_endpoint_count": 9,
       "name": "ByteLeap",
       "native_name": "ByteLeap",
       "native_name_quality": "chain",
       "netuid": 128,
-      "operational_interface_count": 1,
-      "operational_interface_kinds": [
-        "openapi"
-      ],
+      "operational_interface_count": 0,
+      "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-128-website-common-swagger",
-        "kind": "openapi",
-        "name": "ByteLeap Swagger UI",
+        "id": "sn-128-taomarketcap-website",
+        "kind": "website",
+        "name": "ByteLeap website",
         "provider": "taomarketcap",
-        "url": "https://byteleap.ai/swagger"
+        "url": "https://byteleap.ai/"
       },
       "primary_links": {
         "dashboard_url": "https://backprop.finance/dtao/subnets/128-byteleap",
@@ -11208,7 +11193,7 @@
         "source_repo": "https://github.com/byteleapai/byteleap-Miner",
         "website_url": "https://byteleap.ai/"
       },
-      "profile_level": "operational",
+      "profile_level": "identity-complete",
       "project_name": "ByteLeap",
       "provenance": {
         "curation_level": "machine-verified",
@@ -11233,18 +11218,17 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs",
-        "openapi",
         "source-repo",
         "website"
       ],
-      "surface_count": 10,
+      "surface_count": 9,
       "symbol": "න",
       "team": null
     }
   ],
   "schema_version": 1,
   "summary": {
-    "average_completeness_score": 55,
+    "average_completeness_score": 52,
     "by_confidence": {
       "high": 74,
       "low": 6,
@@ -11252,9 +11236,9 @@
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "directory-only": 25,
-      "identity-complete": 60,
-      "operational": 42
+      "directory-only": 27,
+      "identity-complete": 75,
+      "operational": 25
     },
     "profile_count": 129
   }

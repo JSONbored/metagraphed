@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1337,
+  "document_count": 1313,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -4401,25 +4401,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-95-website-common-swagger",
-      "netuid": 95,
-      "slug": "sn-95",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Actual Swagger UI",
-      "tokens": [
-        "95",
-        "actual",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://actual.inc/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-95-taomarketcap-dashboard",
       "netuid": 95,
       "slug": "sn-95",
@@ -5292,23 +5273,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-7-website-common-swagger",
-      "netuid": 7,
-      "slug": "allways",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Allways Swagger UI",
-      "tokens": [
-        "allways",
-        "openapi",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://all-ways.io/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:community-sn-7-subnet-api-api-all-ways-io",
       "netuid": 7,
       "slug": "allways",
@@ -5455,25 +5419,6 @@
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/41"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-41-website-common-swagger",
-      "netuid": 41,
-      "slug": "sn-41",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Almanac Swagger UI",
-      "tokens": [
-        "41",
-        "almanac",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://almanac.market/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6341,25 +6286,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-105-website-common-swagger",
-      "netuid": 105,
-      "slug": "sn-105",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Beam Swagger UI",
-      "tokens": [
-        "105",
-        "beam",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://b1m.ai/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-105-taomarketcap-dashboard",
       "netuid": 105,
       "slug": "sn-105",
@@ -6502,25 +6428,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-16-website-common-swagger",
-      "netuid": 16,
-      "slug": "sn-16",
-      "subtitle": "openapi / taomarketcap",
-      "title": "BitAds Swagger UI",
-      "tokens": [
-        "16",
-        "bitads",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://bitads.ai/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-16-taomarketcap-dashboard",
       "netuid": 16,
       "slug": "sn-16",
@@ -6660,25 +6567,6 @@
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/93"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-93-website-common-swagger",
-      "netuid": 93,
-      "slug": "sn-93",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Bitcast Swagger UI",
-      "tokens": [
-        "93",
-        "bitcast",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://stats.bitcast.network/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7074,26 +6962,6 @@
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/60"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-60-website-common-swagger",
-      "netuid": 60,
-      "slug": "sn-60",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Bitsec.ai Swagger UI",
-      "tokens": [
-        "60",
-        "ai",
-        "bitsec",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://bitsec.ai/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7868,25 +7736,6 @@
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/128"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-128-website-common-swagger",
-      "netuid": 128,
-      "slug": "sn-128",
-      "subtitle": "openapi / taomarketcap",
-      "title": "ByteLeap Swagger UI",
-      "tokens": [
-        "128",
-        "byteleap",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://byteleap.ai/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8773,25 +8622,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-83-website-common-swagger",
-      "netuid": 83,
-      "slug": "sn-83",
-      "subtitle": "openapi / taomarketcap",
-      "title": "CliqueAI Swagger UI",
-      "tokens": [
-        "83",
-        "cliqueai",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://cliqueai.toptensor.ai/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-83-taomarketcap-dashboard",
       "netuid": 83,
       "slug": "sn-83",
@@ -9076,25 +8906,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-38-taomarketcap-source-repo",
-      "netuid": 38,
-      "slug": "sn-38",
-      "subtitle": "source-repo / taomarketcap",
-      "title": "colosseum source repository",
-      "tokens": [
-        "38",
-        "colosseum",
-        "repo",
-        "repository",
-        "sn",
-        "source",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-38-subnetradar-dashboard",
       "netuid": 38,
       "slug": "sn-38",
@@ -9109,25 +8920,6 @@
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/38"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-38-website-common-swagger",
-      "netuid": 38,
-      "slug": "sn-38",
-      "subtitle": "openapi / taomarketcap",
-      "title": "colosseum Swagger UI",
-      "tokens": [
-        "38",
-        "colosseum",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://www.taocolosseum.com/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10397,25 +10189,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-22-website-common-swagger",
-      "netuid": 22,
-      "slug": "sn-22",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Desearch Swagger UI",
-      "tokens": [
-        "22",
-        "desearch",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://desearch.ai/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-22-taomarketcap-dashboard",
       "netuid": 22,
       "slug": "sn-22",
@@ -10925,25 +10698,6 @@
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/80"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-80-website-common-swagger",
-      "netuid": 80,
-      "slug": "sn-80",
-      "subtitle": "openapi / taomarketcap",
-      "title": "dogelayer Swagger UI",
-      "tokens": [
-        "80",
-        "dogelayer",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://dogelayer.ai/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12703,23 +12457,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-74-website-common-swagger",
-      "netuid": 74,
-      "slug": "gittensor",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Gittensor Swagger UI",
-      "tokens": [
-        "gittensor",
-        "openapi",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://gittensor.io/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-74-taomarketcap-dashboard",
       "netuid": 74,
       "slug": "gittensor",
@@ -13096,25 +12833,6 @@
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/56"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-56-website-common-swagger",
-      "netuid": 56,
-      "slug": "sn-56",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Gradients Swagger UI",
-      "tokens": [
-        "56",
-        "gradients",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://www.gradients.io/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15161,25 +14879,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-71-website-common-swagger",
-      "netuid": 71,
-      "slug": "sn-71",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Leadpoet Swagger UI",
-      "tokens": [
-        "71",
-        "leadpoet",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://leadpoet.com/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-71-taomarketcap-dashboard",
       "netuid": 71,
       "slug": "sn-71",
@@ -15360,25 +15059,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-99-website-common-swagger",
-      "netuid": 99,
-      "slug": "sn-99",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Leoma Swagger UI",
-      "tokens": [
-        "99",
-        "leoma",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://leoma.ai/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-99-taomarketcap-dashboard",
       "netuid": 99,
       "slug": "sn-99",
@@ -15518,25 +15198,6 @@
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/77"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-77-website-common-swagger",
-      "netuid": 77,
-      "slug": "sn-77",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Liquidity Swagger UI",
-      "tokens": [
-        "77",
-        "liquidity",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://sn77.xyz/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -17325,25 +16986,6 @@
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/66"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-66-website-common-swagger",
-      "netuid": 66,
-      "slug": "sn-66",
-      "subtitle": "openapi / taomarketcap",
-      "title": "ninja Swagger UI",
-      "tokens": [
-        "66",
-        "ninja",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://ninja.arbos.life/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -21309,25 +20951,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-124-website-common-swagger",
-      "netuid": 124,
-      "slug": "sn-124",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Swarm Swagger UI",
-      "tokens": [
-        "124",
-        "openapi",
-        "sn",
-        "swagger",
-        "swarm",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://www.swarm124.com/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-124-taopedia-article",
       "netuid": 124,
       "slug": "sn-124",
@@ -21450,25 +21073,6 @@
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/50"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-50-website-common-swagger",
-      "netuid": 50,
-      "slug": "sn-50",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Synth Swagger UI",
-      "tokens": [
-        "50",
-        "openapi",
-        "sn",
-        "swagger",
-        "synth",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://synthdata.co/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -21929,27 +21533,6 @@
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/65"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-65-website-common-swagger",
-      "netuid": 65,
-      "slug": "sn-65",
-      "subtitle": "openapi / taomarketcap",
-      "title": "TAO Private Network Swagger UI",
-      "tokens": [
-        "65",
-        "network",
-        "openapi",
-        "private",
-        "sn",
-        "swagger",
-        "tao",
-        "taomarketcap",
-        "ui"
-      ],
-      "type": "surface",
-      "url": "https://tpn.taofu.xyz/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -23158,25 +22741,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-96-website-common-swagger",
-      "netuid": 96,
-      "slug": "sn-96",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Verathos Swagger UI",
-      "tokens": [
-        "96",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui",
-        "verathos"
-      ],
-      "type": "surface",
-      "url": "https://verathos.ai/swagger"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-96-taomarketcap-dashboard",
       "netuid": 96,
       "slug": "sn-96",
@@ -23480,25 +23044,6 @@
       ],
       "type": "surface",
       "url": "https://subnetradar.com/subnet/78"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-78-website-common-swagger",
-      "netuid": 78,
-      "slug": "sn-78",
-      "subtitle": "openapi / taomarketcap",
-      "title": "Vocence Swagger UI",
-      "tokens": [
-        "78",
-        "openapi",
-        "sn",
-        "swagger",
-        "taomarketcap",
-        "ui",
-        "vocence"
-      ],
-      "type": "surface",
-      "url": "https://www.vocence.ai/swagger"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

@@ -56,7 +56,7 @@
       "timestamp_field": "candidate_discovery_as_of"
     },
     {
-      "as_of": "2026-06-08T14:12:26.654Z",
+      "as_of": "2026-06-08T15:38:22.213Z",
       "id": "candidate-verification",
       "lane": "candidate-verification",
       "notes": "",
@@ -65,7 +65,7 @@
       "stale_after_hours": 24,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-08T14:12:26.654Z",
+      "timestamp": "2026-06-08T15:38:22.213Z",
       "timestamp_field": "verification_as_of"
     },
     {
@@ -95,7 +95,7 @@
       "timestamp_field": "schema_snapshot_as_of"
     },
     {
-      "as_of": "2026-06-08T15:09:23.443Z",
+      "as_of": "2026-06-08T15:43:17.492Z",
       "id": "surface-health",
       "lane": "health-probe",
       "notes": "Observed health is probe-derived.",
@@ -104,7 +104,7 @@
       "stale_after_hours": 6,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-08T15:09:23.443Z",
+      "timestamp": "2026-06-08T15:43:17.492Z",
       "timestamp_field": "health_probe_as_of"
     }
   ],
@@ -113,18 +113,18 @@
     "adapter_snapshot_as_of": "2026-06-07T21:52:49.513Z",
     "blocking_source_count": 5,
     "candidate_discovery_as_of": "2026-06-08T14:11:05.342Z",
-    "health_probe_as_of": "2026-06-08T15:09:23.443Z",
-    "health_surface_count": 1124,
+    "health_probe_as_of": "2026-06-08T15:43:17.492Z",
+    "health_surface_count": 1100,
     "missing_blocking_source_count": 0,
     "native_data_as_of": "2026-06-07T21:51:54Z",
     "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
-    "openapi_surface_count": 34,
+    "openapi_surface_count": 11,
     "publish_ready_without_age_check": true,
     "schema_snapshot_as_of": null,
     "stale_window_warnings": [
       "schema-drift has no observed timestamp; review before relying on this lane."
     ],
-    "verification_as_of": "2026-06-08T14:12:26.654Z",
+    "verification_as_of": "2026-06-08T15:38:22.213Z",
     "verification_generated_at": "1970-01-01T00:00:00.000Z",
     "warning_source_count": 3
   }

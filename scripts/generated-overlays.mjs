@@ -325,14 +325,7 @@ function isPromotable(candidate, verification) {
     return isApiContentType(verification.content_type);
   }
   if (candidate.kind === "openapi") {
-    const pathname = new URL(candidate.url).pathname.toLowerCase();
-    if (pathname.endsWith(".json")) {
-      return isJsonContentType(verification.content_type);
-    }
-    return (
-      isJsonContentType(verification.content_type) ||
-      isHtmlContentType(verification.content_type)
-    );
+    return isJsonContentType(verification.content_type);
   }
   return true;
 }
@@ -399,12 +392,6 @@ function isJsonContentType(contentType) {
     .includes("json");
 }
 
-function isHtmlContentType(contentType) {
-  return String(contentType || "")
-    .toLowerCase()
-    .includes("html");
-}
-
 function uniqueSurfaceLocator() {
   const seen = new Set();
   return (surface) => {
@@ -435,18 +422,8 @@ function promoteCandidate(candidate, verification) {
   };
 
   if (candidate.kind === "openapi") {
-    const pathname = new URL(candidate.url).pathname.toLowerCase();
-    if (
-      pathname.endsWith(".json") &&
-      isJsonContentType(verification.content_type)
-    ) {
-      surface.schema_url = candidate.url;
-      surface.schema_status = "machine-readable";
-    } else {
-      surface.schema_status = "ui-only";
-      surface.notes =
-        `${surface.notes || ""} Machine-readable OpenAPI schema has not been captured for this surface.`.trim();
-    }
+    surface.schema_url = candidate.url;
+    surface.schema_status = "machine-readable";
   }
 
   return surface;

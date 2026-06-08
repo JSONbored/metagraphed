@@ -446,8 +446,7 @@ function isContentMismatch(probe, candidate) {
     return false;
   }
   if (candidate.kind === "openapi") {
-    const pathname = new URL(candidate.url).pathname.toLowerCase();
-    return pathname.endsWith(".json") && !isJsonContentType(probe.content_type);
+    return !isJsonContentType(probe.content_type);
   }
   if (candidate.kind === "sse") {
     return !String(probe.content_type || "")

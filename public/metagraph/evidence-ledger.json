@@ -5281,17 +5281,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Beam Swagger UI is a public openapi surface for SN105.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://b1m.ai/",
-      "subject": "surface:sn-105-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-105.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "VoidAI Backprop Finance dashboard is a public dashboard surface for SN106.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7085,17 +7074,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Swarm Swagger UI is a public openapi surface for SN124.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.swarm124.com/",
-      "subject": "surface:sn-124-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-124.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "8 Ball Backprop Finance dashboard is a public dashboard surface for SN125.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7433,17 +7411,6 @@
       "source_type": "registry-observed",
       "source_url": "https://byteleap.ai/",
       "subject": "surface:sn-128-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-128.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ByteLeap Swagger UI is a public openapi surface for SN128.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://byteleap.ai/",
-      "subject": "surface:sn-128-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-128.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7895,17 +7862,6 @@
       "source_type": "registry-observed",
       "source_url": "https://bitads.ai/",
       "subject": "surface:sn-16-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-16.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds Swagger UI is a public openapi surface for SN16.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://bitads.ai/",
-      "subject": "surface:sn-16-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-16.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -8588,17 +8544,6 @@
       "source_type": "registry-observed",
       "source_url": "https://desearch.ai/",
       "subject": "surface:sn-22-website-common-openapi-json",
-      "support_summary": "Listed in curated overlay for sn-22.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Desearch Swagger UI is a public openapi surface for SN22.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://desearch.ai/",
-      "subject": "surface:sn-22-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-22.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10143,17 +10088,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "colosseum source repository is a public source-repo surface for SN38.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
-      "subject": "surface:sn-38-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-38.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "colosseum website is a public website surface for SN38.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10194,17 +10128,6 @@
       "source_type": "registry-observed",
       "source_url": "https://www.taocolosseum.com/",
       "subject": "surface:sn-38-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-38.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "colosseum Swagger UI is a public openapi surface for SN38.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.taocolosseum.com/",
-      "subject": "surface:sn-38-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-38.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10557,17 +10480,6 @@
       "source_type": "registry-observed",
       "source_url": "https://almanac.market/",
       "subject": "surface:sn-41-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-41.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Almanac Swagger UI is a public openapi surface for SN41.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://almanac.market/",
-      "subject": "surface:sn-41-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-41.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11496,17 +11408,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Synth Swagger UI is a public openapi surface for SN50.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://synthdata.co/",
-      "subject": "surface:sn-50-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-50.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "lium.io Backprop Finance dashboard is a public dashboard surface for SN51.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -12053,17 +11954,6 @@
       "source_type": "registry-observed",
       "source_url": "https://www.gradients.io/",
       "subject": "surface:sn-56-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-56.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Gradients Swagger UI is a public openapi surface for SN56.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.gradients.io/",
-      "subject": "surface:sn-56-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-56.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -12618,17 +12508,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Bitsec.ai Swagger UI is a public openapi surface for SN60.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://bitsec.ai/",
-      "subject": "surface:sn-60-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-60.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "RedTeam Backprop Finance dashboard is a public dashboard surface for SN61.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -13135,17 +13014,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "TAO Private Network Swagger UI is a public openapi surface for SN65.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://tpn.taofu.xyz/",
-      "subject": "surface:sn-65-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-65.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "TAO Private Network docs is a public docs surface for SN65.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -13285,17 +13153,6 @@
       "source_type": "registry-observed",
       "source_url": "https://ninja.arbos.life/",
       "subject": "surface:sn-66-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-66.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ninja Swagger UI is a public openapi surface for SN66.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://ninja.arbos.life/",
-      "subject": "surface:sn-66-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-66.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -13597,17 +13454,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Allways Swagger UI is a public openapi surface for SN7.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://all-ways.io/",
-      "subject": "surface:sn-7-website-common-swagger",
-      "support_summary": "Listed in curated overlay for allways.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "NexisGen Backprop Finance dashboard is a public dashboard surface for SN70.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -13791,17 +13637,6 @@
       "source_type": "registry-observed",
       "source_url": "https://leadpoet.com/",
       "subject": "surface:sn-71-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-71.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Leadpoet Swagger UI is a public openapi surface for SN71.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://leadpoet.com/",
-      "subject": "surface:sn-71-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-71.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -14081,17 +13916,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Gittensor Swagger UI is a public openapi surface for SN74.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://gittensor.io/",
-      "subject": "surface:sn-74-website-common-swagger",
-      "support_summary": "Listed in curated overlay for gittensor.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Hippius Backprop Finance dashboard is a public dashboard surface for SN75.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -14367,17 +14191,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Liquidity Swagger UI is a public openapi surface for SN77.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://sn77.xyz/",
-      "subject": "surface:sn-77-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-77.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Vocence Backprop Finance dashboard is a public dashboard surface for SN78.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -14484,17 +14297,6 @@
       "source_type": "registry-observed",
       "source_url": "https://www.vocence.ai/",
       "subject": "surface:sn-78-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-78.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Vocence Swagger UI is a public openapi surface for SN78.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.vocence.ai/",
-      "subject": "surface:sn-78-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-78.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -14759,17 +14561,6 @@
       "source_type": "registry-observed",
       "source_url": "https://dogelayer.ai/",
       "subject": "surface:sn-80-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-80.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "dogelayer Swagger UI is a public openapi surface for SN80.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://dogelayer.ai/",
-      "subject": "surface:sn-80-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-80.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -15056,17 +14847,6 @@
       "source_type": "registry-observed",
       "source_url": "https://cliqueai.toptensor.ai/",
       "subject": "surface:sn-83-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-83.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "CliqueAI Swagger UI is a public openapi surface for SN83.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://cliqueai.toptensor.ai/",
-      "subject": "surface:sn-83-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-83.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -15940,17 +15720,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Bitcast Swagger UI is a public openapi surface for SN93.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://stats.bitcast.network/",
-      "subject": "surface:sn-93-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-93.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Bitsota Backprop Finance dashboard is a public dashboard surface for SN94.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -16116,17 +15885,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Actual Swagger UI is a public openapi surface for SN95.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://actual.inc/",
-      "subject": "surface:sn-95-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-95.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "Verathos Backprop Finance dashboard is a public dashboard surface for SN96.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -16255,17 +16013,6 @@
       "source_type": "official",
       "source_url": "https://verathos.ai/",
       "subject": "surface:sn-96-verathos-website",
-      "support_summary": "Listed in curated overlay for sn-96.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Verathos Swagger UI is a public openapi surface for SN96.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://verathos.ai/",
-      "subject": "surface:sn-96-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-96.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -16598,17 +16345,6 @@
       "subject": "surface:sn-99-website-common-docs",
       "support_summary": "Listed in curated overlay for sn-99.",
       "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Leoma Swagger UI is a public openapi surface for SN99.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://leoma.ai/",
-      "subject": "surface:sn-99-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-99.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
     }
   ],
   "contract_version": "2026-06-06.1",
@@ -16617,8 +16353,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1510,
+    "claim_count": 1486,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1131
+    "surface_claim_count": 1107
   }
 }

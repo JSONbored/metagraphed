@@ -633,6 +633,81 @@ describe("script utility contracts", () => {
     assert.equal(manualOverlays[0].surfaces.length, 1);
   });
 
+  test("does not promote HTML-only Swagger pages as OpenAPI surfaces", async () => {
+    const nativeSnapshot = {
+      captured_at: "2026-06-08T00:00:00.000Z",
+      subnets: [{ netuid: 66, name: "ninja", status: "active" }],
+    };
+    const candidates = [
+      {
+        confidence: "low",
+        id: "sn-66-website-common-swagger",
+        kind: "openapi",
+        name: "ninja Swagger",
+        netuid: 66,
+        provider: "taomarketcap",
+        source_tier: "third-party-index",
+        source_type: "project-website-common-path",
+        source_url: "https://ninja.arbos.life/",
+        source_urls: ["https://ninja.arbos.life/"],
+        url: "https://ninja.arbos.life/swagger",
+      },
+      {
+        confidence: "low",
+        id: "sn-66-website-common-openapi-json",
+        kind: "openapi",
+        name: "ninja OpenAPI JSON",
+        netuid: 66,
+        provider: "taomarketcap",
+        source_tier: "third-party-index",
+        source_type: "project-website-common-path",
+        source_url: "https://ninja.arbos.life/",
+        source_urls: ["https://ninja.arbos.life/"],
+        url: "https://ninja.arbos.life/openapi.json",
+      },
+    ];
+    const verification = {
+      schema_version: 1,
+      results: [
+        {
+          candidate_id: "sn-66-website-common-swagger",
+          classification: "live",
+          content_type: "text/html",
+          quality_signals: { public_safe: true },
+        },
+        {
+          candidate_id: "sn-66-website-common-openapi-json",
+          classification: "live",
+          content_type: "application/json",
+          quality_signals: { public_safe: true },
+        },
+      ],
+    };
+
+    const overlaySet = await generateBaselineOverlaySet({
+      candidates,
+      existingGeneratedOverlays: [],
+      manualOverlays: [],
+      nativeSnapshot,
+      verification,
+    });
+
+    assert.deepEqual(
+      overlaySet.generatedOverlays[0].surfaces.map((surface) => ({
+        id: surface.id,
+        schema_status: surface.schema_status,
+        schema_url: surface.schema_url,
+      })),
+      [
+        {
+          id: "sn-66-website-common-openapi-json",
+          schema_status: "machine-readable",
+          schema_url: "https://ninja.arbos.life/openapi.json",
+        },
+      ],
+    );
+  });
+
   test("redacts credentialed object-storage URLs", () => {
     const signedUrl =
       "https://ams3.digitaloceanspaces.com/releases/file.dmg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=KEY%2F20260607%2Fams3%2Fs3%2Faws4_request&X-Amz-Signature=abc&x-id=GetObject";

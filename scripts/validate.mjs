@@ -312,6 +312,19 @@ function validateSubnet(
         );
       }
     }
+
+    if (surface.kind === "openapi") {
+      assert(
+        surface.schema_status === "machine-readable",
+        `${surfaceKey}: openapi surfaces must reference a machine-readable schema`,
+      );
+      if (surface.authority === "registry-observed") {
+        assert(
+          isValidUrl(surface.schema_url || surface.url),
+          `${surfaceKey}: registry-observed openapi surface must provide a schema URL`,
+        );
+      }
+    }
   }
 }
 

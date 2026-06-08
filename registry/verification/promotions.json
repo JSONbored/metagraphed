@@ -858,8 +858,8 @@
     },
     {
       "candidate_id": "sn-2-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -867,7 +867,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -2602,8 +2602,8 @@
     },
     {
       "candidate_id": "sn-7-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
@@ -2611,7 +2611,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -5942,8 +5942,8 @@
     },
     {
       "candidate_id": "sn-16-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
@@ -5951,7 +5951,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -8374,8 +8374,8 @@
     },
     {
       "candidate_id": "sn-22-website-common-swagger",
-      "classification": "redirected",
-      "confidence_score": 63,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -8383,7 +8383,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": true,
@@ -10530,21 +10530,18 @@
     {
       "candidate_id": "sn-29-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 29,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -10613,21 +10610,18 @@
     {
       "candidate_id": "sn-29-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 29,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -11137,21 +11131,18 @@
     {
       "candidate_id": "sn-32-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 32,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -11682,21 +11673,18 @@
     {
       "candidate_id": "sn-33-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 33,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -11828,21 +11816,18 @@
     {
       "candidate_id": "sn-34-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 34,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -11974,21 +11959,18 @@
     {
       "candidate_id": "sn-35-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 35,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -12078,21 +12060,18 @@
     {
       "candidate_id": "sn-35-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 35,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -12308,21 +12287,18 @@
     {
       "candidate_id": "sn-36-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 36,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -12685,21 +12661,18 @@
     {
       "candidate_id": "sn-37-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 37,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -13082,23 +13055,20 @@
     },
     {
       "candidate_id": "sn-38-taomarketcap-source-repo",
-      "classification": "live",
-      "confidence_score": 59,
+      "classification": "unsupported",
+      "confidence_score": 20,
       "error": null,
       "kind": "source-repo",
       "netuid": 38,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": true,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
-      "status": "ok"
+      "status": "failed"
     },
     {
       "candidate_id": "sn-38-taomarketcap-website",
@@ -13270,8 +13240,8 @@
     },
     {
       "candidate_id": "sn-38-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
@@ -13279,7 +13249,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -13458,22 +13428,19 @@
     },
     {
       "candidate_id": "sn-39-tensorplex-source-repo-1",
-      "classification": "redirected",
-      "confidence_score": 50,
+      "classification": "live",
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 39,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/one-covenant/basilica",
       "status": "ok"
     },
     {
@@ -13688,21 +13655,18 @@
     {
       "candidate_id": "sn-41-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 41,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -13875,8 +13839,8 @@
     },
     {
       "candidate_id": "sn-41-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -13884,7 +13848,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -14128,21 +14092,18 @@
     {
       "candidate_id": "sn-43-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 43,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -14274,21 +14235,18 @@
     {
       "candidate_id": "sn-44-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 44,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -14378,21 +14336,18 @@
     {
       "candidate_id": "sn-44-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 44,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -14608,21 +14563,18 @@
     {
       "candidate_id": "sn-45-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 45,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -15150,21 +15102,18 @@
     {
       "candidate_id": "sn-46-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 46,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -15254,41 +15203,35 @@
     {
       "candidate_id": "sn-46-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 46,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
       "candidate_id": "sn-46-tensorplex-source-repo-2",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 46,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -15476,7 +15419,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://accounts.google.com/v3/signin/identifier?opparams=%253F&dsh=S-165979954%3A1780927900000092&client_id=327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com&code_challenge=NybiCUinNQrqWDW1gZ9EZVkh462QXgIwN361WZcT3dw&code_challenge_method=S256&nonce=yIqKJtnoIIA_K6PmFLkBkPyClHvMvgtOvEbfKUJjvP0&o2v=2&prompt=select_account&redirect_uri=https%3A%2F%2Fzipcode.ai%2Fapi%2Fportal-auth%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+profile&service=lso&state=EKPG6nN-P5iQwZUu5ZSh5u7CjKkJWpuFpKjbmhU1PDk&flowName=GeneralOAuthLite&continue=https%3A%2F%2Faccounts.google.com%2Fsignin%2Foauth%2Flegacy%2Fconsent%3Fauthuser%3Dunknown%26part%3DAJi8hAObtNeYJIh6n3Oq3SHdSpeUyJrLF0SPsPXpmyzpmRXzQekQDnvYVfjbFVpCsov0QrC7Om89i137XrLVm7sgPZ0TlpDO7XyXaTH2OParYdaz8-Pk8MrYu_GxmI-Nyr4YGhhlu_IAvSufDJexn_SlNn_MsFBu65PPsi3XIKX7yixy0OHnGcahAmHOYPOOy_UHRFN5K5j8ojZtGCVIghzdBGNXLif9vXzb3SBVOHk2jRG6eGkIG_1QipLlDC218cSJFAsUCNCqW7d_zRewGNgHrRGou1U2eSXckgBJ1CEP8nVwzLCV9vIdxG6ZBp8lAmX9XtyJ_bDL7KjqpsBaA2qjL94hQZ2la5B7R3hMgVHQLqI0X_r5qDYXVvDM0zX0O-oDw8yo1tHhrN6SErQLu4BLse5rFeRzbosD1nSlPqjBw-X6NM5wThBMz1lUwQlUHCS2JuDNNBt-1GyXJk1FYPL5kmlR6npY5w%26flowName%3DGeneralOAuthFlow%26as%3DS-165979954%253A1780927900000092%26client_id%3D327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com%23&app_domain=https%3A%2F%2Fzipcode.ai&rart=ANgoxcf7fuzMQPI8VQoQO2dEnBZf7vw_H4-yhj6JxR07hrhMALLtYZKl_bTN4zHTlZFc3bdz3UPnxlBpUCToHgdzxmURcJoknbtOw6l0RaenlvZdUxlUx9A",
+      "redirect_target": "https://accounts.google.com/v3/signin/identifier?opparams=%253F&dsh=S-821471045%3A1780933067379170&client_id=327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com&code_challenge=i2gnNRgmFcUTg7UsaBcTohE_xPP_Ic5_W-o5iaVjNMs&code_challenge_method=S256&nonce=RfRsTFdljEIoYW1yqlP60ziA3NvJ9eahqSGr-hNJZ8A&o2v=2&prompt=select_account&redirect_uri=https%3A%2F%2Fzipcode.ai%2Fapi%2Fportal-auth%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+profile&service=lso&state=Vg7EmS8F59tkIPZftlPlzunobygUl43DpL3aiUkoNbY&flowName=GeneralOAuthLite&continue=https%3A%2F%2Faccounts.google.com%2Fsignin%2Foauth%2Flegacy%2Fconsent%3Fauthuser%3Dunknown%26part%3DAJi8hAM2TUMMxQKrPRUX4bgisf5ZB_FUFyIeBO8_xZ_Haywvb8gXiVFQEA-nWwO08F0vWzO7QG4-umGLhtDEqrDwogw_QzKjQNKpB9H91cuhdmUJFgPH4WRGlWV6kzwv0L7-bdyIvbthLjF0jgDK92rB7pFUdrhHuLO8IrH_ZBZ1b7thD_-AwIriNU3J_2T7P5BuFkGDsjWrwWUL4dAirx5SD_nGZ6JUNyxB_RLUY2oMybSRekP9Z_POcDjRxoTgzG3p2pvnMWfWGuTPuJMyM0cGkx2DtV5HdvwywczTCm5ExnhxAXg8XV5LxjiOlwnpvF7-Tgg5AU8xVey5ygfUP3Ra9gq2M9WHtpXRRpDbccjpk11u1dN4kYZB3ldkb3Ed0FvFU9QQ3-If3aZ8x5Yg7kq047EHsEIDweiJW-V7K18I77dG3vHauG0KZWZkP8GbhUE1PhZZYl44lP5rZBppfu-GyhXmMmilGA%26flowName%3DGeneralOAuthFlow%26as%3DS-821471045%253A1780933067379170%26client_id%3D327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com%23&app_domain=https%3A%2F%2Fzipcode.ai&rart=ANgoxccFQVD5BbvV4tcZh8ytAY3MgB6YIQdodE2PIMCqkuyzwkjEyIRYhOBZ3xK4nwNp9PipyGUF2VfjQiWSqwCg30Nt6GK0BSEiYDPZdQ7F_UEnCjOLiyQ",
       "status": "ok"
     },
     {
@@ -15607,22 +15550,19 @@
     },
     {
       "candidate_id": "sn-47-taomarketcap-source-repo",
-      "classification": "redirected",
-      "confidence_score": 54,
+      "classification": "live",
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 47,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": "https://github.com/openevolai/evolai",
       "status": "ok"
     },
     {
@@ -15691,21 +15631,18 @@
     {
       "candidate_id": "sn-47-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 47,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -15774,21 +15711,18 @@
     {
       "candidate_id": "sn-48-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 48,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -16318,21 +16252,18 @@
     {
       "candidate_id": "sn-49-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 49,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -16624,22 +16555,19 @@
     },
     {
       "candidate_id": "sn-50-taomarketcap-source-repo",
-      "classification": "redirected",
-      "confidence_score": 54,
+      "classification": "live",
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 50,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": "https://github.com/synthdataco/synth-subnet",
       "status": "ok"
     },
     {
@@ -16812,8 +16740,8 @@
     },
     {
       "candidate_id": "sn-50-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -16821,7 +16749,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -16939,21 +16867,18 @@
     {
       "candidate_id": "sn-51-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 51,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -17463,21 +17388,18 @@
     {
       "candidate_id": "sn-52-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 52,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -17566,41 +17488,35 @@
     {
       "candidate_id": "sn-52-tensorplex-source-repo-3",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 52,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
       "candidate_id": "sn-52-tensorplex-source-repo-4",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 52,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -17836,21 +17752,18 @@
     {
       "candidate_id": "sn-54-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 54,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -18171,21 +18084,18 @@
     {
       "candidate_id": "sn-55-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 55,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -18548,21 +18458,18 @@
     {
       "candidate_id": "sn-56-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 56,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -18651,22 +18558,19 @@
     },
     {
       "candidate_id": "sn-56-tensorplex-source-repo-1",
-      "classification": "redirected",
-      "confidence_score": 50,
+      "classification": "live",
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 56,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/gradients-ai/G.O.D",
       "status": "ok"
     },
     {
@@ -18755,8 +18659,8 @@
     },
     {
       "candidate_id": "sn-56-website-common-swagger",
-      "classification": "redirected",
-      "confidence_score": 63,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
@@ -18764,7 +18668,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": true,
@@ -19134,21 +19038,18 @@
     {
       "candidate_id": "sn-57-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 57,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -19322,21 +19223,18 @@
     {
       "candidate_id": "sn-58-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 58,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -19426,21 +19324,18 @@
     {
       "candidate_id": "sn-59-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 59,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -19824,21 +19719,18 @@
     {
       "candidate_id": "sn-60-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 60,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -19928,21 +19820,18 @@
     {
       "candidate_id": "sn-60-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 60,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -20031,8 +19920,8 @@
     },
     {
       "candidate_id": "sn-60-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -20040,7 +19929,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -20179,21 +20068,18 @@
     {
       "candidate_id": "sn-61-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 61,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -20472,21 +20358,18 @@
     {
       "candidate_id": "sn-62-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 62,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -20765,21 +20648,18 @@
     {
       "candidate_id": "sn-63-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 63,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -21329,21 +21209,18 @@
     {
       "candidate_id": "sn-64-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 64,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -21432,42 +21309,36 @@
     },
     {
       "candidate_id": "sn-64-tensorplex-source-repo-1",
-      "classification": "redirected",
-      "confidence_score": 50,
+      "classification": "live",
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 64,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/chutesai/chutes-miner",
       "status": "ok"
     },
     {
       "candidate_id": "sn-64-tensorplex-source-repo-2",
-      "classification": "redirected",
-      "confidence_score": 50,
+      "classification": "live",
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 64,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/chutesai/chutes",
       "status": "ok"
     },
     {
@@ -21872,21 +21743,18 @@
     {
       "candidate_id": "sn-65-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 65,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -22059,8 +21927,8 @@
     },
     {
       "candidate_id": "sn-65-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -22068,7 +21936,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -22291,21 +22159,18 @@
     {
       "candidate_id": "sn-66-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 66,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -22478,8 +22343,8 @@
     },
     {
       "candidate_id": "sn-66-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
@@ -22487,7 +22352,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -22752,21 +22617,18 @@
     {
       "candidate_id": "sn-67-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 67,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -23003,21 +22865,18 @@
     {
       "candidate_id": "sn-68-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 68,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -23527,21 +23386,18 @@
     {
       "candidate_id": "sn-70-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 70,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -23925,21 +23781,18 @@
     {
       "candidate_id": "sn-71-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 71,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -24112,8 +23965,8 @@
     },
     {
       "candidate_id": "sn-71-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=UTF-8",
       "error": null,
       "kind": "openapi",
@@ -24121,7 +23974,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -24239,21 +24092,18 @@
     {
       "candidate_id": "sn-72-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 72,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -24930,21 +24780,18 @@
     {
       "candidate_id": "sn-74-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 74,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -25034,21 +24881,18 @@
     {
       "candidate_id": "sn-74-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 74,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -25137,8 +24981,8 @@
     },
     {
       "candidate_id": "sn-74-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
@@ -25146,7 +24990,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -25243,21 +25087,18 @@
     {
       "candidate_id": "sn-75-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 75,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -25347,41 +25188,35 @@
     {
       "candidate_id": "sn-75-tensorplex-source-repo-2",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 75,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
       "candidate_id": "sn-75-tensorplex-source-repo-3",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 75,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -26080,21 +25915,18 @@
     {
       "candidate_id": "sn-77-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 77,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -26267,8 +26099,8 @@
     },
     {
       "candidate_id": "sn-77-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
@@ -26276,7 +26108,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -26373,21 +26205,18 @@
     {
       "candidate_id": "sn-78-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 78,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -26498,21 +26327,18 @@
     {
       "candidate_id": "sn-78-tensorplex-source-repo-2",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 78,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -26601,8 +26427,8 @@
     },
     {
       "candidate_id": "sn-78-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -26610,7 +26436,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -26812,21 +26638,18 @@
     {
       "candidate_id": "sn-79-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 79,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -27251,21 +27074,18 @@
     {
       "candidate_id": "sn-80-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 80,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -27438,8 +27258,8 @@
     },
     {
       "candidate_id": "sn-80-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -27447,7 +27267,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -27668,22 +27488,19 @@
     },
     {
       "candidate_id": "sn-81-tensorplex-source-repo-1",
-      "classification": "redirected",
-      "confidence_score": 50,
+      "classification": "live",
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 81,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/one-covenant/grail",
       "status": "ok"
     },
     {
@@ -27752,21 +27569,18 @@
     {
       "candidate_id": "sn-82-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 82,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -27856,21 +27670,18 @@
     {
       "candidate_id": "sn-82-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 82,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -28296,21 +28107,18 @@
     {
       "candidate_id": "sn-83-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 83,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -28483,8 +28291,8 @@
     },
     {
       "candidate_id": "sn-83-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
@@ -28492,7 +28300,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -28652,41 +28460,35 @@
     {
       "candidate_id": "sn-84-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 84,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
       "candidate_id": "sn-84-tensorplex-source-repo-2",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 84,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -28755,21 +28557,18 @@
     {
       "candidate_id": "sn-85-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 85,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -28942,8 +28741,8 @@
     },
     {
       "candidate_id": "sn-85-website-common-swagger",
-      "classification": "redirected",
-      "confidence_score": 63,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -28951,7 +28750,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": true,
@@ -29510,21 +29309,18 @@
     {
       "candidate_id": "sn-88-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 88,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -29866,21 +29662,18 @@
     {
       "candidate_id": "sn-89-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 89,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -30829,21 +30622,18 @@
     {
       "candidate_id": "sn-93-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 93,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -31016,8 +30806,8 @@
     },
     {
       "candidate_id": "sn-93-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -31025,7 +30815,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -31227,21 +31017,18 @@
     {
       "candidate_id": "sn-94-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 94,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -31770,8 +31557,8 @@
     },
     {
       "candidate_id": "sn-95-website-common-swagger",
-      "classification": "redirected",
-      "confidence_score": 63,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -31779,7 +31566,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": true,
@@ -31960,21 +31747,18 @@
     {
       "candidate_id": "sn-96-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 96,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -32064,21 +31848,18 @@
     {
       "candidate_id": "sn-96-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 96,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -32146,8 +31927,8 @@
     },
     {
       "candidate_id": "sn-96-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -32155,7 +31936,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -32294,21 +32075,18 @@
     {
       "candidate_id": "sn-97-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 97,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -32398,21 +32176,18 @@
     {
       "candidate_id": "sn-97-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 97,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -32628,21 +32403,18 @@
     {
       "candidate_id": "sn-98-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 98,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -33130,21 +32902,18 @@
     {
       "candidate_id": "sn-99-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 99,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -33234,21 +33003,18 @@
     {
       "candidate_id": "sn-99-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 99,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -33337,8 +33103,8 @@
     },
     {
       "candidate_id": "sn-99-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -33346,7 +33112,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -33443,21 +33209,18 @@
     {
       "candidate_id": "sn-100-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 100,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -33546,22 +33309,19 @@
     },
     {
       "candidate_id": "sn-100-tensorplex-source-repo-1",
-      "classification": "redirected",
-      "confidence_score": 50,
+      "classification": "live",
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 100,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": "https://github.com/PlatformNetwork/platform",
       "status": "ok"
     },
     {
@@ -34008,21 +33768,18 @@
     {
       "candidate_id": "sn-102-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 102,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -34385,21 +34142,18 @@
     {
       "candidate_id": "sn-103-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 103,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -35180,8 +34934,8 @@
     },
     {
       "candidate_id": "sn-105-website-common-swagger",
-      "classification": "redirected",
-      "confidence_score": 63,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -35189,7 +34943,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": true,
@@ -35286,21 +35040,18 @@
     {
       "candidate_id": "sn-106-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 106,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -35620,21 +35371,18 @@
     {
       "candidate_id": "sn-107-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 107,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -35724,21 +35472,18 @@
     {
       "candidate_id": "sn-107-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 107,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -36017,21 +35762,18 @@
     {
       "candidate_id": "sn-108-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 108,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -36436,21 +36178,18 @@
     {
       "candidate_id": "sn-109-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 109,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -36666,21 +36405,18 @@
     {
       "candidate_id": "sn-110-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 110,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -37085,21 +36821,18 @@
     {
       "candidate_id": "sn-111-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 111,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -37231,21 +36964,18 @@
     {
       "candidate_id": "sn-112-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 112,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -37587,21 +37317,18 @@
     {
       "candidate_id": "sn-113-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 113,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -37985,21 +37712,18 @@
     {
       "candidate_id": "sn-114-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 59,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 114,
-      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
+        "source_tier": "third-party-index"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -38089,21 +37813,18 @@
     {
       "candidate_id": "sn-114-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 55,
+      "confidence_score": 80,
       "error": null,
       "kind": "source-repo",
       "netuid": 114,
-      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
-      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -40862,8 +40583,8 @@
     },
     {
       "candidate_id": "sn-124-website-common-swagger",
-      "classification": "redirected",
-      "confidence_score": 63,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "openapi",
@@ -40871,7 +40592,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": true,
@@ -42022,8 +41743,8 @@
     },
     {
       "candidate_id": "sn-128-website-common-swagger",
-      "classification": "live",
-      "confidence_score": 68,
+      "classification": "content-mismatch",
+      "confidence_score": 0,
       "content_type": "text/html",
       "error": null,
       "kind": "openapi",
@@ -42031,7 +41752,7 @@
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "content_type_matches_kind": false,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -42067,14 +41788,14 @@
   "summary": {
     "by_classification": {
       "auth-required": 9,
-      "content-mismatch": 46,
+      "content-mismatch": 71,
       "dead": 399,
-      "live": 1356,
+      "live": 1344,
       "rate-limited": 7,
-      "redirected": 167,
+      "redirected": 153,
       "transient": 4,
       "unsafe": 2,
-      "unsupported": 28
+      "unsupported": 29
     },
     "by_kind": {
       "dashboard": 564,
@@ -42095,7 +41816,7 @@
       "taostats": 129,
       "tensorplex-subnet-docs": 196
     },
-    "promotable_count": 1523
+    "promotable_count": 1497
   },
   "verification_finished_at": null,
   "verification_started_at": null
