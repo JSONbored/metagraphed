@@ -69,6 +69,7 @@ function authorityTone(a?: string): string {
 
 function ProvidersGrid() {
   const { data } = useSuspenseQuery(providersQuery());
+  const { data: counts } = useSuspenseQuery(providerCountsQuery());
   const rows = (data.data ?? []) as Provider[];
   if (rows.length === 0)
     return (
