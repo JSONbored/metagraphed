@@ -828,6 +828,40 @@ test("public artifacts are internally consistent", () => {
       return counts;
     }, {}),
   );
+  assert.equal(
+    profiles.profiles.every(
+      (profile) =>
+        profile.identity_evidence &&
+        profile.identity_evidence.curated_identity_count ===
+          profile.identity_evidence.curated_identity_kinds.length &&
+        profile.identity_evidence.native_identity_count ===
+          profile.identity_evidence.native_identity_kinds.length,
+    ),
+    true,
+  );
+  assert.equal(
+    profileCompleteness.profiles.every(
+      (profile) =>
+        profile.identity_evidence &&
+        profile.identity_promotion_kind_count ===
+          profile.identity_promotion_kinds.length &&
+        profile.identity_promotion_kind_count ===
+          profile.identity_evidence.needs_promotion_kinds.length,
+    ),
+    true,
+  );
+  assert.equal(
+    profileCompleteness.summary.identity_promotion_candidate_count,
+    profileCompleteness.profiles.filter(
+      (profile) => profile.identity_promotion_kind_count > 0,
+    ).length,
+  );
+  assert.equal(
+    profiles.summary.identity_promotion_candidate_count,
+    profiles.profiles.filter(
+      (profile) => profile.identity_evidence.needs_promotion_kinds.length > 0,
+    ).length,
+  );
   assert.deepEqual(
     profiles.summary.by_identity_level,
     profiles.profiles.reduce((counts, profile) => {

@@ -963,12 +963,20 @@ function buildSubnetProfileArtifacts({
       gap_reasons: profile.completeness.gap_reasons,
       missing_critical_count: profile.missing_critical_count,
       identity_level: profile.identity_level,
+      identity_evidence: profile.identity_evidence,
+      identity_promotion_kind_count:
+        profile.identity_evidence.needs_promotion_kinds.length,
+      identity_promotion_kinds: profile.identity_evidence.needs_promotion_kinds,
       identity_surface_count: profile.identity_surface_count,
+      live_identity_candidate_kind_count:
+        profile.identity_evidence.live_candidate_identity_kinds.length,
       missing_operational: profile.completeness.missing_operational,
       missing_required: profile.completeness.missing_required,
       missing_identity: profile.missing_identity,
       name: profile.name,
       native_name_quality: profile.native_name_quality,
+      native_identity_signal_count:
+        profile.identity_evidence.native_identity_count,
       netuid: profile.netuid,
       operational_interface_count: profile.operational_interface_count,
       priority_score:
@@ -980,6 +988,8 @@ function buildSubnetProfileArtifacts({
       review_state: profile.review_state,
       slug: profile.slug,
       source_count: profile.provenance.interface_source_count,
+      stale_identity_candidate_kind_count:
+        profile.identity_evidence.stale_candidate_identity_kinds.length,
       suggested_next_action: profileSuggestedNextAction(profile),
       supported_interface_kinds: profile.supported_interface_kinds,
     }))
@@ -1009,6 +1019,14 @@ function buildSubnetProfileArtifacts({
       native_identity_count: profiles.filter(
         (profile) => profile.native_identity,
       ).length,
+      identity_promotion_candidate_count: profiles.filter(
+        (profile) => profile.identity_evidence.needs_promotion_kinds.length > 0,
+      ).length,
+      native_identity_unpromoted_count: profiles.filter(
+        (profile) =>
+          profile.identity_evidence.native_identity_count > 0 &&
+          profile.identity_evidence.needs_promotion_kinds.length > 0,
+      ).length,
       critical_gap_counts: countGapReasons(reviewProfiles),
     },
     summary: {
@@ -1019,6 +1037,14 @@ function buildSubnetProfileArtifacts({
       by_confidence: countBy(profiles, "confidence"),
       native_identity_count: profiles.filter(
         (profile) => profile.native_identity,
+      ).length,
+      identity_promotion_candidate_count: profiles.filter(
+        (profile) => profile.identity_evidence.needs_promotion_kinds.length > 0,
+      ).length,
+      native_identity_unpromoted_count: profiles.filter(
+        (profile) =>
+          profile.identity_evidence.native_identity_count > 0 &&
+          profile.identity_evidence.needs_promotion_kinds.length > 0,
       ).length,
     },
   };
@@ -1965,6 +1991,12 @@ function buildSubnetProfile({
   });
   const sourceUrls = profileSourceUrls({ primaryLinks, surfaces });
   const confidence = profileConfidence(subnet.curation);
+  const nativeIdentityInfo = nativeIdentitySummary(nativeIdentity);
+  const identityEvidence = profileIdentityEvidence({
+    candidates,
+    nativeIdentity: nativeIdentityInfo,
+    primaryLinks,
+  });
 
   const profile = {
     netuid: subnet.netuid,
@@ -1972,7 +2004,7 @@ function buildSubnetProfile({
     name: subnet.name,
     native_name: subnet.native_name,
     native_name_quality: subnet.native_name_quality,
-    native_identity: nativeIdentitySummary(nativeIdentity),
+    native_identity: nativeIdentityInfo,
     subnet_type: subnet.subnet_type,
     status: subnet.status,
     symbol: subnet.symbol,
@@ -1989,6 +2021,7 @@ function buildSubnetProfile({
       (endpoint) => endpoint.monitoring_status === "monitored",
     ).length,
     candidate_count: candidates.length,
+    identity_evidence: identityEvidence,
     interface_count: supportedKinds.length,
     operational_interface_count: operationalKinds.length,
     completeness,
@@ -2036,6 +2069,81 @@ function nativeIdentitySummary(identity) {
     logo_url: normalizePublicUrl(identity.logo_url),
     contact_present: Boolean(identity.contact_present),
   };
+}
+
+function profileIdentityEvidence({ candidates, nativeIdentity, primaryLinks }) {
+  const identityKinds = ["docs", "source-repo", "website"];
+  const curatedIdentityKinds = identityKinds
+    .filter((kind) => primaryLinkForKind(primaryLinks, kind))
+    .sort();
+  const nativeIdentityKinds = [
+    ...(nativeIdentity?.github_url ? ["source-repo"] : []),
+    ...(nativeIdentity?.website_url ? ["website"] : []),
+  ].sort();
+  const identityCandidates = candidates.filter((candidate) =>
+    identityKinds.includes(candidate.kind),
+  );
+  const liveCandidateIdentityKinds = candidateIdentityKindsByClassification(
+    identityCandidates,
+    ["live", "redirected"],
+  );
+  const staleCandidateIdentityKinds = candidateIdentityKindsByClassification(
+    identityCandidates,
+    ["content-mismatch", "dead", "timeout", "unsafe", "unsupported"],
+  );
+  const unverifiedCandidateIdentityKinds =
+    candidateIdentityKindsByClassification(identityCandidates, [
+      "auth-required",
+      "maintainer-review",
+      "rate-limited",
+      "schema-valid",
+      "transient",
+      "unknown",
+      "verified",
+    ]);
+  const needsPromotionKinds = liveCandidateIdentityKinds.filter(
+    (kind) => !curatedIdentityKinds.includes(kind),
+  );
+
+  return {
+    candidate_identity_count: identityCandidates.length,
+    curated_identity_count: curatedIdentityKinds.length,
+    curated_identity_kinds: curatedIdentityKinds,
+    live_candidate_identity_kinds: liveCandidateIdentityKinds,
+    native_contact_present: Boolean(nativeIdentity?.contact_present),
+    native_description_present: Boolean(nativeIdentity?.description),
+    native_identity_count: nativeIdentityKinds.length,
+    native_identity_kinds: nativeIdentityKinds,
+    needs_promotion_kinds: needsPromotionKinds,
+    stale_candidate_identity_kinds: staleCandidateIdentityKinds,
+    unverified_candidate_identity_kinds: unverifiedCandidateIdentityKinds,
+  };
+}
+
+function candidateIdentityKindsByClassification(candidates, classifications) {
+  const classificationSet = new Set(classifications);
+  return [
+    ...new Set(
+      candidates
+        .filter((candidate) =>
+          classificationSet.has(candidateIdentityClassification(candidate)),
+        )
+        .map((candidate) => candidate.kind),
+    ),
+  ].sort();
+}
+
+function candidateIdentityClassification(candidate) {
+  return candidate.verification?.classification || candidate.state || "unknown";
+}
+
+function primaryLinkForKind(primaryLinks, kind) {
+  const fieldByKind = {
+    docs: "docs_url",
+    "source-repo": "source_repo",
+    website: "website_url",
+  };
+  return primaryLinks[fieldByKind[kind]] || null;
 }
 
 function cleanProfileText(value) {

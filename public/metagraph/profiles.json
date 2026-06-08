@@ -28,6 +28,25 @@
       "curation_level": "maintainer-reviewed",
       "endpoint_count": 14,
       "gap_reasons": [],
+      "identity_evidence": {
+        "candidate_identity_count": 1,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 7,
@@ -144,6 +163,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 12,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -271,6 +316,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -393,6 +462,29 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -517,6 +609,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -640,6 +758,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 9,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -759,6 +903,34 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": [
+          "docs"
+        ]
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 6,
@@ -871,6 +1043,30 @@
       "gap_reasons": [
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 7,
@@ -994,6 +1190,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -1118,6 +1340,33 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 13,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -1241,6 +1490,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -1365,6 +1640,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 8,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -1490,6 +1789,28 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -1617,6 +1938,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 12,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -1746,6 +2093,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 8,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -1870,6 +2241,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 10,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -1993,6 +2388,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -2112,6 +2531,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 10,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -2231,6 +2676,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 9,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -2354,6 +2825,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -2482,6 +2977,31 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -2608,6 +3128,33 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -2729,6 +3276,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 6,
@@ -2853,6 +3424,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 8,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -2975,6 +3572,32 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -3100,6 +3723,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 13,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -3220,6 +3869,33 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 9,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -3350,6 +4026,31 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -3484,6 +4185,23 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 2,
+        "curated_identity_count": 1,
+        "curated_identity_kinds": [
+          "docs"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 1,
       "interface_count": 2,
@@ -3606,6 +4324,28 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 4,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -3740,6 +4480,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -3874,6 +4638,23 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 2,
+        "curated_identity_count": 1,
+        "curated_identity_kinds": [
+          "docs"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 1,
       "interface_count": 2,
@@ -3996,6 +4777,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 14,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -4118,6 +4925,28 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": false,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -4246,6 +5075,28 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": false,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -4366,6 +5217,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -4484,6 +5361,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 8,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -4602,6 +5503,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 10,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": [
+          "docs"
+        ]
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -4723,6 +5650,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -4847,6 +5800,28 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -4976,6 +5951,28 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -5094,6 +6091,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -5220,6 +6241,25 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 2,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -5346,6 +6386,28 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": false,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -5465,6 +6527,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -5587,6 +6675,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": false,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -5702,6 +6816,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 10,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -5826,6 +6966,27 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 4,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 4,
@@ -5954,6 +7115,33 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -6075,6 +7263,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 6,
@@ -6195,6 +7409,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -6310,6 +7548,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -6434,6 +7698,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": false,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -6567,6 +7855,28 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -6685,6 +7995,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -6804,6 +8140,34 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 9,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": [
+          "website"
+        ]
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -6920,6 +8284,30 @@
       "gap_reasons": [
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 7,
@@ -7045,6 +8433,26 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -7156,6 +8564,26 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 4,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 6,
@@ -7275,6 +8703,33 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 8,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -7392,6 +8847,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -7519,6 +8998,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -7642,6 +9147,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ]
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -7765,6 +9296,33 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -7885,6 +9443,30 @@
         "missing-openapi",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 14,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 6,
@@ -8006,6 +9588,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 11,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -8129,6 +9735,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -8248,6 +9878,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -8364,6 +10020,32 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 8,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -8495,6 +10177,23 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 2,
+        "curated_identity_count": 1,
+        "curated_identity_kinds": [
+          "docs"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 1,
       "interface_count": 2,
@@ -8600,6 +10299,30 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 9,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -8719,6 +10442,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -8842,6 +10589,33 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -8979,6 +10753,25 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 1,
+        "curated_identity_kinds": [
+          "docs"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 1,
       "interface_count": 2,
@@ -9094,6 +10887,30 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 7,
@@ -9224,6 +11041,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 16,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -9355,6 +11198,29 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -9473,6 +11339,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -9591,6 +11481,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -9710,6 +11624,32 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 16,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -9831,6 +11771,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -9960,6 +11924,27 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -10082,6 +12067,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 17,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -10200,6 +12211,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -10325,6 +12360,26 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 4,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -10438,6 +12493,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 10,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -10569,6 +12650,23 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 2,
+        "curated_identity_count": 1,
+        "curated_identity_kinds": [
+          "docs"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 1,
       "interface_count": 2,
@@ -10699,6 +12797,24 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 2,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -10823,6 +12939,32 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 8,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -10951,6 +13093,31 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -11080,6 +13247,24 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 2,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -11197,6 +13382,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 9,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -11330,6 +13539,26 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -11438,6 +13667,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -11556,6 +13809,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -11682,6 +13959,30 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 4,
@@ -11805,6 +14106,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 6,
@@ -11922,6 +14247,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 8,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -12045,6 +14394,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 12,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -12163,6 +14538,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 7,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -12289,6 +14688,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 11,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -12421,6 +14844,23 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 2,
+        "curated_identity_count": 1,
+        "curated_identity_kinds": [
+          "docs"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 1,
       "interface_count": 2,
@@ -12533,6 +14973,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 10,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -12655,6 +15121,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 13,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -12788,6 +15278,23 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 2,
+        "curated_identity_count": 1,
+        "curated_identity_kinds": [
+          "docs"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 1,
       "interface_count": 2,
@@ -12906,6 +15413,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -13025,6 +15556,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -13140,6 +15695,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 10,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -13257,6 +15836,33 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 10,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -13384,6 +15990,27 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -13501,6 +16128,31 @@
         "missing-openapi",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 12,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 6,
@@ -13624,6 +16276,28 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": false,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -13743,6 +16417,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 9,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -13867,6 +16567,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 11,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -13989,6 +16715,32 @@
         "missing-subnet-api",
         "missing-sse"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 10,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 5,
@@ -14121,6 +16873,27 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -14250,6 +17023,26 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -14361,6 +17154,28 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 4,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -14491,6 +17306,31 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [
+          "source-repo"
+        ],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 4,
@@ -14628,6 +17468,27 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 1,
+        "curated_identity_kinds": [
+          "docs"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "source-repo"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 1,
       "interface_count": 2,
@@ -14746,6 +17607,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -14869,6 +17756,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 15,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -14993,6 +17906,26 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -15112,6 +18045,27 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 3,
+        "curated_identity_count": 2,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 1,
+        "native_identity_kinds": [
+          "source-repo"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "partial",
       "identity_surface_count": 2,
       "interface_count": 3,
@@ -15230,6 +18184,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 5,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": false,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -15354,6 +18332,25 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 2,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs"
+        ],
+        "native_contact_present": false,
+        "native_description_present": false,
+        "native_identity_count": 0,
+        "native_identity_kinds": [],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -15472,6 +18469,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 8,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -15590,6 +18613,32 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 8,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": false,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [
+          "docs"
+        ],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -15708,6 +18757,30 @@
         "missing-sse",
         "missing-data-artifact"
       ],
+      "identity_evidence": {
+        "candidate_identity_count": 6,
+        "curated_identity_count": 3,
+        "curated_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "live_candidate_identity_kinds": [
+          "docs",
+          "source-repo",
+          "website"
+        ],
+        "native_contact_present": true,
+        "native_description_present": true,
+        "native_identity_count": 2,
+        "native_identity_kinds": [
+          "source-repo",
+          "website"
+        ],
+        "needs_promotion_kinds": [],
+        "stale_candidate_identity_kinds": [],
+        "unverified_candidate_identity_kinds": []
+      },
       "identity_level": "complete",
       "identity_surface_count": 3,
       "interface_count": 4,
@@ -15808,7 +18881,9 @@
       "identity-partial": 25,
       "operational": 27
     },
+    "identity_promotion_candidate_count": 1,
     "native_identity_count": 120,
+    "native_identity_unpromoted_count": 1,
     "profile_count": 129
   }
 }

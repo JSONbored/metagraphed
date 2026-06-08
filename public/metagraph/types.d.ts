@@ -1668,7 +1668,9 @@ export interface components {
                 by_identity_level: components["schemas"]["CountMap"];
                 by_profile_level: components["schemas"]["CountMap"];
                 critical_gap_counts: components["schemas"]["CountMap"];
+                identity_promotion_candidate_count: number;
                 native_identity_count: number;
+                native_identity_unpromoted_count: number;
                 needs_identity_count: number;
                 needs_operational_count: number;
                 profile_count: number;
@@ -1683,14 +1685,19 @@ export interface components {
             confidence: "low" | "medium" | "high";
             curation_level: components["schemas"]["CurationLevel"];
             gap_reasons: string[];
+            identity_evidence: components["schemas"]["SubnetProfileIdentityEvidence"];
             /** @enum {unknown} */
             identity_level: "none" | "directory" | "partial" | "complete";
+            identity_promotion_kind_count: number;
+            identity_promotion_kinds: components["schemas"]["SurfaceKind"][];
             identity_surface_count: number;
+            live_identity_candidate_kind_count: number;
             missing_critical_count: number;
             missing_identity: components["schemas"]["SurfaceKind"][];
             missing_operational: components["schemas"]["SurfaceKind"][];
             missing_required: components["schemas"]["SurfaceKind"][];
             name: string;
+            native_identity_signal_count: number;
             /** @enum {unknown} */
             native_name_quality: "chain" | "placeholder" | "empty";
             netuid: number;
@@ -1701,6 +1708,7 @@ export interface components {
             review_state: components["schemas"]["ReviewState"];
             slug: string;
             source_count: number;
+            stale_identity_candidate_kind_count: number;
             suggested_next_action: string;
             supported_interface_kinds: components["schemas"]["SurfaceKind"][];
         };
@@ -2018,6 +2026,7 @@ export interface components {
             curation_level: components["schemas"]["CurationLevel"];
             endpoint_count: number;
             gap_reasons: string[];
+            identity_evidence: components["schemas"]["SubnetProfileIdentityEvidence"];
             /** @enum {unknown} */
             identity_level: "none" | "directory" | "partial" | "complete";
             identity_surface_count: number;
@@ -2076,6 +2085,19 @@ export interface components {
             profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
             score: number;
         };
+        SubnetProfileIdentityEvidence: {
+            candidate_identity_count: number;
+            curated_identity_count: number;
+            curated_identity_kinds: components["schemas"]["SurfaceKind"][];
+            live_candidate_identity_kinds: components["schemas"]["SurfaceKind"][];
+            native_contact_present: boolean;
+            native_description_present: boolean;
+            native_identity_count: number;
+            native_identity_kinds: components["schemas"]["SurfaceKind"][];
+            needs_promotion_kinds: components["schemas"]["SurfaceKind"][];
+            stale_candidate_identity_kinds: components["schemas"]["SurfaceKind"][];
+            unverified_candidate_identity_kinds: components["schemas"]["SurfaceKind"][];
+        };
         SubnetProfileNativeIdentity: {
             additional: string | null;
             contact_present: boolean;
@@ -2116,7 +2138,9 @@ export interface components {
                 by_confidence: components["schemas"]["CountMap"];
                 by_identity_level: components["schemas"]["CountMap"];
                 by_profile_level: components["schemas"]["CountMap"];
+                identity_promotion_candidate_count: number;
                 native_identity_count: number;
+                native_identity_unpromoted_count: number;
                 profile_count: number;
             };
         } & {
@@ -4244,9 +4268,11 @@ export interface operations {
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 confidence?: "low" | "medium" | "high";
                 identity_level?: "none" | "directory" | "partial" | "complete";
+                identity_promotion_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                native_name_quality?: "chain" | "placeholder" | "empty";
                 limit?: number;
                 cursor?: number;
-                sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_surface_count" | "missing_critical_count" | "name" | "netuid" | "priority_score" | "profile_level";
+                sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_promotion_kind_count" | "identity_surface_count" | "live_identity_candidate_kind_count" | "missing_critical_count" | "name" | "native_identity_signal_count" | "native_name_quality" | "netuid" | "priority_score" | "profile_level" | "stale_identity_candidate_kind_count";
                 order?: "asc" | "desc";
             };
             header?: never;
