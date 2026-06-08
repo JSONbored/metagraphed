@@ -378,6 +378,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/review/enrichment-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the prioritized all-subnet enrichment queue. */
+        get: operations["reviewEnrichmentQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/review/gaps": {
         parameters: {
             query?: never;
@@ -1402,6 +1419,51 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        ReviewEnrichmentQueueArtifact: components["schemas"]["ArtifactBase"] & ({
+            notes: string;
+            queue: components["schemas"]["ReviewEnrichmentQueueEntry"][];
+            summary: {
+                adapter_candidate_count: number;
+                baseline_monitoring_count: number;
+                direct_submission_count: number;
+                lane_counts: components["schemas"]["CountMap"];
+                maintainer_review_count: number;
+                manual_review_required_count: number;
+                monitoring_followup_count: number;
+                queue_count: number;
+                subnet_count: number;
+                top_direct_submission_kinds: components["schemas"]["CountMap"];
+            };
+        } & {
+            [key: string]: unknown;
+        });
+        ReviewEnrichmentQueueEntry: {
+            adapter_score: number;
+            candidate_count: number;
+            completeness_score: number;
+            contribution_hint: string;
+            curation_level: components["schemas"]["CurationLevel"];
+            direct_submission_kinds: components["schemas"]["SurfaceKind"][];
+            endpoint_count: number;
+            /** @enum {unknown} */
+            lane: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+            manual_review_required: boolean;
+            missing_kinds: components["schemas"]["SurfaceKind"][];
+            name: string;
+            netuid: number;
+            operational_interface_count: number;
+            priority_score: number;
+            /** @enum {unknown} */
+            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            reason_codes: string[];
+            recommended_action: string;
+            review_state: components["schemas"]["ReviewState"];
+            sample_candidate_ids: string[];
+            slug: string;
+            source_urls: string[];
+            surface_count: number;
+            verified_candidate_count: number;
+        };
         ReviewGapPrioritiesArtifact: components["schemas"]["ArtifactBase"] & ({
             priorities: components["schemas"]["ReviewGapPriority"][];
         } & {
@@ -3573,6 +3635,84 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ReviewAdapterCandidatesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    reviewEnrichmentQueue: {
+        parameters: {
+            query?: {
+                lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+                netuid?: number;
+                profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                manual_review_required?: "true" | "false";
+                q?: string;
+                limit?: number;
+                cursor?: number;
+                sort?: "adapter_score" | "candidate_count" | "completeness_score" | "lane" | "name" | "netuid" | "priority_score" | "profile_level" | "verified_candidate_count";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ReviewEnrichmentQueueArtifact"];
                     };
                 };
             };

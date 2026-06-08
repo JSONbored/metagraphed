@@ -261,6 +261,12 @@ const profileArtifacts = buildSubnetProfileArtifacts({
   subnets: mergedSubnets,
   surfaces,
 });
+const enrichmentQueue = buildEnrichmentQueueArtifact({
+  candidates: candidateIndex,
+  curationReview,
+  profiles: profileArtifacts.profiles,
+  reviewProfiles: profileArtifacts.reviewProfiles,
+});
 
 const reviewQueue = candidateIndex.filter((candidate) =>
   ["schema-valid", "maintainer-review", "stale"].includes(candidate.state),
@@ -630,6 +636,7 @@ await writeJson(artifactFile("review/adapter-candidates.json"), {
   generated_at: generatedAt,
   candidates: curationReview.adapter_candidates,
 });
+await writeJson(artifactFile("review/enrichment-queue.json"), enrichmentQueue);
 await writeJson(artifactFile("review/maintainer-decisions.json"), {
   schema_version: 1,
   contract_version: contractVersion,
@@ -938,6 +945,285 @@ function buildSubnetProfileArtifacts({
       by_confidence: countBy(profiles, "confidence"),
     },
   };
+}
+
+function buildEnrichmentQueueArtifact({
+  candidates,
+  curationReview,
+  profiles,
+  reviewProfiles,
+}) {
+  const reviewProfileByNetuid = new Map(
+    reviewProfiles.map((profile) => [profile.netuid, profile]),
+  );
+  const gapPriorityByNetuid = new Map(
+    (curationReview.gap_priorities || []).map((priority) => [
+      priority.netuid,
+      priority,
+    ]),
+  );
+  const adapterCandidateByNetuid = new Map(
+    (curationReview.adapter_candidates || []).map((candidate) => [
+      candidate.netuid,
+      candidate,
+    ]),
+  );
+  const candidatesByNetuid = groupByNetuid(candidates);
+
+  const queue = profiles
+    .map((profile) =>
+      enrichmentQueueEntry({
+        adapterCandidate: adapterCandidateByNetuid.get(profile.netuid),
+        gapPriority: gapPriorityByNetuid.get(profile.netuid),
+        profile,
+        reviewProfile: reviewProfileByNetuid.get(profile.netuid),
+        subnetCandidates: candidatesByNetuid.get(profile.netuid) || [],
+      }),
+    )
+    .sort(
+      (a, b) =>
+        b.priority_score - a.priority_score ||
+        a.lane.localeCompare(b.lane) ||
+        a.netuid - b.netuid,
+    );
+
+  return {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    notes:
+      "Prioritized enrichment queue derived from public-safe profile gaps, candidate counts, review state, adapter potential, and probe-derived endpoint incidents. It is contributor guidance, not a contribution API.",
+    summary: {
+      subnet_count: profiles.length,
+      queue_count: queue.length,
+      direct_submission_count: queue.filter(
+        (entry) => entry.lane === "direct-submission",
+      ).length,
+      maintainer_review_count: queue.filter(
+        (entry) => entry.lane === "maintainer-review",
+      ).length,
+      adapter_candidate_count: queue.filter(
+        (entry) => entry.lane === "adapter-candidate",
+      ).length,
+      monitoring_followup_count: queue.filter(
+        (entry) => entry.lane === "monitoring-followup",
+      ).length,
+      baseline_monitoring_count: queue.filter(
+        (entry) => entry.lane === "baseline-monitoring",
+      ).length,
+      manual_review_required_count: queue.filter(
+        (entry) => entry.manual_review_required,
+      ).length,
+      lane_counts: countBy(queue, "lane"),
+      top_direct_submission_kinds: countDirectSubmissionKinds(queue),
+    },
+    queue,
+  };
+}
+
+function enrichmentQueueEntry({
+  adapterCandidate,
+  gapPriority,
+  profile,
+  reviewProfile,
+  subnetCandidates,
+}) {
+  const missingRequired = profile.completeness.missing_required || [];
+  const missingOperational = profile.completeness.missing_operational || [];
+  const missingKinds = [
+    ...new Set([
+      ...(gapPriority?.missing_kinds || []),
+      ...missingRequired,
+      ...missingOperational,
+    ]),
+  ].sort();
+  const directSubmissionKinds = directSubmissionKindsForProfile(profile);
+  const lane = enrichmentLane({
+    adapterCandidate,
+    directSubmissionKinds,
+    profile,
+  });
+  const manualReviewRequired = [
+    "maintainer-review",
+    "adapter-candidate",
+  ].includes(lane);
+  const adapterScore = adapterCandidate?.priority_score || 0;
+  const priorityScore =
+    (reviewProfile?.priority_score || 100 - profile.completeness_score) +
+    Math.floor((gapPriority?.priority_score || 0) / 2) +
+    Math.floor(adapterScore / 2);
+
+  return {
+    adapter_score: adapterScore,
+    candidate_count: profile.candidate_count,
+    completeness_score: profile.completeness_score,
+    contribution_hint: enrichmentContributionHint(lane, directSubmissionKinds),
+    curation_level: profile.curation_level,
+    direct_submission_kinds: directSubmissionKinds,
+    endpoint_count: profile.endpoint_count,
+    lane,
+    manual_review_required: manualReviewRequired,
+    missing_kinds: missingKinds,
+    name: profile.name,
+    netuid: profile.netuid,
+    operational_interface_count: profile.operational_interface_count,
+    priority_score: priorityScore,
+    profile_level: profile.profile_level,
+    reason_codes: enrichmentReasonCodes({
+      adapterCandidate,
+      directSubmissionKinds,
+      profile,
+    }),
+    recommended_action: enrichmentRecommendedAction({
+      adapterCandidate,
+      directSubmissionKinds,
+      lane,
+      profile,
+      reviewProfile,
+    }),
+    review_state: profile.review_state,
+    sample_candidate_ids: subnetCandidates
+      .map((candidate) => candidate.id)
+      .filter(Boolean)
+      .sort()
+      .slice(0, 5),
+    slug: profile.slug,
+    source_urls: (profile.provenance.source_urls || []).slice(0, 8),
+    surface_count: profile.surface_count,
+    verified_candidate_count: gapPriority?.verified_candidate_count || 0,
+  };
+}
+
+function directSubmissionKindsForProfile(profile) {
+  const missingRequired = new Set(profile.completeness.missing_required || []);
+  const identityTargets = ["docs", "website", "source-repo"].filter((kind) =>
+    missingRequired.has(kind),
+  );
+  if (identityTargets.length > 0) {
+    return identityTargets;
+  }
+
+  const missingOperational = new Set(
+    profile.completeness.missing_operational || [],
+  );
+  const hasOperationalEvidence = profile.operational_interface_count > 0;
+  const operationalTargets = ["openapi", "subnet-api", "data-artifact"].filter(
+    (kind) => missingOperational.has(kind),
+  );
+  if (!hasOperationalEvidence) {
+    return operationalTargets;
+  }
+
+  const hasApiLikeEvidence = profile.operational_interface_kinds.some((kind) =>
+    ["openapi", "subnet-api"].includes(kind),
+  );
+  if (!hasApiLikeEvidence) {
+    return operationalTargets.filter((kind) =>
+      ["openapi", "subnet-api"].includes(kind),
+    );
+  }
+
+  return [];
+}
+
+function enrichmentLane({ adapterCandidate, directSubmissionKinds, profile }) {
+  if (directSubmissionKinds.length > 0) {
+    return "direct-submission";
+  }
+  if (
+    profile.review_state !== "maintainer-reviewed" &&
+    profile.surface_count > 0
+  ) {
+    return "maintainer-review";
+  }
+  if (adapterCandidate?.operational_surface_count > 0) {
+    return "adapter-candidate";
+  }
+  return "baseline-monitoring";
+}
+
+function enrichmentReasonCodes({
+  adapterCandidate,
+  directSubmissionKinds,
+  profile,
+}) {
+  const reasons = [];
+  if (profile.profile_level === "directory-only") {
+    reasons.push("directory-only-profile");
+  }
+  for (const kind of directSubmissionKinds) {
+    reasons.push(`missing-${kind}`);
+  }
+  if (profile.review_state !== "maintainer-reviewed") {
+    reasons.push("needs-maintainer-review");
+  }
+  if (adapterCandidate?.operational_surface_count > 0) {
+    reasons.push("adapter-candidate");
+  }
+  return [...new Set(reasons)].sort();
+}
+
+function enrichmentContributionHint(lane, directSubmissionKinds) {
+  if (lane === "direct-submission") {
+    const kinds = directSubmissionKinds.join(", ");
+    return `Submit one official public ${kinds || "interface"} candidate with npm run candidate:new.`;
+  }
+  if (lane === "maintainer-review") {
+    return "Maintainer should review current machine-verified surfaces and promote only source-backed entries.";
+  }
+  if (lane === "adapter-candidate") {
+    return "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.";
+  }
+  if (lane === "monitoring-followup") {
+    return "Endpoint status reports can trigger re-probes or review, but observed health remains probe-derived.";
+  }
+  return "No immediate enrichment action; keep monitoring for drift and new public interfaces.";
+}
+
+function enrichmentRecommendedAction({
+  adapterCandidate,
+  directSubmissionKinds,
+  lane,
+  profile,
+  reviewProfile,
+}) {
+  if (lane === "direct-submission") {
+    if (
+      directSubmissionKinds.some((kind) =>
+        ["docs", "website", "source-repo"].includes(kind),
+      )
+    ) {
+      return "submit official docs, website, or source repository evidence";
+    }
+    return "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them";
+  }
+  if (lane === "maintainer-review") {
+    return (
+      reviewProfile?.suggested_next_action ||
+      "review promoted surfaces and mark maintainer-reviewed where provenance is strong"
+    );
+  }
+  if (lane === "adapter-candidate") {
+    const kinds = (adapterCandidate.operational_kinds || []).join(", ");
+    return `evaluate adapter support for ${kinds || "operational surfaces"}`;
+  }
+  if (profile.operational_interface_count > 0) {
+    return "profile is baseline-complete; monitor operational surfaces for drift";
+  }
+  return "profile is baseline-complete; monitor for new public interfaces";
+}
+
+function countDirectSubmissionKinds(queue) {
+  return Object.fromEntries(
+    Object.entries(
+      queue.reduce((accumulator, entry) => {
+        for (const kind of entry.direct_submission_kinds || []) {
+          accumulator[kind] = (accumulator[kind] || 0) + 1;
+        }
+        return accumulator;
+      }, {}),
+    ).sort(([a], [b]) => a.localeCompare(b)),
+  );
 }
 
 function countGapReasons(profiles) {

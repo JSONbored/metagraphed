@@ -426,6 +426,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Prioritized all-subnet enrichment work queue for contributor-safe registry improvements.",
+      "id": "review-enrichment-queue",
+      "path": "/metagraph/review/enrichment-queue.json",
+      "schema_ref": "#/components/schemas/ReviewEnrichmentQueueArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Public-safe maintainer review decision ledger.",
       "id": "review-decisions",
       "path": "/metagraph/review/maintainer-decisions.json",

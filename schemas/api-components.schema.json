@@ -3074,6 +3074,226 @@
           }
         ]
       },
+      "ReviewEnrichmentQueueArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "notes": {
+                "type": "string"
+              },
+              "queue": {
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentQueueEntry"
+                },
+                "type": "array"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "adapter_candidate_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "baseline_monitoring_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "direct_submission_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "lane_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "maintainer_review_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "manual_review_required_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "monitoring_followup_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "queue_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "subnet_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "top_direct_submission_kinds": {
+                    "$ref": "#/components/schemas/CountMap"
+                  }
+                },
+                "required": [
+                  "adapter_candidate_count",
+                  "baseline_monitoring_count",
+                  "direct_submission_count",
+                  "lane_counts",
+                  "maintainer_review_count",
+                  "manual_review_required_count",
+                  "monitoring_followup_count",
+                  "queue_count",
+                  "subnet_count",
+                  "top_direct_submission_kinds"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "notes",
+              "queue",
+              "summary"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ReviewEnrichmentQueueEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "adapter_score": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "candidate_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "completeness_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "contribution_hint": {
+            "type": "string"
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "direct_submission_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "endpoint_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "lane": {
+            "enum": [
+              "direct-submission",
+              "maintainer-review",
+              "adapter-candidate",
+              "monitoring-followup",
+              "baseline-monitoring"
+            ]
+          },
+          "manual_review_required": {
+            "type": "boolean"
+          },
+          "missing_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "operational_interface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "priority_score": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "recommended_action": {
+            "type": "string"
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "sample_candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source_urls": {
+            "items": {
+              "format": "uri",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "surface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "verified_candidate_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "adapter_score",
+          "candidate_count",
+          "completeness_score",
+          "contribution_hint",
+          "curation_level",
+          "direct_submission_kinds",
+          "endpoint_count",
+          "lane",
+          "manual_review_required",
+          "missing_kinds",
+          "name",
+          "netuid",
+          "operational_interface_count",
+          "priority_score",
+          "profile_level",
+          "reason_codes",
+          "recommended_action",
+          "review_state",
+          "sample_candidate_ids",
+          "slug",
+          "source_urls",
+          "surface_count",
+          "verified_candidate_count"
+        ],
+        "type": "object"
+      },
       "ReviewGapPrioritiesArtifact": {
         "allOf": [
           {

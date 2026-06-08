@@ -18,17 +18,24 @@ if (isCliEntrypoint()) {
 }
 
 export async function loadCurationSnapshot({ limit = 12 } = {}) {
-  const [coverage, profileCompleteness, gapPriorities, adapterCandidates] =
-    await Promise.all([
-      readArtifact("coverage.json"),
-      readArtifact("review/profile-completeness.json"),
-      readArtifact("review/gap-priorities.json"),
-      readArtifact("review/adapter-candidates.json"),
-    ]);
+  const [
+    coverage,
+    profileCompleteness,
+    gapPriorities,
+    adapterCandidates,
+    enrichmentQueue,
+  ] = await Promise.all([
+    readArtifact("coverage.json"),
+    readArtifact("review/profile-completeness.json"),
+    readArtifact("review/gap-priorities.json"),
+    readArtifact("review/adapter-candidates.json"),
+    readArtifact("review/enrichment-queue.json"),
+  ]);
 
   const profiles = profileCompleteness.profiles || [];
   const priorities = gapPriorities.priorities || [];
   const adapters = adapterCandidates.candidates || [];
+  const queue = enrichmentQueue.queue || [];
 
   return {
     schema_version: 1,
@@ -50,6 +57,8 @@ export async function loadCurationSnapshot({ limit = 12 } = {}) {
       critical_gap_counts:
         profileCompleteness.summary?.critical_gap_counts || {},
     },
+    enrichment_summary: enrichmentQueue.summary || {},
+    enrichment_queue: queue.slice(0, limit).map(enrichmentBriefRow),
     lowest_completeness: profiles.slice(0, limit).map(profileBriefRow),
     highest_gap_priority: priorities.slice(0, limit).map(priorityBriefRow),
     adapter_candidates: adapters.slice(0, limit).map(adapterBriefRow),
@@ -79,6 +88,8 @@ export async function loadCurationSnapshot({ limit = 12 } = {}) {
 }
 
 export function renderCurationBrief(snapshot) {
+  const enrichmentSummary = snapshot.enrichment_summary || {};
+  const enrichmentQueue = snapshot.enrichment_queue || [];
   const lines = [
     "# Metagraphed Curation Brief",
     "",
@@ -100,6 +111,19 @@ export function renderCurationBrief(snapshot) {
     "## Best Direct PR Targets",
     "",
     "Submit one public-safe candidate at a time with `npm run candidate:new`. Official docs, websites, source repos, OpenAPI/schema URLs, public subnet APIs, dashboards, SDKs, examples, and data artifacts are the best auto-review candidates.",
+    "",
+    `- Enrichment queue lanes: ${formatCounts(enrichmentSummary.lane_counts)}`,
+    `- Direct-submission targets: ${enrichmentSummary.direct_submission_count ?? "unknown"}`,
+    `- Maintainer-review targets: ${enrichmentSummary.maintainer_review_count ?? "unknown"}`,
+    `- Manual-review-required targets: ${enrichmentSummary.manual_review_required_count ?? "unknown"}`,
+    "",
+    ...numberedRows(
+      enrichmentQueue,
+      (row) =>
+        `SN${row.netuid} ${row.name} - ${row.lane}; priority ${row.priority_score}; ${row.recommended_action}; target kinds: ${row.direct_submission_kinds.join(", ") || "n/a"}`,
+    ),
+    "",
+    "## Lowest Profile Completeness",
     "",
     ...numberedRows(
       snapshot.lowest_completeness,
@@ -177,6 +201,21 @@ function adapterBriefRow(candidate) {
       candidate.surface_count ?? candidate.operational_surface_count ?? 0,
     surface_kinds: candidate.surface_kinds || candidate.operational_kinds || [],
     suggested_adapter: candidate.suggested_adapter,
+  };
+}
+
+function enrichmentBriefRow(entry) {
+  return {
+    netuid: entry.netuid,
+    name: entry.name,
+    slug: entry.slug,
+    lane: entry.lane,
+    priority_score: entry.priority_score,
+    completeness_score: entry.completeness_score,
+    direct_submission_kinds: entry.direct_submission_kinds || [],
+    manual_review_required: entry.manual_review_required,
+    reason_codes: entry.reason_codes || [],
+    recommended_action: entry.recommended_action,
   };
 }
 

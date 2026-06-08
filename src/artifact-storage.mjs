@@ -51,6 +51,7 @@ const DUAL_PATTERNS = [
   /^r2-manifest\.json$/,
   /^review\/adapter-candidates\.json$/,
   /^review\/curation\.json$/,
+  /^review\/enrichment-queue\.json$/,
   /^review\/gap-priorities\.json$/,
   /^review\/maintainer-decisions\.json$/,
   /^schema-drift\.json$/,

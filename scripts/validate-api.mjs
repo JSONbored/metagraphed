@@ -160,6 +160,16 @@ const checks = [
     (body) => assert.equal(body.data.candidates.length <= 3, true),
   ],
   [
+    "/api/v1/review/enrichment-queue?lane=direct-submission&limit=3",
+    (body) => {
+      assert.equal(body.data.queue.length <= 3, true);
+      assert.equal(
+        body.data.queue.every((entry) => entry.lane === "direct-submission"),
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/health",
     (body) => assert.equal(Array.isArray(body.data.subnets), true),
   ],

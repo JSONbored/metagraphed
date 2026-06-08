@@ -20,13 +20,16 @@ npm run curation:brief -- --json
 
 The brief reads existing registry review artifacts:
 
+- `public/metagraph/review/enrichment-queue.json`
 - `public/metagraph/review/profile-completeness.json`
 - `public/metagraph/review/gap-priorities.json`
 - `public/metagraph/review/adapter-candidates.json`
 - `public/metagraph/coverage.json`
 
-It does not add a contribution-target API and does not create new registry
-truth. It is an operator/contributor queue derived from current artifacts.
+The enrichment queue is also available through
+`/api/v1/review/enrichment-queue` for backend consumers. It does not create new
+registry truth; it only prioritizes public-safe work derived from current
+artifacts.
 
 ## What Fully Curated Means
 
@@ -92,10 +95,14 @@ observed health directly.
 
 ## Curation Order
 
-1. Start with the lowest-completeness rows from `npm run curation:brief`.
-2. Submit official docs, website, or source repo evidence first.
-3. Add API/OpenAPI/SSE/data surfaces only when the subnet publicly exposes
+1. Start with the enrichment queue from `npm run curation:brief`.
+2. Prefer `direct-submission` rows for contributor PRs.
+3. Route `maintainer-review`, `adapter-candidate`, and `monitoring-followup`
+   rows through maintainer review.
+4. Submit official docs, website, or source repo evidence before optional app
+   surfaces.
+5. Add API/OpenAPI/SSE/data surfaces only when the subnet publicly exposes
    them.
-4. Use the adapter-candidate queue after baseline identity and operational
+6. Use the adapter-candidate queue after baseline identity and operational
    surfaces are strong.
-5. Promote entries to maintainer-reviewed only after provenance is strong.
+7. Promote entries to maintainer-reviewed only after provenance is strong.

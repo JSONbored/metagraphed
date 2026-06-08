@@ -369,6 +369,7 @@ test("public artifacts are internally consistent", () => {
   const gapPriorities = readArtifact("review/gap-priorities.json");
   const profileCompleteness = readArtifact("review/profile-completeness.json");
   const adapterCandidates = readArtifact("review/adapter-candidates.json");
+  const enrichmentQueue = readArtifact("review/enrichment-queue.json");
   const reviewDecisions = readArtifact("review/maintainer-decisions.json");
   const generatedCandidateDiscovery = JSON.parse(
     readFileSync("registry/candidates/generated/public-sources.json", "utf8"),
@@ -604,6 +605,23 @@ test("public artifacts are internally consistent", () => {
   assert.equal(reviewCuration.summary.subnet_count, native.subnets.length);
   assert.equal(gapPriorities.priorities.length, native.subnets.length);
   assert.equal(profileCompleteness.profiles.length, native.subnets.length);
+  assert.equal(enrichmentQueue.summary.subnet_count, native.subnets.length);
+  assert.equal(enrichmentQueue.summary.queue_count, native.subnets.length);
+  assert.equal(enrichmentQueue.queue.length, native.subnets.length);
+  assert.equal(
+    enrichmentQueue.queue.some((entry) => entry.lane === "direct-submission"),
+    true,
+  );
+  assert.equal(
+    enrichmentQueue.queue.some((entry) => entry.manual_review_required),
+    true,
+  );
+  assert.equal(
+    enrichmentQueue.queue.every((entry) =>
+      Array.isArray(entry.direct_submission_kinds),
+    ),
+    true,
+  );
   assert.deepEqual(profileCompleteness.summary.by_profile_level, {
     "adapter-backed": 2,
     "directory-only": 38,

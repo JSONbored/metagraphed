@@ -178,6 +178,143 @@
         },
         "additionalProperties": false
       },
+      "ReviewEnrichmentQueueEntry": {
+        "type": "object",
+        "required": [
+          "adapter_score",
+          "candidate_count",
+          "completeness_score",
+          "contribution_hint",
+          "curation_level",
+          "direct_submission_kinds",
+          "endpoint_count",
+          "lane",
+          "manual_review_required",
+          "missing_kinds",
+          "name",
+          "netuid",
+          "operational_interface_count",
+          "priority_score",
+          "profile_level",
+          "reason_codes",
+          "recommended_action",
+          "review_state",
+          "sample_candidate_ids",
+          "slug",
+          "source_urls",
+          "surface_count",
+          "verified_candidate_count"
+        ],
+        "properties": {
+          "adapter_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completeness_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "contribution_hint": {
+            "type": "string"
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "direct_submission_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "endpoint_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lane": {
+            "enum": [
+              "direct-submission",
+              "maintainer-review",
+              "adapter-candidate",
+              "monitoring-followup",
+              "baseline-monitoring"
+            ]
+          },
+          "manual_review_required": {
+            "type": "boolean"
+          },
+          "missing_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operational_interface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended_action": {
+            "type": "string"
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "sample_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "verified_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
       "ReviewDecision": {
         "type": "object",
         "required": [
@@ -379,6 +516,85 @@
                     "$ref": "#/components/schemas/CountMap"
                   },
                   "critical_gap_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewEnrichmentQueueArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["notes", "queue", "summary"],
+            "properties": {
+              "notes": {
+                "type": "string"
+              },
+              "queue": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentQueueEntry"
+                }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "adapter_candidate_count",
+                  "baseline_monitoring_count",
+                  "direct_submission_count",
+                  "lane_counts",
+                  "maintainer_review_count",
+                  "manual_review_required_count",
+                  "monitoring_followup_count",
+                  "queue_count",
+                  "subnet_count",
+                  "top_direct_submission_kinds"
+                ],
+                "properties": {
+                  "adapter_candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "baseline_monitoring_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "direct_submission_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "lane_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "maintainer_review_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "manual_review_required_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "monitoring_followup_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "queue_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "subnet_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "top_direct_submission_kinds": {
                     "$ref": "#/components/schemas/CountMap"
                   }
                 },

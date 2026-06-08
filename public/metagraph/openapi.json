@@ -3096,6 +3096,226 @@
           }
         ]
       },
+      "ReviewEnrichmentQueueArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "notes": {
+                "type": "string"
+              },
+              "queue": {
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentQueueEntry"
+                },
+                "type": "array"
+              },
+              "summary": {
+                "additionalProperties": false,
+                "properties": {
+                  "adapter_candidate_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "baseline_monitoring_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "direct_submission_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "lane_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "maintainer_review_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "manual_review_required_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "monitoring_followup_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "queue_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "subnet_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "top_direct_submission_kinds": {
+                    "$ref": "#/components/schemas/CountMap"
+                  }
+                },
+                "required": [
+                  "adapter_candidate_count",
+                  "baseline_monitoring_count",
+                  "direct_submission_count",
+                  "lane_counts",
+                  "maintainer_review_count",
+                  "manual_review_required_count",
+                  "monitoring_followup_count",
+                  "queue_count",
+                  "subnet_count",
+                  "top_direct_submission_kinds"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "notes",
+              "queue",
+              "summary"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ReviewEnrichmentQueueEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "adapter_score": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "candidate_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "completeness_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "contribution_hint": {
+            "type": "string"
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "direct_submission_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "endpoint_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "lane": {
+            "enum": [
+              "direct-submission",
+              "maintainer-review",
+              "adapter-candidate",
+              "monitoring-followup",
+              "baseline-monitoring"
+            ]
+          },
+          "manual_review_required": {
+            "type": "boolean"
+          },
+          "missing_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "operational_interface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "priority_score": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "recommended_action": {
+            "type": "string"
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "sample_candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source_urls": {
+            "items": {
+              "format": "uri",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "surface_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "verified_candidate_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "adapter_score",
+          "candidate_count",
+          "completeness_score",
+          "contribution_hint",
+          "curation_level",
+          "direct_submission_kinds",
+          "endpoint_count",
+          "lane",
+          "manual_review_required",
+          "missing_kinds",
+          "name",
+          "netuid",
+          "operational_interface_count",
+          "priority_score",
+          "profile_level",
+          "reason_codes",
+          "recommended_action",
+          "review_state",
+          "sample_candidate_ids",
+          "slug",
+          "source_urls",
+          "surface_count",
+          "verified_candidate_count"
+        ],
+        "type": "object"
+      },
       "ReviewGapPrioritiesArtifact": {
         "allOf": [
           {
@@ -8809,6 +9029,204 @@
         "tags": [
           "adapters",
           "review"
+        ]
+      }
+    },
+    "/api/v1/review/enrichment-queue": {
+      "get": {
+        "operationId": "reviewEnrichmentQueue",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lane",
+            "required": false,
+            "schema": {
+              "enum": [
+                "direct-submission",
+                "maintainer-review",
+                "adapter-candidate",
+                "monitoring-followup",
+                "baseline-monitoring"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_level",
+            "required": false,
+            "schema": {
+              "enum": [
+                "directory-only",
+                "identity-complete",
+                "operational",
+                "adapter-backed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "manual_review_required",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "adapter_score",
+                "candidate_count",
+                "completeness_score",
+                "lane",
+                "name",
+                "netuid",
+                "priority_score",
+                "profile_level",
+                "verified_candidate_count"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ReviewEnrichmentQueueArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the prioritized all-subnet enrichment queue.",
+        "tags": [
+          "registry",
+          "review",
+          "profiles"
         ]
       }
     },

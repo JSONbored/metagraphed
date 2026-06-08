@@ -267,6 +267,37 @@ export const API_QUERY_COLLECTIONS = {
       "priority_score",
     ],
   }),
+  "enrichment-queue": queryCollection("queue", {
+    filters: {
+      lane: enumSchema([
+        "direct-submission",
+        "maintainer-review",
+        "adapter-candidate",
+        "monitoring-followup",
+        "baseline-monitoring",
+      ]),
+      netuid: integerSchema,
+      profile_level: enumSchema([
+        "directory-only",
+        "identity-complete",
+        "operational",
+        "adapter-backed",
+      ]),
+      manual_review_required: enumSchema(["true", "false"]),
+    },
+    search: ["name", "slug", "recommended_action", "reason_codes"],
+    sort: [
+      "adapter_score",
+      "candidate_count",
+      "completeness_score",
+      "lane",
+      "name",
+      "netuid",
+      "priority_score",
+      "profile_level",
+      "verified_candidate_count",
+    ],
+  }),
   "health-subnets": queryCollection("subnets", {
     filters: {
       netuid: integerSchema,
@@ -637,6 +668,12 @@ export const PUBLIC_ARTIFACTS = [
     "ReviewAdapterCandidatesArtifact",
   ),
   artifact(
+    "review-enrichment-queue",
+    "/metagraph/review/enrichment-queue.json",
+    "Prioritized all-subnet enrichment work queue for contributor-safe registry improvements.",
+    "ReviewEnrichmentQueueArtifact",
+  ),
+  artifact(
     "review-decisions",
     "/metagraph/review/maintainer-decisions.json",
     "Public-safe maintainer review decision ledger.",
@@ -855,6 +892,16 @@ export const API_ROUTES = [
     "standard",
     ["adapters", "review"],
     listQuery("adapter-candidates"),
+  ),
+  route(
+    "review-enrichment-queue",
+    "GET",
+    "/api/v1/review/enrichment-queue",
+    "/metagraph/review/enrichment-queue.json",
+    "Fetch the prioritized all-subnet enrichment queue.",
+    "standard",
+    ["registry", "review", "profiles"],
+    listQuery("enrichment-queue"),
   ),
   route(
     "health",
