@@ -362,8 +362,16 @@ export const subnetsInfiniteQuery = (
   infiniteQueryOptions({
     queryKey: k("subnets-infinite", baseParams, initialCursor),
     initialPageParam: initialCursor,
-    queryFn: ({ pageParam, signal }) =>
-      fetchInfinitePage<Subnet>("/api/v1/subnets", "subnets", baseParams, pageParam as string, signal),
+    queryFn: async ({ pageParam, signal }) => {
+      const page = await fetchInfinitePage<unknown>(
+        "/api/v1/subnets",
+        "subnets",
+        baseParams,
+        pageParam as string,
+        signal,
+      );
+      return { ...page, data: page.data.map(normalizeSubnet) } as typeof page;
+    },
     getNextPageParam: (last) => {
       const nc = (last.meta as Record<string, unknown>)?._next_cursor as string | null | undefined;
       return nc ?? undefined;
