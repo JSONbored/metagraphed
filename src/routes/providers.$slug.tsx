@@ -5,6 +5,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { EmptyState, PageHeading, Skeleton, StaleBanner, RECOVERY } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ProfileHero } from "@/components/metagraphed/profile-hero";
+import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { PrimaryLinksRail } from "@/components/metagraphed/primary-links-rail";
 import { ProfileTabs, useActiveTab } from "@/components/metagraphed/profile-tabs";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
