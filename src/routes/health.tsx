@@ -131,19 +131,22 @@ function AutoRefreshControl({
     return () => window.clearInterval(i);
   }, [active, intervalMs]);
 
-  // Quiet aria-live: only announce meaningful state transitions, never the
-  // per-second countdown. Screen readers read at human cadence, not 1Hz.
+  // Throttled aria-live: announce only on meaningful, settled state changes.
+  // We debounce 900ms (longer than a screen-reader rate-limit window) and
+  // skip writes when the next message matches the previous announcement, so
+  // toggling controls quickly never spams a screen reader with intermediate
+  // states. The per-second countdown is intentionally never narrated.
   const [announcement, setAnnouncement] = useState("");
   useEffect(() => {
-    if (!enabled) {
-      setAnnouncement("Auto-refresh paused.");
-      return;
-    }
-    if (!visible) {
-      setAnnouncement("Auto-refresh paused while tab is hidden.");
-      return;
-    }
-    setAnnouncement(`Auto-refresh on, every ${Math.round(intervalMs / 1000)} seconds.`);
+    const next = !enabled
+      ? "Auto-refresh paused."
+      : !visible
+        ? "Auto-refresh paused while tab is hidden."
+        : `Auto-refresh on, every ${Math.round(intervalMs / 1000)} seconds.`;
+    const t = window.setTimeout(() => {
+      setAnnouncement((prev) => (prev === next ? prev : next));
+    }, 900);
+    return () => window.clearTimeout(t);
   }, [enabled, visible, intervalMs]);
 
 
