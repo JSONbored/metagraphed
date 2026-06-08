@@ -304,10 +304,7 @@ function SubnetPreviewTable() {
                       size={20}
                       name={s.name ?? `Subnet ${s.netuid}`}
                       fallback={s.netuid}
-                      url={s.website ?? s.homepage}
-                      repoUrl={s.repo}
-                      lookup={undefined}
-                      subnetSlug={(s as { slug?: string }).slug}
+                      url={s.website}
                       netuid={s.netuid}
                     />
                     <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
