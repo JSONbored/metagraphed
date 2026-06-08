@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
@@ -8,12 +8,13 @@ import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/stat
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import {
-  ResetLink,
+  PageSizeSelect,
+  ResetFiltersButton,
   SearchInput,
   SelectFilter,
   SortHeader,
 } from "@/components/metagraphed/table-controls";
-import { ListShell, ListCard, LoadMore } from "@/components/metagraphed/list-shell";
+import { ListShell, LoadMore } from "@/components/metagraphed/list-shell";
 import { subnetsInfiniteQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
 import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
@@ -35,13 +36,27 @@ export const Route = createFileRoute("/subnets")({
 });
 
 function SubnetsPage() {
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const filtersActive =
+    !!search.q || !!search.sort || !!search.curation || !!search.health || !!search.cursor;
+  const onReset = () =>
+    navigate({
+      search: { limit: search.limit } as never,
+      replace: true,
+    });
   return (
     <AppShell>
       <PageHeading
         eyebrow="Registry"
         title="Subnets"
         description="Every active Finney netuid — root and application — with curation level, surface count, health, and freshness."
-        right={<><ShareButton /><ResetLink to="/subnets" /></>}
+        right={
+          <>
+            <ResetFiltersButton active={filtersActive} onReset={onReset} />
+            <ShareButton />
+          </>
+        }
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
@@ -56,8 +71,6 @@ function SubnetsTable() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
-  // Resets cursor when filters/sort change — the URL stays the source of
-  // truth for the request, infinite query absorbs the cursor internally.
   const baseParams = {
     q: search.q || undefined,
     sort: search.sort || undefined,
@@ -72,10 +85,32 @@ function SubnetsTable() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useSuspenseInfiniteQuery(subnetsInfiniteQuery(baseParams));
+    isFetchNextPageError,
+    error,
+    isFetching,
+  } = useSuspenseInfiniteQuery(subnetsInfiniteQuery(baseParams, search.cursor));
 
-  const all = data.pages.flatMap((p) => (p.data ?? []) as Subnet[]);
-  const total = data.pages[0]?.meta?.pagination?.total ?? data.pages[0]?.meta?.total;
+  const pages = data.pages as Array<
+    (typeof data.pages)[number] & { cursorInvalid?: boolean }
+  >;
+  const lastPage = pages[pages.length - 1];
+  const cursorInvalid = !!lastPage?.cursorInvalid;
+  const all = pages.flatMap((p) => (p.data ?? []) as Subnet[]);
+  const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
+
+  // Mirror the most recently used cursor into the URL so refresh / sharing
+  // restores the same starting page. `data.pageParams` is the canonical
+  // record of which cursors fetched which pages.
+  const lastPageParam = (data.pageParams[data.pageParams.length - 1] ?? "") as string;
+  useEffect(() => {
+    if (lastPageParam !== search.cursor) {
+      navigate({
+        search: (prev: Record<string, unknown>) =>
+          ({ ...prev, cursor: lastPageParam }) as never,
+        replace: true,
+      });
+    }
+  }, [lastPageParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
@@ -94,7 +129,6 @@ function SubnetsTable() {
         }) as never,
     });
 
-  // Client-side filter/sort applied as a fallback when the API ignores params.
   const filtered = all.filter((s) => {
     if (!matchesQuery([s.netuid, s.name, s.symbol], search.q)) return false;
     if (search.curation && s.curation_level !== search.curation) return false;
@@ -135,6 +169,7 @@ function SubnetsTable() {
           { value: "unknown", label: "unknown" },
         ]}
       />
+      <PageSizeSelect value={search.limit} onChange={(n) => setSearch({ limit: n })} />
     </>
   );
 
@@ -142,6 +177,7 @@ function SubnetsTable() {
     <ListShell
       filters={filters}
       isEmpty={rows.length === 0}
+      isStale={isFetching && !isFetchingNextPage}
       empty={
         <EmptyState
           title="No matching subnets"
@@ -220,11 +256,10 @@ function SubnetsTable() {
           hasMore={!!hasNextPage}
           isLoading={isFetchingNextPage}
           onLoadMore={() => fetchNextPage()}
+          error={isFetchNextPageError ? (error as Error) : null}
+          cursorInvalid={cursorInvalid}
         />
       }
     />
   );
 }
-
-// Keep ListCard import side-effect-free.
-void ListCard;

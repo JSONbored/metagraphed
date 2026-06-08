@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { CopyableCode } from "./copyable-code";
+import { ThemeToggle } from "./theme-toggle";
 import { classNames } from "@/lib/metagraphed/format";
 import { searchQuery } from "@/lib/metagraphed/queries";
 
@@ -401,6 +402,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="inline-flex items-center rounded border border-border bg-card px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
                 Unofficial
               </span>
+              <ThemeToggle />
             </div>
           </div>
         </header>

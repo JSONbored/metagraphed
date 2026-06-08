@@ -5,9 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Metagraphed design system — Paper & Ink palette.
- * Light only by design (public developer registry).
- * Fonts: Space Grotesk (display) + DM Sans (body) + JetBrains Mono (ids/urls).
+ * Metagraphed design system — Slate Cyan palette, light + dark.
+ * Inspired by taostats.io: deep slate-navy + electric teal accent.
+ * Health stays traffic-light (semantic) per accessibility convention.
  */
 
 @theme inline {
@@ -59,53 +59,99 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* ============ LIGHT (default) ============ */
 :root {
   --radius: 0.5rem;
 
-  /* Paper & Ink */
-  --paper: #f5f3ee;
-  --surface: #e8e4dd;
-  --ink: #2d2d2d;
-  --ink-strong: #0d0d0d;
-  --ink-muted: #6b6b6b;
-  --ink-subtle: #a8a39a;
+  --paper:      oklch(0.985 0.003 250);
+  --surface:    oklch(0.965 0.005 250);
+  --ink:        oklch(0.25  0.02  250);
+  --ink-strong: oklch(0.12  0.02  250);
+  --ink-muted:  oklch(0.50  0.02  250);
+  --ink-subtle: oklch(0.70  0.01  250);
 
   --background: var(--paper);
   --foreground: var(--ink-strong);
 
-  --card: #ffffff;
-  --card-foreground: var(--ink-strong);
-  --popover: #ffffff;
+  --card:               oklch(1 0 0);
+  --card-foreground:    var(--ink-strong);
+  --popover:            oklch(1 0 0);
   --popover-foreground: var(--ink-strong);
 
-  --primary: var(--ink-strong);
-  --primary-foreground: var(--paper);
-  --secondary: var(--surface);
+  --primary:              var(--ink-strong);
+  --primary-foreground:   var(--paper);
+  --secondary:            var(--surface);
   --secondary-foreground: var(--ink-strong);
-  --muted: var(--surface);
-  --muted-foreground: var(--ink-muted);
-  --accent: var(--surface);
-  --accent-foreground: var(--ink-strong);
+  --muted:                var(--surface);
+  --muted-foreground:     var(--ink-muted);
+  --accent:               oklch(0.55 0.13 200);  /* teal/cyan */
+  --accent-foreground:    oklch(0.99 0.01 200);
 
-  --destructive: #b91c1c;
-  --destructive-foreground: #ffffff;
+  --destructive:            oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
 
-  --border: rgba(13, 13, 13, 0.08);
-  --input: rgba(13, 13, 13, 0.12);
-  --ring: rgba(13, 13, 13, 0.4);
+  --border: color-mix(in oklab, var(--ink-strong) 10%, transparent);
+  --input:  color-mix(in oklab, var(--ink-strong) 14%, transparent);
+  --ring:   color-mix(in oklab, var(--accent) 45%, transparent);
 
-  /* Status */
-  --health-ok: #047857;
-  --health-warn: #b45309;
-  --health-down: #b91c1c;
-  --health-unknown: #6b6b6b;
+  /* Status — traffic-light, kept saturated for legibility on light bg */
+  --health-ok:      oklch(0.55 0.18 150);
+  --health-warn:    oklch(0.65 0.16 70);
+  --health-down:    oklch(0.55 0.22 25);
+  --health-unknown: oklch(0.60 0.02 250);
 
   /* Curation */
-  --curation-native: #0d0d0d;
-  --curation-verified: #1d4ed8;
-  --curation-pilot: #047857;
-  --curation-candidate: #6b6b6b;
-  --curation-machine: #6d28d9;
+  --curation-native:    var(--ink-strong);
+  --curation-verified:  oklch(0.48 0.18 255);
+  --curation-pilot:     oklch(0.55 0.18 150);
+  --curation-candidate: var(--ink-muted);
+  --curation-machine:   oklch(0.50 0.18 295);
+}
+
+/* ============ DARK ============ */
+.dark {
+  --paper:      oklch(0.16 0.018 250);
+  --surface:    oklch(0.20 0.020 250);
+  --ink:        oklch(0.92 0.010 250);
+  --ink-strong: oklch(0.98 0.005 250);
+  --ink-muted:  oklch(0.68 0.018 250);
+  --ink-subtle: oklch(0.45 0.018 250);
+
+  --background: var(--paper);
+  --foreground: var(--ink-strong);
+
+  --card:               oklch(0.22 0.020 250);
+  --card-foreground:    var(--ink-strong);
+  --popover:            oklch(0.22 0.020 250);
+  --popover-foreground: var(--ink-strong);
+
+  --primary:              var(--ink-strong);
+  --primary-foreground:   var(--paper);
+  --secondary:            var(--surface);
+  --secondary-foreground: var(--ink-strong);
+  --muted:                var(--surface);
+  --muted-foreground:     var(--ink-muted);
+  --accent:               oklch(0.78 0.14 195);  /* electric teal */
+  --accent-foreground:    oklch(0.16 0.02 250);
+
+  --destructive:            oklch(0.70 0.20 25);
+  --destructive-foreground: oklch(0.16 0.02 250);
+
+  --border: color-mix(in oklab, var(--ink-strong) 14%, transparent);
+  --input:  color-mix(in oklab, var(--ink-strong) 18%, transparent);
+  --ring:   color-mix(in oklab, var(--accent) 50%, transparent);
+
+  /* Status — traffic-light, brightened for dark bg */
+  --health-ok:      oklch(0.72 0.16 150);
+  --health-warn:    oklch(0.80 0.14 80);
+  --health-down:    oklch(0.70 0.20 25);
+  --health-unknown: oklch(0.55 0.02 250);
+
+  --curation-native:    var(--ink-strong);
+  --curation-verified:  oklch(0.72 0.15 255);
+  --curation-pilot:     oklch(0.78 0.15 150);
+  --curation-candidate: var(--ink-muted);
+  --curation-machine:   oklch(0.72 0.15 295);
 }
 
 @layer base {
@@ -118,9 +164,15 @@
     font-family: var(--font-sans);
     font-feature-settings: "ss01", "cv11";
   }
+  /* Mode transitions should not flash, but tokens are CSS vars so the
+     swap is instant. Add a tiny ease so user-initiated toggles feel soft. */
+  html.theme-transition,
+  html.theme-transition * {
+    transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+  }
   ::selection {
-    background-color: var(--color-surface);
-    color: var(--color-ink-strong);
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
   }
 }
 
@@ -134,5 +186,6 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .mg-pulse { animation: none; }
+  html.theme-transition,
+  html.theme-transition * { transition: none; }
 }
-
