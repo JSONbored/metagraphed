@@ -156,9 +156,40 @@ function ProvidersGrid() {
                 <span className="font-mono text-[10px]">no public links yet</span>
               ) : null}
             </div>
+            <ProviderCountsRow counts={counts[p.slug]} />
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+function ProviderCountsRow({ counts }: { counts?: { surfaces: number; endpoints: number; subnets: number } }) {
+  const s = counts?.surfaces ?? 0;
+  const e = counts?.endpoints ?? 0;
+  const n = counts?.subnets ?? 0;
+  return (
+    <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/60 pt-3">
+      <CountTile icon={<Layers className="size-3" />} label="Surfaces" value={s} />
+      <CountTile icon={<Radio className="size-3" />} label="Endpoints" value={e} />
+      <CountTile label="Subnets" value={n} />
+    </div>
+  );
+}
+
+function CountTile({ icon, label, value }: { icon?: React.ReactNode; label: string; value: number }) {
+  return (
+    <div className="flex flex-col">
+      <span className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-ink-muted">
+        {icon}
+        {label}
+      </span>
+      <span className={classNames(
+        "font-mono text-sm tabular-nums",
+        value > 0 ? "text-ink-strong" : "text-ink-muted",
+      )}>
+        {value > 0 ? value : "—"}
+      </span>
     </div>
   );
 }
