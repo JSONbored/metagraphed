@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 921,
+  "document_count": 966,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -3848,6 +3848,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-125-taostats-metagraph",
+      "netuid": 125,
+      "slug": "sn-125",
+      "subtitle": "dashboard / taostats",
+      "title": "8 Ball Taostats metagraph",
+      "tokens": [
+        "125",
+        "8",
+        "ball",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/125/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-125-tensorplex-docs",
       "netuid": 125,
       "slug": "sn-125",
@@ -3972,6 +3991,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_95/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-95-taostats-metagraph",
+      "netuid": 95,
+      "slug": "sn-95",
+      "subtitle": "dashboard / taostats",
+      "title": "Actual Taostats metagraph",
+      "tokens": [
+        "95",
+        "actual",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/95/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4223,6 +4260,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-69-taostats-metagraph",
+      "netuid": 69,
+      "slug": "sn-69",
+      "subtitle": "dashboard / taostats",
+      "title": "ain Taostats metagraph",
+      "tokens": [
+        "69",
+        "ain",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/69/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-69-tensorplex-docs",
       "netuid": 69,
       "slug": "sn-69",
@@ -4385,6 +4440,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_97/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-97-taostats-metagraph",
+      "netuid": 97,
+      "slug": "sn-97",
+      "subtitle": "dashboard / taostats",
+      "title": "Albedo Taostats metagraph",
+      "tokens": [
+        "97",
+        "albedo",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/97/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -4775,6 +4848,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-41-taostats-metagraph",
+      "netuid": 41,
+      "slug": "sn-41",
+      "subtitle": "dashboard / taostats",
+      "title": "Almanac Taostats metagraph",
+      "tokens": [
+        "41",
+        "almanac",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/41/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-41-tensorplex-docs",
       "netuid": 41,
       "slug": "sn-41",
@@ -4936,6 +5027,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-127-taostats-metagraph",
+      "netuid": 127,
+      "slug": "sn-127",
+      "subtitle": "dashboard / taostats",
+      "title": "Astrid Taostats metagraph",
+      "tokens": [
+        "127",
+        "astrid",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/127/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-127-tensorplex-docs",
       "netuid": 127,
       "slug": "sn-127",
@@ -5065,6 +5174,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-37-taostats-metagraph",
+      "netuid": 37,
+      "slug": "sn-37",
+      "subtitle": "dashboard / taostats",
+      "title": "Aurelius Taostats metagraph",
+      "tokens": [
+        "37",
+        "aurelius",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/37/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-37-tensorplex-docs",
       "netuid": 37,
       "slug": "sn-37",
@@ -5137,23 +5264,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-59-website-link-babelbit-ai-dashboard-1",
-      "netuid": 59,
-      "slug": "sn-59",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Babelbit dashboard",
-      "tokens": [
-        "59",
-        "babelbit",
-        "dashboard",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://babelbit.ai/main/dashboard"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-59-taomarketcap-source-repo",
       "netuid": 59,
       "slug": "sn-59",
@@ -5206,6 +5316,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_59/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-59-taostats-metagraph",
+      "netuid": 59,
+      "slug": "sn-59",
+      "subtitle": "dashboard / taostats",
+      "title": "Babelbit Taostats metagraph",
+      "tokens": [
+        "59",
+        "babelbit",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/59/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5391,6 +5519,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-105-taostats-metagraph",
+      "netuid": 105,
+      "slug": "sn-105",
+      "subtitle": "dashboard / taostats",
+      "title": "Beam Taostats metagraph",
+      "tokens": [
+        "105",
+        "beam",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/105/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-105-tensorplex-docs",
       "netuid": 105,
       "slug": "sn-105",
@@ -5535,6 +5681,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-16-taostats-metagraph",
+      "netuid": 16,
+      "slug": "sn-16",
+      "subtitle": "dashboard / taostats",
+      "title": "BitAds Taostats metagraph",
+      "tokens": [
+        "16",
+        "bitads",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/16/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-16-tensorplex-docs",
       "netuid": 16,
       "slug": "sn-16",
@@ -5585,23 +5749,6 @@
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/93-bitcast"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-93-website-link-stats-bitcast-network-dashboard-1",
-      "netuid": 93,
-      "slug": "sn-93",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Bitcast dashboard",
-      "tokens": [
-        "93",
-        "bitcast",
-        "dashboard",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://stats.bitcast.network/bitcast"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -5693,6 +5840,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_93/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-93-taostats-metagraph",
+      "netuid": 93,
+      "slug": "sn-93",
+      "subtitle": "dashboard / taostats",
+      "title": "Bitcast Taostats metagraph",
+      "tokens": [
+        "93",
+        "bitcast",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/93/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6006,6 +6171,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-60-taostats-metagraph",
+      "netuid": 60,
+      "slug": "sn-60",
+      "subtitle": "dashboard / taostats",
+      "title": "Bitsec.ai Taostats metagraph",
+      "tokens": [
+        "60",
+        "ai",
+        "bitsec",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/60/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-60-tensorplex-docs",
       "netuid": 60,
       "slug": "sn-60",
@@ -6058,23 +6242,6 @@
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/94-bitsota"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-94-website-link-bitsota-ai-dashboard-3",
-      "netuid": 94,
-      "slug": "sn-94",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Bitsota dashboard",
-      "tokens": [
-        "94",
-        "bitsota",
-        "dashboard",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://bitsota.ai/leaderboard"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6147,6 +6314,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_94/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-94-taostats-metagraph",
+      "netuid": 94,
+      "slug": "sn-94",
+      "subtitle": "dashboard / taostats",
+      "title": "Bitsota Taostats metagraph",
+      "tokens": [
+        "94",
+        "bitsota",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/94/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -6491,6 +6676,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-128-taostats-metagraph",
+      "netuid": 128,
+      "slug": "sn-128",
+      "subtitle": "dashboard / taostats",
+      "title": "ByteLeap Taostats metagraph",
+      "tokens": [
+        "128",
+        "byteleap",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/128/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-128-tensorplex-docs",
       "netuid": 128,
       "slug": "sn-128",
@@ -6832,6 +7035,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-40-taostats-metagraph",
+      "netuid": 40,
+      "slug": "sn-40",
+      "subtitle": "dashboard / taostats",
+      "title": "Chunking Taostats metagraph",
+      "tokens": [
+        "40",
+        "chunking",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/40/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-40-tensorplex-docs",
       "netuid": 40,
       "slug": "sn-40",
@@ -7158,6 +7379,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-83-taostats-metagraph",
+      "netuid": 83,
+      "slug": "sn-83",
+      "subtitle": "dashboard / taostats",
+      "title": "CliqueAI Taostats metagraph",
+      "tokens": [
+        "83",
+        "cliqueai",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/83/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-83-tensorplex-docs",
       "netuid": 83,
       "slug": "sn-83",
@@ -7369,6 +7608,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-38-taostats-metagraph",
+      "netuid": 38,
+      "slug": "sn-38",
+      "subtitle": "dashboard / taostats",
+      "title": "colosseum Taostats metagraph",
+      "tokens": [
+        "38",
+        "colosseum",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/38/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -7892,6 +8149,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-118-taostats-metagraph",
+      "netuid": 118,
+      "slug": "sn-118",
+      "subtitle": "dashboard / taostats",
+      "title": "Ditto Taostats metagraph",
+      "tokens": [
+        "118",
+        "dashboard",
+        "ditto",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/118/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-118-tensorplex-docs",
       "netuid": 118,
       "slug": "sn-118",
@@ -7979,23 +8254,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-80-website-link-dogelayer-ai-dashboard-1",
-      "netuid": 80,
-      "slug": "sn-80",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "dogelayer dashboard",
-      "tokens": [
-        "80",
-        "dashboard",
-        "dogelayer",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://dogelayer.ai/en/dashboard"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-80-website-common-docs",
       "netuid": 80,
       "slug": "sn-80",
@@ -8010,23 +8268,6 @@
       ],
       "type": "surface",
       "url": "https://dogelayer.ai/docs"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-80-website-link-dogelayer-ai-docs-2",
-      "netuid": 80,
-      "slug": "sn-80",
-      "subtitle": "docs / taomarketcap",
-      "title": "dogelayer docs",
-      "tokens": [
-        "80",
-        "docs",
-        "dogelayer",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://dogelayer.ai/en/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8101,6 +8342,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_80/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-80-taostats-metagraph",
+      "netuid": 80,
+      "slug": "sn-80",
+      "subtitle": "dashboard / taostats",
+      "title": "dogelayer Taostats metagraph",
+      "tokens": [
+        "80",
+        "dashboard",
+        "dogelayer",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/80/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8450,6 +8709,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-53-taostats-metagraph",
+      "netuid": 53,
+      "slug": "sn-53",
+      "subtitle": "dashboard / taostats",
+      "title": "EfficientFrontier Taostats metagraph",
+      "tokens": [
+        "53",
+        "dashboard",
+        "efficientfrontier",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/53/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-53-tensorplex-docs",
       "netuid": 53,
       "slug": "sn-53",
@@ -8483,23 +8760,6 @@
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/36-eirel"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-36-website-link-eirel-ai-dashboard-3",
-      "netuid": 36,
-      "slug": "sn-36",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Eirel dashboard",
-      "tokens": [
-        "36",
-        "dashboard",
-        "eirel",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://leaderboard.eirel.ai/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8572,6 +8832,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_36/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-36-taostats-metagraph",
+      "netuid": 36,
+      "slug": "sn-36",
+      "subtitle": "dashboard / taostats",
+      "title": "Eirel Taostats metagraph",
+      "tokens": [
+        "36",
+        "dashboard",
+        "eirel",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/36/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8696,6 +8974,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_101/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-101-taostats-metagraph",
+      "netuid": 101,
+      "slug": "sn-101",
+      "subtitle": "dashboard / taostats",
+      "title": "eni Taostats metagraph",
+      "tokens": [
+        "101",
+        "dashboard",
+        "eni",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/101/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8860,6 +9156,28 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_104/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-104-taostats-metagraph",
+      "netuid": 104,
+      "slug": "sn-104",
+      "subtitle": "dashboard / taostats",
+      "title": "for sale (burn to uid1) Taostats metagraph",
+      "tokens": [
+        "104",
+        "burn",
+        "dashboard",
+        "for",
+        "metagraph",
+        "sale",
+        "sn",
+        "taostats",
+        "to",
+        "uid1"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/104/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9084,6 +9402,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-28-taostats-metagraph",
+      "netuid": 28,
+      "slug": "sn-28",
+      "subtitle": "dashboard / taostats",
+      "title": "gm Taostats metagraph",
+      "tokens": [
+        "28",
+        "dashboard",
+        "gm",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/28/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-28-tensorplex-docs",
       "netuid": 28,
       "slug": "sn-28",
@@ -9286,6 +9622,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_56/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-56-taostats-metagraph",
+      "netuid": 56,
+      "slug": "sn-56",
+      "subtitle": "dashboard / taostats",
+      "title": "Gradients Taostats metagraph",
+      "tokens": [
+        "56",
+        "dashboard",
+        "gradients",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/56/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -9827,6 +10181,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-116-taostats-metagraph",
+      "netuid": 116,
+      "slug": "sn-116",
+      "subtitle": "dashboard / taostats",
+      "title": "hard_sign Taostats metagraph",
+      "tokens": [
+        "116",
+        "dashboard",
+        "hard",
+        "metagraph",
+        "sign",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/116/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-116-tensorplex-docs",
       "netuid": 116,
       "slug": "sn-116",
@@ -10152,6 +10525,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_5/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-5-taostats-metagraph",
+      "netuid": 5,
+      "slug": "sn-5",
+      "subtitle": "dashboard / taostats",
+      "title": "Hone Taostats metagraph",
+      "tokens": [
+        "5",
+        "dashboard",
+        "hone",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/5/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10481,6 +10872,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-71-taostats-metagraph",
+      "netuid": 71,
+      "slug": "sn-71",
+      "subtitle": "dashboard / taostats",
+      "title": "Leadpoet Taostats metagraph",
+      "tokens": [
+        "71",
+        "dashboard",
+        "leadpoet",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/71/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-71-tensorplex-docs",
       "netuid": 71,
       "slug": "sn-71",
@@ -10663,6 +11072,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-99-taostats-metagraph",
+      "netuid": 99,
+      "slug": "sn-99",
+      "subtitle": "dashboard / taostats",
+      "title": "Leoma Taostats metagraph",
+      "tokens": [
+        "99",
+        "dashboard",
+        "leoma",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/99/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-99-tensorplex-docs",
       "netuid": 99,
       "slug": "sn-99",
@@ -10804,6 +11231,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_77/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-77-taostats-metagraph",
+      "netuid": 77,
+      "slug": "sn-77",
+      "subtitle": "dashboard / taostats",
+      "title": "Liquidity Taostats metagraph",
+      "tokens": [
+        "77",
+        "dashboard",
+        "liquidity",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/77/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -10971,6 +11416,25 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_51/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-51-taostats-metagraph",
+      "netuid": 51,
+      "slug": "sn-51",
+      "subtitle": "dashboard / taostats",
+      "title": "lium.io Taostats metagraph",
+      "tokens": [
+        "51",
+        "dashboard",
+        "io",
+        "lium",
+        "metagraph",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/51/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11345,6 +11809,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-107-taostats-metagraph",
+      "netuid": 107,
+      "slug": "sn-107",
+      "subtitle": "dashboard / taostats",
+      "title": "Minos Taostats metagraph",
+      "tokens": [
+        "107",
+        "dashboard",
+        "metagraph",
+        "minos",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/107/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-107-tensorplex-docs",
       "netuid": 107,
       "slug": "sn-107",
@@ -11450,6 +11932,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_112/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-112-taostats-metagraph",
+      "netuid": 112,
+      "slug": "sn-112",
+      "subtitle": "dashboard / taostats",
+      "title": "minotaur Taostats metagraph",
+      "tokens": [
+        "112",
+        "dashboard",
+        "metagraph",
+        "minotaur",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/112/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -11862,6 +12362,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-70-taostats-metagraph",
+      "netuid": 70,
+      "slug": "sn-70",
+      "subtitle": "dashboard / taostats",
+      "title": "NexisGen Taostats metagraph",
+      "tokens": [
+        "70",
+        "dashboard",
+        "metagraph",
+        "nexisgen",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/70/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-70-tensorplex-docs",
       "netuid": 70,
       "slug": "sn-70",
@@ -12139,6 +12657,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-55-taostats-metagraph",
+      "netuid": 55,
+      "slug": "sn-55",
+      "subtitle": "dashboard / taostats",
+      "title": "NIOME Taostats metagraph",
+      "tokens": [
+        "55",
+        "dashboard",
+        "metagraph",
+        "niome",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/55/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-55-tensorplex-docs",
       "netuid": 55,
       "slug": "sn-55",
@@ -12228,6 +12764,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-27-taostats-metagraph",
+      "netuid": 27,
+      "slug": "sn-27",
+      "subtitle": "dashboard / taostats",
+      "title": "Nodexo Taostats metagraph",
+      "tokens": [
+        "27",
+        "dashboard",
+        "metagraph",
+        "nodexo",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/27/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-27-tensorplex-docs",
       "netuid": 27,
       "slug": "sn-27",
@@ -12279,23 +12833,6 @@
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/68-nova"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-68-website-link-www-metanova-labs-ai-dashboard-5",
-      "netuid": 68,
-      "slug": "sn-68",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "NOVA dashboard",
-      "tokens": [
-        "68",
-        "dashboard",
-        "nova",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://www.metanova-labs.ai/dashboard"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12386,6 +12923,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_68/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-68-taostats-metagraph",
+      "netuid": 68,
+      "slug": "sn-68",
+      "subtitle": "dashboard / taostats",
+      "title": "NOVA Taostats metagraph",
+      "tokens": [
+        "68",
+        "dashboard",
+        "metagraph",
+        "nova",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/68/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12600,6 +13155,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_90/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-90-taostats-metagraph",
+      "netuid": 90,
+      "slug": "sn-90",
+      "subtitle": "dashboard / taostats",
+      "title": "ogham Taostats metagraph",
+      "tokens": [
+        "90",
+        "dashboard",
+        "metagraph",
+        "ogham",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/90/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12888,6 +13461,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-35-taostats-metagraph",
+      "netuid": 35,
+      "slug": "sn-35",
+      "subtitle": "dashboard / taostats",
+      "title": "OxMarkets Taostats metagraph",
+      "tokens": [
+        "35",
+        "dashboard",
+        "metagraph",
+        "oxmarkets",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/35/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-35-tensorplex-docs",
       "netuid": 35,
       "slug": "sn-35",
@@ -12974,6 +13565,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_73/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-73-taostats-metagraph",
+      "netuid": 73,
+      "slug": "sn-73",
+      "subtitle": "dashboard / taostats",
+      "title": "Parked Taostats metagraph",
+      "tokens": [
+        "73",
+        "dashboard",
+        "metagraph",
+        "parked",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/73/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13082,6 +13691,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_26/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-26-taostats-metagraph",
+      "netuid": 26,
+      "slug": "sn-26",
+      "subtitle": "dashboard / taostats",
+      "title": "Perturb Taostats metagraph",
+      "tokens": [
+        "26",
+        "dashboard",
+        "metagraph",
+        "perturb",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/26/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13259,6 +13886,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-100-taostats-metagraph",
+      "netuid": 100,
+      "slug": "sn-100",
+      "subtitle": "dashboard / taostats",
+      "title": "Plaτform Taostats metagraph",
+      "tokens": [
+        "100",
+        "dashboard",
+        "form",
+        "metagraph",
+        "pla",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/100/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-100-tensorplex-docs",
       "netuid": 100,
       "slug": "sn-100",
@@ -13314,23 +13960,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-126-website-link-poker44-net-dashboard-1",
-      "netuid": 126,
-      "slug": "sn-126",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Poker44 dashboard",
-      "tokens": [
-        "126",
-        "dashboard",
-        "poker44",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://poker44.net/dashboard"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-126-taomarketcap-source-repo",
       "netuid": 126,
       "slug": "sn-126",
@@ -13383,6 +14012,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_126/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-126-taostats-metagraph",
+      "netuid": 126,
+      "slug": "sn-126",
+      "subtitle": "dashboard / taostats",
+      "title": "Poker44 Taostats metagraph",
+      "tokens": [
+        "126",
+        "dashboard",
+        "metagraph",
+        "poker44",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/126/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -13779,6 +14426,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-31-taostats-metagraph",
+      "netuid": 31,
+      "slug": "sn-31",
+      "subtitle": "dashboard / taostats",
+      "title": "Recall Taostats metagraph",
+      "tokens": [
+        "31",
+        "dashboard",
+        "metagraph",
+        "recall",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/31/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-31-tensorplex-docs",
       "netuid": 31,
       "slug": "sn-31",
@@ -13966,6 +14631,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-119-taostats-metagraph",
+      "netuid": 119,
+      "slug": "sn-119",
+      "subtitle": "dashboard / taostats",
+      "title": "Satori Taostats metagraph",
+      "tokens": [
+        "119",
+        "dashboard",
+        "metagraph",
+        "satori",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/119/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-119-tensorplex-docs",
       "netuid": 119,
       "slug": "sn-119",
@@ -14078,6 +14761,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-44-taostats-metagraph",
+      "netuid": 44,
+      "slug": "sn-44",
+      "subtitle": "dashboard / taostats",
+      "title": "Score Taostats metagraph",
+      "tokens": [
+        "44",
+        "dashboard",
+        "metagraph",
+        "score",
+        "sn",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/44/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-44-tensorplex-docs",
       "netuid": 44,
       "slug": "sn-44",
@@ -14166,23 +14867,6 @@
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/114-soma"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-114-website-link-thesoma-ai-dashboard-6",
-      "netuid": 114,
-      "slug": "sn-114",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "SOMA dashboard",
-      "tokens": [
-        "114",
-        "dashboard",
-        "sn",
-        "soma",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://thesoma.ai/dashboard"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14277,6 +14961,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_114/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-114-taostats-metagraph",
+      "netuid": 114,
+      "slug": "sn-114",
+      "subtitle": "dashboard / taostats",
+      "title": "SOMA Taostats metagraph",
+      "tokens": [
+        "114",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "soma",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/114/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14442,6 +15144,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-86-taostats-metagraph",
+      "netuid": 86,
+      "slug": "sn-86",
+      "subtitle": "dashboard / taostats",
+      "title": "Subnet 86 Taostats metagraph",
+      "tokens": [
+        "86",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "subnet",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/86/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-86-tensorplex-docs",
       "netuid": 86,
       "slug": "sn-86",
@@ -14583,6 +15303,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_10/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-10-taostats-metagraph",
+      "netuid": 10,
+      "slug": "sn-10",
+      "subtitle": "dashboard / taostats",
+      "title": "Swap Taostats metagraph",
+      "tokens": [
+        "10",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "swap",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/10/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -14891,6 +15629,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-50-taostats-metagraph",
+      "netuid": 50,
+      "slug": "sn-50",
+      "subtitle": "dashboard / taostats",
+      "title": "Synth Taostats metagraph",
+      "tokens": [
+        "50",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "synth",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/50/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-50-tensorplex-docs",
       "netuid": 50,
       "slug": "sn-50",
@@ -15032,6 +15788,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_108/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-108-taostats-metagraph",
+      "netuid": 108,
+      "slug": "sn-108",
+      "subtitle": "dashboard / taostats",
+      "title": "TalkHead Taostats metagraph",
+      "tokens": [
+        "108",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "talkhead",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/108/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15207,6 +15981,26 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_65/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-65-taostats-metagraph",
+      "netuid": 65,
+      "slug": "sn-65",
+      "subtitle": "dashboard / taostats",
+      "title": "TAO Private Network Taostats metagraph",
+      "tokens": [
+        "65",
+        "dashboard",
+        "metagraph",
+        "network",
+        "private",
+        "sn",
+        "tao",
+        "taostats"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/65/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15502,23 +16296,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-11-website-link-trajrl-com-dashboard-3",
-      "netuid": 11,
-      "slug": "sn-11",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "TrajectoryRL dashboard",
-      "tokens": [
-        "11",
-        "dashboard",
-        "sn",
-        "taomarketcap",
-        "trajectoryrl"
-      ],
-      "type": "surface",
-      "url": "https://trajrl.com/leaderboard"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-11-website-common-docs",
       "netuid": 11,
       "slug": "sn-11",
@@ -15588,6 +16365,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-11-taostats-metagraph",
+      "netuid": 11,
+      "slug": "sn-11",
+      "subtitle": "dashboard / taostats",
+      "title": "TrajectoryRL Taostats metagraph",
+      "tokens": [
+        "11",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats",
+        "trajectoryrl"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/11/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -15698,23 +16493,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-8-website-link-www-vantanetwork-io-dashboard-1",
-      "netuid": 8,
-      "slug": "sn-8",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Vanta dashboard",
-      "tokens": [
-        "8",
-        "dashboard",
-        "sn",
-        "taomarketcap",
-        "vanta"
-      ],
-      "type": "surface",
-      "url": "https://www.vantanetwork.io/dashboard"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-8-taomarketcap-source-repo",
       "netuid": 8,
       "slug": "sn-8",
@@ -15767,6 +16545,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-8-taostats-metagraph",
+      "netuid": 8,
+      "slug": "sn-8",
+      "subtitle": "dashboard / taostats",
+      "title": "Vanta Taostats metagraph",
+      "tokens": [
+        "8",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats",
+        "vanta"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/8/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -16147,6 +16943,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-78-taostats-metagraph",
+      "netuid": 78,
+      "slug": "sn-78",
+      "subtitle": "dashboard / taostats",
+      "title": "Vocence Taostats metagraph",
+      "tokens": [
+        "78",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats",
+        "vocence"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/78/metagraph"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-78-tensorplex-docs",
       "netuid": 78,
       "slug": "sn-78",
@@ -16269,6 +17083,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_106/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-106-taostats-metagraph",
+      "netuid": 106,
+      "slug": "sn-106",
+      "subtitle": "dashboard / taostats",
+      "title": "VoidAI Taostats metagraph",
+      "tokens": [
+        "106",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats",
+        "voidai"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/106/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -16457,23 +17289,6 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-18-website-link-www-zeussubnet-com-dashboard-5",
-      "netuid": 18,
-      "slug": "sn-18",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Zeus dashboard",
-      "tokens": [
-        "18",
-        "dashboard",
-        "sn",
-        "taomarketcap",
-        "zeus"
-      ],
-      "type": "surface",
-      "url": "https://www.zeussubnet.com/dashboard"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-18-website-link-www-zeussubnet-com-docs-4",
       "netuid": 18,
       "slug": "sn-18",
@@ -16543,6 +17358,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_18/index.mdx"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-18-taostats-metagraph",
+      "netuid": 18,
+      "slug": "sn-18",
+      "subtitle": "dashboard / taostats",
+      "title": "Zeus Taostats metagraph",
+      "tokens": [
+        "18",
+        "dashboard",
+        "metagraph",
+        "sn",
+        "taostats",
+        "zeus"
+      ],
+      "type": "surface",
+      "url": "https://taostats.io/subnets/18/metagraph"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

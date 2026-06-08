@@ -1,7 +1,7 @@
 {
   "curation": [
     {
-      "candidate_count": 3,
+      "candidate_count": 4,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -41,7 +41,7 @@
       "surface_count": 12
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -85,7 +85,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -125,7 +125,7 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -169,7 +169,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -213,7 +213,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -225,7 +225,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 4,
@@ -252,10 +252,10 @@
       "name": "Hone",
       "netuid": 5,
       "slug": "sn-5",
-      "surface_count": 6
+      "surface_count": 7
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -297,7 +297,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -335,7 +335,7 @@
       "surface_count": 15
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -377,7 +377,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -421,49 +421,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 12,
-      "coverage_level": "probed",
-      "curation": {
-        "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
-        ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 4,
-        "verified_at": null
-      },
-      "gap_count": 4,
-      "gaps": {
-        "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
-        ],
-        "missing_kinds": [
-          "openapi",
-          "subnet-api",
-          "sse",
-          "data-artifact"
-        ],
-        "supported_kinds": [
-          "dashboard",
-          "docs",
-          "source-repo",
-          "website"
-        ]
-      },
-      "name": "Swap",
-      "netuid": 10,
-      "slug": "sn-10",
-      "surface_count": 6
-    },
-    {
-      "candidate_count": 16,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -499,13 +457,55 @@
           "website"
         ]
       },
+      "name": "Swap",
+      "netuid": 10,
+      "slug": "sn-10",
+      "surface_count": 7
+    },
+    {
+      "candidate_count": 17,
+      "coverage_level": "probed",
+      "curation": {
+        "gap_notes": [
+          "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
+          "No verified SSE/event stream yet.",
+          "No verified data artifact yet."
+        ],
+        "level": "machine-verified",
+        "review_state": "machine-generated",
+        "reviewed_at": null,
+        "source_count": 6,
+        "verified_at": null
+      },
+      "gap_count": 4,
+      "gaps": {
+        "gap_notes": [
+          "No verified OpenAPI/Swagger surface yet.",
+          "No verified subnet API surface yet.",
+          "No verified SSE/event stream yet.",
+          "No verified data artifact yet."
+        ],
+        "missing_kinds": [
+          "openapi",
+          "subnet-api",
+          "sse",
+          "data-artifact"
+        ],
+        "supported_kinds": [
+          "dashboard",
+          "docs",
+          "source-repo",
+          "website"
+        ]
+      },
       "name": "TrajectoryRL",
       "netuid": 11,
       "slug": "sn-11",
       "surface_count": 8
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -549,7 +549,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -591,7 +591,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -633,7 +633,7 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 20,
+      "candidate_count": 21,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -675,7 +675,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -686,7 +686,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -712,10 +712,10 @@
       "name": "BitAds",
       "netuid": 16,
       "slug": "sn-16",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -757,7 +757,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -769,7 +769,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -799,7 +799,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -841,7 +841,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -887,7 +887,7 @@
       "surface_count": 1
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -931,7 +931,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -969,7 +969,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1011,7 +1011,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1051,7 +1051,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1099,7 +1099,7 @@
       "surface_count": 1
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1111,7 +1111,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1138,10 +1138,10 @@
       "name": "Perturb",
       "netuid": 26,
       "slug": "sn-26",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1155,7 +1155,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -1184,10 +1184,10 @@
       "name": "Nodexo",
       "netuid": 27,
       "slug": "sn-27",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1201,7 +1201,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -1230,10 +1230,10 @@
       "name": "gm",
       "netuid": 28,
       "slug": "sn-28",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1273,7 +1273,7 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1317,7 +1317,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1331,7 +1331,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -1360,10 +1360,10 @@
       "name": "Recall",
       "netuid": 31,
       "slug": "sn-31",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1407,7 +1407,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1447,7 +1447,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1489,7 +1489,7 @@
       "surface_count": 4
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1501,7 +1501,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1528,10 +1528,10 @@
       "name": "OxMarkets",
       "netuid": 35,
       "slug": "sn-35",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1543,7 +1543,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1573,7 +1573,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1585,7 +1585,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1612,10 +1612,10 @@
       "name": "Aurelius",
       "netuid": 37,
       "slug": "sn-37",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1627,7 +1627,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1654,10 +1654,10 @@
       "name": "colosseum",
       "netuid": 38,
       "slug": "sn-38",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1703,7 +1703,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1717,7 +1717,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -1746,10 +1746,10 @@
       "name": "Chunking",
       "netuid": 40,
       "slug": "sn-40",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1760,7 +1760,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -1786,10 +1786,10 @@
       "name": "Almanac",
       "netuid": 41,
       "slug": "sn-41",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1835,7 +1835,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1879,7 +1879,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1891,7 +1891,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1918,10 +1918,10 @@
       "name": "Score",
       "netuid": 44,
       "slug": "sn-44",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1965,7 +1965,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2005,7 +2005,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2049,7 +2049,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2093,7 +2093,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2131,7 +2131,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2142,7 +2142,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -2168,10 +2168,10 @@
       "name": "Synth",
       "netuid": 50,
       "slug": "sn-50",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2182,7 +2182,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 3,
@@ -2208,10 +2208,10 @@
       "name": "lium.io",
       "netuid": 51,
       "slug": "sn-51",
-      "surface_count": 9
+      "surface_count": 10
     },
     {
-      "candidate_count": 9,
+      "candidate_count": 10,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2253,7 +2253,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2267,7 +2267,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -2296,10 +2296,10 @@
       "name": "EfficientFrontier",
       "netuid": 53,
       "slug": "sn-53",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2341,7 +2341,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2353,7 +2353,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2380,10 +2380,10 @@
       "name": "NIOME",
       "netuid": 55,
       "slug": "sn-55",
-      "surface_count": 6
+      "surface_count": 7
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2393,7 +2393,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 2,
@@ -2418,10 +2418,10 @@
       "name": "Gradients",
       "netuid": 56,
       "slug": "sn-56",
-      "surface_count": 10
+      "surface_count": 11
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2465,7 +2465,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 7,
+      "candidate_count": 8,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2503,7 +2503,7 @@
       "surface_count": 10
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2543,7 +2543,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2554,7 +2554,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 3,
@@ -2580,10 +2580,10 @@
       "name": "Bitsec.ai",
       "netuid": 60,
       "slug": "sn-60",
-      "surface_count": 10
+      "surface_count": 11
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2625,7 +2625,7 @@
       "surface_count": 4
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2671,7 +2671,7 @@
       "surface_count": 1
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2715,7 +2715,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 27,
+      "candidate_count": 28,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2753,7 +2753,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2764,7 +2764,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -2790,10 +2790,10 @@
       "name": "TAO Private Network",
       "netuid": 65,
       "slug": "sn-65",
-      "surface_count": 9
+      "surface_count": 10
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2833,7 +2833,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2875,7 +2875,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2886,7 +2886,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -2915,7 +2915,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2929,7 +2929,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -2958,10 +2958,10 @@
       "name": "ain",
       "netuid": 69,
       "slug": "sn-69",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2972,7 +2972,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -2998,10 +2998,10 @@
       "name": "NexisGen",
       "netuid": 70,
       "slug": "sn-70",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3012,7 +3012,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -3038,10 +3038,10 @@
       "name": "Leadpoet",
       "netuid": 71,
       "slug": "sn-71",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3081,7 +3081,7 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3095,7 +3095,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -3124,10 +3124,10 @@
       "name": "Parked",
       "netuid": 73,
       "slug": "sn-73",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3170,7 +3170,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3212,7 +3212,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3258,7 +3258,7 @@
       "surface_count": 1
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3269,7 +3269,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -3295,10 +3295,10 @@
       "name": "Liquidity",
       "netuid": 77,
       "slug": "sn-77",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3309,7 +3309,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -3335,10 +3335,10 @@
       "name": "Vocence",
       "netuid": 78,
       "slug": "sn-78",
-      "surface_count": 10
+      "surface_count": 11
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3380,7 +3380,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3391,7 +3391,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -3417,10 +3417,10 @@
       "name": "dogelayer",
       "netuid": 80,
       "slug": "sn-80",
-      "surface_count": 10
+      "surface_count": 9
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3468,7 +3468,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3512,7 +3512,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3523,7 +3523,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -3549,10 +3549,10 @@
       "name": "CliqueAI",
       "netuid": 83,
       "slug": "sn-83",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3594,7 +3594,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3638,7 +3638,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3652,7 +3652,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -3681,10 +3681,10 @@
       "name": "Subnet 86",
       "netuid": 86,
       "slug": "sn-86",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3728,7 +3728,7 @@
       "surface_count": 6
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3768,7 +3768,7 @@
       "surface_count": 4
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3814,7 +3814,7 @@
       "surface_count": 1
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3828,7 +3828,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -3857,10 +3857,10 @@
       "name": "ogham",
       "netuid": 90,
       "slug": "sn-90",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3906,7 +3906,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3956,7 +3956,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3967,7 +3967,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -3996,7 +3996,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4008,7 +4008,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4038,7 +4038,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4050,7 +4050,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4077,10 +4077,10 @@
       "name": "Actual",
       "netuid": 95,
       "slug": "sn-95",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4118,7 +4118,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4129,7 +4129,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 3,
@@ -4155,10 +4155,10 @@
       "name": "Albedo",
       "netuid": 97,
       "slug": "sn-97",
-      "surface_count": 10
+      "surface_count": 11
     },
     {
-      "candidate_count": 20,
+      "candidate_count": 21,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4202,7 +4202,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4213,7 +4213,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 3,
@@ -4239,10 +4239,10 @@
       "name": "Leoma",
       "netuid": 99,
       "slug": "sn-99",
-      "surface_count": 10
+      "surface_count": 11
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4254,7 +4254,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4281,10 +4281,10 @@
       "name": "Plaτform",
       "netuid": 100,
       "slug": "sn-100",
-      "surface_count": 9
+      "surface_count": 10
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4298,7 +4298,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -4327,10 +4327,10 @@
       "name": "eni",
       "netuid": 101,
       "slug": "sn-101",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4374,7 +4374,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4418,7 +4418,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4432,7 +4432,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -4461,10 +4461,10 @@
       "name": "for sale (burn to uid1)",
       "netuid": 104,
       "slug": "sn-104",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4475,7 +4475,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -4501,10 +4501,10 @@
       "name": "Beam",
       "netuid": 105,
       "slug": "sn-105",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4516,7 +4516,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4543,10 +4543,10 @@
       "name": "VoidAI",
       "netuid": 106,
       "slug": "sn-106",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4557,7 +4557,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 3,
@@ -4583,10 +4583,10 @@
       "name": "Minos",
       "netuid": 107,
       "slug": "sn-107",
-      "surface_count": 10
+      "surface_count": 11
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4598,7 +4598,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4625,10 +4625,10 @@
       "name": "TalkHead",
       "netuid": 108,
       "slug": "sn-108",
-      "surface_count": 6
+      "surface_count": 7
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4674,7 +4674,7 @@
       "surface_count": 1
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4714,7 +4714,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4758,7 +4758,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4770,7 +4770,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 4,
@@ -4797,10 +4797,10 @@
       "name": "minotaur",
       "netuid": 112,
       "slug": "sn-112",
-      "surface_count": 6
+      "surface_count": 7
     },
     {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4842,7 +4842,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 20,
+      "candidate_count": 21,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4853,7 +4853,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -4882,7 +4882,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4928,7 +4928,7 @@
       "surface_count": 1
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4942,7 +4942,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -4971,10 +4971,10 @@
       "name": "hard_sign",
       "netuid": 116,
       "slug": "sn-116",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5022,7 +5022,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5034,7 +5034,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 4,
@@ -5061,10 +5061,10 @@
       "name": "Ditto",
       "netuid": 118,
       "slug": "sn-118",
-      "surface_count": 9
+      "surface_count": 10
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5078,7 +5078,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -5107,10 +5107,10 @@
       "name": "Satori",
       "netuid": 119,
       "slug": "sn-119",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5152,7 +5152,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5196,7 +5196,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5238,7 +5238,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5284,7 +5284,7 @@
       "surface_count": 1
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5324,7 +5324,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5338,7 +5338,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 6,
@@ -5367,10 +5367,10 @@
       "name": "8 Ball",
       "netuid": 125,
       "slug": "sn-125",
-      "surface_count": 4
+      "surface_count": 5
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5412,7 +5412,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5424,7 +5424,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 5,
         "verified_at": null
       },
       "gap_count": 4,
@@ -5451,10 +5451,10 @@
       "name": "Astrid",
       "netuid": 127,
       "slug": "sn-127",
-      "surface_count": 6
+      "surface_count": 7
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -5465,7 +5465,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 3,
@@ -5491,7 +5491,7 @@
       "name": "ByteLeap",
       "netuid": 128,
       "slug": "sn-128",
-      "surface_count": 9
+      "surface_count": 10
     }
   ],
   "generated_at": "1970-01-01T00:00:00.000Z",

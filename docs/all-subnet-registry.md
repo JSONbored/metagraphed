@@ -75,7 +75,7 @@ Curation levels:
 
 Candidates are never treated as verified surfaces. They must pass verification and maintainer review before being treated as reviewed registry truth.
 
-`npm run discover:candidates` generates a public-source candidate bundle from enrichment sources such as TaoMarketCap, Tensorplex subnet-docs, Taopedia articles, Backprop Finance dashboard routes, GitHub README links, and public websites. Third-party directories and dashboards are enrichment only; native chain data remains canonical for active subnet existence and curated overlays remain canonical for reviewed public interfaces.
+`npm run discover:candidates` generates a public-source candidate bundle from enrichment sources such as TaoMarketCap, Tensorplex subnet-docs, Taopedia articles, Backprop Finance dashboard routes, Taostats metagraph dashboard routes, GitHub README links, and public websites. Third-party directories and dashboards are enrichment only; native chain data remains canonical for active subnet existence and curated overlays remain canonical for reviewed public interfaces.
 
 `npm run verify:candidates` writes a compact Git-reviewed promotion snapshot to `registry/verification/promotions.json` and stages the full volatile verification run for R2. Classification values include live, redirected, auth-required, dead, unsafe, unsupported, rate-limited, transient, timeout, and content-mismatch.
 

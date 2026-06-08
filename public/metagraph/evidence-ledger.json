@@ -34,6 +34,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "root Taostats metagraph is a candidate dashboard surface for SN0.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/0/metagraph",
+      "subject": "candidate:sn-0-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "root Tensorplex subnet docs is a candidate docs surface for SN0.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -108,6 +119,17 @@
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_1_apex/index.mdx",
       "subject": "candidate:sn-1-taopedia-article",
       "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Apex Taostats metagraph is a candidate dashboard surface for SN1.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/1/metagraph",
+      "subject": "candidate:sn-1-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -309,6 +331,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Swap Taostats metagraph is a candidate dashboard surface for SN10.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/10/metagraph",
+      "subject": "candidate:sn-10-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Swap Tensorplex subnet docs is a candidate docs surface for SN10.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -438,6 +471,17 @@
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_11/index.mdx",
       "subject": "candidate:sn-11-taopedia-article",
       "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TrajectoryRL Taostats metagraph is a candidate dashboard surface for SN11.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/11/metagraph",
+      "subject": "candidate:sn-11-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -617,6 +661,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Compute Horde Taostats metagraph is a candidate dashboard surface for SN12.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/12/metagraph",
+      "subject": "candidate:sn-12-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Compute Horde Tensorplex subnet docs is a candidate docs surface for SN12.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -713,6 +768,17 @@
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_13/index.mdx",
       "subject": "candidate:sn-13-taopedia-article",
       "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Data Universe Taostats metagraph is a candidate dashboard surface for SN13.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/13/metagraph",
+      "subject": "candidate:sn-13-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -947,6 +1013,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Cacheon Taostats metagraph is a candidate dashboard surface for SN14.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/14/metagraph",
+      "subject": "candidate:sn-14-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Cacheon Tensorplex subnet docs is a candidate docs surface for SN14.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -1145,6 +1222,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "ORO Taostats metagraph is a candidate dashboard surface for SN15.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/15/metagraph",
+      "subject": "candidate:sn-15-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "ORO Tensorplex subnet docs is a candidate docs surface for SN15.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -1207,182 +1295,6 @@
       "source_type": "project-website-common-path",
       "source_url": "https://oroagents.com/",
       "subject": "candidate:sn-15-website-common-swagger",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO Swagger JSON is a candidate openapi surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://oroagents.com/",
-      "subject": "candidate:sn-15-website-common-swagger-json",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO dashboard is a candidate dashboard surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://oroagents.com/",
-      "subject": "candidate:sn-15-website-link-oroagents-com-dashboard-4",
-      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a candidate docs surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://oroagents.com/",
-      "subject": "candidate:sn-15-website-link-oroagents-com-docs-1",
-      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a candidate docs surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://oroagents.com/",
-      "subject": "candidate:sn-15-website-link-oroagents-com-docs-3",
-      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO docs is a candidate docs surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://oroagents.com/",
-      "subject": "candidate:sn-15-website-link-oroagents-com-docs-5",
-      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO website page is a candidate website surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://oroagents.com/",
-      "subject": "candidate:sn-15-website-link-oroagents-com-website-2",
-      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds Backprop Finance dashboard is a candidate dashboard surface for SN16.",
-      "confidence": "medium",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "third-party-index",
-      "source_type": "backprop-dashboard",
-      "source_url": "https://backprop.finance/dtao/subnets/16-bitads",
-      "subject": "candidate:sn-16-backprop-dashboard",
-      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds TaoMarketCap dashboard is a candidate dashboard surface for SN16.",
-      "confidence": "medium",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "third-party-index",
-      "source_type": "taomarketcap-dashboard",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/16",
-      "subject": "candidate:sn-16-taomarketcap-dashboard",
-      "support_summary": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds source repository is a candidate source-repo surface for SN16.",
-      "confidence": "medium",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "third-party-index",
-      "source_type": "taomarketcap-subnet-identity-v3",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/16",
-      "subject": "candidate:sn-16-taomarketcap-source-repo",
-      "support_summary": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds website is a candidate website surface for SN16.",
-      "confidence": "medium",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "third-party-index",
-      "source_type": "taomarketcap-subnet-identity-v3",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/16",
-      "subject": "candidate:sn-16-taomarketcap-website",
-      "support_summary": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds Taopedia article is a candidate docs surface for SN16.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "taopedia-article",
-      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_16/index.mdx",
-      "subject": "candidate:sn-16-taopedia-article",
-      "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds Tensorplex subnet docs is a candidate docs surface for SN16.",
-      "confidence": "medium",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "tensorplex-subnet-docs",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/16/subnet.json",
-      "subject": "candidate:sn-16-tensorplex-docs",
-      "support_summary": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds API is a candidate subnet-api surface for SN16.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://bitads.ai/",
-      "subject": "candidate:sn-16-website-common-api",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds docs is a candidate docs surface for SN16.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://bitads.ai/",
-      "subject": "candidate:sn-16-website-common-docs",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds health endpoint is a candidate subnet-api surface for SN16.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://bitads.ai/",
-      "subject": "candidate:sn-16-website-common-health",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds OpenAPI JSON is a candidate openapi surface for SN16.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://bitads.ai/",
-      "subject": "candidate:sn-16-website-common-openapi-json",
       "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -1472,6 +1384,17 @@
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_2/index.mdx",
       "subject": "candidate:sn-2-taopedia-article",
       "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "DSperse Taostats metagraph is a candidate dashboard surface for SN2.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/2/metagraph",
+      "subject": "candidate:sn-2-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1585,6 +1508,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "deprecated Taostats metagraph is a candidate dashboard surface for SN3.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/3/metagraph",
+      "subject": "candidate:sn-3-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "deprecated Tensorplex subnet docs is a candidate docs surface for SN3.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -1659,6 +1593,17 @@
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_4/index.mdx",
       "subject": "candidate:sn-4-taopedia-article",
       "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Targon Taostats metagraph is a candidate dashboard surface for SN4.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/4/metagraph",
+      "subject": "candidate:sn-4-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1915,6 +1860,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Hone Taostats metagraph is a candidate dashboard surface for SN5.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/5/metagraph",
+      "subject": "candidate:sn-5-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Hone Tensorplex subnet docs is a candidate docs surface for SN5.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -2088,6 +2044,17 @@
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_6/index.mdx",
       "subject": "candidate:sn-6-taopedia-article",
       "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Numinous Taostats metagraph is a candidate dashboard surface for SN6.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/6/metagraph",
+      "subject": "candidate:sn-6-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -2267,6 +2234,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Allways Taostats metagraph is a candidate dashboard surface for SN7.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/7/metagraph",
+      "subject": "candidate:sn-7-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Allways Tensorplex subnet docs is a candidate docs surface for SN7.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -2396,6 +2374,17 @@
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_8/index.mdx",
       "subject": "candidate:sn-8-taopedia-article",
       "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Vanta Taostats metagraph is a candidate dashboard surface for SN8.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/8/metagraph",
+      "subject": "candidate:sn-8-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -2583,6 +2572,17 @@
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_9/index.mdx",
       "subject": "candidate:sn-9-taopedia-article",
       "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "iota Taostats metagraph is a candidate dashboard surface for SN9.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/9/metagraph",
+      "subject": "candidate:sn-9-taostats-metagraph",
+      "support_summary": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -4632,6 +4632,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Swap Taostats metagraph is a public dashboard surface for SN10.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/10/metagraph",
+      "subject": "surface:sn-10-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-10.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Swap Tensorplex subnet docs is a public docs surface for SN10.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -4694,6 +4705,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_100/index.mdx",
       "subject": "surface:sn-100-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-100.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Plaτform Taostats metagraph is a public dashboard surface for SN100.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/100/metagraph",
+      "subject": "surface:sn-100-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-100.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -4771,6 +4793,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_101/index.mdx",
       "subject": "surface:sn-101-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-101.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "eni Taostats metagraph is a public dashboard surface for SN101.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/101/metagraph",
+      "subject": "surface:sn-101-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-101.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -4863,6 +4896,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "for sale (burn to uid1) Taostats metagraph is a public dashboard surface for SN104.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/104/metagraph",
+      "subject": "surface:sn-104-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-104.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "for sale (burn to uid1) Tensorplex subnet docs is a public docs surface for SN104.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -4925,6 +4969,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_105/index.mdx",
       "subject": "surface:sn-105-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-105.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Beam Taostats metagraph is a public dashboard surface for SN105.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/105/metagraph",
+      "subject": "surface:sn-105-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-105.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -5017,6 +5072,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "VoidAI Taostats metagraph is a public dashboard surface for SN106.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/106/metagraph",
+      "subject": "surface:sn-106-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-106.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "VoidAI Tensorplex subnet docs is a public docs surface for SN106.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5101,6 +5167,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_107/index.mdx",
       "subject": "surface:sn-107-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-107.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Minos Taostats metagraph is a public dashboard surface for SN107.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/107/metagraph",
+      "subject": "surface:sn-107-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-107.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -5204,6 +5281,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "TalkHead Taostats metagraph is a public dashboard surface for SN108.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/108/metagraph",
+      "subject": "surface:sn-108-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-108.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "TalkHead Tensorplex subnet docs is a public docs surface for SN108.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5281,6 +5369,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "TrajectoryRL Taostats metagraph is a public dashboard surface for SN11.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/11/metagraph",
+      "subject": "surface:sn-11-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-11.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "TrajectoryRL Tensorplex subnet docs is a public docs surface for SN11.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5299,17 +5398,6 @@
       "source_type": "registry-observed",
       "source_url": "https://trajrl.com/",
       "subject": "surface:sn-11-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-11.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "TrajectoryRL dashboard is a public dashboard surface for SN11.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://trajrl.com/",
-      "subject": "surface:sn-11-website-link-trajrl-com-dashboard-3",
       "support_summary": "Listed in curated overlay for sn-11.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -5468,6 +5556,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "minotaur Taostats metagraph is a public dashboard surface for SN112.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/112/metagraph",
+      "subject": "surface:sn-112-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-112.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "minotaur Tensorplex subnet docs is a public docs surface for SN112.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5567,6 +5666,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "SOMA Taostats metagraph is a public dashboard surface for SN114.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/114/metagraph",
+      "subject": "surface:sn-114-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-114.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "SOMA Tensorplex subnet docs is a public docs surface for SN114.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5585,17 +5695,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/114/subnet.json",
       "subject": "surface:sn-114-tensorplex-source-repo-1",
-      "support_summary": "Listed in curated overlay for sn-114.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "SOMA dashboard is a public dashboard surface for SN114.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://thesoma.ai/",
-      "subject": "surface:sn-114-website-link-thesoma-ai-dashboard-6",
       "support_summary": "Listed in curated overlay for sn-114.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -5651,6 +5750,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_116/index.mdx",
       "subject": "surface:sn-116-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-116.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "hard_sign Taostats metagraph is a public dashboard surface for SN116.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/116/metagraph",
+      "subject": "surface:sn-116-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-116.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -5743,6 +5853,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Ditto Taostats metagraph is a public dashboard surface for SN118.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/118/metagraph",
+      "subject": "surface:sn-118-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-118.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Ditto Tensorplex subnet docs is a public docs surface for SN118.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5816,6 +5937,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_119/index.mdx",
       "subject": "surface:sn-119-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-119.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Satori Taostats metagraph is a public dashboard surface for SN119.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/119/metagraph",
+      "subject": "surface:sn-119-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-119.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6128,6 +6260,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "8 Ball Taostats metagraph is a public dashboard surface for SN125.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/125/metagraph",
+      "subject": "surface:sn-125-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-125.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "8 Ball Tensorplex subnet docs is a public docs surface for SN125.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6194,6 +6337,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Poker44 Taostats metagraph is a public dashboard surface for SN126.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/126/metagraph",
+      "subject": "surface:sn-126-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-126.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Poker44 Tensorplex subnet docs is a public docs surface for SN126.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6201,17 +6355,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/126/subnet.json",
       "subject": "surface:sn-126-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-126.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Poker44 dashboard is a public dashboard surface for SN126.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://poker44.net/",
-      "subject": "surface:sn-126-website-link-poker44-net-dashboard-1",
       "support_summary": "Listed in curated overlay for sn-126.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6267,6 +6410,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_127/index.mdx",
       "subject": "surface:sn-127-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-127.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Astrid Taostats metagraph is a public dashboard surface for SN127.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/127/metagraph",
+      "subject": "surface:sn-127-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-127.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6333,6 +6487,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_128/index.mdx",
       "subject": "surface:sn-128-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-128.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ByteLeap Taostats metagraph is a public dashboard surface for SN128.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/128/metagraph",
+      "subject": "surface:sn-128-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-128.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6485,7 +6650,7 @@
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
       "source_type": "registry-observed",
-      "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
+      "source_url": "https://cacheon.ai/",
       "subject": "surface:sn-14-github-readme-latent-to-cacheon-docs-1",
       "support_summary": "Listed in curated overlay for sn-14.",
       "verified_at": "1970-01-01T00:00:00.000Z"
@@ -6667,6 +6832,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "BitAds Taostats metagraph is a public dashboard surface for SN16.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/16/metagraph",
+      "subject": "surface:sn-16-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-16.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "BitAds Tensorplex subnet docs is a public docs surface for SN16.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6843,6 +7019,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Zeus Taostats metagraph is a public dashboard surface for SN18.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/18/metagraph",
+      "subject": "surface:sn-18-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-18.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Zeus Tensorplex subnet docs is a public docs surface for SN18.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6850,17 +7037,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/18/subnet.json",
       "subject": "surface:sn-18-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-18.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Zeus dashboard is a public dashboard surface for SN18.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.zeussubnet.com/",
-      "subject": "surface:sn-18-website-link-www-zeussubnet-com-dashboard-5",
       "support_summary": "Listed in curated overlay for sn-18.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7338,6 +7514,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Perturb Taostats metagraph is a public dashboard surface for SN26.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/26/metagraph",
+      "subject": "surface:sn-26-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-26.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Perturb Tensorplex subnet docs is a public docs surface for SN26.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7393,6 +7580,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Nodexo Taostats metagraph is a public dashboard surface for SN27.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/27/metagraph",
+      "subject": "surface:sn-27-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-27.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Nodexo Tensorplex subnet docs is a public docs surface for SN27.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7433,6 +7631,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_28/index.mdx",
       "subject": "surface:sn-28-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-28.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "gm Taostats metagraph is a public dashboard surface for SN28.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/28/metagraph",
+      "subject": "surface:sn-28-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-28.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7624,6 +7833,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Recall Taostats metagraph is a public dashboard surface for SN31.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/31/metagraph",
+      "subject": "surface:sn-31-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-31.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Recall Tensorplex subnet docs is a public docs surface for SN31.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7811,6 +8031,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "OxMarkets Taostats metagraph is a public dashboard surface for SN35.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/35/metagraph",
+      "subject": "surface:sn-35-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-35.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "OxMarkets Tensorplex subnet docs is a public docs surface for SN35.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7888,6 +8119,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Eirel Taostats metagraph is a public dashboard surface for SN36.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/36/metagraph",
+      "subject": "surface:sn-36-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-36.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Eirel Tensorplex subnet docs is a public docs surface for SN36.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7906,17 +8148,6 @@
       "source_type": "registry-observed",
       "source_url": "https://eirel.ai/",
       "subject": "surface:sn-36-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-36.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Eirel dashboard is a public dashboard surface for SN36.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://eirel.ai/",
-      "subject": "surface:sn-36-website-link-eirel-ai-dashboard-3",
       "support_summary": "Listed in curated overlay for sn-36.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7972,6 +8203,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_37/index.mdx",
       "subject": "surface:sn-37-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-37.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Aurelius Taostats metagraph is a public dashboard surface for SN37.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/37/metagraph",
+      "subject": "surface:sn-37-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-37.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -8038,6 +8280,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx",
       "subject": "surface:sn-38-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-38.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "colosseum Taostats metagraph is a public dashboard surface for SN38.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/38/metagraph",
+      "subject": "surface:sn-38-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-38.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -8152,6 +8405,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Chunking Taostats metagraph is a public dashboard surface for SN40.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/40/metagraph",
+      "subject": "surface:sn-40-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-40.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Chunking Tensorplex subnet docs is a public docs surface for SN40.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -8214,6 +8478,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_41/index.mdx",
       "subject": "surface:sn-41-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-41.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Almanac Taostats metagraph is a public dashboard surface for SN41.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/41/metagraph",
+      "subject": "surface:sn-41-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-41.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -8346,6 +8621,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_44/index.mdx",
       "subject": "surface:sn-44-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-44.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Score Taostats metagraph is a public dashboard surface for SN44.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/44/metagraph",
+      "subject": "surface:sn-44-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-44.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -8713,6 +8999,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Hone Taostats metagraph is a public dashboard surface for SN5.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/5/metagraph",
+      "subject": "surface:sn-5-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-5.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Hone Tensorplex subnet docs is a public docs surface for SN5.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -8775,6 +9072,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_50/index.mdx",
       "subject": "surface:sn-50-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-50.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Synth Taostats metagraph is a public dashboard surface for SN50.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/50/metagraph",
+      "subject": "surface:sn-50-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-50.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -8874,6 +9182,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_51/index.mdx",
       "subject": "surface:sn-51-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-51.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "lium.io Taostats metagraph is a public dashboard surface for SN51.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/51/metagraph",
+      "subject": "surface:sn-51-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-51.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -8995,6 +9314,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_53/index.mdx",
       "subject": "surface:sn-53-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-53.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "EfficientFrontier Taostats metagraph is a public dashboard surface for SN53.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/53/metagraph",
+      "subject": "surface:sn-53-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-53.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -9142,6 +9472,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "NIOME Taostats metagraph is a public dashboard surface for SN55.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/55/metagraph",
+      "subject": "surface:sn-55-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-55.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "NIOME Tensorplex subnet docs is a public docs surface for SN55.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -9204,6 +9545,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_56/index.mdx",
       "subject": "surface:sn-56-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-56.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Gradients Taostats metagraph is a public dashboard surface for SN56.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/56/metagraph",
+      "subject": "surface:sn-56-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-56.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -9461,6 +9813,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Babelbit Taostats metagraph is a public dashboard surface for SN59.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/59/metagraph",
+      "subject": "surface:sn-59-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-59.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Babelbit Tensorplex subnet docs is a public docs surface for SN59.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -9468,17 +9831,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/59/subnet.json",
       "subject": "surface:sn-59-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-59.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Babelbit dashboard is a public dashboard surface for SN59.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://babelbit.ai/",
-      "subject": "surface:sn-59-website-link-babelbit-ai-dashboard-1",
       "support_summary": "Listed in curated overlay for sn-59.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -9622,6 +9974,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_60/index.mdx",
       "subject": "surface:sn-60-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-60.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Bitsec.ai Taostats metagraph is a public dashboard surface for SN60.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/60/metagraph",
+      "subject": "surface:sn-60-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-60.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -9923,6 +10286,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "TAO Private Network Taostats metagraph is a public dashboard surface for SN65.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/65/metagraph",
+      "subject": "surface:sn-65-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-65.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "TAO Private Network Tensorplex subnet docs is a public docs surface for SN65.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10198,6 +10572,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "NOVA Taostats metagraph is a public dashboard surface for SN68.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/68/metagraph",
+      "subject": "surface:sn-68-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-68.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "NOVA Tensorplex subnet docs is a public docs surface for SN68.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10205,17 +10590,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/68/subnet.json",
       "subject": "surface:sn-68-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-68.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "NOVA dashboard is a public dashboard surface for SN68.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.metanova-labs.ai/",
-      "subject": "surface:sn-68-website-link-www-metanova-labs-ai-dashboard-5",
       "support_summary": "Listed in curated overlay for sn-68.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10271,6 +10645,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_69/index.mdx",
       "subject": "surface:sn-69-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-69.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ain Taostats metagraph is a public dashboard surface for SN69.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/69/metagraph",
+      "subject": "surface:sn-69-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-69.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10337,6 +10722,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_70/index.mdx",
       "subject": "surface:sn-70-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-70.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "NexisGen Taostats metagraph is a public dashboard surface for SN70.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/70/metagraph",
+      "subject": "surface:sn-70-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-70.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10425,6 +10821,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_71/index.mdx",
       "subject": "surface:sn-71-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-71.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Leadpoet Taostats metagraph is a public dashboard surface for SN71.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/71/metagraph",
+      "subject": "surface:sn-71-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-71.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10561,6 +10968,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Parked Taostats metagraph is a public dashboard surface for SN73.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/73/metagraph",
+      "subject": "surface:sn-73-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-73.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Parked Tensorplex subnet docs is a public docs surface for SN73.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10693,6 +11111,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Liquidity Taostats metagraph is a public dashboard surface for SN77.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/77/metagraph",
+      "subject": "surface:sn-77-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-77.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Liquidity Tensorplex subnet docs is a public docs surface for SN77.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10777,6 +11206,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_78/index.mdx",
       "subject": "surface:sn-78-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-78.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Vocence Taostats metagraph is a public dashboard surface for SN78.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/78/metagraph",
+      "subject": "surface:sn-78-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-78.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -10924,6 +11364,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Vanta Taostats metagraph is a public dashboard surface for SN8.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/8/metagraph",
+      "subject": "surface:sn-8-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-8.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Vanta Tensorplex subnet docs is a public docs surface for SN8.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10931,17 +11382,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json",
       "subject": "surface:sn-8-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-8.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Vanta dashboard is a public dashboard surface for SN8.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.vantanetwork.io/",
-      "subject": "surface:sn-8-website-link-www-vantanetwork-io-dashboard-1",
       "support_summary": "Listed in curated overlay for sn-8.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11001,6 +11441,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "dogelayer Taostats metagraph is a public dashboard surface for SN80.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/80/metagraph",
+      "subject": "surface:sn-80-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-80.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "dogelayer Tensorplex subnet docs is a public docs surface for SN80.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -11030,28 +11481,6 @@
       "source_type": "registry-observed",
       "source_url": "https://dogelayer.ai/",
       "subject": "surface:sn-80-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-80.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "dogelayer dashboard is a public dashboard surface for SN80.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://dogelayer.ai/",
-      "subject": "surface:sn-80-website-link-dogelayer-ai-dashboard-1",
-      "support_summary": "Listed in curated overlay for sn-80.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "dogelayer docs is a public docs surface for SN80.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://dogelayer.ai/",
-      "subject": "surface:sn-80-website-link-dogelayer-ai-docs-2",
       "support_summary": "Listed in curated overlay for sn-80.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11162,6 +11591,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_83/index.mdx",
       "subject": "surface:sn-83-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-83.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "CliqueAI Taostats metagraph is a public dashboard surface for SN83.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/83/metagraph",
+      "subject": "surface:sn-83-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-83.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11283,6 +11723,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_86/index.mdx",
       "subject": "surface:sn-86-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-86.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Subnet 86 Taostats metagraph is a public dashboard surface for SN86.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/86/metagraph",
+      "subject": "surface:sn-86-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-86.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11485,6 +11936,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "ogham Taostats metagraph is a public dashboard surface for SN90.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/90/metagraph",
+      "subject": "surface:sn-90-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-90.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "ogham Tensorplex subnet docs is a public docs surface for SN90.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -11595,6 +12057,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Bitcast Taostats metagraph is a public dashboard surface for SN93.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/93/metagraph",
+      "subject": "surface:sn-93-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-93.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Bitcast Tensorplex subnet docs is a public docs surface for SN93.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -11624,17 +12097,6 @@
       "source_type": "registry-observed",
       "source_url": "https://stats.bitcast.network/",
       "subject": "surface:sn-93-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-93.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Bitcast dashboard is a public dashboard surface for SN93.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://stats.bitcast.network/",
-      "subject": "surface:sn-93-website-link-stats-bitcast-network-dashboard-1",
       "support_summary": "Listed in curated overlay for sn-93.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11694,6 +12156,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Bitsota Taostats metagraph is a public dashboard surface for SN94.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/94/metagraph",
+      "subject": "surface:sn-94-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-94.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Bitsota Tensorplex subnet docs is a public docs surface for SN94.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -11712,17 +12185,6 @@
       "source_type": "registry-observed",
       "source_url": "https://bitsota.ai/",
       "subject": "surface:sn-94-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-94.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Bitsota dashboard is a public dashboard surface for SN94.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://bitsota.ai/",
-      "subject": "surface:sn-94-website-link-bitsota-ai-dashboard-3",
       "support_summary": "Listed in curated overlay for sn-94.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11767,6 +12229,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_95/index.mdx",
       "subject": "surface:sn-95-taopedia-article",
+      "support_summary": "Listed in curated overlay for sn-95.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Actual Taostats metagraph is a public dashboard surface for SN95.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/95/metagraph",
+      "subject": "surface:sn-95-taostats-metagraph",
       "support_summary": "Listed in curated overlay for sn-95.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11969,6 +12442,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Albedo Taostats metagraph is a public dashboard surface for SN97.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/97/metagraph",
+      "subject": "surface:sn-97-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-97.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Albedo Tensorplex subnet docs is a public docs surface for SN97.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -12101,6 +12585,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Leoma Taostats metagraph is a public dashboard surface for SN99.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://taostats.io/subnets/99/metagraph",
+      "subject": "surface:sn-99-taostats-metagraph",
+      "support_summary": "Listed in curated overlay for sn-99.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Leoma Tensorplex subnet docs is a public docs surface for SN99.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -12151,8 +12646,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1104,
+    "claim_count": 1149,
     "subnet_claim_count": 129,
-    "surface_claim_count": 725
+    "surface_claim_count": 770
   }
 }

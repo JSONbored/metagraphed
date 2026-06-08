@@ -45,6 +45,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-0-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "root Taostats metagraph",
+      "netuid": 0,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/0/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/0/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/0/metagraph"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-0-tensorplex-docs",
       "kind": "docs",
       "name": "root Tensorplex subnet docs",
@@ -107,6 +128,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-1-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Apex Taostats metagraph",
+      "netuid": 1,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/1/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/1/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/1/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-1-github-readme-macrocosm-os-apex-docs-1",
       "kind": "docs",
@@ -121,6 +163,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/macrocosm-os/apex/blob/main/README.md",
       "source_urls": [
+        "https://apex.macrocosmos.ai/",
         "https://github.com/macrocosm-os/apex/blob/main/README.md"
       ],
       "state": "schema-valid",
@@ -549,6 +592,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-2-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "DSperse Taostats metagraph",
+      "netuid": 2,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/2/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/2/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/2/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-2-github-readme-inference-labs-inc-subnet-2-docs-1",
       "kind": "docs",
@@ -823,6 +887,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-3-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "deprecated Taostats metagraph",
+      "netuid": 3,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/3/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/3/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/3/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-3-taopedia-article",
       "kind": "docs",
@@ -925,6 +1010,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/4"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-4-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Targon Taostats metagraph",
+      "netuid": 4,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/4/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/4/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/4/metagraph"
     },
     {
       "auth_required": false,
@@ -1412,6 +1518,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-5-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Hone Taostats metagraph",
+      "netuid": 5,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/5/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/5/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/5/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-5-taopedia-article",
       "kind": "docs",
@@ -1746,6 +1873,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/6"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-6-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Numinous Taostats metagraph",
+      "netuid": 6,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/6/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/6/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/6/metagraph"
     },
     {
       "auth_required": false,
@@ -2086,6 +2234,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-7-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Allways Taostats metagraph",
+      "netuid": 7,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/7/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/7/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/7/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-7-taopedia-article",
       "kind": "docs",
@@ -2336,6 +2505,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/8"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-8-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Vanta Taostats metagraph",
+      "netuid": 8,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/8/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/8/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/8/metagraph"
     },
     {
       "auth_required": false,
@@ -2673,6 +2863,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/9"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-9-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "iota Taostats metagraph",
+      "netuid": 9,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/9/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/9/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/9/metagraph"
     },
     {
       "auth_required": false,
@@ -3118,6 +3329,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-10-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Swap Taostats metagraph",
+      "netuid": 10,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/10/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/10/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/10/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-10-taopedia-article",
       "kind": "docs",
@@ -3368,6 +3600,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/11"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-11-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "TrajectoryRL Taostats metagraph",
+      "netuid": 11,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/11/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/11/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/11/metagraph"
     },
     {
       "auth_required": false,
@@ -3708,6 +3961,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-12-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Compute Horde Taostats metagraph",
+      "netuid": 12,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/12/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/12/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/12/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-12-taopedia-article",
       "kind": "docs",
@@ -3853,6 +4127,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/13"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-13-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Data Universe Taostats metagraph",
+      "netuid": 13,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/13/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/13/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/13/metagraph"
     },
     {
       "auth_required": false,
@@ -4298,6 +4593,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-14-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Cacheon Taostats metagraph",
+      "netuid": 14,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/14/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/14/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/14/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-14-website-link-cacheon-ai-dashboard-1",
       "kind": "dashboard",
@@ -4333,6 +4649,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
       "source_urls": [
+        "https://cacheon.ai/",
         "https://github.com/latent-to/cacheon/blob/main/README.md"
       ],
       "state": "schema-valid",
@@ -4673,6 +4990,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/15"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-15-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ORO Taostats metagraph",
+      "netuid": 15,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/15/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/15/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/15/metagraph"
     },
     {
       "auth_required": false,
@@ -5076,6 +5414,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-16-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "BitAds Taostats metagraph",
+      "netuid": 16,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/16/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/16/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/16/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-16-taopedia-article",
       "kind": "docs",
@@ -5346,6 +5705,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/17"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-17-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "404—GEN Taostats metagraph",
+      "netuid": 17,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/17/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/17/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/17/metagraph"
     },
     {
       "auth_required": false,
@@ -5703,6 +6083,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/18"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-18-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Zeus Taostats metagraph",
+      "netuid": 18,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/18/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/18/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/18/metagraph"
     },
     {
       "auth_required": false,
@@ -6064,6 +6465,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-19-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "blockmachine Taostats metagraph",
+      "netuid": 19,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/19/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/19/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/19/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-19-github-readme-taostat-blockmachine-docs-1",
       "kind": "docs",
@@ -6078,6 +6500,7 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/taostat/blockmachine/blob/main/README.md",
       "source_urls": [
+        "https://blockmachine.io/",
         "https://github.com/taostat/blockmachine/blob/main/README.md"
       ],
       "state": "schema-valid",
@@ -6527,6 +6950,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-20-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "GroundLayer Taostats metagraph",
+      "netuid": 20,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/20/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/20/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/20/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-20-taopedia-article",
       "kind": "docs",
@@ -6818,6 +7262,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/21"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-21-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "AdTAO Taostats metagraph",
+      "netuid": 21,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/21/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/21/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/21/metagraph"
     },
     {
       "auth_required": false,
@@ -7283,6 +7748,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-22-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Desearch Taostats metagraph",
+      "netuid": 22,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/22/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/22/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/22/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-22-taopedia-article",
       "kind": "docs",
@@ -7529,7 +8015,8 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md",
       "source_urls": [
-        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md"
+        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md",
+        "https://trishool.ai/"
       ],
       "state": "schema-valid",
       "url": "https://trishool.ai/dashboard"
@@ -7554,6 +8041,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/23"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-23-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Trishool Taostats metagraph",
+      "netuid": 23,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/23/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/23/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/23/metagraph"
     },
     {
       "auth_required": false,
@@ -7781,7 +8289,8 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md",
       "source_urls": [
-        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md"
+        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md",
+        "https://github.com/TrishoolAI/trishool-subnet/blob/main/README.md"
       ],
       "state": "schema-valid",
       "url": "https://api.trishool.ai/"
@@ -7890,6 +8399,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/24"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-24-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Quasar Taostats metagraph",
+      "netuid": 24,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/24/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/24/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/24/metagraph"
     },
     {
       "auth_required": false,
@@ -8248,6 +8778,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/25"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-25-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Mainframe Taostats metagraph",
+      "netuid": 25,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/25/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/25/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/25/metagraph"
     },
     {
       "auth_required": false,
@@ -8693,6 +9244,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-26-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Perturb Taostats metagraph",
+      "netuid": 26,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/26/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/26/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/26/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-26-taopedia-article",
       "kind": "docs",
@@ -9029,6 +9601,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-27-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Nodexo Taostats metagraph",
+      "netuid": 27,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/27/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/27/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/27/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-27-taopedia-article",
       "kind": "docs",
@@ -9282,6 +9875,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-28-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "gm Taostats metagraph",
+      "netuid": 28,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/28/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/28/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/28/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-28-taopedia-article",
       "kind": "docs",
@@ -9363,6 +9977,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/29"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-29-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Coldint Taostats metagraph",
+      "netuid": 29,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/29/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/29/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/29/metagraph"
     },
     {
       "auth_required": false,
@@ -9490,6 +10125,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/30"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-30-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Endure Network Taostats metagraph",
+      "netuid": 30,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/30/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/30/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/30/metagraph"
     },
     {
       "auth_required": false,
@@ -9766,6 +10422,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-31-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Recall Taostats metagraph",
+      "netuid": 31,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/31/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/31/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/31/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-31-taopedia-article",
       "kind": "docs",
@@ -9847,6 +10524,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/32"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-32-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ItsAI Taostats metagraph",
+      "netuid": 32,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/32/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/32/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/32/metagraph"
     },
     {
       "auth_required": false,
@@ -10313,6 +11011,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-33-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ReadyAI Taostats metagraph",
+      "netuid": 33,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/33/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/33/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/33/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-data-artifact-1",
       "kind": "data-artifact",
@@ -10461,6 +11180,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-34-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "BitMind Taostats metagraph",
+      "netuid": 34,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/34/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/34/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/34/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-34-taopedia-article",
       "kind": "docs",
@@ -10564,6 +11304,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/35"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-35-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "OxMarkets Taostats metagraph",
+      "netuid": 35,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/35/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/35/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/35/metagraph"
     },
     {
       "auth_required": false,
@@ -10837,6 +11598,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/36"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-36-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Eirel Taostats metagraph",
+      "netuid": 36,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/36/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/36/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/36/metagraph"
     },
     {
       "auth_required": false,
@@ -11173,6 +11955,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/37"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-37-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Aurelius Taostats metagraph",
+      "netuid": 37,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/37/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/37/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/37/metagraph"
     },
     {
       "auth_required": false,
@@ -11533,6 +12336,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-38-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "colosseum Taostats metagraph",
+      "netuid": 38,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/38/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/38/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/38/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-38-taopedia-article",
       "kind": "docs",
@@ -11786,6 +12610,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-39-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "deprecated Taostats metagraph",
+      "netuid": 39,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/39/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/39/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/39/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-39-taopedia-article",
       "kind": "docs",
@@ -11912,6 +12757,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-40-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Chunking Taostats metagraph",
+      "netuid": 40,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/40/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/40/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/40/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-40-taopedia-article",
       "kind": "docs",
@@ -12015,6 +12881,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/41"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-41-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Almanac Taostats metagraph",
+      "netuid": 41,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/41/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/41/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/41/metagraph"
     },
     {
       "auth_required": false,
@@ -12292,10 +13179,31 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-42-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Gopher Taostats metagraph",
+      "netuid": 42,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/42/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/42/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/42/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-42-taopedia-article",
       "kind": "docs",
-      "name": "Subnet 42 Taopedia article",
+      "name": "Gopher Taopedia article",
       "netuid": 42,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -12373,6 +13281,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/43"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-43-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Graphite Taostats metagraph",
+      "netuid": 43,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/43/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/43/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/43/metagraph"
     },
     {
       "auth_required": false,
@@ -12479,6 +13408,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/44"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-44-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Score Taostats metagraph",
+      "netuid": 44,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/44/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/44/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/44/metagraph"
     },
     {
       "auth_required": false,
@@ -12773,6 +13723,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/45"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-45-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Talisman AI Taostats metagraph",
+      "netuid": 45,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/45/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/45/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/45/metagraph"
     },
     {
       "auth_required": false,
@@ -13280,6 +14251,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-46-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Zipcode Taostats metagraph",
+      "netuid": 46,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/46/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/46/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/46/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-46-website-link-zipcode-ai-dashboard-1",
       "kind": "dashboard",
@@ -13700,6 +14692,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-47-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "EvolAI Taostats metagraph",
+      "netuid": 47,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/47/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/47/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/47/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-47-github-readme-openevolai-evolai-data-artifact-1",
       "kind": "data-artifact",
@@ -13844,6 +14857,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/48"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-48-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Quantum Compute Taostats metagraph",
+      "netuid": 48,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/48/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/48/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/48/metagraph"
     },
     {
       "auth_required": false,
@@ -14309,6 +15343,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-49-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Nepher Robotics Taostats metagraph",
+      "netuid": 49,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/49/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/49/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/49/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-49-github-readme-nepher-ai-nepher-subnet-docs-1",
       "kind": "docs",
@@ -14603,6 +15658,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-50-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Synth Taostats metagraph",
+      "netuid": 50,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/50/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/50/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/50/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-50-taopedia-article",
       "kind": "docs",
@@ -14874,6 +15950,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/51"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-51-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "lium.io Taostats metagraph",
+      "netuid": 51,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/51/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/51/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/51/metagraph"
     },
     {
       "auth_required": false,
@@ -15361,6 +16458,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-52-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Dojo Taostats metagraph",
+      "netuid": 52,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/52/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/52/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/52/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-52-github-readme-tensorplex-labs-dojo-docs-1",
       "kind": "docs",
@@ -15551,6 +16669,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-53-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "EfficientFrontier Taostats metagraph",
+      "netuid": 53,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/53/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/53/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/53/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-53-taopedia-article",
       "kind": "docs",
@@ -15675,6 +16814,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/54"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-54-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Yanez MIID Taostats metagraph",
+      "netuid": 54,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/54/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/54/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/54/metagraph"
     },
     {
       "auth_required": false,
@@ -15970,6 +17130,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/55"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-55-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "NIOME Taostats metagraph",
+      "netuid": 55,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/55/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/55/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/55/metagraph"
     },
     {
       "auth_required": false,
@@ -16307,6 +17488,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/56"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-56-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Gradients Taostats metagraph",
+      "netuid": 56,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/56/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/56/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/56/metagraph"
     },
     {
       "auth_required": false,
@@ -16793,6 +17995,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-57-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "gaia Taostats metagraph",
+      "netuid": 57,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/57/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/57/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/57/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-57-taopedia-article",
       "kind": "docs",
@@ -16895,6 +18118,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/58"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-58-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Pending Taostats metagraph",
+      "netuid": 58,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/58/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/58/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/58/metagraph"
     },
     {
       "auth_required": false,
@@ -17042,6 +18286,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/59"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-59-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Babelbit Taostats metagraph",
+      "netuid": 59,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/59/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/59/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/59/metagraph"
     },
     {
       "auth_required": false,
@@ -17403,6 +18668,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-60-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Bitsec.ai Taostats metagraph",
+      "netuid": 60,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/60/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/60/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/60/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-60-github-readme-bitsec-ai-sandbox-docs-1",
       "kind": "docs",
@@ -17690,7 +18976,8 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
+        "https://www.theredteam.io/"
       ],
       "state": "schema-valid",
       "url": "https://dashboard.theredteam.io/"
@@ -17718,6 +19005,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-61-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "RedTeam Taostats metagraph",
+      "netuid": 61,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/61/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/61/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/61/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-61-github-readme-redteamsubnet-redteam-docs-2",
       "kind": "docs",
@@ -17732,7 +19040,8 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
       "source_urls": [
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
+        "https://www.theredteam.io/"
       ],
       "state": "schema-valid",
       "url": "https://docs.theredteam.io/"
@@ -17992,6 +19301,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-62-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Ridges Taostats metagraph",
+      "netuid": 62,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/62/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/62/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/62/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-62-taopedia-article",
       "kind": "docs",
@@ -18242,6 +19572,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/63"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-63-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Enigma Taostats metagraph",
+      "netuid": 63,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/63/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/63/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/63/metagraph"
     },
     {
       "auth_required": false,
@@ -18707,6 +20058,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-64-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Chutes Taostats metagraph",
+      "netuid": 64,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/64/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/64/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/64/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-64-website-link-chutes-ai-data-artifact-5",
       "kind": "data-artifact",
@@ -18952,7 +20324,8 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/chutesai/chutes/blob/main/README.md",
       "source_urls": [
-        "https://github.com/chutesai/chutes/blob/main/README.md"
+        "https://github.com/chutesai/chutes/blob/main/README.md",
+        "https://github.com/rayonlabs/chutes/blob/main/README.md"
       ],
       "state": "schema-valid",
       "url": "https://api.chutes.ai/pricing"
@@ -18973,7 +20346,8 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/chutesai/chutes/blob/main/README.md",
       "source_urls": [
-        "https://github.com/chutesai/chutes/blob/main/README.md"
+        "https://github.com/chutesai/chutes/blob/main/README.md",
+        "https://github.com/rayonlabs/chutes/blob/main/README.md"
       ],
       "state": "schema-valid",
       "url": "https://api.chutes.dev/"
@@ -19271,6 +20645,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/65"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-65-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "TAO Private Network Taostats metagraph",
+      "netuid": 65,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/65/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/65/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/65/metagraph"
     },
     {
       "auth_required": false,
@@ -19653,6 +21048,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-66-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ninja Taostats metagraph",
+      "netuid": 66,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/66/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/66/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/66/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-66-website-link-ninja-arbos-life-dashboard-1",
       "kind": "dashboard",
@@ -19990,6 +21406,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-67-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Harnyx Taostats metagraph",
+      "netuid": 67,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/67/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/67/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/67/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-67-website-link-harnyx-ai-dashboard-1",
       "kind": "dashboard",
@@ -20281,6 +21718,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/68"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-68-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "NOVA Taostats metagraph",
+      "netuid": 68,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/68/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/68/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/68/metagraph"
     },
     {
       "auth_required": false,
@@ -20642,6 +22100,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-69-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ain Taostats metagraph",
+      "netuid": 69,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/69/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/69/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/69/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-69-taopedia-article",
       "kind": "docs",
@@ -20723,6 +22202,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/70"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-70-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "NexisGen Taostats metagraph",
+      "netuid": 70,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/70/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/70/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/70/metagraph"
     },
     {
       "auth_required": false,
@@ -21083,6 +22583,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-71-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Leadpoet Taostats metagraph",
+      "netuid": 71,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/71/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/71/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/71/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-71-taopedia-article",
       "kind": "docs",
@@ -21333,6 +22854,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/72"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-72-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "StreetVision by NATIX Taostats metagraph",
+      "netuid": 72,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/72/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/72/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/72/metagraph"
     },
     {
       "auth_required": false,
@@ -21820,6 +23362,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-73-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Parked Taostats metagraph",
+      "netuid": 73,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/73/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/73/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/73/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-73-taopedia-article",
       "kind": "docs",
@@ -21922,6 +23485,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/74"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-74-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Gittensor Taostats metagraph",
+      "netuid": 74,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/74/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/74/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/74/metagraph"
     },
     {
       "auth_required": false,
@@ -22216,6 +23800,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/75"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-75-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Hippius Taostats metagraph",
+      "netuid": 75,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/75/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/75/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/75/metagraph"
     },
     {
       "auth_required": false,
@@ -22724,6 +24329,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-76-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Byzantium Taostats metagraph",
+      "netuid": 76,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/76/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/76/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/76/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-76-taopedia-article",
       "kind": "docs",
@@ -22973,6 +24599,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/77"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-77-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Liquidity Taostats metagraph",
+      "netuid": 77,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/77/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/77/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/77/metagraph"
     },
     {
       "auth_required": false,
@@ -23226,6 +24873,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/78"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-78-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Vocence Taostats metagraph",
+      "netuid": 78,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/78/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/78/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/78/metagraph"
     },
     {
       "auth_required": false,
@@ -23520,6 +25188,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/79"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-79-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "MVTRX Taostats metagraph",
+      "netuid": 79,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/79/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/79/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/79/metagraph"
     },
     {
       "auth_required": false,
@@ -24006,24 +25695,24 @@
     },
     {
       "auth_required": false,
-      "confidence": "low",
-      "id": "sn-80-website-link-dogelayer-ai-dashboard-1",
+      "confidence": "medium",
+      "id": "sn-80-taostats-metagraph",
       "kind": "dashboard",
-      "name": "dogelayer dashboard",
+      "name": "dogelayer Taostats metagraph",
       "netuid": 80,
-      "provider": "taomarketcap",
+      "provider": "taostats",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
       "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://dogelayer.ai/",
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/80/metagraph",
       "source_urls": [
-        "https://dogelayer.ai/"
+        "https://taostats.io/subnets/80/metagraph"
       ],
       "state": "schema-valid",
-      "url": "https://dogelayer.ai/en/dashboard"
+      "url": "https://taostats.io/subnets/80/metagraph"
     },
     {
       "auth_required": false,
@@ -24087,27 +25776,6 @@
       ],
       "state": "schema-valid",
       "url": "https://dogelayer.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
-      "id": "sn-80-website-link-dogelayer-ai-docs-2",
-      "kind": "docs",
-      "name": "dogelayer docs",
-      "netuid": 80,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://dogelayer.ai/",
-      "source_urls": [
-        "https://dogelayer.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://dogelayer.ai/en/docs"
     },
     {
       "auth_required": false,
@@ -24300,6 +25968,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-81-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "deprecated Taostats metagraph",
+      "netuid": 81,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/81/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/81/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/81/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-81-taopedia-article",
       "kind": "docs",
@@ -24423,6 +26112,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/82"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-82-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Compelle Taostats metagraph",
+      "netuid": 82,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/82/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/82/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/82/metagraph"
     },
     {
       "auth_required": false,
@@ -24909,6 +26619,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-83-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "CliqueAI Taostats metagraph",
+      "netuid": 83,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/83/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/83/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/83/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-83-taopedia-article",
       "kind": "docs",
@@ -25162,6 +26893,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-84-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ansuz Taostats metagraph",
+      "netuid": 84,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/84/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/84/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/84/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-84-taopedia-article",
       "kind": "docs",
@@ -25285,6 +27037,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/85"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-85-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Vidaio Taostats metagraph",
+      "netuid": 85,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/85/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/85/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/85/metagraph"
     },
     {
       "auth_required": false,
@@ -25688,6 +27461,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-86-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Subnet 86 Taostats metagraph",
+      "netuid": 86,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/86/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/86/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/86/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-86-taopedia-article",
       "kind": "docs",
@@ -25772,6 +27566,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-87-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Luminar Network Taostats metagraph",
+      "netuid": 87,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/87/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/87/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/87/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-87-taopedia-article",
       "kind": "docs",
@@ -25849,7 +27664,8 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/mobiusfund/investing/blob/main/README.md",
       "source_urls": [
-        "https://github.com/mobiusfund/investing/blob/main/README.md"
+        "https://github.com/mobiusfund/investing/blob/main/README.md",
+        "https://investing88.ai/"
       ],
       "state": "schema-valid",
       "url": "https://db.investing88.ai/"
@@ -25874,6 +27690,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/88"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-88-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Investing Taostats metagraph",
+      "netuid": 88,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/88/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/88/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/88/metagraph"
     },
     {
       "auth_required": false,
@@ -26214,6 +28051,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-89-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "InfiniteHash Taostats metagraph",
+      "netuid": 89,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/89/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/89/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/89/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-89-taopedia-article",
       "kind": "docs",
@@ -26467,6 +28325,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-90-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ogham Taostats metagraph",
+      "netuid": 90,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/90/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/90/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/90/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-90-taopedia-article",
       "kind": "docs",
@@ -26548,6 +28427,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/91"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-91-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Bitstarter #1 Taostats metagraph",
+      "netuid": 91,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/91/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/91/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/91/metagraph"
     },
     {
       "auth_required": false,
@@ -26887,6 +28787,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-92-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "luis Taostats metagraph",
+      "netuid": 92,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/92/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/92/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/92/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-92-taopedia-article",
       "kind": "docs",
@@ -27010,6 +28931,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/93"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-93-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Bitcast Taostats metagraph",
+      "netuid": 93,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/93/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/93/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/93/metagraph"
     },
     {
       "auth_required": false,
@@ -27371,6 +29313,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-94-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Bitsota Taostats metagraph",
+      "netuid": 94,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/94/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/94/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/94/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-94-website-link-bitsota-ai-dashboard-3",
       "kind": "dashboard",
@@ -27686,6 +29649,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-95-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Actual Taostats metagraph",
+      "netuid": 95,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/95/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/95/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/95/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-95-taopedia-article",
       "kind": "docs",
@@ -27980,6 +29964,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-96-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Verathos Taostats metagraph",
+      "netuid": 96,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/96/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/96/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/96/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-96-github-readme-verathos-ai-verathos-docs-1",
       "kind": "docs",
@@ -27994,7 +29999,8 @@
       "source_type": "github-readme-link",
       "source_url": "https://github.com/verathos-ai/verathos/blob/main/README.md",
       "source_urls": [
-        "https://github.com/verathos-ai/verathos/blob/main/README.md"
+        "https://github.com/verathos-ai/verathos/blob/main/README.md",
+        "https://verathos.ai/"
       ],
       "state": "schema-valid",
       "url": "https://verathos.ai/docs"
@@ -28271,6 +30277,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/97"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-97-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Albedo Taostats metagraph",
+      "netuid": 97,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/97/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/97/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/97/metagraph"
     },
     {
       "auth_required": false,
@@ -28607,6 +30634,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/98"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-98-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ForeverMoney Taostats metagraph",
+      "netuid": 98,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/98/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/98/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/98/metagraph"
     },
     {
       "auth_required": false,
@@ -29030,6 +31078,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-99-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Leoma Taostats metagraph",
+      "netuid": 99,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/99/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/99/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/99/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-99-github-readme-rendixnetwork-leoma-docs-2",
       "kind": "docs",
@@ -29342,6 +31411,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/100"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-100-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Plaτform Taostats metagraph",
+      "netuid": 100,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/100/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/100/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/100/metagraph"
     },
     {
       "auth_required": false,
@@ -29723,6 +31813,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-101-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "eni Taostats metagraph",
+      "netuid": 101,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/101/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/101/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/101/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-101-taopedia-article",
       "kind": "docs",
@@ -29804,6 +31915,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/102"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-102-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ConnitoAI Taostats metagraph",
+      "netuid": 102,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/102/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/102/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/102/metagraph"
     },
     {
       "auth_required": false,
@@ -30161,6 +32293,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/103"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-103-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Djinn Taostats metagraph",
+      "netuid": 103,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/103/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/103/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/103/metagraph"
     },
     {
       "auth_required": false,
@@ -30605,6 +32758,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-104-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "for sale (burn to uid1) Taostats metagraph",
+      "netuid": 104,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/104/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/104/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/104/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-104-taopedia-article",
       "kind": "docs",
@@ -30686,6 +32860,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/105"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-105-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Beam Taostats metagraph",
+      "netuid": 105,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/105/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/105/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/105/metagraph"
     },
     {
       "auth_required": false,
@@ -30941,6 +33136,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-106-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "VoidAI Taostats metagraph",
+      "netuid": 106,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/106/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/106/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/106/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-106-taopedia-article",
       "kind": "docs",
@@ -31190,6 +33406,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/107"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-107-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Minos Taostats metagraph",
+      "netuid": 107,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/107/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/107/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/107/metagraph"
     },
     {
       "auth_required": false,
@@ -31592,6 +33829,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-108-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "TalkHead Taostats metagraph",
+      "netuid": 108,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/108/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/108/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/108/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-108-website-link-www-talkhead-ai-dashboard-3",
       "kind": "dashboard",
@@ -31971,6 +34229,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-109-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Academia Taostats metagraph",
+      "netuid": 109,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/109/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/109/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/109/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-109-taopedia-article",
       "kind": "docs",
@@ -32073,6 +34352,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/110"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-110-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Green Compute Taostats metagraph",
+      "netuid": 110,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/110/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/110/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/110/metagraph"
     },
     {
       "auth_required": false,
@@ -32538,6 +34838,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-111-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "oneoneone Taostats metagraph",
+      "netuid": 111,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/111/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/111/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/111/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-111-taopedia-article",
       "kind": "docs",
@@ -32641,6 +34962,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/112"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-112-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "minotaur Taostats metagraph",
+      "netuid": 112,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/112/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/112/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/112/metagraph"
     },
     {
       "auth_required": false,
@@ -32915,6 +35257,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/113"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-113-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "TensorUSD Taostats metagraph",
+      "netuid": 113,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/113/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/113/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/113/metagraph"
     },
     {
       "auth_required": false,
@@ -33293,6 +35656,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/114"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-114-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "SOMA Taostats metagraph",
+      "netuid": 114,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/114/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/114/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/114/metagraph"
     },
     {
       "auth_required": false,
@@ -33716,6 +36100,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-115-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "HashiChain Taostats metagraph",
+      "netuid": 115,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/115/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/115/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/115/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-115-taopedia-article",
       "kind": "docs",
@@ -33818,6 +36223,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/116"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-116-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "hard_sign Taostats metagraph",
+      "netuid": 116,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/116/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/116/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/116/metagraph"
     },
     {
       "auth_required": false,
@@ -33926,10 +36352,31 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-117-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "BrainPlay Taostats metagraph",
+      "netuid": 117,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/117/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/117/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/117/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-117-taopedia-article",
       "kind": "docs",
-      "name": "Subnet 117 Taopedia article",
+      "name": "BrainPlay Taopedia article",
       "netuid": 117,
       "provider": "taopedia-articles",
       "public_safe": true,
@@ -34070,6 +36517,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/118"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-118-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Ditto Taostats metagraph",
+      "netuid": 118,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/118/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/118/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/118/metagraph"
     },
     {
       "auth_required": false,
@@ -34535,6 +37003,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-119-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Satori Taostats metagraph",
+      "netuid": 119,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/119/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/119/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/119/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-119-taopedia-article",
       "kind": "docs",
@@ -34658,6 +37147,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/120"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-120-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Affine Taostats metagraph",
+      "netuid": 120,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/120/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/120/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/120/metagraph"
     },
     {
       "auth_required": false,
@@ -34911,6 +37421,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/121"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-121-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "sundae_bar Taostats metagraph",
+      "netuid": 121,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/121/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/121/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/121/metagraph"
     },
     {
       "auth_required": false,
@@ -35376,6 +37907,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-122-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "gamma_small Taostats metagraph",
+      "netuid": 122,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/122/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/122/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/122/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-122-taopedia-article",
       "kind": "docs",
@@ -35478,6 +38030,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/123"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-123-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "MANTIS Taostats metagraph",
+      "netuid": 123,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/123/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/123/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/123/metagraph"
     },
     {
       "auth_required": false,
@@ -35605,6 +38178,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/124"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-124-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Swarm Taostats metagraph",
+      "netuid": 124,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/124/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/124/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/124/metagraph"
     },
     {
       "auth_required": false,
@@ -35861,6 +38455,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-125-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "8 Ball Taostats metagraph",
+      "netuid": 125,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/125/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/125/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/125/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-125-taopedia-article",
       "kind": "docs",
@@ -35942,6 +38557,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taomarketcap.com/subnets/126"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-126-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Poker44 Taostats metagraph",
+      "netuid": 126,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/126/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/126/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/126/metagraph"
     },
     {
       "auth_required": false,
@@ -36281,6 +38917,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-127-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Astrid Taostats metagraph",
+      "netuid": 127,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/127/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/127/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/127/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-127-taopedia-article",
       "kind": "docs",
@@ -36596,6 +39253,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-128-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ByteLeap Taostats metagraph",
+      "netuid": 128,
+      "provider": "taostats",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "taostats-metagraph-dashboard",
+      "source_url": "https://taostats.io/subnets/128/metagraph",
+      "source_urls": [
+        "https://taostats.io/subnets/128/metagraph"
+      ],
+      "state": "schema-valid",
+      "url": "https://taostats.io/subnets/128/metagraph"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-128-taopedia-article",
       "kind": "docs",
@@ -36831,7 +39509,7 @@
   "generated_by": "metagraphed-discover-candidates",
   "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
   "notes": "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
-  "observed_at": "2026-06-08T11:59:34.000Z",
+  "observed_at": "2026-06-08T12:31:57.000Z",
   "schema_version": 1,
   "sources": [
     {
@@ -36841,6 +39519,10 @@
     {
       "id": "backprop-finance",
       "url": "https://backprop.finance/dtao/subnets/"
+    },
+    {
+      "id": "taostats",
+      "url": "https://taostats.io/subnets/"
     },
     {
       "id": "tensorplex-subnet-docs",

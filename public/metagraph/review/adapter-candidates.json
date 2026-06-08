@@ -37,7 +37,7 @@
         "openapi"
       ],
       "operational_surface_count": 2,
-      "priority_score": 50,
+      "priority_score": 51,
       "slug": "sn-56"
     },
     {
@@ -129,6 +129,18 @@
       "slug": "sn-46"
     },
     {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "Bitsec.ai",
+      "netuid": 60,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 31,
+      "slug": "sn-60"
+    },
+    {
       "candidate_api_count": 11,
       "curation_level": "maintainer-reviewed",
       "name": "Chutes",
@@ -143,50 +155,14 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "DSperse",
-      "netuid": 2,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 30,
-      "slug": "sn-2"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Bitsec.ai",
-      "netuid": 60,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 30,
-      "slug": "sn-60"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
       "name": "Vocence",
       "netuid": 78,
       "operational_kinds": [
         "openapi"
       ],
       "operational_surface_count": 1,
-      "priority_score": 30,
+      "priority_score": 31,
       "slug": "sn-78"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "dogelayer",
-      "netuid": 80,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 30,
-      "slug": "sn-80"
     },
     {
       "candidate_api_count": 6,
@@ -197,7 +173,7 @@
         "openapi"
       ],
       "operational_surface_count": 1,
-      "priority_score": 30,
+      "priority_score": 31,
       "slug": "sn-97"
     },
     {
@@ -209,7 +185,7 @@
         "openapi"
       ],
       "operational_surface_count": 1,
-      "priority_score": 30,
+      "priority_score": 31,
       "slug": "sn-99"
     },
     {
@@ -221,8 +197,20 @@
         "subnet-api"
       ],
       "operational_surface_count": 1,
-      "priority_score": 30,
+      "priority_score": 31,
       "slug": "sn-107"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "DSperse",
+      "netuid": 2,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 30,
+      "slug": "sn-2"
     },
     {
       "candidate_api_count": 6,
@@ -233,7 +221,7 @@
         "subnet-api"
       ],
       "operational_surface_count": 1,
-      "priority_score": 29,
+      "priority_score": 30,
       "slug": "sn-51"
     },
     {
@@ -245,8 +233,56 @@
         "openapi"
       ],
       "operational_surface_count": 1,
-      "priority_score": 29,
+      "priority_score": 30,
       "slug": "sn-65"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "ByteLeap",
+      "netuid": 128,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 30,
+      "slug": "sn-128"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "BitAds",
+      "netuid": 16,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 29,
+      "slug": "sn-16"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "Almanac",
+      "netuid": 41,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 29,
+      "slug": "sn-41"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "machine-verified",
+      "name": "Synth",
+      "netuid": 50,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 29,
+      "slug": "sn-50"
     },
     {
       "candidate_api_count": 5,
@@ -273,6 +309,66 @@
       "slug": "sn-68"
     },
     {
+      "candidate_api_count": 6,
+      "curation_level": "machine-verified",
+      "name": "NexisGen",
+      "netuid": 70,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 29,
+      "slug": "sn-70"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "Leadpoet",
+      "netuid": 71,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 29,
+      "slug": "sn-71"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "Liquidity",
+      "netuid": 77,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 29,
+      "slug": "sn-77"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "dogelayer",
+      "netuid": 80,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 29,
+      "slug": "sn-80"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "CliqueAI",
+      "netuid": 83,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 29,
+      "slug": "sn-83"
+    },
+    {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "Bitcast",
@@ -283,6 +379,18 @@
       "operational_surface_count": 1,
       "priority_score": 29,
       "slug": "sn-93"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "Beam",
+      "netuid": 105,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 29,
+      "slug": "sn-105"
     },
     {
       "candidate_api_count": 7,
@@ -311,50 +419,14 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "ByteLeap",
-      "netuid": 128,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 29,
-      "slug": "sn-128"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "BitAds",
-      "netuid": 16,
+      "name": "colosseum",
+      "netuid": 38,
       "operational_kinds": [
         "openapi"
       ],
       "operational_surface_count": 1,
       "priority_score": 28,
-      "slug": "sn-16"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Almanac",
-      "netuid": 41,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 28,
-      "slug": "sn-41"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "machine-verified",
-      "name": "Synth",
-      "netuid": 50,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 28,
-      "slug": "sn-50"
+      "slug": "sn-38"
     },
     {
       "candidate_api_count": 6,
@@ -369,76 +441,16 @@
       "slug": "sn-59"
     },
     {
-      "candidate_api_count": 6,
-      "curation_level": "machine-verified",
-      "name": "NexisGen",
-      "netuid": 70,
-      "operational_kinds": [
-        "data-artifact"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 28,
-      "slug": "sn-70"
-    },
-    {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "Leadpoet",
-      "netuid": 71,
+      "name": "Actual",
+      "netuid": 95,
       "operational_kinds": [
         "openapi"
       ],
       "operational_surface_count": 1,
       "priority_score": 28,
-      "slug": "sn-71"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Liquidity",
-      "netuid": 77,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 28,
-      "slug": "sn-77"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "CliqueAI",
-      "netuid": 83,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 28,
-      "slug": "sn-83"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Beam",
-      "netuid": 105,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 28,
-      "slug": "sn-105"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "colosseum",
-      "netuid": 38,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 27,
-      "slug": "sn-38"
+      "slug": "sn-95"
     },
     {
       "candidate_api_count": 6,
@@ -451,18 +463,6 @@
       "operational_surface_count": 1,
       "priority_score": 27,
       "slug": "gittensor"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Actual",
-      "netuid": 95,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 27,
-      "slug": "sn-95"
     },
     {
       "candidate_api_count": 0,
@@ -553,7 +553,7 @@
       "netuid": 100,
       "operational_kinds": [],
       "operational_surface_count": 0,
-      "priority_score": 9,
+      "priority_score": 10,
       "slug": "sn-100"
     },
     {
@@ -563,7 +563,7 @@
       "netuid": 118,
       "operational_kinds": [],
       "operational_surface_count": 0,
-      "priority_score": 9,
+      "priority_score": 10,
       "slug": "sn-118"
     },
     {
@@ -609,6 +609,26 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
+      "name": "Perturb",
+      "netuid": 26,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 8,
+      "slug": "sn-26"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "OxMarkets",
+      "netuid": 35,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 8,
+      "slug": "sn-35"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
       "name": "Eirel",
       "netuid": 36,
       "operational_kinds": [],
@@ -619,12 +639,52 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
+      "name": "Aurelius",
+      "netuid": 37,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 8,
+      "slug": "sn-37"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "Score",
+      "netuid": 44,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 8,
+      "slug": "sn-44"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
       "name": "Bitsota",
       "netuid": 94,
       "operational_kinds": [],
       "operational_surface_count": 0,
       "priority_score": 8,
       "slug": "sn-94"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "VoidAI",
+      "netuid": 106,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 8,
+      "slug": "sn-106"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "Hone",
+      "netuid": 5,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-5"
     },
     {
       "candidate_api_count": 6,
@@ -649,42 +709,12 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "Perturb",
-      "netuid": 26,
+      "name": "Swap",
+      "netuid": 10,
       "operational_kinds": [],
       "operational_surface_count": 0,
       "priority_score": 7,
-      "slug": "sn-26"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "OxMarkets",
-      "netuid": 35,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 7,
-      "slug": "sn-35"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Aurelius",
-      "netuid": 37,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 7,
-      "slug": "sn-37"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Score",
-      "netuid": 44,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 7,
-      "slug": "sn-44"
+      "slug": "sn-10"
     },
     {
       "candidate_api_count": 5,
@@ -699,6 +729,16 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
+      "name": "NIOME",
+      "netuid": 55,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-55"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
       "name": "Harnyx",
       "netuid": 67,
       "operational_kinds": [],
@@ -709,12 +749,22 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "VoidAI",
-      "netuid": 106,
+      "name": "TalkHead",
+      "netuid": 108,
       "operational_kinds": [],
       "operational_surface_count": 0,
       "priority_score": 7,
-      "slug": "sn-106"
+      "slug": "sn-108"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "minotaur",
+      "netuid": 112,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 7,
+      "slug": "sn-112"
     },
     {
       "candidate_api_count": 5,
@@ -739,62 +789,22 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "Hone",
-      "netuid": 5,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 6,
-      "slug": "sn-5"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Swap",
-      "netuid": 10,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 6,
-      "slug": "sn-10"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "NIOME",
-      "netuid": 55,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 6,
-      "slug": "sn-55"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "TalkHead",
-      "netuid": 108,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 6,
-      "slug": "sn-108"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "minotaur",
-      "netuid": 112,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 6,
-      "slug": "sn-112"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
       "name": "Astrid",
       "netuid": 127,
       "operational_kinds": [],
       "operational_surface_count": 0,
-      "priority_score": 6,
+      "priority_score": 7,
       "slug": "sn-127"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
+      "name": "Nodexo",
+      "netuid": 27,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 5,
+      "slug": "sn-27"
     },
     {
       "candidate_api_count": 6,
@@ -805,16 +815,6 @@
       "operational_surface_count": 0,
       "priority_score": 5,
       "slug": "sn-75"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Nodexo",
-      "netuid": 27,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 4,
-      "slug": "sn-27"
     },
     {
       "candidate_api_count": 5,

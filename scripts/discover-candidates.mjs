@@ -43,6 +43,7 @@ await discoverFromTensorplexSubnetDocs();
 await discoverFromTaopediaArticles();
 await discoverUniversalTaoMarketCapDashboards();
 await discoverUniversalBackpropFinanceDashboards();
+await discoverUniversalTaostatsMetagraphDashboards();
 if (restoredProviders.size === 0) {
   await discoverFromGithubReadmes();
   await discoverFromProjectWebsites();
@@ -98,6 +99,10 @@ if (!dryRun) {
         {
           id: "backprop-finance",
           url: "https://backprop.finance/dtao/subnets/",
+        },
+        {
+          id: "taostats",
+          url: "https://taostats.io/subnets/",
         },
         {
           id: "tensorplex-subnet-docs",
@@ -387,6 +392,27 @@ async function discoverUniversalBackpropFinanceDashboards() {
       provider: "backprop-finance",
       review_notes:
         "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+    });
+  }
+}
+
+async function discoverUniversalTaostatsMetagraphDashboards() {
+  for (const subnet of nativeSnapshot.subnets) {
+    const displayName = displayNameForNetuid(subnet.netuid);
+    const url = `https://taostats.io/subnets/${subnet.netuid}/metagraph`;
+    addCandidate({
+      id: `sn-${subnet.netuid}-taostats-metagraph`,
+      netuid: subnet.netuid,
+      name: `${displayName} Taostats metagraph`,
+      kind: "dashboard",
+      url,
+      source_url: url,
+      source_type: "taostats-metagraph-dashboard",
+      source_tier: "third-party-index",
+      confidence: "medium",
+      provider: "taostats",
+      review_notes:
+        "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
     });
   }
 }

@@ -41,6 +41,7 @@ import {
   redactCredentialedUrls,
   registrySurfaceKey,
   repoRoot,
+  isReviewableReadmeLink,
   selectReviewableReadmeLinks,
   sha256Hex,
   slugify,
@@ -356,6 +357,25 @@ describe("script utility contracts", () => {
         "https://api.exampleproject.ai/openapi.json",
         "https://grafana.public.example/d/subnet?var-subnet=42",
       ],
+    );
+  });
+
+  test("README link review rejects malformed and generic references", () => {
+    assert.equal(isReviewableReadmeLink(null), false);
+    assert.equal(
+      isReviewableReadmeLink({
+        classification: { kind: "docs", label: "docs" },
+        url: "not a url",
+      }),
+      false,
+    );
+    assert.equal(
+      isReviewableReadmeLink({
+        classification: { kind: "docs", label: "docs" },
+        label: "Bittensor docs",
+        url: "https://docs.learnbittensor.org/subnets/understanding-subnets",
+      }),
+      false,
     );
   });
 

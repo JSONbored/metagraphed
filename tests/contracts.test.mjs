@@ -169,6 +169,13 @@ describe("public contract registry", () => {
     );
   });
 
+  test("requires canonical component schemas before building OpenAPI", () => {
+    assert.throws(
+      () => buildOpenApiArtifact("1970-01-01T00:00:00.000Z", null),
+      /requires canonical component schemas/,
+    );
+  });
+
   test("keeps public API route payloads on typed artifact schemas", async () => {
     const generatedAt = "1970-01-01T00:00:00.000Z";
     const openapi = buildOpenApiArtifact(

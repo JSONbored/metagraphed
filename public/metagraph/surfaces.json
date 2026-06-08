@@ -978,6 +978,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-5-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Hone Taostats metagraph",
+      "netuid": 5,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/5/metagraph"
+      ],
+      "subnet_name": "Hone",
+      "subnet_slug": "sn-5",
+      "url": "https://taostats.io/subnets/5/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-5-tensorplex-docs",
       "kind": "docs",
       "name": "Hone Tensorplex subnet docs",
@@ -1668,6 +1700,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-8-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Vanta Taostats metagraph",
+      "netuid": 8,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/8/metagraph"
+      ],
+      "subnet_name": "Vanta",
+      "subnet_slug": "sn-8",
+      "url": "https://taostats.io/subnets/8/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-8-tensorplex-docs",
       "kind": "docs",
       "name": "Vanta Tensorplex subnet docs",
@@ -1696,38 +1760,6 @@
       "subnet_name": "Vanta",
       "subnet_slug": "sn-8",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/8"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-8-website-link-www-vantanetwork-io-dashboard-1",
-      "kind": "dashboard",
-      "name": "Vanta dashboard",
-      "netuid": 8,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://www.vantanetwork.io/"
-      ],
-      "subnet_name": "Vanta",
-      "subnet_slug": "sn-8",
-      "url": "https://www.vantanetwork.io/dashboard"
     },
     {
       "auth_required": false,
@@ -1961,6 +1993,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-10-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Swap Taostats metagraph",
+      "netuid": 10,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/10/metagraph"
+      ],
+      "subnet_name": "Swap",
+      "subnet_slug": "sn-10",
+      "url": "https://taostats.io/subnets/10/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-10-tensorplex-docs",
       "kind": "docs",
       "name": "Swap Tensorplex subnet docs",
@@ -2153,6 +2217,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-11-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "TrajectoryRL Taostats metagraph",
+      "netuid": 11,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/11/metagraph"
+      ],
+      "subnet_name": "TrajectoryRL",
+      "subnet_slug": "sn-11",
+      "url": "https://taostats.io/subnets/11/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-11-tensorplex-docs",
       "kind": "docs",
       "name": "TrajectoryRL Tensorplex subnet docs",
@@ -2213,38 +2309,6 @@
       "subnet_name": "TrajectoryRL",
       "subnet_slug": "sn-11",
       "url": "https://trajrl.com/docs"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-11-website-link-trajrl-com-dashboard-3",
-      "kind": "dashboard",
-      "name": "TrajectoryRL dashboard",
-      "netuid": 11,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://trajrl.com/"
-      ],
-      "subnet_name": "TrajectoryRL",
-      "subnet_slug": "sn-11",
-      "url": "https://trajrl.com/leaderboard"
     },
     {
       "auth_required": false,
@@ -2540,6 +2604,7 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
+        "https://cacheon.ai/",
         "https://github.com/latent-to/cacheon/blob/main/README.md"
       ],
       "subnet_name": "Cacheon",
@@ -3027,6 +3092,38 @@
       "subnet_name": "BitAds",
       "subnet_slug": "sn-16",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_16/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-16-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "BitAds Taostats metagraph",
+      "netuid": 16,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/16/metagraph"
+      ],
+      "subnet_name": "BitAds",
+      "subnet_slug": "sn-16",
+      "url": "https://taostats.io/subnets/16/metagraph"
     },
     {
       "auth_required": false,
@@ -3542,6 +3639,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-18-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Zeus Taostats metagraph",
+      "netuid": 18,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/18/metagraph"
+      ],
+      "subnet_name": "Zeus",
+      "subnet_slug": "sn-18",
+      "url": "https://taostats.io/subnets/18/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-18-tensorplex-docs",
       "kind": "docs",
       "name": "Zeus Tensorplex subnet docs",
@@ -3570,38 +3699,6 @@
       "subnet_name": "Zeus",
       "subnet_slug": "sn-18",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/18"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-18-website-link-www-zeussubnet-com-dashboard-5",
-      "kind": "dashboard",
-      "name": "Zeus dashboard",
-      "netuid": 18,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://www.zeussubnet.com/"
-      ],
-      "subnet_name": "Zeus",
-      "subnet_slug": "sn-18",
-      "url": "https://www.zeussubnet.com/dashboard"
     },
     {
       "auth_required": false,
@@ -4423,6 +4520,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-26-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Perturb Taostats metagraph",
+      "netuid": 26,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/26/metagraph"
+      ],
+      "subnet_name": "Perturb",
+      "subnet_slug": "sn-26",
+      "url": "https://taostats.io/subnets/26/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-26-tensorplex-docs",
       "kind": "docs",
       "name": "Perturb Tensorplex subnet docs",
@@ -4583,6 +4712,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-27-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Nodexo Taostats metagraph",
+      "netuid": 27,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/27/metagraph"
+      ],
+      "subnet_name": "Nodexo",
+      "subnet_slug": "sn-27",
+      "url": "https://taostats.io/subnets/27/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-27-tensorplex-docs",
       "kind": "docs",
       "name": "Nodexo Tensorplex subnet docs",
@@ -4707,6 +4868,38 @@
       "subnet_name": "gm",
       "subnet_slug": "sn-28",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_28/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-28-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "gm Taostats metagraph",
+      "netuid": 28,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/28/metagraph"
+      ],
+      "subnet_name": "gm",
+      "subnet_slug": "sn-28",
+      "url": "https://taostats.io/subnets/28/metagraph"
     },
     {
       "auth_required": false,
@@ -5023,6 +5216,38 @@
       "subnet_name": "Recall",
       "subnet_slug": "sn-31",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_31/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-31-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Recall Taostats metagraph",
+      "netuid": 31,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/31/metagraph"
+      ],
+      "subnet_name": "Recall",
+      "subnet_slug": "sn-31",
+      "url": "https://taostats.io/subnets/31/metagraph"
     },
     {
       "auth_required": false,
@@ -5475,6 +5700,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-35-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "OxMarkets Taostats metagraph",
+      "netuid": 35,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/35/metagraph"
+      ],
+      "subnet_name": "OxMarkets",
+      "subnet_slug": "sn-35",
+      "url": "https://taostats.io/subnets/35/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-35-tensorplex-docs",
       "kind": "docs",
       "name": "OxMarkets Tensorplex subnet docs",
@@ -5697,6 +5954,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-36-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Eirel Taostats metagraph",
+      "netuid": 36,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/36/metagraph"
+      ],
+      "subnet_name": "Eirel",
+      "subnet_slug": "sn-36",
+      "url": "https://taostats.io/subnets/36/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-36-tensorplex-docs",
       "kind": "docs",
       "name": "Eirel Tensorplex subnet docs",
@@ -5757,38 +6046,6 @@
       "subnet_name": "Eirel",
       "subnet_slug": "sn-36",
       "url": "https://eirel.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-36-website-link-eirel-ai-dashboard-3",
-      "kind": "dashboard",
-      "name": "Eirel dashboard",
-      "netuid": 36,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://eirel.ai/"
-      ],
-      "subnet_name": "Eirel",
-      "subnet_slug": "sn-36",
-      "url": "https://leaderboard.eirel.ai/"
     },
     {
       "auth_required": false,
@@ -5948,6 +6205,38 @@
       "subnet_name": "Aurelius",
       "subnet_slug": "sn-37",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_37/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-37-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Aurelius Taostats metagraph",
+      "netuid": 37,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/37/metagraph"
+      ],
+      "subnet_name": "Aurelius",
+      "subnet_slug": "sn-37",
+      "url": "https://taostats.io/subnets/37/metagraph"
     },
     {
       "auth_required": false,
@@ -6140,6 +6429,38 @@
       "subnet_name": "colosseum",
       "subnet_slug": "sn-38",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-38-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "colosseum Taostats metagraph",
+      "netuid": 38,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/38/metagraph"
+      ],
+      "subnet_name": "colosseum",
+      "subnet_slug": "sn-38",
+      "url": "https://taostats.io/subnets/38/metagraph"
     },
     {
       "auth_required": false,
@@ -6385,6 +6706,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-40-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Chunking Taostats metagraph",
+      "netuid": 40,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/40/metagraph"
+      ],
+      "subnet_name": "Chunking",
+      "subnet_slug": "sn-40",
+      "url": "https://taostats.io/subnets/40/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-40-tensorplex-docs",
       "kind": "docs",
       "name": "Chunking Tensorplex subnet docs",
@@ -6573,6 +6926,38 @@
       "subnet_name": "Almanac",
       "subnet_slug": "sn-41",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_41/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-41-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Almanac Taostats metagraph",
+      "netuid": 41,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/41/metagraph"
+      ],
+      "subnet_name": "Almanac",
+      "subnet_slug": "sn-41",
+      "url": "https://taostats.io/subnets/41/metagraph"
     },
     {
       "auth_required": false,
@@ -6926,6 +7311,38 @@
       "subnet_name": "Score",
       "subnet_slug": "sn-44",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_44/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-44-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Score Taostats metagraph",
+      "netuid": 44,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/44/metagraph"
+      ],
+      "subnet_name": "Score",
+      "subnet_slug": "sn-44",
+      "url": "https://taostats.io/subnets/44/metagraph"
     },
     {
       "auth_required": false,
@@ -7852,6 +8269,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-50-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Synth Taostats metagraph",
+      "netuid": 50,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/50/metagraph"
+      ],
+      "subnet_name": "Synth",
+      "subnet_slug": "sn-50",
+      "url": "https://taostats.io/subnets/50/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-50-tensorplex-docs",
       "kind": "docs",
       "name": "Synth Tensorplex subnet docs",
@@ -8137,6 +8586,38 @@
       "subnet_name": "lium.io",
       "subnet_slug": "sn-51",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_51/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-51-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "lium.io Taostats metagraph",
+      "netuid": 51,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/51/metagraph"
+      ],
+      "subnet_name": "lium.io",
+      "subnet_slug": "sn-51",
+      "url": "https://taostats.io/subnets/51/metagraph"
     },
     {
       "auth_required": false,
@@ -8445,6 +8926,38 @@
       "subnet_name": "EfficientFrontier",
       "subnet_slug": "sn-53",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_53/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-53-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "EfficientFrontier Taostats metagraph",
+      "netuid": 53,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/53/metagraph"
+      ],
+      "subnet_name": "EfficientFrontier",
+      "subnet_slug": "sn-53",
+      "url": "https://taostats.io/subnets/53/metagraph"
     },
     {
       "auth_required": false,
@@ -8865,6 +9378,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-55-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "NIOME Taostats metagraph",
+      "netuid": 55,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/55/metagraph"
+      ],
+      "subnet_name": "NIOME",
+      "subnet_slug": "sn-55",
+      "url": "https://taostats.io/subnets/55/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-55-tensorplex-docs",
       "kind": "docs",
       "name": "NIOME Tensorplex subnet docs",
@@ -9052,6 +9597,38 @@
       "subnet_name": "Gradients",
       "subnet_slug": "sn-56",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_56/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-56-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Gradients Taostats metagraph",
+      "netuid": 56,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/56/metagraph"
+      ],
+      "subnet_name": "Gradients",
+      "subnet_slug": "sn-56",
+      "url": "https://taostats.io/subnets/56/metagraph"
     },
     {
       "auth_required": false,
@@ -9693,6 +10270,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-59-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Babelbit Taostats metagraph",
+      "netuid": 59,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/59/metagraph"
+      ],
+      "subnet_name": "Babelbit",
+      "subnet_slug": "sn-59",
+      "url": "https://taostats.io/subnets/59/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-59-tensorplex-docs",
       "kind": "docs",
       "name": "Babelbit Tensorplex subnet docs",
@@ -9721,38 +10330,6 @@
       "subnet_name": "Babelbit",
       "subnet_slug": "sn-59",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/59"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-59-website-link-babelbit-ai-dashboard-1",
-      "kind": "dashboard",
-      "name": "Babelbit dashboard",
-      "netuid": 59,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://babelbit.ai/"
-      ],
-      "subnet_name": "Babelbit",
-      "subnet_slug": "sn-59",
-      "url": "https://babelbit.ai/main/dashboard"
     },
     {
       "auth_required": false,
@@ -9944,6 +10521,38 @@
       "subnet_name": "Bitsec.ai",
       "subnet_slug": "sn-60",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_60/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-60-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Bitsec.ai Taostats metagraph",
+      "netuid": 60,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/60/metagraph"
+      ],
+      "subnet_name": "Bitsec.ai",
+      "subnet_slug": "sn-60",
+      "url": "https://taostats.io/subnets/60/metagraph"
     },
     {
       "auth_required": false,
@@ -10651,6 +11260,38 @@
       "subnet_name": "TAO Private Network",
       "subnet_slug": "sn-65",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_65/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-65-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "TAO Private Network Taostats metagraph",
+      "netuid": 65,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/65/metagraph"
+      ],
+      "subnet_name": "TAO Private Network",
+      "subnet_slug": "sn-65",
+      "url": "https://taostats.io/subnets/65/metagraph"
     },
     {
       "auth_required": false,
@@ -11378,6 +12019,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-68-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "NOVA Taostats metagraph",
+      "netuid": 68,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/68/metagraph"
+      ],
+      "subnet_name": "NOVA",
+      "subnet_slug": "sn-68",
+      "url": "https://taostats.io/subnets/68/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-68-tensorplex-docs",
       "kind": "docs",
       "name": "NOVA Tensorplex subnet docs",
@@ -11406,38 +12079,6 @@
       "subnet_name": "NOVA",
       "subnet_slug": "sn-68",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/68"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-68-website-link-www-metanova-labs-ai-dashboard-5",
-      "kind": "dashboard",
-      "name": "NOVA dashboard",
-      "netuid": 68,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://www.metanova-labs.ai/"
-      ],
-      "subnet_name": "NOVA",
-      "subnet_slug": "sn-68",
-      "url": "https://www.metanova-labs.ai/dashboard"
     },
     {
       "auth_required": false,
@@ -11598,6 +12239,38 @@
       "subnet_name": "ain",
       "subnet_slug": "sn-69",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_69/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-69-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ain Taostats metagraph",
+      "netuid": 69,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/69/metagraph"
+      ],
+      "subnet_name": "ain",
+      "subnet_slug": "sn-69",
+      "url": "https://taostats.io/subnets/69/metagraph"
     },
     {
       "auth_required": false,
@@ -11789,6 +12462,38 @@
       "subnet_name": "NexisGen",
       "subnet_slug": "sn-70",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_70/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-70-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "NexisGen Taostats metagraph",
+      "netuid": 70,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/70/metagraph"
+      ],
+      "subnet_name": "NexisGen",
+      "subnet_slug": "sn-70",
+      "url": "https://taostats.io/subnets/70/metagraph"
     },
     {
       "auth_required": false,
@@ -12045,6 +12750,38 @@
       "subnet_name": "Leadpoet",
       "subnet_slug": "sn-71",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_71/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-71-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Leadpoet Taostats metagraph",
+      "netuid": 71,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/71/metagraph"
+      ],
+      "subnet_name": "Leadpoet",
+      "subnet_slug": "sn-71",
+      "url": "https://taostats.io/subnets/71/metagraph"
     },
     {
       "auth_required": false,
@@ -12380,6 +13117,38 @@
       "subnet_name": "Parked",
       "subnet_slug": "sn-73",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_73/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-73-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Parked Taostats metagraph",
+      "netuid": 73,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/73/metagraph"
+      ],
+      "subnet_name": "Parked",
+      "subnet_slug": "sn-73",
+      "url": "https://taostats.io/subnets/73/metagraph"
     },
     {
       "auth_required": false,
@@ -12847,6 +13616,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-77-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Liquidity Taostats metagraph",
+      "netuid": 77,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/77/metagraph"
+      ],
+      "subnet_name": "Liquidity",
+      "subnet_slug": "sn-77",
+      "url": "https://taostats.io/subnets/77/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-77-tensorplex-docs",
       "kind": "docs",
       "name": "Liquidity Tensorplex subnet docs",
@@ -13099,6 +13900,38 @@
       "subnet_name": "Vocence",
       "subnet_slug": "sn-78",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_78/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-78-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Vocence Taostats metagraph",
+      "netuid": 78,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/78/metagraph"
+      ],
+      "subnet_name": "Vocence",
+      "subnet_slug": "sn-78",
+      "url": "https://taostats.io/subnets/78/metagraph"
     },
     {
       "auth_required": false,
@@ -13491,6 +14324,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-80-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "dogelayer Taostats metagraph",
+      "netuid": 80,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/80/metagraph"
+      ],
+      "subnet_name": "dogelayer",
+      "subnet_slug": "sn-80",
+      "url": "https://taostats.io/subnets/80/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-80-tensorplex-docs",
       "kind": "docs",
       "name": "dogelayer Tensorplex subnet docs",
@@ -13584,70 +14449,6 @@
       "subnet_name": "dogelayer",
       "subnet_slug": "sn-80",
       "url": "https://dogelayer.ai/swagger"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-80-website-link-dogelayer-ai-dashboard-1",
-      "kind": "dashboard",
-      "name": "dogelayer dashboard",
-      "netuid": 80,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://dogelayer.ai/"
-      ],
-      "subnet_name": "dogelayer",
-      "subnet_slug": "sn-80",
-      "url": "https://dogelayer.ai/en/dashboard"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-80-website-link-dogelayer-ai-docs-2",
-      "kind": "docs",
-      "name": "dogelayer docs",
-      "netuid": 80,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://dogelayer.ai/"
-      ],
-      "subnet_name": "dogelayer",
-      "subnet_slug": "sn-80",
-      "url": "https://dogelayer.ai/en/docs"
     },
     {
       "auth_required": false,
@@ -13924,6 +14725,38 @@
       "subnet_name": "CliqueAI",
       "subnet_slug": "sn-83",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_83/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-83-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "CliqueAI Taostats metagraph",
+      "netuid": 83,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/83/metagraph"
+      ],
+      "subnet_name": "CliqueAI",
+      "subnet_slug": "sn-83",
+      "url": "https://taostats.io/subnets/83/metagraph"
     },
     {
       "auth_required": false,
@@ -14236,6 +15069,38 @@
       "subnet_name": "Subnet 86",
       "subnet_slug": "sn-86",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_86/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-86-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Subnet 86 Taostats metagraph",
+      "netuid": 86,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/86/metagraph"
+      ],
+      "subnet_name": "Subnet 86",
+      "subnet_slug": "sn-86",
+      "url": "https://taostats.io/subnets/86/metagraph"
     },
     {
       "auth_required": false,
@@ -14673,6 +15538,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-90-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ogham Taostats metagraph",
+      "netuid": 90,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/90/metagraph"
+      ],
+      "subnet_name": "ogham",
+      "subnet_slug": "sn-90",
+      "url": "https://taostats.io/subnets/90/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-90-tensorplex-docs",
       "kind": "docs",
       "name": "ogham Tensorplex subnet docs",
@@ -14957,6 +15854,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-93-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Bitcast Taostats metagraph",
+      "netuid": 93,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/93/metagraph"
+      ],
+      "subnet_name": "Bitcast",
+      "subnet_slug": "sn-93",
+      "url": "https://taostats.io/subnets/93/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-93-tensorplex-docs",
       "kind": "docs",
       "name": "Bitcast Tensorplex subnet docs",
@@ -15050,38 +15979,6 @@
       "subnet_name": "Bitcast",
       "subnet_slug": "sn-93",
       "url": "https://stats.bitcast.network/swagger"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-93-website-link-stats-bitcast-network-dashboard-1",
-      "kind": "dashboard",
-      "name": "Bitcast dashboard",
-      "netuid": 93,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://stats.bitcast.network/"
-      ],
-      "subnet_name": "Bitcast",
-      "subnet_slug": "sn-93",
-      "url": "https://stats.bitcast.network/bitcast"
     },
     {
       "auth_required": false,
@@ -15245,6 +16142,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-94-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Bitsota Taostats metagraph",
+      "netuid": 94,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/94/metagraph"
+      ],
+      "subnet_name": "Bitsota",
+      "subnet_slug": "sn-94",
+      "url": "https://taostats.io/subnets/94/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-94-tensorplex-docs",
       "kind": "docs",
       "name": "Bitsota Tensorplex subnet docs",
@@ -15305,38 +16234,6 @@
       "subnet_name": "Bitsota",
       "subnet_slug": "sn-94",
       "url": "https://bitsota.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-94-website-link-bitsota-ai-dashboard-3",
-      "kind": "dashboard",
-      "name": "Bitsota dashboard",
-      "netuid": 94,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://bitsota.ai/"
-      ],
-      "subnet_name": "Bitsota",
-      "subnet_slug": "sn-94",
-      "url": "https://bitsota.ai/leaderboard"
     },
     {
       "auth_required": false,
@@ -15465,6 +16362,38 @@
       "subnet_name": "Actual",
       "subnet_slug": "sn-95",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_95/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-95-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Actual Taostats metagraph",
+      "netuid": 95,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/95/metagraph"
+      ],
+      "subnet_name": "Actual",
+      "subnet_slug": "sn-95",
+      "url": "https://taostats.io/subnets/95/metagraph"
     },
     {
       "auth_required": false,
@@ -15970,6 +16899,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-97-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Albedo Taostats metagraph",
+      "netuid": 97,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/97/metagraph"
+      ],
+      "subnet_name": "Albedo",
+      "subnet_slug": "sn-97",
+      "url": "https://taostats.io/subnets/97/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-97-tensorplex-docs",
       "kind": "docs",
       "name": "Albedo Tensorplex subnet docs",
@@ -16336,6 +17297,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-99-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Leoma Taostats metagraph",
+      "netuid": 99,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/99/metagraph"
+      ],
+      "subnet_name": "Leoma",
+      "subnet_slug": "sn-99",
+      "url": "https://taostats.io/subnets/99/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-99-tensorplex-docs",
       "kind": "docs",
       "name": "Leoma Tensorplex subnet docs",
@@ -16623,6 +17616,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-100-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Plaτform Taostats metagraph",
+      "netuid": 100,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/100/metagraph"
+      ],
+      "subnet_name": "Plaτform",
+      "subnet_slug": "sn-100",
+      "url": "https://taostats.io/subnets/100/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-100-tensorplex-docs",
       "kind": "docs",
       "name": "Plaτform Tensorplex subnet docs",
@@ -16842,6 +17867,38 @@
       "subnet_name": "eni",
       "subnet_slug": "sn-101",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_101/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-101-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "eni Taostats metagraph",
+      "netuid": 101,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/101/metagraph"
+      ],
+      "subnet_name": "eni",
+      "subnet_slug": "sn-101",
+      "url": "https://taostats.io/subnets/101/metagraph"
     },
     {
       "auth_required": false,
@@ -17066,6 +18123,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-104-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "for sale (burn to uid1) Taostats metagraph",
+      "netuid": 104,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/104/metagraph"
+      ],
+      "subnet_name": "for sale (burn to uid1)",
+      "subnet_slug": "sn-104",
+      "url": "https://taostats.io/subnets/104/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-104-tensorplex-docs",
       "kind": "docs",
       "name": "for sale (burn to uid1) Tensorplex subnet docs",
@@ -17254,6 +18343,38 @@
       "subnet_name": "Beam",
       "subnet_slug": "sn-105",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_105/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-105-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Beam Taostats metagraph",
+      "netuid": 105,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/105/metagraph"
+      ],
+      "subnet_name": "Beam",
+      "subnet_slug": "sn-105",
+      "url": "https://taostats.io/subnets/105/metagraph"
     },
     {
       "auth_required": false,
@@ -17514,6 +18635,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-106-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "VoidAI Taostats metagraph",
+      "netuid": 106,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/106/metagraph"
+      ],
+      "subnet_name": "VoidAI",
+      "subnet_slug": "sn-106",
+      "url": "https://taostats.io/subnets/106/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-106-tensorplex-docs",
       "kind": "docs",
       "name": "VoidAI Tensorplex subnet docs",
@@ -17765,6 +18918,38 @@
       "subnet_name": "Minos",
       "subnet_slug": "sn-107",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_107/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-107-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Minos Taostats metagraph",
+      "netuid": 107,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/107/metagraph"
+      ],
+      "subnet_name": "Minos",
+      "subnet_slug": "sn-107",
+      "url": "https://taostats.io/subnets/107/metagraph"
     },
     {
       "auth_required": false,
@@ -18052,6 +19237,38 @@
       "subnet_name": "TalkHead",
       "subnet_slug": "sn-108",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_108/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-108-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "TalkHead Taostats metagraph",
+      "netuid": 108,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/108/metagraph"
+      ],
+      "subnet_name": "TalkHead",
+      "subnet_slug": "sn-108",
+      "url": "https://taostats.io/subnets/108/metagraph"
     },
     {
       "auth_required": false,
@@ -18475,6 +19692,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-112-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "minotaur Taostats metagraph",
+      "netuid": 112,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/112/metagraph"
+      ],
+      "subnet_name": "minotaur",
+      "subnet_slug": "sn-112",
+      "url": "https://taostats.io/subnets/112/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-112-tensorplex-docs",
       "kind": "docs",
       "name": "minotaur Tensorplex subnet docs",
@@ -18735,6 +19984,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-114-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "SOMA Taostats metagraph",
+      "netuid": 114,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/114/metagraph"
+      ],
+      "subnet_name": "SOMA",
+      "subnet_slug": "sn-114",
+      "url": "https://taostats.io/subnets/114/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-114-tensorplex-docs",
       "kind": "docs",
       "name": "SOMA Tensorplex subnet docs",
@@ -18794,38 +20075,6 @@
       "subnet_name": "SOMA",
       "subnet_slug": "sn-114",
       "url": "https://github.com/Level114/level114-subnet"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-114-website-link-thesoma-ai-dashboard-6",
-      "kind": "dashboard",
-      "name": "SOMA dashboard",
-      "netuid": 114,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://thesoma.ai/"
-      ],
-      "subnet_name": "SOMA",
-      "subnet_slug": "sn-114",
-      "url": "https://thesoma.ai/dashboard"
     },
     {
       "auth_required": false,
@@ -18978,6 +20227,38 @@
       "subnet_name": "hard_sign",
       "subnet_slug": "sn-116",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_116/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-116-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "hard_sign Taostats metagraph",
+      "netuid": 116,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/116/metagraph"
+      ],
+      "subnet_name": "hard_sign",
+      "subnet_slug": "sn-116",
+      "url": "https://taostats.io/subnets/116/metagraph"
     },
     {
       "auth_required": false,
@@ -19222,6 +20503,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-118-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Ditto Taostats metagraph",
+      "netuid": 118,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/118/metagraph"
+      ],
+      "subnet_name": "Ditto",
+      "subnet_slug": "sn-118",
+      "url": "https://taostats.io/subnets/118/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-118-tensorplex-docs",
       "kind": "docs",
       "name": "Ditto Tensorplex subnet docs",
@@ -19441,6 +20754,38 @@
       "subnet_name": "Satori",
       "subnet_slug": "sn-119",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_119/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-119-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Satori Taostats metagraph",
+      "netuid": 119,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/119/metagraph"
+      ],
+      "subnet_name": "Satori",
+      "subnet_slug": "sn-119",
+      "url": "https://taostats.io/subnets/119/metagraph"
     },
     {
       "auth_required": false,
@@ -20226,6 +21571,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-125-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "8 Ball Taostats metagraph",
+      "netuid": 125,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/125/metagraph"
+      ],
+      "subnet_name": "8 Ball",
+      "subnet_slug": "sn-125",
+      "url": "https://taostats.io/subnets/125/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-125-tensorplex-docs",
       "kind": "docs",
       "name": "8 Ball Tensorplex subnet docs",
@@ -20417,6 +21794,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-126-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Poker44 Taostats metagraph",
+      "netuid": 126,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/126/metagraph"
+      ],
+      "subnet_name": "Poker44",
+      "subnet_slug": "sn-126",
+      "url": "https://taostats.io/subnets/126/metagraph"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-126-tensorplex-docs",
       "kind": "docs",
       "name": "Poker44 Tensorplex subnet docs",
@@ -20445,38 +21854,6 @@
       "subnet_name": "Poker44",
       "subnet_slug": "sn-126",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/126"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-126-website-link-poker44-net-dashboard-1",
-      "kind": "dashboard",
-      "name": "Poker44 dashboard",
-      "netuid": 126,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://poker44.net/"
-      ],
-      "subnet_name": "Poker44",
-      "subnet_slug": "sn-126",
-      "url": "https://poker44.net/dashboard"
     },
     {
       "auth_required": false,
@@ -20636,6 +22013,38 @@
       "subnet_name": "Astrid",
       "subnet_slug": "sn-127",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_127/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-127-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "Astrid Taostats metagraph",
+      "netuid": 127,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/127/metagraph"
+      ],
+      "subnet_name": "Astrid",
+      "subnet_slug": "sn-127",
+      "url": "https://taostats.io/subnets/127/metagraph"
     },
     {
       "auth_required": false,
@@ -20828,6 +22237,38 @@
       "subnet_name": "ByteLeap",
       "subnet_slug": "sn-128",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_128/index.mdx"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-128-taostats-metagraph",
+      "kind": "dashboard",
+      "name": "ByteLeap Taostats metagraph",
+      "netuid": 128,
+      "notes": "Universal Taostats subnet metagraph dashboard candidate. Third-party explorer enrichment, not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taostats",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://taostats.io/subnets/128/metagraph"
+      ],
+      "subnet_name": "ByteLeap",
+      "subnet_slug": "sn-128",
+      "url": "https://taostats.io/subnets/128/metagraph"
     },
     {
       "auth_required": false,

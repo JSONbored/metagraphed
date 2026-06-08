@@ -41,10 +41,11 @@ This updates native subnet data, candidates, verification, baseline curation, ad
 The refresh keeps Git reviewable: compact artifacts remain in `public/metagraph`, while per-subnet candidates, verification details, health detail/history, adapter snapshots, schema snapshots, and provider detail outputs are staged for R2 and should not be committed.
 
 Candidate discovery reads public enrichment sources such as TaoMarketCap,
-Backprop Finance dashboard routes, Tensorplex `subnet-docs`, and Taopedia
-articles. Set `GITHUB_TOKEN` or `GH_TOKEN` for authenticated read-only GitHub
-API requests during local refreshes; scheduled sync and publish workflows
-already pass `GITHUB_TOKEN` from GitHub Actions.
+Backprop Finance dashboard routes, Taostats metagraph dashboard routes,
+Tensorplex `subnet-docs`, and Taopedia articles. Set `GITHUB_TOKEN` or
+`GH_TOKEN` for authenticated read-only GitHub API requests during local
+refreshes; scheduled sync and publish workflows already pass `GITHUB_TOKEN`
+from GitHub Actions.
 
 Live health probes are only written when explicitly enabled:
 
