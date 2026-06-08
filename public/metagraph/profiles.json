@@ -3505,19 +3505,24 @@
     {
       "candidate_count": 3,
       "categories": [
-        "baseline-curated"
+        "baseline-curated",
+        "data",
+        "identity-drift",
+        "identity-reviewed",
+        "official-docs",
+        "official-source-repo",
+        "tee"
       ],
       "completeness": {
-        "confidence": "medium",
+        "confidence": "high",
         "gap_reasons": [
-          "missing-source-repo",
           "missing-website",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 6,
+        "missing_critical_count": 5,
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -3525,62 +3530,62 @@
           "data-artifact"
         ],
         "missing_required": [
-          "source-repo",
           "website"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 40
       },
-      "completeness_score": 20,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "endpoint_count": 3,
-      "interface_count": 2,
-      "missing_critical_count": 6,
-      "monitored_endpoint_count": 3,
-      "name": "Subnet 42",
+      "completeness_score": 40,
+      "confidence": "low",
+      "curation_level": "maintainer-reviewed",
+      "endpoint_count": 2,
+      "interface_count": 3,
+      "missing_critical_count": 5,
+      "monitored_endpoint_count": 2,
+      "name": "Gopher",
       "native_name": "Unknown",
       "native_name_quality": "placeholder",
       "netuid": 42,
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-42-taopedia-article",
+        "id": "sn-42-gopher-docs",
         "kind": "docs",
-        "name": "Subnet 42 Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx"
+        "name": "Gopher subnet documentation",
+        "provider": "gopher-ai",
+        "url": "https://developers.gopher-ai.com/docs/subnet/intro"
       },
       "primary_links": {
         "dashboard_url": "https://taomarketcap.com/subnets/42",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx",
-        "source_repo": null,
+        "docs_url": "https://developers.gopher-ai.com/docs/subnet/intro",
+        "source_repo": "https://github.com/gopher-lab/subnet-42",
         "website_url": null
       },
       "profile_level": "directory-only",
-      "project_name": "Subnet 42",
+      "project_name": "Gopher",
       "provenance": {
-        "curation_level": "machine-verified",
+        "curation_level": "maintainer-reviewed",
         "identity_source": "curated-overlay",
         "interface_source_count": 4,
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "needs-review",
+        "reviewed_at": "2026-06-08T11:20:00.000Z",
         "source_urls": [
-          "https://api.taomarketcap.com/public/v1/subnets/42",
-          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx",
-          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/42/subnet.json",
+          "https://developers.gopher-ai.com/docs/subnet/intro",
+          "https://developers.gopher-ai.com/docs/subnet/miners",
+          "https://github.com/gopher-lab/subnet-42",
           "https://taomarketcap.com/subnets/42"
         ]
       },
-      "review_state": "machine-generated",
+      "review_state": "needs-review",
       "slug": "sn-42",
       "status": "active",
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs"
+        "docs",
+        "source-repo"
       ],
-      "surface_count": 3,
+      "surface_count": 2,
       "symbol": "ס",
       "team": null
     },
@@ -10743,8 +10748,8 @@
     "average_completeness_score": 49,
     "by_confidence": {
       "high": 57,
-      "low": 4,
-      "medium": 68
+      "low": 5,
+      "medium": 67
     },
     "by_profile_level": {
       "adapter-backed": 2,

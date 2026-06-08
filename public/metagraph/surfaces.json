@@ -6107,99 +6107,52 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-42-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "Subnet 42 TaoMarketCap dashboard",
+      "authority": "provider-claimed",
+      "id": "sn-42-gopher-docs",
+      "kind": "docs",
+      "name": "Gopher subnet documentation",
       "netuid": 42,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "notes": "Public Gopher subnet documentation. The docs identify the subnet as mainnet netuid 42 and link miner setup to the subnet source repository.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "gopher-ai",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/42"
+        "https://developers.gopher-ai.com/docs/subnet/intro",
+        "https://developers.gopher-ai.com/docs/subnet/miners",
+        "https://github.com/gopher-lab/subnet-42"
       ],
-      "subnet_name": "Subnet 42",
+      "subnet_name": "Gopher",
       "subnet_slug": "sn-42",
-      "url": "https://taomarketcap.com/subnets/42"
+      "url": "https://developers.gopher-ai.com/docs/subnet/intro"
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-42-taopedia-article",
-      "kind": "docs",
-      "name": "Subnet 42 Taopedia article",
+      "authority": "provider-claimed",
+      "id": "sn-42-gopher-source",
+      "kind": "source-repo",
+      "name": "Gopher subnet source repository",
       "netuid": 42,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Public source repository for Gopher Subnet 42 neuron logic.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taopedia-articles",
+      "provider": "gopher-ai",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx"
+        "https://github.com/gopher-lab/subnet-42",
+        "https://developers.gopher-ai.com/docs/subnet/miners"
       ],
-      "subnet_name": "Subnet 42",
+      "subnet_name": "Gopher",
       "subnet_slug": "sn-42",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-42-tensorplex-docs",
-      "kind": "docs",
-      "name": "Subnet 42 Tensorplex subnet docs",
-      "netuid": 42,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/42/subnet.json"
-      ],
-      "subnet_name": "Subnet 42",
-      "subnet_slug": "sn-42",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/42"
+      "url": "https://github.com/gopher-lab/subnet-42"
     },
     {
       "auth_required": false,

@@ -7877,35 +7877,24 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Subnet 42 TaoMarketCap dashboard is a public dashboard surface for SN42.",
+      "claim": "Gopher subnet documentation is a public docs surface for SN42.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/42",
-      "subject": "surface:sn-42-taomarketcap-dashboard",
+      "source_type": "provider-claimed",
+      "source_url": "https://developers.gopher-ai.com/docs/subnet/intro",
+      "subject": "surface:sn-42-gopher-docs",
       "support_summary": "Listed in curated overlay for sn-42.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Subnet 42 Taopedia article is a public docs surface for SN42.",
+      "claim": "Gopher subnet source repository is a public source-repo surface for SN42.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx",
-      "subject": "surface:sn-42-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-42.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Subnet 42 Tensorplex subnet docs is a public docs surface for SN42.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/42/subnet.json",
-      "subject": "surface:sn-42-tensorplex-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://github.com/gopher-lab/subnet-42",
+      "subject": "surface:sn-42-gopher-source",
       "support_summary": "Listed in curated overlay for sn-42.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -11469,8 +11458,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1042,
+    "claim_count": 1041,
     "subnet_claim_count": 129,
-    "surface_claim_count": 663
+    "surface_claim_count": 662
   }
 }

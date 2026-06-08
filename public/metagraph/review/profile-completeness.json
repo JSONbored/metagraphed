@@ -235,26 +235,6 @@
         "missing-data-artifact"
       ],
       "missing_critical_count": 6,
-      "name": "Subnet 42",
-      "netuid": 42,
-      "priority_score": 113,
-      "profile_level": "directory-only",
-      "slug": "sn-42",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 3,
-      "completeness_score": 20,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 6,
       "name": "ain",
       "netuid": 69,
       "priority_score": 113,
@@ -823,6 +803,25 @@
       "profile_level": "identity-complete",
       "slug": "sn-62",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 3,
+      "completeness_score": 40,
+      "confidence": "low",
+      "gap_reasons": [
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 5,
+      "name": "Gopher",
+      "netuid": 42,
+      "priority_score": 88,
+      "profile_level": "directory-only",
+      "slug": "sn-42",
+      "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
       "candidate_count": 3,
@@ -2355,8 +2354,8 @@
     "average_completeness_score": 49,
     "by_confidence": {
       "high": 57,
-      "low": 4,
-      "medium": 68
+      "low": 5,
+      "medium": 67
     },
     "by_profile_level": {
       "adapter-backed": 2,
@@ -2368,7 +2367,7 @@
       "missing-data-artifact": 116,
       "missing-docs": 32,
       "missing-openapi": 103,
-      "missing-source-repo": 22,
+      "missing-source-repo": 21,
       "missing-sse": 128,
       "missing-subnet-api": 117,
       "missing-website": 23

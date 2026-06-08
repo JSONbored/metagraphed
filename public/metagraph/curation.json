@@ -1791,31 +1791,30 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as a placeholder.",
+          "No verified official website yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "needs-review",
+        "reviewed_at": "2026-06-08T11:20:00.000Z",
+        "source_count": 5,
+        "verified_at": "2026-06-08T11:20:00.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Native chain name currently reports as a placeholder.",
+          "No verified official website yet.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "source-repo",
           "website",
           "openapi",
           "subnet-api",
@@ -1824,13 +1823,14 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "source-repo"
         ]
       },
-      "name": "Subnet 42",
+      "name": "Gopher",
       "netuid": 42,
       "slug": "sn-42",
-      "surface_count": 3
+      "surface_count": 2
     },
     {
       "candidate_count": 4,

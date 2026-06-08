@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "gopher-ai",
+  "name": "Gopher AI",
+  "kind": "subnet-team",
+  "website_url": "https://developers.gopher-ai.com/",
+  "docs_url": "https://developers.gopher-ai.com/docs/subnet/intro",
+  "github_url": "https://github.com/gopher-lab/subnet-42",
+  "authority": "provider-claimed",
+  "notes": "Provider entry for the Gopher SN42 documentation and subnet source repository. The project website and API hosts were not promoted because they did not return safe public probe responses during review."
+}

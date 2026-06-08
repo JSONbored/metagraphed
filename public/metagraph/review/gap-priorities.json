@@ -246,26 +246,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "Subnet 42",
-      "netuid": 42,
-      "priority_score": 71,
-      "review_state": "machine-generated",
-      "slug": "sn-42",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 3,
-      "verified_candidate_count": 3
-    },
-    {
-      "candidate_count": 3,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "ain",
       "netuid": 69,
       "priority_score": 71,
@@ -748,6 +728,25 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 6,
       "verified_candidate_count": 9
+    },
+    {
+      "candidate_count": 3,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Gopher",
+      "netuid": 42,
+      "priority_score": 59,
+      "review_state": "needs-review",
+      "slug": "sn-42",
+      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
+      "surface_count": 2,
+      "verified_candidate_count": 3
     },
     {
       "candidate_count": 18,
