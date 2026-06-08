@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
@@ -14,7 +15,7 @@ import {
   adapterQuery,
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
+import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import type { Subnet } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/")({
