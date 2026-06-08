@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "qbittensor-labs",
+  "name": "qBittensor Labs",
+  "kind": "subnet-team",
+  "website_url": "https://www.qbittensorlabs.com/",
+  "github_url": "https://github.com/qbittensor-labs/quantum-compute",
+  "authority": "official",
+  "notes": "Provider entry for qBittensor Labs Quantum Compute SN48 and Enigma SN63 website and source repositories."
+}

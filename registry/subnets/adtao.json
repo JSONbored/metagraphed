@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "netuid": 21,
+  "name": "AdTAO",
+  "slug": "sn-21",
+  "status": "active",
+  "categories": [
+    "advertising",
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "source_repo": "https://github.com/ippcteam/SN21-adtao",
+  "dashboard_url": "https://taomarketcap.com/subnets/21",
+  "website_url": "https://adtao.io/",
+  "notes": "Reviewed overlay for SN21 using the official AdTAO website and source repository.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "verified_at": "2026-06-08T10:10:00.000Z",
+    "source_count": 4,
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-21-adtao-website",
+      "name": "AdTAO website",
+      "kind": "website",
+      "url": "https://adtao.io/",
+      "provider": "adtao",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/ippcteam/SN21-adtao"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official AdTAO website."
+    },
+    {
+      "id": "sn-21-adtao-source",
+      "name": "AdTAO source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/ippcteam/SN21-adtao",
+      "provider": "adtao",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/ippcteam/SN21-adtao"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official AdTAO source repository."
+    }
+  ]
+}

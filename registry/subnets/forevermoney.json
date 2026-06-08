@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "netuid": 98,
+  "name": "ForeverMoney",
+  "slug": "sn-98",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "finance",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "source_repo": "https://github.com/SN98-ForeverMoney/forever-money",
+  "dashboard_url": "https://taomarketcap.com/subnets/98",
+  "website_url": "https://forevermoney.ai/",
+  "notes": "Reviewed overlay for SN98 using the official ForeverMoney website and source repository.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "verified_at": "2026-06-08T10:10:00.000Z",
+    "source_count": 4,
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-98-forevermoney-website",
+      "name": "ForeverMoney website",
+      "kind": "website",
+      "url": "https://forevermoney.ai/",
+      "provider": "forevermoney",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/SN98-ForeverMoney/forever-money"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official ForeverMoney website."
+    },
+    {
+      "id": "sn-98-forevermoney-source",
+      "name": "ForeverMoney source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/SN98-ForeverMoney/forever-money",
+      "provider": "forevermoney",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/SN98-ForeverMoney/forever-money"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official ForeverMoney source repository."
+    }
+  ]
+}

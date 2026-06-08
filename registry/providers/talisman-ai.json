@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "talisman-ai",
+  "name": "Talisman AI",
+  "kind": "subnet-team",
+  "website_url": "https://ai.talisman.xyz/",
+  "github_url": "https://github.com/Team-Rizzo/talisman-ai",
+  "authority": "official",
+  "notes": "Provider entry for Talisman AI SN45 website and source repository."
+}

@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "netuid": 19,
+  "name": "blockmachine",
+  "slug": "sn-19",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
+  "docs_url": "https://blockmachine.io/whitepaper",
+  "source_repo": "https://github.com/taostat/blockmachine",
+  "dashboard_url": "https://taomarketcap.com/subnets/19",
+  "website_url": "https://blockmachine.io/",
+  "notes": "Reviewed overlay for SN19 using the official BlockMachine website, whitepaper, and source repository.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "verified_at": "2026-06-08T10:10:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "No verified safe public subnet API endpoint yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-19-blockmachine-website",
+      "name": "BlockMachine website",
+      "kind": "website",
+      "url": "https://blockmachine.io/",
+      "provider": "blockmachine",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/taostat/blockmachine"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official BlockMachine website."
+    },
+    {
+      "id": "sn-19-blockmachine-whitepaper",
+      "name": "BlockMachine whitepaper",
+      "kind": "docs",
+      "url": "https://blockmachine.io/whitepaper",
+      "provider": "blockmachine",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://blockmachine.io/whitepaper"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official BlockMachine whitepaper."
+    },
+    {
+      "id": "sn-19-blockmachine-source",
+      "name": "BlockMachine source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/taostat/blockmachine",
+      "provider": "blockmachine",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/taostat/blockmachine"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official BlockMachine source repository."
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "netuid": 48,
+  "name": "Quantum Compute",
+  "slug": "sn-48",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "compute",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "quantum"
+  ],
+  "source_repo": "https://github.com/qbittensor-labs/quantum-compute",
+  "dashboard_url": "https://taomarketcap.com/subnets/48",
+  "website_url": "https://www.qbittensorlabs.com/",
+  "notes": "Reviewed overlay for SN48 using the official qBittensor Labs website and Quantum Compute source repository.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "verified_at": "2026-06-08T10:10:00.000Z",
+    "source_count": 4,
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-48-quantum-compute-website",
+      "name": "qBittensor Labs website",
+      "kind": "website",
+      "url": "https://www.qbittensorlabs.com/",
+      "provider": "qbittensor-labs",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/qbittensor-labs/quantum-compute"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official qBittensor Labs website."
+    },
+    {
+      "id": "sn-48-quantum-compute-source",
+      "name": "Quantum Compute source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/qbittensor-labs/quantum-compute",
+      "provider": "qbittensor-labs",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/qbittensor-labs/quantum-compute"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Quantum Compute source repository."
+    }
+  ]
+}

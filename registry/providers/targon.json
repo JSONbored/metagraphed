@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "targon",
+  "name": "Targon",
+  "kind": "subnet-team",
+  "website_url": "https://targon.com/",
+  "github_url": "https://github.com/manifold-inc/targon",
+  "authority": "official",
+  "notes": "Provider entry for Targon SN4 website and source repository."
+}

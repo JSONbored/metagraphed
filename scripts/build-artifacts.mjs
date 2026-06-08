@@ -1541,8 +1541,12 @@ function subnetProfileCompleteness({
   supportedKinds,
 }) {
   const kindSet = new Set(supportedKinds);
-  const missingRequired = [
+  const missingRecommended = [
     ["docs", primaryLinks.docs_url || kindSet.has("docs")],
+  ]
+    .filter(([, present]) => !present)
+    .map(([kind]) => kind);
+  const missingRequired = [
     ["source-repo", primaryLinks.source_repo || kindSet.has("source-repo")],
     ["website", primaryLinks.website_url || kindSet.has("website")],
   ]
@@ -1578,6 +1582,7 @@ function subnetProfileCompleteness({
           : "directory-only";
   const gapReasons = [
     ...missingRequired.map((kind) => `missing-${kind}`),
+    ...missingRecommended.map((kind) => `missing-${kind}`),
     ...missingOperational.map((kind) => `missing-${kind}`),
   ];
 

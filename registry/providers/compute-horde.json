@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "compute-horde",
+  "name": "Compute Horde",
+  "kind": "subnet-team",
+  "website_url": "https://computehorde.io/",
+  "github_url": "https://github.com/backend-developers-ltd/ComputeHorde",
+  "authority": "official",
+  "notes": "Provider entry for Compute Horde SN12 official website and source repository."
+}

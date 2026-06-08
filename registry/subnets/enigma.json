@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "netuid": 63,
+  "name": "Enigma",
+  "slug": "sn-63",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website",
+    "quantum"
+  ],
+  "source_repo": "https://github.com/qbittensor-labs/enigma",
+  "dashboard_url": "https://taomarketcap.com/subnets/63",
+  "website_url": "https://www.qbittensorlabs.com/",
+  "notes": "Reviewed overlay for SN63 using the official qBittensor Labs website and Enigma source repository.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "verified_at": "2026-06-08T10:10:00.000Z",
+    "source_count": 4,
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-63-enigma-website",
+      "name": "qBittensor Labs website",
+      "kind": "website",
+      "url": "https://www.qbittensorlabs.com/",
+      "provider": "qbittensor-labs",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/qbittensor-labs/enigma"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official qBittensor Labs website."
+    },
+    {
+      "id": "sn-63-enigma-source",
+      "name": "Enigma source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/qbittensor-labs/enigma",
+      "provider": "qbittensor-labs",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/qbittensor-labs/enigma"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Enigma source repository."
+    }
+  ]
+}

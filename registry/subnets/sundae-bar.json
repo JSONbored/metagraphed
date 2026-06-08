@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "netuid": 121,
+  "name": "sundae_bar",
+  "slug": "sn-121",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "source_repo": "https://github.com/sundae-bar/bittensor-subnet",
+  "dashboard_url": "https://taomarketcap.com/subnets/121",
+  "website_url": "https://www.sundaebar.ai/",
+  "notes": "Reviewed overlay for SN121 using the official Sundae Bar website and source repository.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "verified_at": "2026-06-08T10:10:00.000Z",
+    "source_count": 4,
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-121-sundae-bar-website",
+      "name": "Sundae Bar website",
+      "kind": "website",
+      "url": "https://www.sundaebar.ai/",
+      "provider": "sundae-bar",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Sundae Bar website."
+    },
+    {
+      "id": "sn-121-sundae-bar-source",
+      "name": "Sundae Bar source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/sundae-bar/bittensor-subnet",
+      "provider": "sundae-bar",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/sundae-bar/bittensor-subnet"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Sundae Bar source repository."
+    }
+  ]
+}

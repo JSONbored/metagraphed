@@ -2,6 +2,16 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "providers": [
     {
+      "authority": "official",
+      "github_url": "https://github.com/ippcteam/SN21-adtao",
+      "id": "adtao",
+      "kind": "subnet-team",
+      "name": "AdTAO",
+      "notes": "Provider entry for AdTAO SN21 website and source repository.",
+      "schema_version": 1,
+      "website_url": "https://adtao.io/"
+    },
+    {
       "authority": "provider-claimed",
       "docs_url": "https://docs.all-ways.io/how-it-works.html",
       "id": "allways",
@@ -62,6 +72,26 @@
     },
     {
       "authority": "official",
+      "github_url": "https://github.com/compelle/compelle-validator",
+      "id": "compelle",
+      "kind": "subnet-team",
+      "name": "Compelle",
+      "notes": "Provider entry for Compelle SN82 website and validator repository.",
+      "schema_version": 1,
+      "website_url": "https://compelle.com/"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/backend-developers-ltd/ComputeHorde",
+      "id": "compute-horde",
+      "kind": "subnet-team",
+      "name": "Compute Horde",
+      "notes": "Provider entry for Compute Horde SN12 official website and source repository.",
+      "schema_version": 1,
+      "website_url": "https://computehorde.io/"
+    },
+    {
+      "authority": "official",
       "github_url": "https://github.com/Connito-AI/Connito",
       "id": "connito",
       "kind": "subnet-team",
@@ -80,6 +110,16 @@
       "notes": "Provider entry for Desearch SN22 website, docs, public OpenAPI schema, console, and subnet source repository.",
       "schema_version": 1,
       "website_url": "https://www.desearch.ai/"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/Djinn-Inc/djinn",
+      "id": "djinn",
+      "kind": "subnet-team",
+      "name": "Djinn",
+      "notes": "Provider entry for Djinn SN103 website and source repository.",
+      "schema_version": 1,
+      "website_url": "https://www.djinn.gg/"
     },
     {
       "authority": "provider-claimed",
@@ -110,6 +150,16 @@
       "notes": "Bittensor RPC/API infrastructure provider. Keyed examples remain provider capability metadata until a public-safe endpoint is verified.",
       "schema_version": 1,
       "website_url": "https://flamewire.io"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/SN98-ForeverMoney/forever-money",
+      "id": "forevermoney",
+      "kind": "subnet-team",
+      "name": "ForeverMoney",
+      "notes": "Provider entry for ForeverMoney SN98 website and source repository.",
+      "schema_version": 1,
+      "website_url": "https://forevermoney.ai/"
     },
     {
       "authority": "provider-claimed",
@@ -171,6 +221,16 @@
       "notes": "Provider entry for InfiniteHash SN89 source repository. The repository homepage points to infinitehash.xyz, but that deployment currently returns HTTP 402 and is not promoted as a monitored website surface.",
       "schema_version": 1,
       "website_url": "https://github.com/backend-developers-ltd/InfiniteHash"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/It-s-AI/llm-detection",
+      "id": "its-ai",
+      "kind": "subnet-team",
+      "name": "ItsAI",
+      "notes": "Provider entry for ItsAI SN32 website and source repository.",
+      "schema_version": 1,
+      "website_url": "https://its-ai.org/en"
     },
     {
       "authority": "official",
@@ -278,6 +338,16 @@
     },
     {
       "authority": "official",
+      "github_url": "https://github.com/qbittensor-labs/quantum-compute",
+      "id": "qbittensor-labs",
+      "kind": "subnet-team",
+      "name": "qBittensor Labs",
+      "notes": "Provider entry for qBittensor Labs Quantum Compute SN48 and Enigma SN63 website and source repositories.",
+      "schema_version": 1,
+      "website_url": "https://www.qbittensorlabs.com/"
+    },
+    {
+      "authority": "official",
       "github_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
       "id": "readyai",
       "kind": "subnet-team",
@@ -316,6 +386,26 @@
       "notes": "Provider entry for the SILX Labs Quasar SN24 website, source repository, and public model artifacts.",
       "schema_version": 1,
       "website_url": "https://silxinc.com/"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/sundae-bar/bittensor-subnet",
+      "id": "sundae-bar",
+      "kind": "subnet-team",
+      "name": "Sundae Bar",
+      "notes": "Provider entry for Sundae Bar SN121 website and source repository.",
+      "schema_version": 1,
+      "website_url": "https://www.sundaebar.ai/"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/Team-Rizzo/talisman-ai",
+      "id": "talisman-ai",
+      "kind": "subnet-team",
+      "name": "Talisman AI",
+      "notes": "Provider entry for Talisman AI SN45 website and source repository.",
+      "schema_version": 1,
+      "website_url": "https://ai.talisman.xyz/"
     },
     {
       "authority": "provider-claimed",
@@ -357,6 +447,16 @@
       "notes": "Bittensor explorer, API, SDK, and hosted RPC provider. API-key gated services are not published as public probeable surfaces.",
       "schema_version": 1,
       "website_url": "https://taostats.io"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/manifold-inc/targon",
+      "id": "targon",
+      "kind": "subnet-team",
+      "name": "Targon",
+      "notes": "Provider entry for Targon SN4 website and source repository.",
+      "schema_version": 1,
+      "website_url": "https://targon.com/"
     },
     {
       "authority": "community",

@@ -173,26 +173,29 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:10:00.000Z",
         "source_count": 4,
-        "verified_at": null
+        "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -200,7 +203,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
           "website"
         ]
@@ -208,7 +210,7 @@
       "name": "Targon",
       "netuid": 4,
       "slug": "sn-4",
-      "surface_count": 8
+      "surface_count": 2
     },
     {
       "candidate_count": 14,
@@ -507,29 +509,29 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:10:00.000Z",
+        "source_count": 4,
+        "verified_at": "2026-06-08T10:10:00.000Z"
       },
       "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified project website yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
-          "website",
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -537,14 +539,14 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
-          "source-repo"
+          "source-repo",
+          "website"
         ]
       },
       "name": "Compute Horde",
       "netuid": 12,
       "slug": "sn-12",
-      "surface_count": 4
+      "surface_count": 2
     },
     {
       "candidate_count": 20,
@@ -801,24 +803,24 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:10:00.000Z",
         "source_count": 5,
-        "verified_at": null
+        "verified_at": "2026-06-08T10:10:00.000Z"
       },
       "gap_count": 4,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -836,7 +838,7 @@
       "name": "blockmachine",
       "netuid": 19,
       "slug": "sn-19",
-      "surface_count": 7
+      "surface_count": 3
     },
     {
       "candidate_count": 13,
@@ -887,26 +889,29 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:10:00.000Z",
+        "source_count": 4,
+        "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -914,7 +919,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
           "website"
         ]
@@ -922,7 +926,7 @@
       "name": "AdTAO",
       "netuid": 21,
       "slug": "sn-21",
-      "surface_count": 5
+      "surface_count": 2
     },
     {
       "candidate_count": 11,
@@ -1361,26 +1365,29 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:10:00.000Z",
+        "source_count": 4,
+        "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1388,7 +1395,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
           "website"
         ]
@@ -1396,7 +1402,7 @@
       "name": "ItsAI",
       "netuid": 32,
       "slug": "sn-32",
-      "surface_count": 5
+      "surface_count": 2
     },
     {
       "candidate_count": 6,
@@ -1915,26 +1921,29 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:10:00.000Z",
         "source_count": 4,
-        "verified_at": null
+        "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -1942,7 +1951,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
           "website"
         ]
@@ -1950,7 +1958,7 @@
       "name": "Talisman AI",
       "netuid": 45,
       "slug": "sn-45",
-      "surface_count": 7
+      "surface_count": 2
     },
     {
       "candidate_count": 21,
@@ -2041,26 +2049,29 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:10:00.000Z",
+        "source_count": 4,
+        "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -2068,7 +2079,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
           "website"
         ]
@@ -2076,7 +2086,7 @@
       "name": "Quantum Compute",
       "netuid": 48,
       "slug": "sn-48",
-      "surface_count": 5
+      "surface_count": 2
     },
     {
       "candidate_count": 13,
@@ -2661,26 +2671,29 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:10:00.000Z",
+        "source_count": 4,
+        "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -2688,7 +2701,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
           "website"
         ]
@@ -2696,7 +2708,7 @@
       "name": "Enigma",
       "netuid": 63,
       "slug": "sn-63",
-      "surface_count": 5
+      "surface_count": 2
     },
     {
       "candidate_count": 26,
@@ -3452,26 +3464,29 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:10:00.000Z",
+        "source_count": 4,
+        "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -3479,7 +3494,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
           "website"
         ]
@@ -3487,7 +3501,7 @@
       "name": "Compelle",
       "netuid": 82,
       "slug": "sn-82",
-      "surface_count": 6
+      "surface_count": 2
     },
     {
       "candidate_count": 11,
@@ -4132,26 +4146,29 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:10:00.000Z",
         "source_count": 4,
-        "verified_at": null
+        "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -4159,7 +4176,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
           "website"
         ]
@@ -4167,7 +4183,7 @@
       "name": "ForeverMoney",
       "netuid": 98,
       "slug": "sn-98",
-      "surface_count": 8
+      "surface_count": 2
     },
     {
       "candidate_count": 14,
@@ -4346,26 +4362,29 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:10:00.000Z",
         "source_count": 4,
-        "verified_at": null
+        "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -4373,7 +4392,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
           "website"
         ]
@@ -4381,7 +4399,7 @@
       "name": "Djinn",
       "netuid": 103,
       "slug": "sn-103",
-      "surface_count": 7
+      "surface_count": 2
     },
     {
       "candidate_count": 3,
@@ -5114,26 +5132,29 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 3,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T10:10:00.000Z",
+        "source_count": 4,
+        "verified_at": "2026-06-08T10:10:00.000Z"
       },
-      "gap_count": 4,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified official docs URL yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -5141,7 +5162,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
           "website"
         ]
@@ -5149,7 +5169,7 @@
       "name": "sundae_bar",
       "netuid": 121,
       "slug": "sn-121",
-      "surface_count": 5
+      "surface_count": 2
     },
     {
       "candidate_count": 4,
