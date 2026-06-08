@@ -3,7 +3,7 @@ import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { Suspense, useEffect } from "react";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
+import { BrandIcon, prefetchBrandIcon } from "@/components/metagraphed/brand-icon";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
@@ -142,6 +142,25 @@ function SubnetsTable() {
   const rows = sortBy(filtered, search.sort, search.order, (row, key) =>
     (row as Record<string, unknown>)[key],
   );
+
+  // Warm the favicon cache for visible rows during idle time so scrolling
+  // feels instant. The browser dedupes the eventual <img> request.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ric =
+      (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
+        .requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1));
+    const handle = ric(() => {
+      for (const s of rows) prefetchBrandIcon(s.website, 32);
+    });
+    return () => {
+      const cic =
+        (window as unknown as { cancelIdleCallback?: (h: number) => void })
+          .cancelIdleCallback ?? window.clearTimeout;
+      cic(handle as number);
+    };
+  }, [rows]);
+
 
   const filters = (
     <>

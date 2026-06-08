@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useEffect, type ReactNode } from "react";
 import { Globe, Github, BookOpen, Radio, Layers } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { BrandIcon } from "@/components/metagraphed/brand-icon";
+import { BrandIcon, prefetchBrandIcon } from "@/components/metagraphed/brand-icon";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
@@ -72,6 +72,22 @@ function ProvidersGrid() {
   const { data } = useSuspenseQuery(providersQuery());
   const { data: counts } = useSuspenseQuery(providerCountsQuery());
   const rows = (data.data ?? []) as Provider[];
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ric =
+      (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
+        .requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1));
+    const handle = ric(() => {
+      for (const p of rows) prefetchBrandIcon(p.website ?? p.homepage, 36);
+    });
+    return () => {
+      const cic =
+        (window as unknown as { cancelIdleCallback?: (h: number) => void })
+          .cancelIdleCallback ?? window.clearTimeout;
+      cic(handle as number);
+    };
+  }, [rows]);
+
   if (rows.length === 0)
     return (
       <EmptyState
