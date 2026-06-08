@@ -109,22 +109,11 @@ function StatCell({ label, value, hint }: { label: string; value: string; hint?:
 }
 
 function StatStrip() {
-  let coverage, freshness, health;
-  try {
-    coverage = useSuspenseQuery(coverageQuery()).data.data;
-  } catch {
-    /* tolerate */
-  }
-  try {
-    freshness = useSuspenseQuery(freshnessQuery()).data.data;
-  } catch {
-    /* tolerate */
-  }
-  try {
-    health = useSuspenseQuery(healthQuery()).data.data;
-  } catch {
-    /* tolerate */
-  }
+  // Stat strip is a small at-a-glance widget; partial loading is fine and
+  // useSuspenseQuery + try/catch would swallow the suspense Promise.
+  const coverage = useQuery(coverageQuery()).data?.data;
+  const freshness = useQuery(freshnessQuery()).data?.data;
+  const health = useQuery(healthQuery()).data?.data;
 
   const total = coverage?.netuids_total ?? coverage?.netuids_active;
   const active = coverage?.netuids_active;
@@ -148,7 +137,7 @@ function StatStrip() {
       />
       <StatCell
         label="Avg freshness"
-        value={avgAge != null ? `${Math.round(avgAge)}s` : "—"}
+        value={avgAge != null ? humaniseSeconds(avgAge) : "—"}
         hint="poll lag"
       />
       <StatCell
