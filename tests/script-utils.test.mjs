@@ -178,7 +178,7 @@ describe("script utility contracts", () => {
       profile_summary: {
         average_completeness_score: 49,
         by_level: {
-          "directory-only": 38,
+          "identity-partial": 38,
           operational: 46,
         },
         critical_gap_counts: {
@@ -219,7 +219,7 @@ describe("script utility contracts", () => {
 
     assert.match(brief, /Metagraphed Curation Brief/);
     assert.match(brief, /Active Finney netuids: 129/);
-    assert.match(brief, /Profile levels: directory-only 38, operational 46/);
+    assert.match(brief, /Profile levels: identity-partial 38, operational 46/);
     assert.match(
       brief,
       /Critical gaps: missing-openapi 81, missing-source-repo 44/,

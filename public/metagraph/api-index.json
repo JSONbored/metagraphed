@@ -599,6 +599,7 @@
           "schema": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -1839,6 +1840,7 @@
           "schema": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -2186,6 +2188,7 @@
           "schema": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
@@ -2553,6 +2556,7 @@
           "schema": {
             "enum": [
               "directory-only",
+              "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"

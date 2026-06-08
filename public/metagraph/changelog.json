@@ -3,8 +3,28 @@
     "added": [],
     "modified": [
       {
-        "hash": "c20e8e7b74657f71bc1a3fba7e770eb9e8855039cc19b2fabf339f846f136b64",
-        "path": "freshness.json"
+        "hash": "cbd2f5262a17bd65802ed96ba8d7eaa79368d1f77e09a8803b4666fec2d234d4",
+        "path": "api-index.json"
+      },
+      {
+        "hash": "d2c09f2e02895bd08d4ecf2c06ed390b1adaa3a3e6b11da4b3efc2d9c95eae82",
+        "path": "openapi.json"
+      },
+      {
+        "hash": "a4d0ffc7d3eb817ff2b6920cb833b593d95a5e3a20e9f6dbe7d8f5cf85b3b1b5",
+        "path": "profiles.json"
+      },
+      {
+        "hash": "bc6f526d1ca96b5251f1d4eaecea7918bcd08268d26397ad302171aa7a27f69d",
+        "path": "review/enrichment-queue.json"
+      },
+      {
+        "hash": "2a7b75859b942b9068023f9d232d951029fe097294b52b55aea4ffa079fac70b",
+        "path": "review/enrichment-targets.json"
+      },
+      {
+        "hash": "e091918ce4ad5f84bd880a9cc39f4b2008cfad5e3e9a260962de5788b93d7854",
+        "path": "review/profile-completeness.json"
       }
     ],
     "removed": []
@@ -24,7 +44,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 1,
+    "artifact_modified_count": 6,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {

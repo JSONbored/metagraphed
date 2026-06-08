@@ -56,6 +56,13 @@ export const QUERY_ENUMS = {
     "registry",
     "subnet-team",
   ],
+  profileLevel: [
+    "directory-only",
+    "identity-partial",
+    "identity-complete",
+    "operational",
+    "adapter-backed",
+  ],
   subnetStatus: ["active", "inactive"],
   subnetType: ["root", "application"],
   endpointLayer: [
@@ -200,12 +207,7 @@ export const API_QUERY_COLLECTIONS = {
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
       review_state: textSchema,
       confidence: enumSchema(["low", "medium", "high"]),
-      profile_level: enumSchema([
-        "directory-only",
-        "identity-complete",
-        "operational",
-        "adapter-backed",
-      ]),
+      profile_level: enumSchema(QUERY_ENUMS.profileLevel),
     },
     search: ["name", "slug", "project_name", "team", "categories"],
     sort: [
@@ -224,12 +226,7 @@ export const API_QUERY_COLLECTIONS = {
   "profile-completeness": queryCollection("profiles", {
     filters: {
       netuid: integerSchema,
-      profile_level: enumSchema([
-        "directory-only",
-        "identity-complete",
-        "operational",
-        "adapter-backed",
-      ]),
+      profile_level: enumSchema(QUERY_ENUMS.profileLevel),
       confidence: enumSchema(["low", "medium", "high"]),
       identity_level: enumSchema(["none", "directory", "partial", "complete"]),
     },
@@ -305,12 +302,7 @@ export const API_QUERY_COLLECTIONS = {
       ]),
       missing_kinds: enumSchema(QUERY_ENUMS.surfaceKind),
       netuid: integerSchema,
-      profile_level: enumSchema([
-        "directory-only",
-        "identity-complete",
-        "operational",
-        "adapter-backed",
-      ]),
+      profile_level: enumSchema(QUERY_ENUMS.profileLevel),
       reason_codes: textSchema,
       review_state: textSchema,
       manual_review_required: enumSchema(["true", "false"]),
@@ -384,12 +376,7 @@ export const API_QUERY_COLLECTIONS = {
       manual_review_required: enumSchema(["true", "false"]),
       missing_kinds: enumSchema(QUERY_ENUMS.surfaceKind),
       netuid: integerSchema,
-      profile_level: enumSchema([
-        "directory-only",
-        "identity-complete",
-        "operational",
-        "adapter-backed",
-      ]),
+      profile_level: enumSchema(QUERY_ENUMS.profileLevel),
       reason_codes: textSchema,
       submission_route: enumSchema([
         "direct-candidate-pr",

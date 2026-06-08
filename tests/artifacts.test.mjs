@@ -836,7 +836,7 @@ test("public artifacts are internally consistent", () => {
     0,
   );
   assert.equal(
-    profileCompleteness.summary.by_profile_level["directory-only"] > 0,
+    profileCompleteness.summary.by_profile_level["identity-partial"] > 0,
     true,
   );
   assert.equal(

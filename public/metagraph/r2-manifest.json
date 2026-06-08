@@ -1,14 +1,14 @@
 {
   "artifact_count": 24,
-  "artifact_size_bytes": 5750045,
+  "artifact_size_bytes": 5749639,
   "artifacts": [
     {
       "content_type": "application/json",
       "key": "runs/1970-01-01T00-00-00-000Z/api-index.json",
       "latest_key": "latest/api-index.json",
       "path": "/metagraph/api-index.json",
-      "sha256": "2c20d8282759dd3da4e5f85978d1bbbd745ddb4a4e7fdfff7af7f4bf62f6530a",
-      "size_bytes": 86305,
+      "sha256": "cbd2f5262a17bd65802ed96ba8d7eaa79368d1f77e09a8803b4666fec2d234d4",
+      "size_bytes": 86441,
       "storage_tier": "dual"
     },
     {
@@ -16,8 +16,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/changelog.json",
       "latest_key": "latest/changelog.json",
       "path": "/metagraph/changelog.json",
-      "sha256": "3ee9f24dfe22647fb2d813c23450ae57a30a10c22b5896e136218713d5ac4bfd",
-      "size_bytes": 1349,
+      "sha256": "ad6d3fe7dc444446f4480126efadc098def1766239a6abab924a2ce541812794",
+      "size_bytes": 2064,
       "storage_tier": "dual"
     },
     {
@@ -79,8 +79,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/openapi.json",
       "latest_key": "latest/openapi.json",
       "path": "/metagraph/openapi.json",
-      "sha256": "d7de0115d2aa9306367d70a23070b8a395833d26a4903f88f26552c72a078069",
-      "size_bytes": 354619,
+      "sha256": "d2c09f2e02895bd08d4ecf2c06ed390b1adaa3a3e6b11da4b3efc2d9c95eae82",
+      "size_bytes": 354933,
       "storage_tier": "dual"
     },
     {
@@ -88,8 +88,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/profiles.json",
       "latest_key": "latest/profiles.json",
       "path": "/metagraph/profiles.json",
-      "sha256": "f2567614a3fe19d07d8c546855c4789cb64ee63861a811ac5731eebaa9c2b819",
-      "size_bytes": 451169,
+      "sha256": "a4d0ffc7d3eb817ff2b6920cb833b593d95a5e3a20e9f6dbe7d8f5cf85b3b1b5",
+      "size_bytes": 451275,
       "storage_tier": "dual"
     },
     {
@@ -124,8 +124,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/enrichment-queue.json",
       "latest_key": "latest/review/enrichment-queue.json",
       "path": "/metagraph/review/enrichment-queue.json",
-      "sha256": "160b61eceb6891dddb1535ebcc206b14495974d0c6f8929c029bc7bb21c7e45c",
-      "size_bytes": 366840,
+      "sha256": "bc6f526d1ca96b5251f1d4eaecea7918bcd08268d26397ad302171aa7a27f69d",
+      "size_bytes": 366008,
       "storage_tier": "dual"
     },
     {
@@ -133,8 +133,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/enrichment-targets.json",
       "latest_key": "latest/review/enrichment-targets.json",
       "path": "/metagraph/review/enrichment-targets.json",
-      "sha256": "e4924f4091c4dfcef76accafa76815bb7c3cd6f80407f1e9f8cc8debb8a8cc67",
-      "size_bytes": 755232,
+      "sha256": "2a7b75859b942b9068023f9d232d951029fe097294b52b55aea4ffa079fac70b",
+      "size_bytes": 754144,
       "storage_tier": "git"
     },
     {
@@ -160,8 +160,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/review/profile-completeness.json",
       "latest_key": "latest/review/profile-completeness.json",
       "path": "/metagraph/review/profile-completeness.json",
-      "sha256": "ac182838c4bc643ebe319a7a61d9498026b0d62db3595a88fb8ac822d8cfef03",
-      "size_bytes": 143939,
+      "sha256": "e091918ce4ad5f84bd880a9cc39f4b2008cfad5e3e9a260962de5788b93d7854",
+      "size_bytes": 143993,
       "storage_tier": "git"
     },
     {
@@ -214,8 +214,8 @@
       "key": "runs/1970-01-01T00-00-00-000Z/types.d.ts",
       "latest_key": "latest/types.d.ts",
       "path": "/metagraph/types.d.ts",
-      "sha256": "e70ae43e5dc6fc0e333ff7272fdbcd466d4de1720144deb55dd5916d7718c60b",
-      "size_bytes": 200125,
+      "sha256": "6347139ee6fc3b8136f1f3dfddafff192849bb9b232c9e17798e1a72e862c5c8",
+      "size_bytes": 200314,
       "storage_tier": "dual"
     }
   ],
@@ -223,7 +223,7 @@
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
   "full_artifact_count": 1258,
-  "full_artifact_size_bytes": 49313439,
+  "full_artifact_size_bytes": 49313137,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/1970-01-01T00-00-00-000Z/r2-manifest.json",
   "generated_at": "1970-01-01T00:00:00.000Z",
@@ -246,8 +246,8 @@
     "r2": 1234
   },
   "storage_tier_size_bytes": {
-    "dual": 4850874,
-    "git": 899171,
-    "r2": 43563394
+    "dual": 4851502,
+    "git": 898137,
+    "r2": 43563498
   }
 }

@@ -1562,7 +1562,7 @@ export interface components {
             operational_interface_count: number;
             priority_score: number;
             /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
             reason_codes: string[];
             recommended_action: string;
             review_state: components["schemas"]["ReviewState"];
@@ -1594,7 +1594,7 @@ export interface components {
             netuid: number;
             priority_score: number;
             /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
             reason_codes: string[];
             recommended_action: string;
             sample_live_candidate_ids: string[];
@@ -1696,7 +1696,7 @@ export interface components {
             operational_interface_count: number;
             priority_score: number;
             /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
             review_state: components["schemas"]["ReviewState"];
             slug: string;
             source_count: number;
@@ -2036,7 +2036,7 @@ export interface components {
             primary_app_surface: components["schemas"]["SubnetProfileSurfaceSummary"];
             primary_links: components["schemas"]["SubnetProfilePrimaryLinks"];
             /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
             project_name: string;
             provenance: components["schemas"]["SubnetProfileProvenance"];
             review_state: components["schemas"]["ReviewState"];
@@ -2071,7 +2071,7 @@ export interface components {
             missing_operational: components["schemas"]["SurfaceKind"][];
             missing_required: components["schemas"]["SurfaceKind"][];
             /** @enum {unknown} */
-            profile_level: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+            profile_level: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
             score: number;
         };
         SubnetProfilePrimaryLinks: {
@@ -3514,7 +3514,7 @@ export interface operations {
                 curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
                 confidence?: "low" | "medium" | "high";
-                profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 q?: string;
                 limit?: number;
                 cursor?: number;
@@ -3981,7 +3981,7 @@ export interface operations {
                 lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 netuid?: number;
-                profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 reason_codes?: string;
                 review_state?: string;
                 manual_review_required?: "true" | "false";
@@ -4067,7 +4067,7 @@ export interface operations {
                 manual_review_required?: "true" | "false";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 netuid?: number;
-                profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 reason_codes?: string;
                 submission_route?: "direct-candidate-pr" | "adapter-request" | "maintainer-review" | "status-report";
                 target_action?: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
@@ -4223,7 +4223,7 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                profile_level?: "directory-only" | "identity-complete" | "operational" | "adapter-backed";
+                profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 confidence?: "low" | "medium" | "high";
                 identity_level?: "none" | "directory" | "partial" | "complete";
                 limit?: number;

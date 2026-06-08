@@ -115,9 +115,8 @@
       "netuid": 118,
       "operational_interface_count": 0,
       "priority_score": 134,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -200,9 +199,8 @@
       "netuid": 73,
       "operational_interface_count": 0,
       "priority_score": 127,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -281,9 +279,8 @@
       "netuid": 119,
       "operational_interface_count": 0,
       "priority_score": 127,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -721,9 +718,8 @@
       "netuid": 28,
       "operational_interface_count": 0,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -794,9 +790,8 @@
       "netuid": 31,
       "operational_interface_count": 0,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -955,9 +950,8 @@
       "netuid": 69,
       "operational_interface_count": 0,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -1113,9 +1107,8 @@
       "netuid": 81,
       "operational_interface_count": 0,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-website",
         "needs-maintainer-review"
       ],
@@ -1188,9 +1181,8 @@
       "netuid": 86,
       "operational_interface_count": 0,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -1261,9 +1253,8 @@
       "netuid": 101,
       "operational_interface_count": 0,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -1334,9 +1325,8 @@
       "netuid": 104,
       "operational_interface_count": 0,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -2477,9 +2467,8 @@
       "netuid": 91,
       "operational_interface_count": 0,
       "priority_score": 121,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -3363,9 +3352,8 @@
       "netuid": 20,
       "operational_interface_count": 0,
       "priority_score": 118,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -4447,9 +4435,8 @@
       "netuid": 30,
       "operational_interface_count": 0,
       "priority_score": 116,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -4681,9 +4668,8 @@
       "netuid": 27,
       "operational_interface_count": 0,
       "priority_score": 115,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -4829,9 +4815,8 @@
       "netuid": 38,
       "operational_interface_count": 0,
       "priority_score": 114,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-website"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -4910,9 +4895,8 @@
       "netuid": 76,
       "operational_interface_count": 0,
       "priority_score": 114,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -4989,9 +4973,8 @@
       "netuid": 89,
       "operational_interface_count": 0,
       "priority_score": 114,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-website"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -6988,9 +6971,8 @@
       "netuid": 40,
       "operational_interface_count": 0,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -7067,9 +7049,8 @@
       "netuid": 53,
       "operational_interface_count": 0,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -7146,9 +7127,8 @@
       "netuid": 92,
       "operational_interface_count": 0,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -7311,9 +7291,8 @@
       "netuid": 109,
       "operational_interface_count": 0,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-website"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -7382,9 +7361,8 @@
       "netuid": 115,
       "operational_interface_count": 0,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-website"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -7457,9 +7435,8 @@
       "netuid": 116,
       "operational_interface_count": 0,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -7531,9 +7508,8 @@
       "netuid": 123,
       "operational_interface_count": 0,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-website"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -7951,9 +7927,8 @@
       "netuid": 87,
       "operational_interface_count": 0,
       "priority_score": 99,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -8023,9 +7998,8 @@
       "netuid": 90,
       "operational_interface_count": 0,
       "priority_score": 99,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",

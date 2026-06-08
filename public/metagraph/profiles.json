@@ -2255,7 +2255,7 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -2305,7 +2305,7 @@
         "source_repo": null,
         "website_url": "https://www.groundlayer.xyz/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "GroundLayer",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -3041,7 +3041,7 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -3091,7 +3091,7 @@
         "source_repo": null,
         "website_url": "https://nodexo.ai/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Nodexo",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -3163,7 +3163,7 @@
           "source-repo",
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 25
       },
       "completeness_score": 25,
@@ -3216,7 +3216,7 @@
         "source_repo": null,
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "gm",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -3398,7 +3398,7 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -3448,7 +3448,7 @@
         "source_repo": null,
         "website_url": "https://endure.network/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Endure Network",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -3520,7 +3520,7 @@
           "source-repo",
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 25
       },
       "completeness_score": 25,
@@ -3573,7 +3573,7 @@
         "source_repo": null,
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Recall",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -4296,7 +4296,7 @@
         "missing_required": [
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -4346,7 +4346,7 @@
         "source_repo": "https://github.com/TAO-Colosseum/tao-colosseum-subnet",
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "colosseum",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -4526,7 +4526,7 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -4576,7 +4576,7 @@
         "source_repo": null,
         "website_url": "https://subnet.chunking.com/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Chunking",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -5968,7 +5968,7 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -6018,7 +6018,7 @@
         "source_repo": null,
         "website_url": "https://www.signalplus.com/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "EfficientFrontier",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -7722,7 +7722,7 @@
           "source-repo",
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 25
       },
       "completeness_score": 25,
@@ -7775,7 +7775,7 @@
         "source_repo": null,
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "ain",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -8169,7 +8169,7 @@
           "source-repo",
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 25
       },
       "completeness_score": 25,
@@ -8222,7 +8222,7 @@
         "source_repo": null,
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "MetaHash",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -8511,7 +8511,7 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -8561,7 +8561,7 @@
         "source_repo": null,
         "website_url": "https://www.byzantiumai.net/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Byzantium",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -9058,7 +9058,7 @@
         "missing_required": [
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -9108,7 +9108,7 @@
         "source_repo": "https://github.com/one-covenant/grail",
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Grail",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -9620,7 +9620,7 @@
           "source-repo",
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 25
       },
       "completeness_score": 25,
@@ -9673,7 +9673,7 @@
         "source_repo": null,
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Subnet 86",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -9740,7 +9740,7 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -9790,7 +9790,7 @@
         "source_repo": null,
         "website_url": "https://luminar.network/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Luminar Network",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -9970,7 +9970,7 @@
         "missing_required": [
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -10020,7 +10020,7 @@
         "source_repo": "https://github.com/backend-developers-ltd/InfiniteHash",
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "InfiniteHash",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -10088,7 +10088,7 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -10138,7 +10138,7 @@
         "source_repo": null,
         "website_url": "https://subnet90.com/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "DegenBrain",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -10204,7 +10204,7 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -10254,7 +10254,7 @@
         "source_repo": null,
         "website_url": "https://bitstarter.ai/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Bitstarter #1",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -10326,7 +10326,7 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -10376,7 +10376,7 @@
         "source_repo": null,
         "website_url": "https://www.tensorclaw.ai/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Tensorclaw",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -11322,7 +11322,7 @@
           "source-repo",
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 25
       },
       "completeness_score": 25,
@@ -11375,7 +11375,7 @@
         "source_repo": null,
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "eni",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -11665,7 +11665,7 @@
           "source-repo",
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 25
       },
       "completeness_score": 25,
@@ -11718,7 +11718,7 @@
         "source_repo": null,
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "for sale (burn to uid1)",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -12202,7 +12202,7 @@
         "missing_required": [
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -12252,7 +12252,7 @@
         "source_repo": "https://github.com/fx-integral/academia",
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Academia",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -12872,7 +12872,7 @@
         "missing_required": [
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -12922,7 +12922,7 @@
         "source_repo": "https://github.com/hashi115/hashichain",
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "HashiChain",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -12990,7 +12990,7 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -13040,7 +13040,7 @@
         "source_repo": null,
         "website_url": "https://taolend.io/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "TaoLend",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -13218,7 +13218,7 @@
         "missing_required": [
           "source-repo"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -13268,7 +13268,7 @@
         "source_repo": null,
         "website_url": "https://heyditto.ai/"
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Ditto",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -13343,7 +13343,7 @@
           "source-repo",
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 25
       },
       "completeness_score": 25,
@@ -13396,7 +13396,7 @@
         "source_repo": null,
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "Satori",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -13793,7 +13793,7 @@
         "missing_required": [
           "website"
         ],
-        "profile_level": "directory-only",
+        "profile_level": "identity-partial",
         "score": 40
       },
       "completeness_score": 40,
@@ -13843,7 +13843,7 @@
         "source_repo": "https://github.com/Barbariandev/MANTIS",
         "website_url": null
       },
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "project_name": "MANTIS",
       "provenance": {
         "curation_level": "maintainer-reviewed",
@@ -14429,8 +14429,8 @@
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "directory-only": 26,
       "identity-complete": 74,
+      "identity-partial": 26,
       "operational": 27
     },
     "profile_count": 129

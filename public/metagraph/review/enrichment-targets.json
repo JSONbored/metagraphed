@@ -380,9 +380,8 @@
       "name": "Ditto",
       "netuid": 118,
       "priority_score": 134,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -444,9 +443,8 @@
       "name": "MetaHash",
       "netuid": 73,
       "priority_score": 127,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -507,9 +505,8 @@
       "name": "Satori",
       "netuid": 119,
       "priority_score": 127,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -566,9 +563,8 @@
       "name": "MetaHash",
       "netuid": 73,
       "priority_score": 127,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -625,9 +621,8 @@
       "name": "Satori",
       "netuid": 119,
       "priority_score": 127,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -1667,9 +1662,8 @@
       "name": "gm",
       "netuid": 28,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -1722,9 +1716,8 @@
       "name": "Recall",
       "netuid": 31,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -1777,9 +1770,8 @@
       "name": "ain",
       "netuid": 69,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -1832,9 +1824,8 @@
       "name": "Subnet 86",
       "netuid": 86,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -1887,9 +1878,8 @@
       "name": "eni",
       "netuid": 101,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -1942,9 +1932,8 @@
       "name": "for sale (burn to uid1)",
       "netuid": 104,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -2277,9 +2266,8 @@
       "name": "gm",
       "netuid": 28,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -2332,9 +2320,8 @@
       "name": "Recall",
       "netuid": 31,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -2387,9 +2374,8 @@
       "name": "ain",
       "netuid": 69,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -2441,9 +2427,8 @@
       "name": "Grail",
       "netuid": 81,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-website",
         "needs-maintainer-review"
       ],
@@ -2496,9 +2481,8 @@
       "name": "Subnet 86",
       "netuid": 86,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -2551,9 +2535,8 @@
       "name": "eni",
       "netuid": 101,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -2606,9 +2589,8 @@
       "name": "for sale (burn to uid1)",
       "netuid": 104,
       "priority_score": 125,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo",
         "missing-website"
       ],
@@ -4701,9 +4683,8 @@
       "name": "Bitstarter #1",
       "netuid": 91,
       "priority_score": 121,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -7004,9 +6985,8 @@
       "name": "GroundLayer",
       "netuid": 20,
       "priority_score": 118,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -8729,9 +8709,8 @@
       "name": "Endure Network",
       "netuid": 30,
       "priority_score": 116,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -8834,9 +8813,8 @@
       "name": "Nodexo",
       "netuid": 27,
       "priority_score": 115,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -8930,9 +8908,8 @@
       "name": "Byzantium",
       "netuid": 76,
       "priority_score": 114,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -8987,9 +8964,8 @@
       "name": "colosseum",
       "netuid": 38,
       "priority_score": 114,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-website"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -9048,9 +9024,8 @@
       "name": "InfiniteHash",
       "netuid": 89,
       "priority_score": 114,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-website"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -12901,9 +12876,8 @@
       "name": "Chunking",
       "netuid": 40,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -12962,9 +12936,8 @@
       "name": "EfficientFrontier",
       "netuid": 53,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -13023,9 +12996,8 @@
       "name": "Tensorclaw",
       "netuid": 92,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -13084,9 +13056,8 @@
       "name": "TaoLend",
       "netuid": 116,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -13282,9 +13253,8 @@
       "name": "Academia",
       "netuid": 109,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-website"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -13335,9 +13305,8 @@
       "name": "HashiChain",
       "netuid": 115,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-website"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -13388,9 +13357,8 @@
       "name": "MANTIS",
       "netuid": 123,
       "priority_score": 101,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-website"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -14212,9 +14180,8 @@
       "name": "Luminar Network",
       "netuid": 87,
       "priority_score": 99,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
@@ -14265,9 +14232,8 @@
       "name": "DegenBrain",
       "netuid": 90,
       "priority_score": 99,
-      "profile_level": "directory-only",
+      "profile_level": "identity-partial",
       "reason_codes": [
-        "directory-only-profile",
         "missing-source-repo"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",

@@ -2047,7 +2047,9 @@ function subnetProfileCompleteness({
         ? "operational"
         : missingRequired.length === 0
           ? "identity-complete"
-          : "directory-only";
+          : identitySurfaceCount > 0
+            ? "identity-partial"
+            : "directory-only";
   const gapReasons = [
     ...missingRequired.map((kind) => `missing-${kind}`),
     ...missingRecommended.map((kind) => `missing-${kind}`),
