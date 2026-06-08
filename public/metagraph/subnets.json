@@ -167,7 +167,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -281,7 +281,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-curated",
         "identity-reviewed",
@@ -836,7 +836,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -987,7 +987,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-curated",
         "identity-reviewed",
@@ -1899,7 +1899,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "agents",
         "baseline-curated",
@@ -2413,7 +2413,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-curated",
         "identity-reviewed",
@@ -2444,7 +2444,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 13,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -2459,13 +2459,13 @@
       "native_name_quality": "chain",
       "netuid": 80,
       "participant_count": 256,
-      "probed_surface_count": 9,
+      "probed_surface_count": 10,
       "registered_at_block": 7151800,
       "slug": "sn-80",
       "source_repo": "https://github.com/dogelayer-ai/dogelayer",
       "status": "active",
       "subnet_type": "application",
-      "surface_count": 9,
+      "surface_count": 10,
       "symbol": "ى",
       "tempo": 360,
       "website_url": "https://dogelayer.ai/"
@@ -2504,7 +2504,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-curated",
         "identity-reviewed",
@@ -2597,7 +2597,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 20,
+      "candidate_count": 21,
       "categories": [
         "baseline-curated",
         "identity-reviewed",
@@ -3134,7 +3134,7 @@
     },
     {
       "block": 8357554,
-      "candidate_count": 22,
+      "candidate_count": 23,
       "categories": [
         "baseline-curated",
         "identity-reviewed",

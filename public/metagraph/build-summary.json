@@ -2,20 +2,12 @@
   "adapter_count": 2,
   "artifact_budget_summary": {
     "fail_count": 0,
-    "ok_count": 1204,
-    "warn_count": 1
+    "ok_count": 1205,
+    "warn_count": 0
   },
-  "artifact_budgets": [
-    {
-      "fail_bytes": 5000000,
-      "path": "verification/latest.json",
-      "size_bytes": 2082761,
-      "status": "warn",
-      "warn_bytes": 2000000
-    }
-  ],
+  "artifact_budgets": [],
   "artifact_count": 22,
-  "artifact_size_bytes": 3657528,
+  "artifact_size_bytes": 3658314,
   "artifacts": [
     {
       "path": "api-index.json",
@@ -25,8 +17,8 @@
     },
     {
       "path": "changelog.json",
-      "sha256": "abedcf31acbfba3e8369cfdf8eacfe864fc692932b4cf4aa9308bdc07c317e90",
-      "size_bytes": 3022,
+      "sha256": "b26e81a27716a7773c4ac6fb5e8647ae5af38270691280ffa78f51935cac3b1e",
+      "size_bytes": 1480,
       "storage_tier": "dual"
     },
     {
@@ -37,25 +29,25 @@
     },
     {
       "path": "coverage.json",
-      "sha256": "e7a78ee6f755c1503f0c7f56aba8ea1122c825d61bebfc4bbe31cb9290609fd8",
+      "sha256": "d378bc94568de2483ced386a71ce3c902f38f57f99495712b43ca45cab115b5e",
       "size_bytes": 982,
       "storage_tier": "dual"
     },
     {
       "path": "curation.json",
-      "sha256": "4bc62f736c86bc4b3f13f89ced298ca613db5db61fcac5d968f7aac50cac5c55",
-      "size_bytes": 156220,
+      "sha256": "32e574341cf6d9000f16ebe56e188e7e2a48dcbe509bd0f41f31dca72b7a4dde",
+      "size_bytes": 156221,
       "storage_tier": "dual"
     },
     {
       "path": "evidence-ledger.json",
-      "sha256": "c12131906c10294d09898d8edc13e92f7b1d6595a9c7c67563a1f130a75338af",
-      "size_bytes": 651684,
+      "sha256": "5fd3dcefe18463119d949a5828f6b105979e5b990cbf54b3c61d524d35b3e75a",
+      "size_bytes": 652425,
       "storage_tier": "dual"
     },
     {
       "path": "freshness.json",
-      "sha256": "9ad9982efae083a13b9eac2e6e6f1f9f9d82a1f9d77640d68f68d1009cca8e43",
+      "sha256": "0ed01f58cbdd11cd0f77e50a74c6e3c3a8dbdf183e38df23ffcf3531ec728852",
       "size_bytes": 4323,
       "storage_tier": "dual"
     },
@@ -73,8 +65,8 @@
     },
     {
       "path": "profiles.json",
-      "sha256": "72e06cf35e07f7c68c04ba7be1665f401ed480ef287f6002219a6204a10e4981",
-      "size_bytes": 342758,
+      "sha256": "848e0b8f8b9daa6b5dc94ac2313140c8b17a485b19731a21b22e8f1830f55169",
+      "size_bytes": 342761,
       "storage_tier": "dual"
     },
     {
@@ -85,26 +77,26 @@
     },
     {
       "path": "review/adapter-candidates.json",
-      "sha256": "e08c3502d16608f07585848a591e8f2ee55ef72a1bc03f95fb79c39e3d97ffc3",
+      "sha256": "acf51bff76c7193ffeeb5015ed3451e89174a9bb6b15ee91deaf6918c7fe3a87",
       "size_bytes": 26473,
       "storage_tier": "dual"
     },
     {
       "path": "review/curation.json",
-      "sha256": "42268b9642fb806c2494bf364973b4f5a3c494c075ca27c3bfc91acdefd7c7b8",
-      "size_bytes": 94841,
+      "sha256": "b896017ceb9cdd4ba09d3ce0017f5989116fdeabec198ea80c9efc230bb5b18f",
+      "size_bytes": 94842,
       "storage_tier": "dual"
     },
     {
       "path": "review/enrichment-queue.json",
-      "sha256": "6c401854d0cc761a3f330fd2351323519eec2d9cab86f52f1dda9f03b9628d27",
-      "size_bytes": 334085,
+      "sha256": "9c6b9234929fabfef248bc99b2242286158ad0ec07255c62ee8b90e6cdfbc9b0",
+      "size_bytes": 334141,
       "storage_tier": "dual"
     },
     {
       "path": "review/gap-priorities.json",
-      "sha256": "1d113aaa1cf63c21026ba2826be32456bf0fcfee57f4db213a1351c7b59eb2bd",
-      "size_bytes": 66479,
+      "sha256": "69f4121865da3ff2707ff95e468148c90c58e5ac03c66de748728d03f73bab42",
+      "size_bytes": 66480,
       "storage_tier": "dual"
     },
     {
@@ -115,7 +107,7 @@
     },
     {
       "path": "review/profile-completeness.json",
-      "sha256": "7dceea6ea4aa347793605030756c00343edf238a3bd13ee94297b244d824f82c",
+      "sha256": "019b756f7d1904e2fce2702ee6c9961465a4f6bacd6b2db33a71511e23588821",
       "size_bytes": 129949,
       "storage_tier": "git"
     },
@@ -133,28 +125,28 @@
     },
     {
       "path": "search.json",
-      "sha256": "159a273eddcf0bcc53e97760a0b801137369b4611258394514cbe86f594f1ec2",
-      "size_bytes": 435504,
+      "sha256": "a6d9cb042846c25dae38301cb0cfa60eb2772ca6783e553e18cdd5c21d04cb40",
+      "size_bytes": 435931,
       "storage_tier": "dual"
     },
     {
       "path": "subnets.json",
-      "sha256": "0d8ad92161a5c542f3761e928a5ed9c9ecff203b4a2bb0d2516b31d6f11ad41f",
-      "size_bytes": 120258,
+      "sha256": "4039285de454e9961e126594a3fbbba7c7b4575df2268e430edf6727e100db15",
+      "size_bytes": 120260,
       "storage_tier": "dual"
     },
     {
       "path": "surfaces.json",
-      "sha256": "12368d712a64db5c0a55d7f2526a665a9f8b891399dc7aeab8e54809e020b33a",
-      "size_bytes": 746884,
+      "sha256": "4643bb137b897f3f6e8b69d476ecd2df1e64e6ee97a9f3ed794aff03f8af26d3",
+      "size_bytes": 747980,
       "storage_tier": "dual"
     }
   ],
-  "candidate_count": 1880,
+  "candidate_count": 1891,
   "contract_version": "2026-06-06.1",
   "coverage": {
     "application_subnet_count": 128,
-    "candidate_count": 1880,
+    "candidate_count": 1891,
     "candidate_subnet_count": 129,
     "chain_subnet_count": 129,
     "curated_overlay_count": 129,
@@ -171,7 +163,7 @@
     "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
     "network": "finney",
     "probed_count": 129,
-    "probed_surface_count": 766,
+    "probed_surface_count": 767,
     "root_subnet_count": 1,
     "schema_version": 1,
     "source": {
@@ -185,11 +177,11 @@
       },
       "overlays": "registry/subnets"
     },
-    "surface_count": 770
+    "surface_count": 771
   },
-  "endpoint_count": 770,
+  "endpoint_count": 771,
   "full_artifact_count": 1205,
-  "full_artifact_size_bytes": 39652528,
+  "full_artifact_size_bytes": 39798701,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profile_count": 129,
   "provider_count": 67,
@@ -204,10 +196,10 @@
     "r2": 1183
   },
   "storage_tier_size_bytes": {
-    "dual": 3527579,
+    "dual": 3528365,
     "git": 129949,
-    "r2": 35995000
+    "r2": 36140387
   },
   "subnet_count": 129,
-  "surface_count": 770
+  "surface_count": 771
 }

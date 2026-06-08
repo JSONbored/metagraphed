@@ -162,7 +162,7 @@
       "surface_count": 7
     },
     {
-      "checksum": "c7955303f6bd7cada3ba62e53babcdece52d95c00439279ef25efe40a09b316d",
+      "checksum": "3784bfea39642ab3555560b1b12f8dc76d96c0183fe83aa76323344f1f421c9c",
       "netuid": 55,
       "slug": "sn-55",
       "surface_count": 7
@@ -180,7 +180,7 @@
       "surface_count": 8
     },
     {
-      "checksum": "87405fbbedfaa87818503141be83ff9b702a09e78d600e37c856b1e38d184be6",
+      "checksum": "9b06527345db0b2c034560cb62531638c1567e9fd704368b948220f7951a4d7e",
       "netuid": 60,
       "slug": "sn-60",
       "surface_count": 11
@@ -240,10 +240,10 @@
       "surface_count": 11
     },
     {
-      "checksum": "0a765a8283e4aef87587f1dfbdb33c92328acfb6208122312a334359d8d30b73",
+      "checksum": "eb8386433feacd9a95efb0f2457581de1d0d32dca17806267d52e76e2883c61d",
       "netuid": 80,
       "slug": "sn-80",
-      "surface_count": 9
+      "surface_count": 10
     },
     {
       "checksum": "598a4adfcfc6f522647b8bf8b44daf02a55e9e034b4ec406e3ff17b0115ddbc0",
@@ -402,8 +402,8 @@
       "surface_count": 10
     }
   ],
-  "promoted_surface_count": 522,
+  "promoted_surface_count": 523,
   "schema_version": 1,
   "total_overlay_count": 129,
-  "verification_result_count": 1880
+  "verification_result_count": 1891
 }

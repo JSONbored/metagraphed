@@ -1277,28 +1277,6 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "ORO OpenAPI JSON is a candidate openapi surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://oroagents.com/",
-      "subject": "candidate:sn-15-website-common-openapi-json",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "ORO Swagger UI is a candidate openapi surface for SN15.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://oroagents.com/",
-      "subject": "candidate:sn-15-website-common-swagger",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
       "claim": "DSperse Backprop Finance dashboard is a candidate dashboard surface for SN2.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -1712,17 +1690,6 @@
       "source_tier": "provider-claimed",
       "source_type": "project-website-link",
       "source_url": "https://targon.com/",
-      "subject": "candidate:sn-4-website-link-targon-com-docs-4",
-      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Targon docs is a candidate docs surface for SN4.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://targon.com/",
       "subject": "candidate:sn-4-website-link-targon-com-docs-9",
       "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
@@ -1802,6 +1769,17 @@
       "source_url": "https://targon.com/",
       "subject": "candidate:sn-4-website-link-targon-com-website-8",
       "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Targon docs subdomain is a candidate docs surface for SN4.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://targon.com/",
+      "subject": "candidate:sn-4-website-subdomain-docs-docs-targon-com",
+      "support_summary": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1978,6 +1956,17 @@
       "source_url": "https://www.hone.training/",
       "subject": "candidate:sn-5-website-link-www-hone-training-website-3",
       "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Hone docs subdomain is a candidate docs surface for SN5.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.hone.training/",
+      "subject": "candidate:sn-5-website-subdomain-docs-docs-hone-training",
+      "support_summary": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -2748,6 +2737,17 @@
       "source_url": "https://iota.macrocosmos.ai/",
       "subject": "candidate:sn-9-website-link-iota-macrocosmos-ai-website-6",
       "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "iota docs subdomain is a candidate docs surface for SN9.",
+      "confidence": "low",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "subject": "candidate:sn-9-website-subdomain-docs-docs-iota-macrocosmos-ai",
+      "support_summary": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -11485,6 +11485,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "dogelayer docs is a public docs surface for SN80.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://dogelayer.ai/",
+      "subject": "surface:sn-80-website-link-dogelayer-ai-docs-2",
+      "support_summary": "Listed in curated overlay for sn-80.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Grail Grafana dashboard is a public dashboard surface for SN81.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -12646,8 +12657,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1149,
+    "claim_count": 1150,
     "subnet_claim_count": 129,
-    "surface_claim_count": 770
+    "surface_claim_count": 771
   }
 }

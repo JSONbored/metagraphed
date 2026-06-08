@@ -32,6 +32,16 @@ const overlayNameByNetuid = new Map(
     .filter((overlay) => overlay.name)
     .map((overlay) => [overlay.netuid, overlay.name]),
 );
+const netuidsWithProjectDocs = new Set(
+  existingOverlays
+    .filter((overlay) =>
+      (overlay.surfaces || []).some(
+        (surface) =>
+          surface.kind === "docs" && !isCommunityDocsProvider(surface.provider),
+      ),
+    )
+    .map((overlay) => overlay.netuid),
+);
 const candidatesByKey = new Map();
 const candidateIds = new Set();
 const warnings = [];
@@ -486,6 +496,7 @@ async function discoverFromProjectWebsites() {
     }
     const websiteSlug = slugify(new URL(root).hostname);
 
+    await addDocsSubdomainCandidate(candidate, root);
     addCommonApiPathCandidates(candidate, root);
 
     const html = await fetchText(root, {
@@ -521,6 +532,51 @@ async function discoverFromProjectWebsites() {
           "Discovered from a public project website link. Requires verification before promotion.",
       });
     }
+  });
+}
+
+async function addDocsSubdomainCandidate(candidate, root) {
+  if (netuidsWithProjectDocs.has(candidate.netuid)) {
+    return;
+  }
+
+  let docsUrl;
+  try {
+    const parsed = new URL(root);
+    if (isGenericHost(parsed.hostname)) {
+      return;
+    }
+    const hostname = parsed.hostname.replace(/^www\./i, "");
+    if (
+      hostname.startsWith("docs.") ||
+      hostname.startsWith("api.") ||
+      hostname.startsWith("app.") ||
+      hostname.startsWith("dashboard.")
+    ) {
+      return;
+    }
+    docsUrl = `https://docs.${hostname}/`;
+  } catch {
+    return;
+  }
+
+  if (await isUnsafeResolvedUrl(docsUrl)) {
+    return;
+  }
+
+  addCandidate({
+    id: `sn-${candidate.netuid}-website-subdomain-docs-${slugify(new URL(docsUrl).hostname)}`,
+    netuid: candidate.netuid,
+    name: `${displayNameForNetuid(candidate.netuid)} docs subdomain`,
+    kind: "docs",
+    url: docsUrl,
+    source_url: root,
+    source_type: "project-website-docs-subdomain",
+    source_tier: "provider-claimed",
+    confidence: "low",
+    provider: candidate.provider,
+    review_notes:
+      "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
   });
 }
 
@@ -561,6 +617,10 @@ function addCommonApiPathCandidates(candidate, root) {
         "Common read-only path discovered from a public project website root. Requires verification before promotion.",
     });
   }
+}
+
+function isCommunityDocsProvider(provider) {
+  return ["taopedia-articles", "tensorplex-subnet-docs"].includes(provider);
 }
 
 async function loadExistingGeneratedCandidates() {

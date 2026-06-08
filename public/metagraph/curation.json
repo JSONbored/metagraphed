@@ -213,7 +213,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -377,7 +377,7 @@
       "surface_count": 7
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1141,7 +1141,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1363,7 +1363,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2625,7 +2625,7 @@
       "surface_count": 4
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3338,7 +3338,7 @@
       "surface_count": 11
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3380,7 +3380,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3417,7 +3417,7 @@
       "name": "dogelayer",
       "netuid": 80,
       "slug": "sn-80",
-      "surface_count": 9
+      "surface_count": 10
     },
     {
       "candidate_count": 7,
@@ -3468,7 +3468,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -3594,7 +3594,7 @@
       "surface_count": 3
     },
     {
-      "candidate_count": 20,
+      "candidate_count": 21,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -4374,7 +4374,7 @@
       "surface_count": 2
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [

@@ -3,55 +3,11 @@
     "added": [],
     "modified": [
       {
-        "hash": "e7a78ee6f755c1503f0c7f56aba8ea1122c825d61bebfc4bbe31cb9290609fd8",
-        "path": "coverage.json"
-      },
-      {
-        "hash": "4bc62f736c86bc4b3f13f89ced298ca613db5db61fcac5d968f7aac50cac5c55",
-        "path": "curation.json"
-      },
-      {
-        "hash": "c12131906c10294d09898d8edc13e92f7b1d6595a9c7c67563a1f130a75338af",
-        "path": "evidence-ledger.json"
-      },
-      {
-        "hash": "9ad9982efae083a13b9eac2e6e6f1f9f9d82a1f9d77640d68f68d1009cca8e43",
+        "hash": "0ed01f58cbdd11cd0f77e50a74c6e3c3a8dbdf183e38df23ffcf3531ec728852",
         "path": "freshness.json"
       },
       {
-        "hash": "72e06cf35e07f7c68c04ba7be1665f401ed480ef287f6002219a6204a10e4981",
-        "path": "profiles.json"
-      },
-      {
-        "hash": "e08c3502d16608f07585848a591e8f2ee55ef72a1bc03f95fb79c39e3d97ffc3",
-        "path": "review/adapter-candidates.json"
-      },
-      {
-        "hash": "42268b9642fb806c2494bf364973b4f5a3c494c075ca27c3bfc91acdefd7c7b8",
-        "path": "review/curation.json"
-      },
-      {
-        "hash": "6c401854d0cc761a3f330fd2351323519eec2d9cab86f52f1dda9f03b9628d27",
-        "path": "review/enrichment-queue.json"
-      },
-      {
-        "hash": "1d113aaa1cf63c21026ba2826be32456bf0fcfee57f4db213a1351c7b59eb2bd",
-        "path": "review/gap-priorities.json"
-      },
-      {
-        "hash": "7dceea6ea4aa347793605030756c00343edf238a3bd13ee94297b244d824f82c",
-        "path": "review/profile-completeness.json"
-      },
-      {
-        "hash": "159a273eddcf0bcc53e97760a0b801137369b4611258394514cbe86f594f1ec2",
-        "path": "search.json"
-      },
-      {
-        "hash": "0d8ad92161a5c542f3761e928a5ed9c9ecff203b4a2bb0d2516b31d6f11ad41f",
-        "path": "subnets.json"
-      },
-      {
-        "hash": "12368d712a64db5c0a55d7f2526a665a9f8b891399dc7aeab8e54809e020b33a",
+        "hash": "4643bb137b897f3f6e8b69d476ecd2df1e64e6ee97a9f3ed794aff03f8af26d3",
         "path": "surfaces.json"
       }
     ],
@@ -72,13 +28,13 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 13,
+    "artifact_modified_count": 2,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
-        "after": 1880,
-        "before": 1753,
-        "delta": 127
+        "after": 1891,
+        "before": 1891,
+        "delta": 0
       },
       "curated_overlay_count": {
         "after": 129,
@@ -92,9 +48,9 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 770,
-        "before": 725,
-        "delta": 45
+        "after": 771,
+        "before": 771,
+        "delta": 0
       }
     },
     "netuid_added_count": 0,

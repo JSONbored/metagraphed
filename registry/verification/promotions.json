@@ -1,5 +1,5 @@
 {
-  "candidate_count": 1880,
+  "candidate_count": 1891,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "notes": "Compact promotion snapshot for deterministic Git review. Full latency, timestamp, and probe-detail rows are staged for R2 during refresh/publish runs.",
   "results": [
@@ -1269,27 +1269,6 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-4-website-link-targon-com-docs-4",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 4,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "status": "ok"
-    },
-    {
       "candidate_id": "sn-4-website-link-targon-com-docs-9",
       "classification": "live",
       "confidence_score": 76,
@@ -1455,6 +1434,27 @@
         "transient_failure": false
       },
       "redirect_target": "https://targon.com/sign-in",
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-4-website-subdomain-docs-docs-targon-com",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 4,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -1788,6 +1788,27 @@
       },
       "redirect_target": null,
       "status": "ok"
+    },
+    {
+      "candidate_id": "sn-5-website-subdomain-docs-docs-hone-training",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 5,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "failed"
     },
     {
       "candidate_id": "sn-6-backprop-dashboard",
@@ -3262,6 +3283,26 @@
         "transient_failure": false
       },
       "redirect_target": null,
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-9-website-subdomain-docs-docs-iota-macrocosmos-ai",
+      "classification": "unsupported",
+      "confidence_score": 23,
+      "content_type": null,
+      "error": "probe-failed",
+      "kind": "docs",
+      "netuid": 9,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
       "status": "failed"
     },
     {
@@ -8218,10 +8259,10 @@
       "status": "failed"
     },
     {
-      "candidate_id": "sn-23-website-link-trishool-ai-docs-1",
+      "candidate_id": "sn-23-website-link-trishool-ai-docs-2",
       "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
+      "confidence_score": 68,
+      "content_type": "application/pdf",
       "error": null,
       "kind": "docs",
       "netuid": 23,
@@ -8239,10 +8280,10 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-23-website-link-trishool-ai-docs-2",
+      "candidate_id": "sn-23-website-subdomain-docs-docs-trishool-ai",
       "classification": "live",
-      "confidence_score": 68,
-      "content_type": "application/pdf",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "docs",
       "netuid": 23,
@@ -8945,27 +8986,6 @@
       "status": "failed"
     },
     {
-      "candidate_id": "sn-25-website-link-macrocosmos-ai-docs-3",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 25,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "status": "ok"
-    },
-    {
       "candidate_id": "sn-25-website-link-macrocosmos-ai-docs-6",
       "classification": "redirected",
       "confidence_score": 71,
@@ -9089,6 +9109,27 @@
         "transient_failure": false
       },
       "redirect_target": "https://www.macrocosmos.ai/our-purpose",
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-25-website-subdomain-docs-docs-macrocosmos-ai",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 25,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -9695,6 +9736,26 @@
       "content_type": null,
       "error": "probe-failed",
       "kind": "openapi",
+      "netuid": 27,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "failed"
+    },
+    {
+      "candidate_id": "sn-27-website-subdomain-docs-docs-nodexo-ai",
+      "classification": "unsupported",
+      "confidence_score": 23,
+      "content_type": null,
+      "error": "probe-failed",
+      "kind": "docs",
       "netuid": 27,
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
@@ -10816,6 +10877,27 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
+      "netuid": 32,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-32-website-subdomain-docs-docs-its-ai-org",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
       "netuid": 32,
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
@@ -14369,7 +14451,7 @@
         "source_tier": "provider-claimed",
         "transient_failure": false
       },
-      "redirect_target": "https://accounts.google.com/v3/signin/identifier?opparams=%253F&dsh=S-1925616973%3A1780921947442192&client_id=327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com&code_challenge=bLTC06w6UOJhO4Regu-XM-ltxNaXzpJPL5m-kenCYkU&code_challenge_method=S256&nonce=mdHuyKMp9FP3yapP__S3Mlmmx5Qtbpkv3G5C8B2Bzy0&o2v=2&prompt=select_account&redirect_uri=https%3A%2F%2Fzipcode.ai%2Fapi%2Fportal-auth%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+profile&service=lso&state=R74w55IoHhBLS7gF-2woonhdPtylnamv4WqrJ8r9b08&flowName=GeneralOAuthLite&continue=https%3A%2F%2Faccounts.google.com%2Fsignin%2Foauth%2Flegacy%2Fconsent%3Fauthuser%3Dunknown%26part%3DAJi8hAN60d6GUsdGH1lr32fXTO2W9hasAvrUiKihRrPhNdbtv5IAsghmhxvr9TVjNOp1qfN86tgsFERXQmRmhBnlI-bTaokLoG-NVk19zrREusksP3Z6IULn_XMSg1H7gT8iO6awC8Prq1BkWovDTZZyGFbt5AGFnsuXp3keAITkiId06CURvogK0NF3Ro5cQHoZdXgp--a17ug3qvvePj7mX5paA6le7yrEF0Ff1QZrwX67nxKMQrbN7L1LABSB2W18gD5_q0XrIr_HHClZjPdVLONbarA9NbVFBMduKa9q2KkZYQolGzi6KfDoJXmOWjkPkZWqnRI_Dgq4pPaU-XHuLNYk5uugrhmOQzYC2k6A_3xoa1T13PCa39DV19Pdm0w1XD_m6G3Fuao4Y_l617CpxNzFslaKGhrB2tnMmjZjIR67dw11X8yVgWFQ-uTAfF54bGQNrkLnbU6xtH0P8D0nnvR8TYBzfA%26flowName%3DGeneralOAuthFlow%26as%3DS-1925616973%253A1780921947442192%26client_id%3D327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com%23&app_domain=https%3A%2F%2Fzipcode.ai&rart=ANgoxce2jc38B-dJcNMqw9MU_SFgnGQNxd1RBK4sfCUrRI4BwmdFFhxjgrbuABCfyuvp-5FDfLJ_W4aAGShoWWALiZGjkg41eBLaK1hCEyxN9A1qpwVPUXQ",
+      "redirect_target": "https://accounts.google.com/v3/signin/identifier?opparams=%253F&dsh=S942905491%3A1780924533297355&client_id=327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com&code_challenge=zGToScs4R1T7ex5LEZtaBt7RaKsGSyqmUbc5IdyNxG0&code_challenge_method=S256&nonce=yFuBi3ogykwGoak5JK62HvAjNBHYSicmkQvLSTc8KFM&o2v=2&prompt=select_account&redirect_uri=https%3A%2F%2Fzipcode.ai%2Fapi%2Fportal-auth%2Fgoogle%2Fcallback&response_type=code&scope=openid+email+profile&service=lso&state=JP2kw3EFPvZQevuGIACR8HiL8zNpA5MYYRYD9zW6Rqo&flowName=GeneralOAuthLite&continue=https%3A%2F%2Faccounts.google.com%2Fsignin%2Foauth%2Flegacy%2Fconsent%3Fauthuser%3Dunknown%26part%3DAJi8hAPdfsFH9Nlywlb0fjHozHFqxzNLkM9m7qlp0CjwXAb72cQy9892pE9rkdAHJdiPeByIb1GOJYEyzmnKb658GnqCYMUwBOaJTvNrhKkTqQoa10GdZS3Nd7RLCK1bL0k3F1_4M1N7GaY7Ooh80VshPalfj9y1Far6WXu176b5Qu4d2TmzPUpYljDn87ZN0mjchKHeDLy5M5ucat1InqD9qw2j8GpoB3jph9J1xWa1xmvom38jiSUUJLwjd3QyXxM4rfA-JTjPq3BBQgdr5ETRfYntW2gaBn-aQVoW4ICRI4P54mgyeNAc8UU6WDhhl1r_Ew2s84w4Wgwh5cqUSukWO5fIBr2DHvTMbn8IEHC-cW6y9gNORTrBQNiYOAQp8VgAUDdxfMs5LPZBls26wt1vgyFMyA3ZA8ijDWbaK4on3vVUoBTIickW6rJz2duHuaCsVTfuBQaFWR2lWu3ZRuUJiMPGdjKeGA%26flowName%3DGeneralOAuthFlow%26as%3DS942905491%253A1780924533297355%26client_id%3D327162582586-ukqmepfk1pkfg24f4qc5i2jr7r3230hb.apps.googleusercontent.com%23&app_domain=https%3A%2F%2Fzipcode.ai&rart=ANgoxcduLdkaO2R_2iIyReI-doSVEqpImmzvdCwdALFAGus5xQsL0-KHJXvVP9lX7DxuYF5trCqLr_DVLKUO1Tr95g5z5rPQ4b0oTriZJ9cmc41msprjAWA",
       "status": "ok"
     },
     {
@@ -16845,18 +16927,21 @@
     {
       "candidate_id": "sn-55-taomarketcap-source-repo",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 59,
       "error": null,
       "kind": "source-repo",
       "netuid": 55,
+      "private_redirect_blocked": false,
       "provider": "taomarketcap",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "third-party-index"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "third-party-index",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -18476,18 +18561,21 @@
     {
       "candidate_id": "sn-60-tensorplex-source-repo-1",
       "classification": "live",
-      "confidence_score": 80,
+      "confidence_score": 55,
       "error": null,
       "kind": "source-repo",
       "netuid": 60,
+      "private_redirect_blocked": false,
       "provider": "tensorplex-subnet-docs",
       "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
+        "content_type_matches_kind": true,
         "public_safe": true,
-        "source_tier": "community-docs"
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "community-docs",
+        "transient_failure": false
       },
+      "redirect_target": null,
       "status": "ok"
     },
     {
@@ -19195,6 +19283,27 @@
       },
       "redirect_target": null,
       "status": "failed"
+    },
+    {
+      "candidate_id": "sn-62-website-subdomain-docs-docs-ridges-ai",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 62,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
     },
     {
       "candidate_id": "sn-63-backprop-dashboard",
@@ -25246,6 +25355,26 @@
       "status": "ok"
     },
     {
+      "candidate_id": "sn-79-website-subdomain-docs-docs-taos-im",
+      "classification": "unsupported",
+      "confidence_score": 23,
+      "content_type": null,
+      "error": "probe-failed",
+      "kind": "docs",
+      "netuid": 79,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "status": "failed"
+    },
+    {
       "candidate_id": "sn-80-backprop-dashboard",
       "classification": "live",
       "confidence_score": 77,
@@ -25505,6 +25634,48 @@
       "provider": "taomarketcap",
       "quality_signals": {
         "content_type_matches_kind": false,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-80-website-link-dogelayer-ai-dashboard-1",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "dashboard",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-80-website-link-dogelayer-ai-docs-2",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 80,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
         "public_safe": true,
         "rate_limited": false,
         "redirected": false,
@@ -26151,6 +26322,27 @@
       },
       "redirect_target": null,
       "status": "ok"
+    },
+    {
+      "candidate_id": "sn-82-website-subdomain-docs-docs-compelle-com",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 82,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "failed"
     },
     {
       "candidate_id": "sn-83-backprop-dashboard",
@@ -26975,6 +27167,27 @@
       },
       "redirect_target": null,
       "status": "ok"
+    },
+    {
+      "candidate_id": "sn-85-website-subdomain-docs-docs-vidaio-io",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
+      "netuid": 85,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "failed"
     },
     {
       "candidate_id": "sn-86-backprop-dashboard",
@@ -30423,27 +30636,6 @@
       "status": "ok"
     },
     {
-      "candidate_id": "sn-98-website-link-forevermoney-ai-docs-2",
-      "classification": "live",
-      "confidence_score": 76,
-      "content_type": "text/html; charset=utf-8",
-      "error": null,
-      "kind": "docs",
-      "netuid": 98,
-      "private_redirect_blocked": false,
-      "provider": "taomarketcap",
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "redirect_target": null,
-      "status": "ok"
-    },
-    {
       "candidate_id": "sn-98-website-link-forevermoney-ai-website-3",
       "classification": "live",
       "confidence_score": 76,
@@ -30534,6 +30726,27 @@
       "content_type": "text/html; charset=utf-8",
       "error": null,
       "kind": "website",
+      "netuid": 98,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "ok"
+    },
+    {
+      "candidate_id": "sn-98-website-subdomain-docs-docs-forevermoney-ai",
+      "classification": "live",
+      "confidence_score": 76,
+      "content_type": "text/html; charset=utf-8",
+      "error": null,
+      "kind": "docs",
       "netuid": 98,
       "private_redirect_blocked": false,
       "provider": "taomarketcap",
@@ -32203,6 +32416,27 @@
       },
       "redirect_target": "https://www.djinn.gg/education",
       "status": "ok"
+    },
+    {
+      "candidate_id": "sn-103-website-subdomain-docs-docs-djinn-gg",
+      "classification": "dead",
+      "confidence_score": 0,
+      "content_type": "text/html",
+      "error": null,
+      "kind": "docs",
+      "netuid": 103,
+      "private_redirect_blocked": false,
+      "provider": "taomarketcap",
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "redirect_target": null,
+      "status": "failed"
     },
     {
       "candidate_id": "sn-104-backprop-dashboard",
@@ -38892,18 +39126,18 @@
     "by_classification": {
       "auth-required": 9,
       "content-mismatch": 46,
-      "dead": 396,
-      "live": 1229,
+      "dead": 400,
+      "live": 1233,
       "rate-limited": 7,
       "redirected": 159,
       "transient": 4,
       "unsafe": 2,
-      "unsupported": 28
+      "unsupported": 31
     },
     "by_kind": {
-      "dashboard": 434,
+      "dashboard": 435,
       "data-artifact": 14,
-      "docs": 416,
+      "docs": 426,
       "openapi": 280,
       "source-repo": 156,
       "subnet-api": 215,
@@ -38913,12 +39147,12 @@
       "allways": 1,
       "backprop-finance": 129,
       "gittensor": 1,
-      "taomarketcap": 1296,
+      "taomarketcap": 1307,
       "taopedia-articles": 128,
       "taostats": 129,
       "tensorplex-subnet-docs": 196
     },
-    "promotable_count": 1388
+    "promotable_count": 1392
   },
   "verification_finished_at": null,
   "verification_started_at": null

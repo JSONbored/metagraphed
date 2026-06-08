@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 966,
+  "document_count": 967,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -8268,6 +8268,23 @@
       ],
       "type": "surface",
       "url": "https://dogelayer.ai/docs"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-80-website-link-dogelayer-ai-docs-2",
+      "netuid": 80,
+      "slug": "sn-80",
+      "subtitle": "docs / taomarketcap",
+      "title": "dogelayer docs",
+      "tokens": [
+        "80",
+        "docs",
+        "dogelayer",
+        "sn",
+        "taomarketcap"
+      ],
+      "type": "surface",
+      "url": "https://dogelayer.ai/en/docs"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

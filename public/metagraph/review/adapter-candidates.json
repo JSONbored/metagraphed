@@ -239,6 +239,18 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
+      "name": "dogelayer",
+      "netuid": 80,
+      "operational_kinds": [
+        "openapi"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 30,
+      "slug": "sn-80"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "machine-verified",
       "name": "ByteLeap",
       "netuid": 128,
       "operational_kinds": [
@@ -343,18 +355,6 @@
       "operational_surface_count": 1,
       "priority_score": 29,
       "slug": "sn-77"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "dogelayer",
-      "netuid": 80,
-      "operational_kinds": [
-        "openapi"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 29,
-      "slug": "sn-80"
     },
     {
       "candidate_api_count": 5,

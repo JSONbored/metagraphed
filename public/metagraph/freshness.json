@@ -43,7 +43,7 @@
       "timestamp_field": null
     },
     {
-      "as_of": "2026-06-08T12:31:57.000Z",
+      "as_of": "2026-06-08T13:11:57.000Z",
       "id": "candidate-discovery",
       "lane": "candidate-discovery",
       "notes": "",
@@ -52,11 +52,11 @@
       "stale_after_hours": 24,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-08T12:31:57.000Z",
+      "timestamp": "2026-06-08T13:11:57.000Z",
       "timestamp_field": "candidate_discovery_as_of"
     },
     {
-      "as_of": "2026-06-08T12:32:59.499Z",
+      "as_of": "2026-06-08T13:16:03.655Z",
       "id": "candidate-verification",
       "lane": "candidate-verification",
       "notes": "",
@@ -65,7 +65,7 @@
       "stale_after_hours": 24,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-08T12:32:59.499Z",
+      "timestamp": "2026-06-08T13:16:03.655Z",
       "timestamp_field": "verification_as_of"
     },
     {
@@ -112,9 +112,9 @@
     "adapter_count": 2,
     "adapter_snapshot_as_of": "2026-06-07T21:52:49.513Z",
     "blocking_source_count": 5,
-    "candidate_discovery_as_of": "2026-06-08T12:31:57.000Z",
+    "candidate_discovery_as_of": "2026-06-08T13:11:57.000Z",
     "health_probe_as_of": "2026-06-08T07:59:37.947Z",
-    "health_surface_count": 766,
+    "health_surface_count": 767,
     "missing_blocking_source_count": 0,
     "native_data_as_of": "2026-06-07T21:51:54Z",
     "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
@@ -124,7 +124,7 @@
     "stale_window_warnings": [
       "schema-drift has no observed timestamp; review before relying on this lane."
     ],
-    "verification_as_of": "2026-06-08T12:32:59.499Z",
+    "verification_as_of": "2026-06-08T13:16:03.655Z",
     "verification_generated_at": "1970-01-01T00:00:00.000Z",
     "warning_source_count": 3
   }

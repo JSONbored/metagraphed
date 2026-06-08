@@ -427,7 +427,7 @@
       "team": null
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "categories": [
         "baseline-curated"
       ],
@@ -753,7 +753,7 @@
       "team": null
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-curated",
         "identity-reviewed",
@@ -2267,7 +2267,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "baseline-curated"
       ],
@@ -2689,7 +2689,7 @@
       "team": null
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "categories": [
         "baseline-curated",
         "identity-reviewed",
@@ -5214,7 +5214,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "categories": [
         "agents",
         "baseline-curated",
@@ -6646,7 +6646,7 @@
       "team": null
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-curated",
         "identity-reviewed",
@@ -6730,7 +6730,7 @@
       "team": null
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 15,
       "categories": [
         "baseline-curated"
       ],
@@ -6754,10 +6754,10 @@
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 9,
+      "endpoint_count": 10,
       "interface_count": 5,
       "missing_critical_count": 3,
-      "monitored_endpoint_count": 9,
+      "monitored_endpoint_count": 10,
       "name": "dogelayer",
       "native_name": "dogelayer",
       "native_name_quality": "chain",
@@ -6808,7 +6808,7 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 9,
+      "surface_count": 10,
       "symbol": "ى",
       "team": null
     },
@@ -6897,7 +6897,7 @@
       "team": null
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-curated",
         "identity-reviewed",
@@ -7147,7 +7147,7 @@
       "team": null
     },
     {
-      "candidate_count": 20,
+      "candidate_count": 21,
       "categories": [
         "baseline-curated",
         "identity-reviewed",
@@ -8655,7 +8655,7 @@
       "team": null
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "categories": [
         "baseline-curated",
         "identity-reviewed",

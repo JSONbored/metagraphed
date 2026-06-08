@@ -1140,27 +1140,6 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-4-website-link-targon-com-docs-4",
-      "kind": "docs",
-      "name": "Targon docs",
-      "netuid": 4,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://targon.com/",
-      "source_urls": [
-        "https://targon.com/"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.targon.com/"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
       "id": "sn-4-website-link-targon-com-docs-9",
       "kind": "docs",
       "name": "Targon docs",
@@ -1178,6 +1157,27 @@
       ],
       "state": "schema-valid",
       "url": "https://targon.com/releases/intel-whitepaper"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-4-website-subdomain-docs-docs-targon-com",
+      "kind": "docs",
+      "name": "Targon docs subdomain",
+      "netuid": 4,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://targon.com/",
+      "source_urls": [
+        "https://targon.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.targon.com/"
     },
     {
       "auth_required": false,
@@ -1599,6 +1599,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.hone.training/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-5-website-subdomain-docs-docs-hone-training",
+      "kind": "docs",
+      "name": "Hone docs subdomain",
+      "netuid": 5,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.hone.training/",
+      "source_urls": [
+        "https://www.hone.training/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.hone.training/"
     },
     {
       "auth_required": false,
@@ -3052,6 +3073,27 @@
       ],
       "state": "schema-valid",
       "url": "https://docs.macrocosmos.ai/product-and-services/tah"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-9-website-subdomain-docs-docs-iota-macrocosmos-ai",
+      "kind": "docs",
+      "name": "iota docs subdomain",
+      "netuid": 9,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://iota.macrocosmos.ai/",
+      "source_urls": [
+        "https://iota.macrocosmos.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.iota.macrocosmos.ai/"
     },
     {
       "auth_required": false,
@@ -8129,27 +8171,6 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-23-website-link-trishool-ai-docs-1",
-      "kind": "docs",
-      "name": "Trishool docs",
-      "netuid": 23,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://trishool.ai/",
-      "source_urls": [
-        "https://trishool.ai/"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.trishool.ai/"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
       "id": "sn-23-website-link-trishool-ai-docs-2",
       "kind": "docs",
       "name": "Trishool docs",
@@ -8167,6 +8188,27 @@
       ],
       "state": "schema-valid",
       "url": "https://litepaper.trishool.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-23-website-subdomain-docs-docs-trishool-ai",
+      "kind": "docs",
+      "name": "Trishool docs subdomain",
+      "netuid": 23,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://trishool.ai/",
+      "source_urls": [
+        "https://trishool.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.trishool.ai/"
     },
     {
       "auth_required": false,
@@ -8887,27 +8929,6 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-25-website-link-macrocosmos-ai-docs-3",
-      "kind": "docs",
-      "name": "Mainframe docs",
-      "netuid": 25,
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "schema_version": 1,
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://macrocosmos.ai/sn25",
-      "source_urls": [
-        "https://macrocosmos.ai/sn25"
-      ],
-      "state": "schema-valid",
-      "url": "https://docs.macrocosmos.ai/"
-    },
-    {
-      "auth_required": false,
-      "confidence": "low",
       "id": "sn-25-website-link-macrocosmos-ai-docs-6",
       "kind": "docs",
       "name": "Mainframe docs",
@@ -8925,6 +8946,27 @@
       ],
       "state": "schema-valid",
       "url": "https://macrocosmos.ai/delegation-guide"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-25-website-subdomain-docs-docs-macrocosmos-ai",
+      "kind": "docs",
+      "name": "Mainframe docs subdomain",
+      "netuid": 25,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://macrocosmos.ai/sn25",
+      "source_urls": [
+        "https://macrocosmos.ai/sn25"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.macrocosmos.ai/"
     },
     {
       "auth_required": false,
@@ -9682,6 +9724,27 @@
       ],
       "state": "schema-valid",
       "url": "https://nodexo.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-27-website-subdomain-docs-docs-nodexo-ai",
+      "kind": "docs",
+      "name": "Nodexo docs subdomain",
+      "netuid": 27,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://nodexo.ai/",
+      "source_urls": [
+        "https://nodexo.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.nodexo.ai/"
     },
     {
       "auth_required": false,
@@ -10608,6 +10671,27 @@
       ],
       "state": "schema-valid",
       "url": "https://its-ai.org/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-32-website-subdomain-docs-docs-its-ai-org",
+      "kind": "docs",
+      "name": "ItsAI docs subdomain",
+      "netuid": 32,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://its-ai.org/en",
+      "source_urls": [
+        "https://its-ai.org/en"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.its-ai.org/"
     },
     {
       "auth_required": false,
@@ -19386,6 +19470,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-62-website-subdomain-docs-docs-ridges-ai",
+      "kind": "docs",
+      "name": "Ridges docs subdomain",
+      "netuid": 62,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.ridges.ai/",
+      "source_urls": [
+        "https://www.ridges.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.ridges.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-62-website-common-openapi-json",
       "kind": "openapi",
       "name": "Ridges OpenAPI JSON",
@@ -25297,6 +25402,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-79-website-subdomain-docs-docs-taos-im",
+      "kind": "docs",
+      "name": "MVTRX docs subdomain",
+      "netuid": 79,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://taos.im/",
+      "source_urls": [
+        "https://taos.im/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.taos.im/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-79-website-common-openapi-json",
       "kind": "openapi",
       "name": "MVTRX OpenAPI JSON",
@@ -25717,6 +25843,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-80-website-link-dogelayer-ai-dashboard-1",
+      "kind": "dashboard",
+      "name": "dogelayer dashboard",
+      "netuid": 80,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://dogelayer.ai/",
+      "source_urls": [
+        "https://dogelayer.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://dogelayer.ai/en/dashboard"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-80-taopedia-article",
       "kind": "docs",
       "name": "dogelayer Taopedia article",
@@ -25776,6 +25923,27 @@
       ],
       "state": "schema-valid",
       "url": "https://dogelayer.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-80-website-link-dogelayer-ai-docs-2",
+      "kind": "docs",
+      "name": "dogelayer docs",
+      "netuid": 80,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-link",
+      "source_url": "https://dogelayer.ai/",
+      "source_urls": [
+        "https://dogelayer.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://dogelayer.ai/en/docs"
     },
     {
       "auth_required": false,
@@ -26196,6 +26364,27 @@
       ],
       "state": "schema-valid",
       "url": "https://compelle.com/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-82-website-subdomain-docs-docs-compelle-com",
+      "kind": "docs",
+      "name": "Compelle docs subdomain",
+      "netuid": 82,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://compelle.com/",
+      "source_urls": [
+        "https://compelle.com/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.compelle.com/"
     },
     {
       "auth_required": false,
@@ -27184,6 +27373,27 @@
       ],
       "state": "schema-valid",
       "url": "https://vidaio.io/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-85-website-subdomain-docs-docs-vidaio-io",
+      "kind": "docs",
+      "name": "Vidaio docs subdomain",
+      "netuid": 85,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://vidaio.io/",
+      "source_urls": [
+        "https://vidaio.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.vidaio.io/"
     },
     {
       "auth_required": false,
@@ -30743,17 +30953,17 @@
     {
       "auth_required": false,
       "confidence": "low",
-      "id": "sn-98-website-link-forevermoney-ai-docs-2",
+      "id": "sn-98-website-subdomain-docs-docs-forevermoney-ai",
       "kind": "docs",
-      "name": "ForeverMoney docs",
+      "name": "ForeverMoney docs subdomain",
       "netuid": 98,
       "provider": "taomarketcap",
       "public_safe": true,
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "review_notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
       "schema_version": 1,
       "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
+      "source_type": "project-website-docs-subdomain",
       "source_url": "https://forevermoney.ai/",
       "source_urls": [
         "https://forevermoney.ai/"
@@ -32398,6 +32608,27 @@
       ],
       "state": "schema-valid",
       "url": "https://djinn.gg/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-103-website-subdomain-docs-docs-djinn-gg",
+      "kind": "docs",
+      "name": "Djinn docs subdomain",
+      "netuid": 103,
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://djinn.gg/",
+      "source_urls": [
+        "https://djinn.gg/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.djinn.gg/"
     },
     {
       "auth_required": false,
@@ -39509,7 +39740,7 @@
   "generated_by": "metagraphed-discover-candidates",
   "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
   "notes": "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
-  "observed_at": "2026-06-08T12:31:57.000Z",
+  "observed_at": "2026-06-08T13:11:57.000Z",
   "schema_version": 1,
   "sources": [
     {
