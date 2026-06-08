@@ -260,7 +260,19 @@ function TableSkeleton() {
 
 function SubnetPreviewTable() {
   const { data, refetch } = useSuspenseQuery(subnetsQuery({ limit: 12 }));
+  const { data: healthRes } = useSuspenseQuery(healthQuery());
   const subnets = (data.data ?? []) as Subnet[];
+  const healthBySubnet = new Map<number, "ok" | "warn" | "down" | "unknown">();
+  const hsubs = (healthRes.data as { subnets?: Array<{ netuid: number; status?: string }> })
+    ?.subnets;
+  if (Array.isArray(hsubs)) {
+    for (const s of hsubs) {
+      const st = s.status;
+      const mapped: "ok" | "warn" | "down" | "unknown" =
+        st === "ok" ? "ok" : st === "degraded" ? "warn" : st === "failed" ? "down" : "unknown";
+      healthBySubnet.set(s.netuid, mapped);
+    }
+  }
 
   if (!Array.isArray(subnets) || subnets.length === 0) {
     return (
