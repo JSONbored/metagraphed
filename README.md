@@ -203,6 +203,7 @@ npm run validate:workflows
 npm run submission:pr -- --changed-files changed-files.txt
 npm run curation:brief
 npm run endpoint:brief
+npm run endpoint:ops:brief
 npm run r2:manifest:dry-run
 npm run r2:download:dry-run
 npm run kv:publish:dry-run

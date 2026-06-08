@@ -131,7 +131,7 @@ Live PR references:
 - Manual-review direct candidate example:
   https://github.com/JSONbored/metagraphed/pull/84
 - Closed duplicate candidate example:
-  https://github.com/JSONbored/metagraphed/pull/90
+  https://github.com/JSONbored/metagraphed/pull/105
 
 Do not include generated `public/metagraph/**` artifacts, native snapshots,
 workflow/script changes, secrets, wallet/PAT material, private URLs, or
@@ -158,6 +158,10 @@ private reviewer may merge/import clean submissions, close hard failures, or
 route rare edge cases to manual review. Public comments expose broad reason
 categories only; private scoring prompts, thresholds, and corpus weights are not
 part of the public repo.
+
+Maintainer automation branches such as `codex/*` are intentionally ignored by
+the private UGC gate. Contributor examples should use normal feature branches
+with one candidate or provider file.
 
 Status reports never set uptime, latency, health status, incident state, or pool
 eligibility. They can only trigger review or a future re-probe; operational state

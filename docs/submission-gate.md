@@ -119,6 +119,10 @@ Direct provider profile PRs always route to manual/private review. They are
 useful, but they identify operators and can affect future endpoint trust, so
 they are not direct-merge content.
 
+Maintainer automation branches such as `codex/*` are ignored before D1 state,
+labels, comments, AI review, or Discord notifications. Direct UGC examples
+should use normal feature branches and exactly one candidate or provider file.
+
 ## Supported UGC Types
 
 The public gate accepts or routes:
@@ -220,7 +224,7 @@ Reference PRs:
 - Manual-review direct candidate example:
   https://github.com/JSONbored/metagraphed/pull/84
 - Closed duplicate candidate example:
-  https://github.com/JSONbored/metagraphed/pull/90
+  https://github.com/JSONbored/metagraphed/pull/105
 
 The Worker stores a `last_notification_key` in D1. The key must include the
 target, PR head SHA or issue revision, terminal status, and verdict. Repeated
