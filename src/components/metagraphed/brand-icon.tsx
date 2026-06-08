@@ -344,8 +344,15 @@ export function BrandIcon({
       {!loaded ? (
         <span
           aria-hidden="true"
-          className="absolute inset-0 animate-pulse bg-accent/10"
-        />
+          className="absolute inset-0 flex items-center justify-center bg-accent/10 text-ink-muted/70"
+        >
+          <span
+            className="font-display font-semibold tabular-nums leading-none"
+            style={{ fontSize: Math.max(10, Math.round(size * 0.42)) }}
+          >
+            {monogramFor(name, fallback)}
+          </span>
+        </span>
       ) : null}
       <img
         key={candidate ?? "x"}
