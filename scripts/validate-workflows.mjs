@@ -131,6 +131,13 @@ for (const workflow of workflows) {
       "workflow must validate private reviewer and notification boundaries",
     );
   }
+  if (workflow === "publish-cloudflare.yml") {
+    check(
+      content.includes('METAGRAPH_R2_UPLOAD_HISTORY: "1"'),
+      workflow,
+      "publish workflow must upload versioned R2 history objects",
+    );
+  }
 }
 
 if (errors.length > 0) {

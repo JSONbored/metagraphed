@@ -90,6 +90,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_ALLOW_R2_UPLOAD: "1"
+          METAGRAPH_R2_UPLOAD_HISTORY: "1"
 
       - name: Publish KV latest pointer
         if: steps.cloudflare-secrets.outputs.kv_publish == 'true'
