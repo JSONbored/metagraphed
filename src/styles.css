@@ -184,8 +184,31 @@
 .mg-pulse {
   animation: mg-pulse 1.8s ease-in-out infinite;
 }
+
+/* Brief flash when a tracked number ticks up or down (taostats-style). */
+@keyframes mg-flash-up {
+  0%   { background-color: color-mix(in oklab, var(--accent) 28%, transparent); }
+  100% { background-color: transparent; }
+}
+@keyframes mg-flash-down {
+  0%   { background-color: color-mix(in oklab, var(--health-down) 28%, transparent); }
+  100% { background-color: transparent; }
+}
+.mg-flash-up   { animation: mg-flash-up 700ms ease-out; border-radius: 3px; }
+.mg-flash-down { animation: mg-flash-down 700ms ease-out; border-radius: 3px; }
+
+/* Quiet hover row tint, used on data tables for taostats-like calm. */
+.mg-row-hover { transition: background-color 120ms ease; }
+.mg-row-hover:hover {
+  background-color: color-mix(in oklab, var(--ink-strong) 4%, transparent);
+}
+
+/* Stale/refreshing wrapper: softly dim the contents during background refetch. */
+.mg-refreshing { transition: opacity 200ms ease; opacity: 0.72; }
+
 @media (prefers-reduced-motion: reduce) {
-  .mg-pulse { animation: none; }
+  .mg-pulse, .mg-flash-up, .mg-flash-down { animation: none; }
+  .mg-row-hover, .mg-refreshing { transition: none; }
   html.theme-transition,
   html.theme-transition * { transition: none; }
 }
