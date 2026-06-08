@@ -6,22 +6,23 @@
   "status": "active",
   "categories": [
     "baseline-curated",
+    "inference",
     "identity-reviewed",
+    "official-website",
     "stale-source-cleanup"
   ],
   "source_repo": null,
   "dashboard_url": "https://taomarketcap.com/subnets/92",
-  "website_url": null,
-  "notes": "Cleanup overlay for SN92. Tensorplex currently lists https://github.com/tensorclaw/tensorclaw, but that repository returns 404, so it is intentionally not promoted as a curated source surface.",
+  "website_url": "https://www.tensorclaw.ai/",
+  "notes": "Cleanup overlay for SN92. The live Tensorclaw website identifies Tensorclaw Network as Bittensor Mainnet Subnet 92. Tensorplex and the website currently list https://github.com/tensorclaw/tensorclaw, but that repository returns 404, so it is intentionally not promoted as a curated source surface.",
   "curation": {
     "level": "maintainer-reviewed",
-    "review_state": "stale",
-    "reviewed_at": "2026-06-08T11:15:00.000Z",
-    "verified_at": "2026-06-08T11:15:00.000Z",
-    "source_count": 3,
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T18:05:00.000Z",
+    "verified_at": "2026-06-08T18:05:00.000Z",
+    "source_count": 5,
     "gap_notes": [
       "Previously discovered Tensorclaw source repository currently returns 404.",
-      "No verified official website yet.",
       "No verified live source repository yet.",
       "No verified docs site yet beyond directory pages.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -68,6 +69,42 @@
         "timeout_ms": 10000
       },
       "notes": "Directory metadata retained as registry-observed provenance; the stale Tensorclaw source URL is excluded."
+    },
+    {
+      "id": "sn-92-tensorclaw-website",
+      "name": "Tensorclaw website",
+      "kind": "website",
+      "url": "https://www.tensorclaw.ai/",
+      "provider": "tensorclaw",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": ["https://www.tensorclaw.ai/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Website identifies Tensorclaw Network as Bittensor Mainnet Subnet 92 and describes a decentralized LLM inference subnet for autonomous agents."
+    },
+    {
+      "id": "sn-92-tensorclaw-dashboard",
+      "name": "Tensorclaw live demo",
+      "kind": "dashboard",
+      "url": "https://www.tensorclaw.ai/dashboard",
+      "provider": "tensorclaw",
+      "auth_required": true,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": ["https://www.tensorclaw.ai/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Public live-demo page for SN92. The page uses Cloudflare Turnstile to unlock trial requests, so it is listed as an auth-gated dashboard surface rather than a public API."
     }
   ]
 }

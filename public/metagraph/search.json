@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1313,
+  "document_count": 1320,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -31,6 +31,22 @@
       ],
       "type": "provider",
       "url": "https://github.com/fx-integral/academia"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:actual-computer",
+      "subtitle": "subnet-team",
+      "title": "Actual Computer",
+      "tokens": [
+        "actual",
+        "claimed",
+        "computer",
+        "provider",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://actual.inc/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -402,6 +418,21 @@
       ],
       "type": "provider",
       "url": "https://developers.gopher-ai.com/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:gradients",
+      "subtitle": "subnet-team",
+      "title": "Gradients",
+      "tokens": [
+        "claimed",
+        "gradients",
+        "provider",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://www.gradients.io/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -999,6 +1030,21 @@
     },
     {
       "artifact_path": "/metagraph/providers.json",
+      "id": "provider:tensorclaw",
+      "subtitle": "subnet-team",
+      "title": "Tensorclaw",
+      "tokens": [
+        "claimed",
+        "provider",
+        "subnet",
+        "team",
+        "tensorclaw"
+      ],
+      "type": "provider",
+      "url": "https://www.tensorclaw.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
       "id": "provider:tensorplex",
       "subtitle": "subnet-team",
       "title": "Tensorplex",
@@ -1182,15 +1228,21 @@
       "artifact_path": "/metagraph/subnets/95.json",
       "id": "subnet:95",
       "netuid": 95,
-      "slug": "sn-95",
+      "slug": "actual",
       "subtitle": "SN95 ᚅ",
       "title": "Actual",
       "tokens": [
-        "95",
         "actual",
+        "augmented",
         "baseline",
         "curated",
-        "sn"
+        "identity",
+        "inference",
+        "model",
+        "official",
+        "registry",
+        "reviewed",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/95"
@@ -1814,15 +1866,19 @@
       "artifact_path": "/metagraph/subnets/38.json",
       "id": "subnet:38",
       "netuid": 38,
-      "slug": "sn-38",
+      "slug": "colosseum",
       "subtitle": "SN38 ם",
       "title": "colosseum",
       "tokens": [
-        "38",
+        "augmented",
         "baseline",
+        "cleanup",
         "colosseum",
         "curated",
-        "sn"
+        "identity",
+        "reviewed",
+        "source",
+        "stale"
       ],
       "type": "subnet",
       "url": "/subnets/38"
@@ -2351,15 +2407,24 @@
       "artifact_path": "/metagraph/subnets/56.json",
       "id": "subnet:56",
       "netuid": 56,
-      "slug": "sn-56",
+      "slug": "gradients",
       "subtitle": "SN56 ج",
       "title": "Gradients",
       "tokens": [
-        "56",
+        "ai",
+        "api",
+        "augmented",
         "baseline",
         "curated",
         "gradients",
-        "sn"
+        "identity",
+        "interface",
+        "official",
+        "openapi",
+        "operational",
+        "reviewed",
+        "training",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/56"
@@ -2761,11 +2826,14 @@
         "cleanup",
         "curated",
         "identity",
+        "inference",
         "luis",
+        "official",
         "reviewed",
         "sn",
         "source",
-        "stale"
+        "stale",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/92"
@@ -4351,49 +4419,61 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-95-backprop-dashboard",
       "netuid": 95,
-      "slug": "sn-95",
+      "slug": "actual",
       "subtitle": "dashboard / backprop-finance",
       "title": "Actual Backprop Finance dashboard",
       "tokens": [
-        "95",
         "actual",
         "backprop",
         "dashboard",
-        "finance",
-        "sn"
+        "finance"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/95-actual"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-95-website-common-docs",
+      "id": "surface:sn-95-actual-website",
       "netuid": 95,
-      "slug": "sn-95",
-      "subtitle": "docs / taomarketcap",
-      "title": "Actual docs",
+      "slug": "actual",
+      "subtitle": "website / actual-computer",
+      "title": "Actual Computer website",
       "tokens": [
-        "95",
         "actual",
-        "docs",
-        "sn",
-        "taomarketcap"
+        "computer",
+        "website"
       ],
       "type": "surface",
-      "url": "https://actual.inc/docs"
+      "url": "https://actual.inc/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-95-actual-model-registry",
+      "netuid": 95,
+      "slug": "actual",
+      "subtitle": "data-artifact / actual-computer",
+      "title": "Actual model registry",
+      "tokens": [
+        "actual",
+        "artifact",
+        "computer",
+        "data",
+        "model",
+        "registry"
+      ],
+      "type": "surface",
+      "url": "https://models.actual.inc/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-95-subnetradar-dashboard",
       "netuid": 95,
-      "slug": "sn-95",
+      "slug": "actual",
       "subtitle": "dashboard / subnetradar",
       "title": "Actual SubnetRadar dashboard",
       "tokens": [
-        "95",
         "actual",
         "dashboard",
-        "sn",
         "subnetradar"
       ],
       "type": "surface",
@@ -4403,14 +4483,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-95-taomarketcap-dashboard",
       "netuid": 95,
-      "slug": "sn-95",
+      "slug": "actual",
       "subtitle": "dashboard / taomarketcap",
       "title": "Actual TaoMarketCap dashboard",
       "tokens": [
-        "95",
         "actual",
         "dashboard",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -4420,16 +4498,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-95-taopedia-article",
       "netuid": 95,
-      "slug": "sn-95",
+      "slug": "actual",
       "subtitle": "docs / taopedia-articles",
       "title": "Actual Taopedia article",
       "tokens": [
-        "95",
         "actual",
         "article",
         "articles",
         "docs",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -4439,36 +4515,17 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-95-tensorplex-docs",
       "netuid": 95,
-      "slug": "sn-95",
+      "slug": "actual",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "Actual Tensorplex subnet docs",
       "tokens": [
-        "95",
         "actual",
         "docs",
-        "sn",
         "subnet",
         "tensorplex"
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/95"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-95-taomarketcap-website",
-      "netuid": 95,
-      "slug": "sn-95",
-      "subtitle": "website / taomarketcap",
-      "title": "Actual website",
-      "tokens": [
-        "95",
-        "actual",
-        "sn",
-        "taomarketcap",
-        "website"
-      ],
-      "type": "surface",
-      "url": "https://actual.inc/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -8873,49 +8930,28 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-38-backprop-dashboard",
       "netuid": 38,
-      "slug": "sn-38",
+      "slug": "colosseum",
       "subtitle": "dashboard / backprop-finance",
       "title": "colosseum Backprop Finance dashboard",
       "tokens": [
-        "38",
         "backprop",
         "colosseum",
         "dashboard",
-        "finance",
-        "sn"
+        "finance"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/38-colosseum"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-38-website-common-docs",
-      "netuid": 38,
-      "slug": "sn-38",
-      "subtitle": "docs / taomarketcap",
-      "title": "colosseum docs",
-      "tokens": [
-        "38",
-        "colosseum",
-        "docs",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://www.taocolosseum.com/docs"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-38-subnetradar-dashboard",
       "netuid": 38,
-      "slug": "sn-38",
+      "slug": "colosseum",
       "subtitle": "dashboard / subnetradar",
       "title": "colosseum SubnetRadar dashboard",
       "tokens": [
-        "38",
         "colosseum",
         "dashboard",
-        "sn",
         "subnetradar"
       ],
       "type": "surface",
@@ -8925,14 +8961,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-38-taomarketcap-dashboard",
       "netuid": 38,
-      "slug": "sn-38",
+      "slug": "colosseum",
       "subtitle": "dashboard / taomarketcap",
       "title": "colosseum TaoMarketCap dashboard",
       "tokens": [
-        "38",
         "colosseum",
         "dashboard",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -8942,16 +8976,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-38-taopedia-article",
       "netuid": 38,
-      "slug": "sn-38",
+      "slug": "colosseum",
       "subtitle": "docs / taopedia-articles",
       "title": "colosseum Taopedia article",
       "tokens": [
-        "38",
         "article",
         "articles",
         "colosseum",
         "docs",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -8961,36 +8993,17 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-38-tensorplex-docs",
       "netuid": 38,
-      "slug": "sn-38",
+      "slug": "colosseum",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "colosseum Tensorplex subnet docs",
       "tokens": [
-        "38",
         "colosseum",
         "docs",
-        "sn",
         "subnet",
         "tensorplex"
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/38"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-38-taomarketcap-website",
-      "netuid": 38,
-      "slug": "sn-38",
-      "subtitle": "website / taomarketcap",
-      "title": "colosseum website",
-      "tokens": [
-        "38",
-        "colosseum",
-        "sn",
-        "taomarketcap",
-        "website"
-      ],
-      "type": "surface",
-      "url": "https://www.taocolosseum.com/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
@@ -12728,50 +12741,28 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-56-backprop-dashboard",
       "netuid": 56,
-      "slug": "sn-56",
+      "slug": "gradients",
       "subtitle": "dashboard / backprop-finance",
       "title": "Gradients Backprop Finance dashboard",
       "tokens": [
-        "56",
         "backprop",
         "dashboard",
         "finance",
-        "gradients",
-        "sn"
+        "gradients"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/56-gradients"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-56-website-link-www-gradients-io-data-artifact-9",
-      "netuid": 56,
-      "slug": "sn-56",
-      "subtitle": "data-artifact / taomarketcap",
-      "title": "Gradients data artifact",
-      "tokens": [
-        "56",
-        "artifact",
-        "data",
-        "gradients",
-        "sn",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://www.gradients.io/app/my-models"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-56-website-common-docs",
       "netuid": 56,
-      "slug": "sn-56",
+      "slug": "gradients",
       "subtitle": "docs / taomarketcap",
       "title": "Gradients docs",
       "tokens": [
-        "56",
         "docs",
         "gradients",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -12779,19 +12770,82 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-56-taomarketcap-source-repo",
+      "id": "surface:sn-56-gradients-last-boss-battle",
       "netuid": 56,
-      "slug": "sn-56",
-      "subtitle": "source-repo / taomarketcap",
+      "slug": "gradients",
+      "subtitle": "subnet-api / gradients",
+      "title": "Gradients last boss battle",
+      "tokens": [
+        "api",
+        "battle",
+        "boss",
+        "gradients",
+        "last",
+        "subnet"
+      ],
+      "type": "surface",
+      "url": "https://api.gradients.io/v1/performance/last-boss-battle"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-56-gradients-latest-tournament-weights",
+      "netuid": 56,
+      "slug": "gradients",
+      "subtitle": "subnet-api / gradients",
+      "title": "Gradients latest tournament weights",
+      "tokens": [
+        "api",
+        "gradients",
+        "latest",
+        "subnet",
+        "tournament",
+        "weights"
+      ],
+      "type": "surface",
+      "url": "https://api.gradients.io/v1/performance/latest-tournament-weights"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-56-gradients-models",
+      "netuid": 56,
+      "slug": "gradients",
+      "subtitle": "data-artifact / gradients",
+      "title": "Gradients models",
+      "tokens": [
+        "artifact",
+        "data",
+        "gradients",
+        "models"
+      ],
+      "type": "surface",
+      "url": "https://www.gradients.io/app/my-models"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-56-gradients-openapi",
+      "netuid": 56,
+      "slug": "gradients",
+      "subtitle": "openapi / gradients",
+      "title": "Gradients OpenAPI",
+      "tokens": [
+        "gradients",
+        "openapi"
+      ],
+      "type": "surface",
+      "url": "https://api.gradients.io/docs"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-56-gradients-source-repo",
+      "netuid": 56,
+      "slug": "gradients",
+      "subtitle": "source-repo / gradients",
       "title": "Gradients source repository",
       "tokens": [
-        "56",
         "gradients",
         "repo",
         "repository",
-        "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/gradients-ai/G.O.D"
@@ -12800,16 +12854,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-56-tensorplex-source-repo-1",
       "netuid": 56,
-      "slug": "sn-56",
+      "slug": "gradients",
       "subtitle": "source-repo / tensorplex-subnet-docs",
       "title": "Gradients source repository",
       "tokens": [
-        "56",
         "docs",
         "gradients",
         "repo",
         "repository",
-        "sn",
         "source",
         "subnet",
         "tensorplex"
@@ -12819,16 +12871,32 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-56-gradients-weight-projection-static",
+      "netuid": 56,
+      "slug": "gradients",
+      "subtitle": "subnet-api / gradients",
+      "title": "Gradients static weight projection",
+      "tokens": [
+        "api",
+        "gradients",
+        "projection",
+        "static",
+        "subnet",
+        "weight"
+      ],
+      "type": "surface",
+      "url": "https://api.gradients.io/v1/performance/weight-projection-static"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-56-subnetradar-dashboard",
       "netuid": 56,
-      "slug": "sn-56",
+      "slug": "gradients",
       "subtitle": "dashboard / subnetradar",
       "title": "Gradients SubnetRadar dashboard",
       "tokens": [
-        "56",
         "dashboard",
         "gradients",
-        "sn",
         "subnetradar"
       ],
       "type": "surface",
@@ -12838,14 +12906,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-56-taomarketcap-dashboard",
       "netuid": 56,
-      "slug": "sn-56",
+      "slug": "gradients",
       "subtitle": "dashboard / taomarketcap",
       "title": "Gradients TaoMarketCap dashboard",
       "tokens": [
-        "56",
         "dashboard",
         "gradients",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -12855,16 +12921,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-56-taopedia-article",
       "netuid": 56,
-      "slug": "sn-56",
+      "slug": "gradients",
       "subtitle": "docs / taopedia-articles",
       "title": "Gradients Taopedia article",
       "tokens": [
-        "56",
         "article",
         "articles",
         "docs",
         "gradients",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -12874,14 +12938,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-56-tensorplex-docs",
       "netuid": 56,
-      "slug": "sn-56",
+      "slug": "gradients",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "Gradients Tensorplex subnet docs",
       "tokens": [
-        "56",
         "docs",
         "gradients",
-        "sn",
         "subnet",
         "tensorplex"
       ],
@@ -12890,16 +12952,13 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-56-taomarketcap-website",
+      "id": "surface:sn-56-gradients-website",
       "netuid": 56,
-      "slug": "sn-56",
-      "subtitle": "website / taomarketcap",
+      "slug": "gradients",
+      "subtitle": "website / gradients",
       "title": "Gradients website",
       "tokens": [
-        "56",
         "gradients",
-        "sn",
-        "taomarketcap",
         "website"
       ],
       "type": "surface",
@@ -21936,6 +21995,42 @@
       ],
       "type": "surface",
       "url": "https://www.tplr.ai/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-92-tensorclaw-dashboard",
+      "netuid": 92,
+      "slug": "sn-92",
+      "subtitle": "dashboard / tensorclaw",
+      "title": "Tensorclaw live demo",
+      "tokens": [
+        "92",
+        "dashboard",
+        "demo",
+        "live",
+        "luis",
+        "sn",
+        "tensorclaw"
+      ],
+      "type": "surface",
+      "url": "https://www.tensorclaw.ai/dashboard"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-92-tensorclaw-website",
+      "netuid": 92,
+      "slug": "sn-92",
+      "subtitle": "website / tensorclaw",
+      "title": "Tensorclaw website",
+      "tokens": [
+        "92",
+        "luis",
+        "sn",
+        "tensorclaw",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://www.tensorclaw.ai/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

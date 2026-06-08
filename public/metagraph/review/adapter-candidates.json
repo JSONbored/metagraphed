@@ -51,6 +51,49 @@
       "suggested_next_action": "maintain and deepen existing adapter metrics"
     },
     {
+      "candidate_api_count": 6,
+      "candidate_api_ids": [
+        "sn-56-website-common-api",
+        "sn-56-website-common-health",
+        "sn-56-website-common-openapi-json",
+        "sn-56-website-common-swagger",
+        "sn-56-website-common-swagger-json",
+        "sn-56-website-link-www-gradients-io-data-artifact-9"
+      ],
+      "candidate_api_kinds": [
+        "data-artifact",
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "Gradients",
+      "netuid": 56,
+      "operational_kinds": [
+        "data-artifact",
+        "openapi",
+        "subnet-api"
+      ],
+      "operational_surface_count": 5,
+      "operational_surface_ids": [
+        "sn-56-gradients-last-boss-battle",
+        "sn-56-gradients-latest-tournament-weights",
+        "sn-56-gradients-models",
+        "sn-56-gradients-openapi",
+        "sn-56-gradients-weight-projection-static"
+      ],
+      "priority_score": 114,
+      "reason_codes": [
+        "candidate-api-evidence",
+        "data-artifact-surface",
+        "multiple-operational-kinds",
+        "openapi-surface",
+        "subnet-api-surface"
+      ],
+      "recommended_adapter_kind": "generic-openapi-or-custom",
+      "slug": "gradients",
+      "suggested_next_action": "snapshot schema shape and consider normalized metrics from stable read-only operations"
+    },
+    {
       "candidate_api_count": 1,
       "candidate_api_ids": [
         "sn-58-github-readme-handshake58-hs58-subnet-api-2"
@@ -680,40 +723,6 @@
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
-      "candidate_api_count": 6,
-      "candidate_api_ids": [
-        "sn-56-website-common-api",
-        "sn-56-website-common-health",
-        "sn-56-website-common-openapi-json",
-        "sn-56-website-common-swagger",
-        "sn-56-website-common-swagger-json",
-        "sn-56-website-link-www-gradients-io-data-artifact-9"
-      ],
-      "candidate_api_kinds": [
-        "data-artifact",
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "machine-verified",
-      "name": "Gradients",
-      "netuid": 56,
-      "operational_kinds": [
-        "data-artifact"
-      ],
-      "operational_surface_count": 1,
-      "operational_surface_ids": [
-        "sn-56-website-link-www-gradients-io-data-artifact-9"
-      ],
-      "priority_score": 30,
-      "reason_codes": [
-        "candidate-api-evidence",
-        "data-artifact-surface"
-      ],
-      "recommended_adapter_kind": "data-artifact-adapter",
-      "slug": "sn-56",
-      "suggested_next_action": "evaluate data-artifact freshness and schema normalization"
-    },
-    {
       "candidate_api_count": 1,
       "candidate_api_ids": [
         "sn-47-github-readme-openevolai-evolai-data-artifact-1"
@@ -939,6 +948,38 @@
       ],
       "recommended_adapter_kind": "data-artifact-adapter",
       "slug": "sn-88",
+      "suggested_next_action": "evaluate data-artifact freshness and schema normalization"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-95-website-common-api",
+        "sn-95-website-common-health",
+        "sn-95-website-common-openapi-json",
+        "sn-95-website-common-swagger",
+        "sn-95-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "Actual",
+      "netuid": 95,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "operational_surface_ids": [
+        "sn-95-actual-model-registry"
+      ],
+      "priority_score": 27,
+      "reason_codes": [
+        "candidate-api-evidence",
+        "data-artifact-surface"
+      ],
+      "recommended_adapter_kind": "data-artifact-adapter",
+      "slug": "actual",
       "suggested_next_action": "evaluate data-artifact freshness and schema normalization"
     },
     {
@@ -2405,33 +2446,6 @@
     {
       "candidate_api_count": 5,
       "candidate_api_ids": [
-        "sn-38-website-common-api",
-        "sn-38-website-common-health",
-        "sn-38-website-common-openapi-json",
-        "sn-38-website-common-swagger",
-        "sn-38-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "machine-verified",
-      "name": "colosseum",
-      "netuid": 38,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 7,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-38",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
         "sn-48-website-common-api",
         "sn-48-website-common-health",
         "sn-48-website-common-openapi-json",
@@ -2616,33 +2630,6 @@
       ],
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-91",
-      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
-    },
-    {
-      "candidate_api_count": 5,
-      "candidate_api_ids": [
-        "sn-95-website-common-api",
-        "sn-95-website-common-health",
-        "sn-95-website-common-openapi-json",
-        "sn-95-website-common-swagger",
-        "sn-95-website-common-swagger-json"
-      ],
-      "candidate_api_kinds": [
-        "openapi",
-        "subnet-api"
-      ],
-      "curation_level": "machine-verified",
-      "name": "Actual",
-      "netuid": 95,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "operational_surface_ids": [],
-      "priority_score": 7,
-      "reason_codes": [
-        "candidate-api-evidence"
-      ],
-      "recommended_adapter_kind": "custom-adapter",
-      "slug": "sn-95",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     },
     {
@@ -2860,6 +2847,33 @@
       "recommended_adapter_kind": "custom-adapter",
       "slug": "sn-89",
       "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
+    },
+    {
+      "candidate_api_count": 5,
+      "candidate_api_ids": [
+        "sn-38-website-common-api",
+        "sn-38-website-common-health",
+        "sn-38-website-common-openapi-json",
+        "sn-38-website-common-swagger",
+        "sn-38-website-common-swagger-json"
+      ],
+      "candidate_api_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "curation_level": "maintainer-reviewed",
+      "name": "colosseum",
+      "netuid": 38,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "operational_surface_ids": [],
+      "priority_score": 5,
+      "reason_codes": [
+        "candidate-api-evidence"
+      ],
+      "recommended_adapter_kind": "custom-adapter",
+      "slug": "colosseum",
+      "suggested_next_action": "review public-safe API evidence before adding a custom adapter"
     }
   ],
   "contract_version": "2026-06-06.1",
@@ -2869,13 +2883,13 @@
     "adapter_backed_count": 2,
     "by_curation_level": {
       "adapter-backed": 2,
-      "machine-verified": 49,
-      "maintainer-reviewed": 47
+      "machine-verified": 46,
+      "maintainer-reviewed": 50
     },
     "by_recommended_adapter_kind": {
-      "custom-adapter": 78,
+      "custom-adapter": 77,
       "data-artifact-adapter": 13,
-      "generic-openapi-or-custom": 7
+      "generic-openapi-or-custom": 8
     },
     "candidate_api_kind_counts": {
       "data-artifact": 10,
@@ -2883,13 +2897,13 @@
       "subnet-api": 96
     },
     "candidate_count": 98,
-    "data_artifact_backed_count": 14,
-    "openapi_backed_count": 9,
+    "data_artifact_backed_count": 15,
+    "openapi_backed_count": 10,
     "operational_kind_counts": {
-      "data-artifact": 14,
-      "openapi": 9,
+      "data-artifact": 15,
+      "openapi": 10,
       "sse": 1,
-      "subnet-api": 13
+      "subnet-api": 14
     },
     "sse_backed_count": 1
   }

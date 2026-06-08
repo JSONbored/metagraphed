@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "netuid": 56,
+  "name": "Gradients",
+  "slug": "gradients",
+  "status": "active",
+  "categories": [
+    "ai-training",
+    "baseline-curated",
+    "identity-reviewed",
+    "official-api",
+    "official-openapi",
+    "official-website",
+    "operational-interface"
+  ],
+  "website_url": "https://www.gradients.io/",
+  "docs_url": "https://api.gradients.io/docs",
+  "dashboard_url": "https://backprop.finance/dtao/subnets/56-gradients",
+  "source_repo": "https://github.com/gradients-ai/G.O.D",
+  "notes": "Reviewed overlay for SN56 Gradients. The website describes decentralized AI training on Bittensor and exposes a public API host with machine-readable OpenAPI. Only read-only public performance endpoints are promoted; credentialed/write task and account flows are intentionally excluded.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T18:12:00.000Z",
+    "verified_at": "2026-06-08T18:12:00.000Z",
+    "source_count": 7,
+    "gap_notes": [
+      "Machine-readable OpenAPI schema is verified at https://api.gradients.io/openapi.json.",
+      "Read-only performance API endpoints are public and probe-enabled.",
+      "Task creation, account, validator, voucher, and other write/auth flows require API keys or signatures and are intentionally not promoted as public-safe read endpoints.",
+      "No verified SSE/event stream yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-56-gradients-website",
+      "name": "Gradients website",
+      "kind": "website",
+      "url": "https://www.gradients.io/",
+      "provider": "gradients",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": ["https://www.gradients.io/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Website describes decentralized AI training on Bittensor."
+    },
+    {
+      "id": "sn-56-gradients-source-repo",
+      "name": "Gradients source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/gradients-ai/G.O.D",
+      "provider": "gradients",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/gradients-ai/G.O.D",
+        "https://api.taomarketcap.com/public/v1/subnets/56"
+      ],
+      "verification": {
+        "classification": "live",
+        "verified_at": "2026-06-08T18:12:00.000Z",
+        "status_code": 200,
+        "confidence_score": 80,
+        "content_type": "text/html; charset=utf-8"
+      },
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Live public source repository observed from public subnet directory metadata."
+    },
+    {
+      "id": "sn-56-gradients-openapi",
+      "name": "Gradients OpenAPI",
+      "kind": "openapi",
+      "url": "https://api.gradients.io/docs",
+      "provider": "gradients",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "schema_url": "https://api.gradients.io/openapi.json",
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://www.gradients.io/",
+        "https://api.gradients.io/docs"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Public FastAPI/Scalar documentation backed by machine-readable OpenAPI."
+    },
+    {
+      "id": "sn-56-gradients-latest-tournament-weights",
+      "name": "Gradients latest tournament weights",
+      "kind": "subnet-api",
+      "url": "https://api.gradients.io/v1/performance/latest-tournament-weights",
+      "provider": "gradients",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "schema_url": "https://api.gradients.io/openapi.json",
+      "schema_status": "machine-readable",
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "notes": "Read-only public performance endpoint from the Gradients OpenAPI schema."
+    },
+    {
+      "id": "sn-56-gradients-weight-projection-static",
+      "name": "Gradients static weight projection",
+      "kind": "subnet-api",
+      "url": "https://api.gradients.io/v1/performance/weight-projection-static",
+      "provider": "gradients",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "schema_url": "https://api.gradients.io/openapi.json",
+      "schema_status": "machine-readable",
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "notes": "Read-only public performance endpoint from the Gradients OpenAPI schema."
+    },
+    {
+      "id": "sn-56-gradients-last-boss-battle",
+      "name": "Gradients last boss battle",
+      "kind": "subnet-api",
+      "url": "https://api.gradients.io/v1/performance/last-boss-battle",
+      "provider": "gradients",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "schema_url": "https://api.gradients.io/openapi.json",
+      "schema_status": "machine-readable",
+      "source_urls": ["https://api.gradients.io/openapi.json"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "notes": "Read-only public performance endpoint from the Gradients OpenAPI schema."
+    },
+    {
+      "id": "sn-56-gradients-models",
+      "name": "Gradients models",
+      "kind": "data-artifact",
+      "url": "https://www.gradients.io/app/my-models",
+      "provider": "gradients",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": ["https://www.gradients.io/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Public browser-facing Gradients model surface linked from the website."
+    }
+  ]
+}

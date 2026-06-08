@@ -1049,17 +1049,21 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Previously discovered taocolosseum.com website currently redirects to an Afternic parked-domain sale page.",
+          "No verified official website yet.",
+          "No verified live source repository yet.",
+          "No verified official docs site yet beyond public directory/community pages.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "source-repo",
+          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -1067,13 +1071,12 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
-          "website"
+          "docs"
         ]
       },
       "name": "colosseum",
       "netuid": 38,
-      "slug": "sn-38"
+      "slug": "colosseum"
     },
     {
       "coverage_level": "probed",
@@ -1547,29 +1550,30 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Machine-readable OpenAPI schema is verified at https://api.gradients.io/openapi.json.",
+          "Read-only performance API endpoints are public and probe-enabled.",
+          "Task creation, account, validator, voucher, and other write/auth flows require API keys or signatures and are intentionally not promoted as public-safe read endpoints.",
           "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
-          "openapi",
-          "subnet-api",
           "sse"
         ],
         "supported_kinds": [
           "dashboard",
           "data-artifact",
           "docs",
+          "openapi",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
       "name": "Gradients",
       "netuid": 56,
-      "slug": "sn-56"
+      "slug": "gradients"
     },
     {
       "coverage_level": "probed",
@@ -2545,7 +2549,6 @@
       "gaps": {
         "gap_notes": [
           "Previously discovered Tensorclaw source repository currently returns 404.",
-          "No verified official website yet.",
           "No verified live source repository yet.",
           "No verified docs site yet beyond directory pages.",
           "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -2555,7 +2558,6 @@
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -2563,7 +2565,8 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
       "name": "luis",
@@ -2626,31 +2629,32 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified source repository yet.",
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "Previously discovered GitHub organization/source candidate currently returns 404.",
+          "No verified live source repository yet.",
+          "Authenticated docs redirect to login and are not promoted as public docs.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "source-repo",
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "website"
         ]
       },
       "name": "Actual",
       "netuid": 95,
-      "slug": "sn-95"
+      "slug": "actual"
     },
     {
       "coverage_level": "probed",

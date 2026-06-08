@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "tensorclaw",
+  "name": "Tensorclaw",
+  "kind": "subnet-team",
+  "website_url": "https://www.tensorclaw.ai/",
+  "authority": "provider-claimed",
+  "public_notes": "Provider-claimed website for Tensorclaw Network / SN92.",
+  "notes": "The public website identifies Tensorclaw Network as Bittensor Mainnet Subnet 92. The GitHub repository linked from the website currently returns 404, so no source repository is promoted."
+}

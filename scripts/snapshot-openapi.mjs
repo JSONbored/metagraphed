@@ -17,6 +17,10 @@ const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
 const generatedAt = buildTimestamp();
+const observedAt =
+  nonPlaceholderTimestamp(process.env.METAGRAPH_SCHEMA_OBSERVED_AT) ||
+  nonPlaceholderTimestamp(process.env.METAGRAPH_BUILD_TIMESTAMP) ||
+  new Date().toISOString();
 const contractVersion = "2026-06-06.1";
 const subnets = await loadSubnets();
 const surfaces = flattenSurfaces(subnets).filter(
@@ -38,6 +42,7 @@ const index = {
   schema_version: 1,
   contract_version: contractVersion,
   generated_at: generatedAt,
+  observed_at: observedAt,
   source: "openapi-snapshot",
   notes:
     "Machine-readable OpenAPI/Swagger JSON snapshots only. HTML Swagger UI pages are not treated as schema-backed.",
@@ -58,6 +63,7 @@ const drift = {
   schema_version: 1,
   contract_version: contractVersion,
   generated_at: generatedAt,
+  observed_at: observedAt,
   source: "openapi-snapshot",
   status: capturedSchemaCount > 0 ? "captured" : "not-found",
   openapi_surface_count: surfaces.length,
@@ -126,6 +132,7 @@ async function snapshotSurface(surface) {
       schema_version: 1,
       contract_version: contractVersion,
       generated_at: generatedAt,
+      observed_at: observedAt,
       netuid: surface.netuid,
       subnet_slug: surface.subnet_slug,
       subnet_name: surface.subnet_name,
@@ -366,7 +373,9 @@ async function updateFreshnessSchemaSnapshot(drift) {
     throw error;
   }
 
-  const asOf = nonPlaceholderTimestamp(drift.generated_at);
+  const asOf =
+    nonPlaceholderTimestamp(drift.observed_at) ||
+    nonPlaceholderTimestamp(drift.generated_at);
   if (!asOf) {
     return;
   }

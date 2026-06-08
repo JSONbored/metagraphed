@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "actual-computer",
+  "name": "Actual Computer",
+  "kind": "subnet-team",
+  "website_url": "https://actual.inc/",
+  "authority": "provider-claimed",
+  "public_notes": "Provider-claimed website for Actual Computer / SN95.",
+  "notes": "The public website metadata identifies Actual Computer with Bittensor, Subnet 95, decentralized AI, and AI inference software. The public model registry is listed separately as a data artifact. No live source repository is promoted."
+}

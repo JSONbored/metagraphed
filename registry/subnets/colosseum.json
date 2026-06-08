@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "netuid": 38,
+  "name": "colosseum",
+  "slug": "colosseum",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "stale-source-cleanup"
+  ],
+  "website_url": null,
+  "docs_url": null,
+  "dashboard_url": "https://taomarketcap.com/subnets/38",
+  "source_repo": null,
+  "baseline_excluded_surface_ids": [
+    "sn-38-taomarketcap-website",
+    "sn-38-website-common-docs"
+  ],
+  "notes": "Reviewed overlay for SN38 colosseum. The previously discovered taocolosseum.com website currently redirects to an Afternic parked-domain sale page, so it is intentionally not promoted as a curated website/docs surface.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "stale",
+    "reviewed_at": "2026-06-08T18:08:00.000Z",
+    "verified_at": "2026-06-08T18:08:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "Previously discovered taocolosseum.com website currently redirects to an Afternic parked-domain sale page.",
+      "No verified official website yet.",
+      "No verified live source repository yet.",
+      "No verified official docs site yet beyond public directory/community pages.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": []
+}

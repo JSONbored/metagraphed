@@ -5,12 +5,13 @@
     {
       "auto_review_candidate_count": 0,
       "kind": null,
-      "manual_review_required_count": 11,
-      "target_count": 11,
+      "manual_review_required_count": 12,
+      "target_count": 12,
       "target_ids": [
         "sn-7-adapter-review-adapter-candidate",
         "sn-110-adapter-review-adapter-candidate",
         "sn-64-adapter-review-adapter-candidate",
+        "sn-56-adapter-review-adapter-candidate",
         "sn-6-adapter-review-adapter-candidate",
         "sn-58-adapter-review-adapter-candidate",
         "sn-23-adapter-review-adapter-candidate",
@@ -25,13 +26,13 @@
         7,
         110,
         64,
+        56,
         6,
         58,
         23,
         66,
         22,
-        74,
-        96
+        74
       ]
     },
     {
@@ -110,12 +111,11 @@
       ]
     },
     {
-      "auto_review_candidate_count": 84,
+      "auto_review_candidate_count": 83,
       "kind": "openapi",
       "manual_review_required_count": 0,
-      "target_count": 84,
+      "target_count": 83,
       "target_ids": [
-        "sn-56-surface-candidate-openapi",
         "sn-118-surface-candidate-openapi",
         "sn-114-surface-candidate-openapi",
         "sn-100-surface-candidate-openapi",
@@ -134,11 +134,11 @@
         "sn-5-surface-candidate-openapi",
         "sn-55-surface-candidate-openapi",
         "sn-99-surface-candidate-openapi",
-        "sn-126-surface-candidate-openapi"
+        "sn-126-surface-candidate-openapi",
+        "sn-60-surface-candidate-openapi"
       ],
       "target_type": "surface-candidate",
       "top_netuids": [
-        56,
         118,
         114,
         100,
@@ -147,7 +147,8 @@
         93,
         24,
         68,
-        70
+        70,
+        108
       ]
     },
     {
@@ -156,8 +157,6 @@
       "manual_review_required_count": 0,
       "target_count": 21,
       "target_ids": [
-        "sn-92-surface-candidate-source-repo",
-        "sn-95-surface-candidate-source-repo",
         "sn-38-surface-candidate-source-repo",
         "sn-73-surface-candidate-source-repo",
         "sn-119-surface-candidate-source-repo",
@@ -168,19 +167,19 @@
         "sn-101-surface-candidate-source-repo",
         "sn-104-surface-candidate-source-repo",
         "sn-91-surface-candidate-source-repo",
+        "sn-95-surface-candidate-source-repo",
         "sn-20-surface-candidate-source-repo",
         "sn-30-surface-candidate-source-repo",
         "sn-27-surface-candidate-source-repo",
         "sn-76-surface-candidate-source-repo",
         "sn-40-surface-candidate-source-repo",
         "sn-53-surface-candidate-source-repo",
+        "sn-92-surface-candidate-source-repo",
         "sn-116-surface-candidate-source-repo",
         "sn-87-surface-candidate-source-repo"
       ],
       "target_type": "surface-candidate",
       "top_netuids": [
-        92,
-        95,
         38,
         73,
         119,
@@ -188,16 +187,17 @@
         31,
         69,
         86,
-        101
+        101,
+        104,
+        91
       ]
     },
     {
-      "auto_review_candidate_count": 84,
+      "auto_review_candidate_count": 83,
       "kind": "subnet-api",
       "manual_review_required_count": 0,
-      "target_count": 84,
+      "target_count": 83,
       "target_ids": [
-        "sn-56-surface-candidate-subnet-api",
         "sn-118-surface-candidate-subnet-api",
         "sn-114-surface-candidate-subnet-api",
         "sn-100-surface-candidate-subnet-api",
@@ -216,11 +216,11 @@
         "sn-5-surface-candidate-subnet-api",
         "sn-55-surface-candidate-subnet-api",
         "sn-99-surface-candidate-subnet-api",
-        "sn-126-surface-candidate-subnet-api"
+        "sn-126-surface-candidate-subnet-api",
+        "sn-60-surface-candidate-subnet-api"
       ],
       "target_type": "surface-candidate",
       "top_netuids": [
-        56,
         118,
         114,
         100,
@@ -229,7 +229,8 @@
         93,
         24,
         68,
-        70
+        70,
+        108
       ]
     },
     {
@@ -238,7 +239,7 @@
       "manual_review_required_count": 0,
       "target_count": 16,
       "target_ids": [
-        "sn-92-surface-candidate-website",
+        "sn-38-surface-candidate-website",
         "sn-73-surface-candidate-website",
         "sn-119-surface-candidate-website",
         "sn-28-surface-candidate-website",
@@ -257,7 +258,7 @@
       ],
       "target_type": "surface-candidate",
       "top_netuids": [
-        92,
+        38,
         73,
         119,
         28,
@@ -273,39 +274,39 @@
   "notes": "Contributor-oriented enrichment target pack derived from the queue and evidence artifacts. It provides public-safe submission guidance only; observed health and registry truth remain probe/generated artifacts.",
   "schema_version": 1,
   "summary": {
-    "auto_review_candidate_count": 279,
+    "auto_review_candidate_count": 277,
     "by_evidence_action": {
-      "maintainer-review-existing-evidence": 16,
+      "maintainer-review-existing-evidence": 17,
       "monitor": 1,
-      "replace-stale-evidence": 215,
+      "replace-stale-evidence": 213,
       "review-existing-evidence": 3,
       "submit-new-evidence": 58,
       "verify-existing-evidence": 3
     },
     "by_kind": {
       "data-artifact": 74,
-      "openapi": 84,
+      "openapi": 83,
       "source-repo": 21,
-      "subnet-api": 84,
+      "subnet-api": 83,
       "website": 16
     },
     "by_lane": {
-      "adapter-candidate": 11,
+      "adapter-candidate": 12,
       "baseline-monitoring": 1,
-      "direct-submission": 279,
+      "direct-submission": 277,
       "maintainer-review": 5
     },
     "by_target_type": {
-      "adapter-review": 11,
+      "adapter-review": 12,
       "maintainer-review": 5,
       "monitoring-followup": 1,
-      "surface-candidate": 279
+      "surface-candidate": 277
     },
-    "manual_review_required_count": 17,
+    "manual_review_required_count": 18,
     "new_evidence_count": 58,
-    "stale_replacement_count": 215,
+    "stale_replacement_count": 213,
     "subnet_count": 129,
-    "target_count": 296
+    "target_count": 295
   },
   "targets": [
     {
@@ -349,192 +350,6 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 92 --kind source-repo --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 1,
-        "classifications": {
-          "dead": 1
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 1,
-        "sample_candidate_ids": [
-          "sn-92-tensorplex-source-repo-1"
-        ],
-        "stale_or_failed_count": 1,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "partial",
-      "kind": "source-repo",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "source-repo",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "luis",
-      "netuid": 92,
-      "priority_score": 149,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-source-repo",
-        "missing-website",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-92-tensorplex-source-repo-1"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-92-tensorplex-source-repo-1"
-      ],
-      "slug": "sn-92",
-      "source_requirements": [
-        "Prefer an official project/team source.",
-        "The source URL must be public and show the subnet/project relationship.",
-        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92",
-        "https://backprop.finance/dtao/subnets/92-luis",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-92-surface-candidate-source-repo",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 92 --kind website --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 0,
-        "classifications": {},
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "sample_candidate_ids": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public website evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "partial",
-      "kind": "website",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "source-repo",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "luis",
-      "netuid": 92,
-      "priority_score": 149,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-source-repo",
-        "missing-website",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-92-tensorplex-source-repo-1"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-92-tensorplex-source-repo-1"
-      ],
-      "slug": "sn-92",
-      "source_requirements": [
-        "Prefer an official project/team source.",
-        "The source URL must be public and show the subnet/project relationship.",
-        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/92",
-        "https://backprop.finance/dtao/subnets/92-luis",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-92-surface-candidate-website",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 95 --kind source-repo --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 1,
-        "classifications": {
-          "dead": 1
-        },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 1,
-        "sample_candidate_ids": [
-          "sn-95-taomarketcap-source-repo"
-        ],
-        "stale_or_failed_count": 1,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "partial",
-      "kind": "source-repo",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "source-repo",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Actual",
-      "netuid": 95,
-      "priority_score": 145,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-source-repo",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-95-taomarketcap-source-repo"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-95-taomarketcap-source-repo"
-      ],
-      "slug": "sn-95",
-      "source_requirements": [
-        "Prefer an official project/team source.",
-        "The source URL must be public and show the subnet/project relationship.",
-        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
-      ],
-      "source_urls": [
-        "https://actual.inc/",
-        "https://api.taomarketcap.com/public/v1/subnets/95",
-        "https://backprop.finance/dtao/subnets/95-actual"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-95-surface-candidate-source-repo",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 38 --kind source-repo --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 1,
@@ -560,26 +375,31 @@
         "openapi",
         "source-repo",
         "sse",
-        "subnet-api"
+        "subnet-api",
+        "website"
       ],
       "name": "colosseum",
       "netuid": 38,
-      "priority_score": 142,
+      "priority_score": 162,
       "profile_level": "directory-only",
       "reason_codes": [
         "directory-only-profile",
         "missing-source-repo",
+        "missing-website",
         "needs-maintainer-review"
       ],
       "recommended_action": "submit official docs, website, or source repository evidence",
-      "sample_live_candidate_ids": [],
+      "sample_live_candidate_ids": [
+        "sn-38-taomarketcap-website"
+      ],
       "sample_stale_candidate_ids": [
         "sn-38-taomarketcap-source-repo"
       ],
       "sample_target_candidate_ids": [
+        "sn-38-taomarketcap-website",
         "sn-38-taomarketcap-source-repo"
       ],
-      "slug": "sn-38",
+      "slug": "colosseum",
       "source_requirements": [
         "Prefer an official project/team source.",
         "The source URL must be public and show the subnet/project relationship.",
@@ -597,145 +417,69 @@
     },
     {
       "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 56 --kind openapi --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_command": "npm run candidate:new -- --netuid 38 --kind website --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
-        "candidate_count": 3,
+        "candidate_count": 1,
         "classifications": {
-          "content-mismatch": 3
+          "live": 1
         },
-        "live_or_redirected_count": 0,
-        "reviewable_count": 3,
+        "live_or_redirected_count": 1,
+        "reviewable_count": 1,
         "sample_candidate_ids": [
-          "sn-56-website-common-openapi-json",
-          "sn-56-website-common-swagger",
-          "sn-56-website-common-swagger-json"
-        ],
-        "stale_or_failed_count": 3,
-        "unverified_count": 0
-      },
-      "contribution_prompt": "Replace stale or failed official public openapi evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "openapi",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Gradients",
-      "netuid": 56,
-      "priority_score": 135,
-      "profile_level": "operational",
-      "reason_codes": [
-        "adapter-candidate",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "sample_live_candidate_ids": [
-        "sn-56-website-common-api",
-        "sn-56-website-common-health"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-56-website-common-openapi-json",
-        "sn-56-website-common-swagger",
-        "sn-56-website-common-swagger-json"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-56-website-common-api",
-        "sn-56-website-common-health",
-        "sn-56-website-common-openapi-json",
-        "sn-56-website-common-swagger",
-        "sn-56-website-common-swagger-json"
-      ],
-      "slug": "sn-56",
-      "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
-      ],
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/56",
-        "https://backprop.finance/dtao/subnets/56-gradients",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_56/index.mdx"
-      ],
-      "submission_route": "direct-candidate-pr",
-      "target_action": "replace-stale-candidate",
-      "target_id": "sn-56-surface-candidate-openapi",
-      "target_type": "surface-candidate"
-    },
-    {
-      "auto_review_candidate": true,
-      "candidate_command": "npm run candidate:new -- --netuid 56 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
-      "candidate_evidence": {
-        "candidate_count": 2,
-        "classifications": {
-          "redirected": 2
-        },
-        "live_or_redirected_count": 2,
-        "reviewable_count": 2,
-        "sample_candidate_ids": [
-          "sn-56-website-common-api",
-          "sn-56-website-common-health"
+          "sn-38-taomarketcap-website"
         ],
         "stale_or_failed_count": 0,
         "unverified_count": 0
       },
-      "contribution_prompt": "Replace stale or failed official public subnet-api evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "contribution_prompt": "Replace stale or failed official public website evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
       "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "kind": "subnet-api",
+      "identity_level": "partial",
+      "kind": "website",
       "lane": "direct-submission",
       "manual_review_required": false,
       "missing_kinds": [
+        "data-artifact",
         "openapi",
+        "source-repo",
         "sse",
-        "subnet-api"
+        "subnet-api",
+        "website"
       ],
-      "name": "Gradients",
-      "netuid": 56,
-      "priority_score": 135,
-      "profile_level": "operational",
+      "name": "colosseum",
+      "netuid": 38,
+      "priority_score": 162,
+      "profile_level": "directory-only",
       "reason_codes": [
-        "adapter-candidate",
-        "missing-openapi",
-        "missing-subnet-api",
+        "directory-only-profile",
+        "missing-source-repo",
+        "missing-website",
         "needs-maintainer-review"
       ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "recommended_action": "submit official docs, website, or source repository evidence",
       "sample_live_candidate_ids": [
-        "sn-56-website-common-api",
-        "sn-56-website-common-health"
+        "sn-38-taomarketcap-website"
       ],
       "sample_stale_candidate_ids": [
-        "sn-56-website-common-openapi-json",
-        "sn-56-website-common-swagger",
-        "sn-56-website-common-swagger-json"
+        "sn-38-taomarketcap-source-repo"
       ],
       "sample_target_candidate_ids": [
-        "sn-56-website-common-api",
-        "sn-56-website-common-health",
-        "sn-56-website-common-openapi-json",
-        "sn-56-website-common-swagger",
-        "sn-56-website-common-swagger-json"
+        "sn-38-taomarketcap-website",
+        "sn-38-taomarketcap-source-repo"
       ],
-      "slug": "sn-56",
+      "slug": "colosseum",
       "source_requirements": [
-        "The URL must be public-safe and read-only.",
-        "The source URL must document or link the interface.",
-        "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows."
+        "Prefer an official project/team source.",
+        "The source URL must be public and show the subnet/project relationship.",
+        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
       ],
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/56",
-        "https://backprop.finance/dtao/subnets/56-gradients",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_56/index.mdx"
+        "https://api.taomarketcap.com/public/v1/subnets/38",
+        "https://backprop.finance/dtao/subnets/38-colosseum",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx"
       ],
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
-      "target_id": "sn-56-surface-candidate-subnet-api",
+      "target_id": "sn-38-surface-candidate-website",
       "target_type": "surface-candidate"
     },
     {
@@ -8686,6 +8430,66 @@
     },
     {
       "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 95 --kind source-repo --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 1,
+        "classifications": {
+          "dead": 1
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 1,
+        "sample_candidate_ids": [
+          "sn-95-taomarketcap-source-repo"
+        ],
+        "stale_or_failed_count": 1,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "kind": "source-repo",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "openapi",
+        "source-repo",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Actual",
+      "netuid": 95,
+      "priority_score": 118,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate",
+        "missing-source-repo"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-95-taomarketcap-source-repo"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-95-taomarketcap-source-repo"
+      ],
+      "slug": "actual",
+      "source_requirements": [
+        "Prefer an official project/team source.",
+        "The source URL must be public and show the subnet/project relationship.",
+        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
+      ],
+      "source_urls": [
+        "https://actual.inc/",
+        "https://api.taomarketcap.com/public/v1/subnets/95",
+        "https://backprop.finance/dtao/subnets/95-actual"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-95-surface-candidate-source-repo",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
       "candidate_command": "npm run candidate:new -- --netuid 10 --kind subnet-api --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
       "candidate_evidence": {
         "candidate_count": 2,
@@ -10797,6 +10601,45 @@
       "target_action": "replace-stale-candidate",
       "target_id": "sn-27-surface-candidate-source-repo",
       "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": false,
+      "candidate_command": null,
+      "candidate_evidence": null,
+      "contribution_prompt": "Review whether the existing public API/schema/data surfaces justify a subnet-specific adapter. Adapter requests route to manual review.",
+      "evidence_action": "maintainer-review-existing-evidence",
+      "identity_level": "complete",
+      "kind": null,
+      "lane": "adapter-candidate",
+      "manual_review_required": true,
+      "missing_kinds": [
+        "sse"
+      ],
+      "name": "Gradients",
+      "netuid": 56,
+      "priority_score": 114,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate"
+      ],
+      "recommended_action": "evaluate adapter support for data-artifact, openapi, subnet-api",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
+      "slug": "gradients",
+      "source_requirements": [
+        "Existing public API/schema/data evidence should be stable enough to normalize.",
+        "Adapter work requires maintainer review before publication."
+      ],
+      "source_urls": [
+        "https://api.gradients.io/docs",
+        "https://api.gradients.io/openapi.json",
+        "https://api.taomarketcap.com/public/v1/subnets/56"
+      ],
+      "submission_route": "adapter-request",
+      "target_action": "adapter-review",
+      "target_id": "sn-56-adapter-review-adapter-candidate",
+      "target_type": "adapter-review"
     },
     {
       "auto_review_candidate": true,
@@ -14678,6 +14521,67 @@
       "submission_route": "direct-candidate-pr",
       "target_action": "replace-stale-candidate",
       "target_id": "sn-53-surface-candidate-source-repo",
+      "target_type": "surface-candidate"
+    },
+    {
+      "auto_review_candidate": true,
+      "candidate_command": "npm run candidate:new -- --netuid 92 --kind source-repo --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write",
+      "candidate_evidence": {
+        "candidate_count": 1,
+        "classifications": {
+          "dead": 1
+        },
+        "live_or_redirected_count": 0,
+        "reviewable_count": 1,
+        "sample_candidate_ids": [
+          "sn-92-tensorplex-source-repo-1"
+        ],
+        "stale_or_failed_count": 1,
+        "unverified_count": 0
+      },
+      "contribution_prompt": "Replace stale or failed official public source-repo evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.",
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "partial",
+      "kind": "source-repo",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "source-repo",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "luis",
+      "netuid": 92,
+      "priority_score": 101,
+      "profile_level": "directory-only",
+      "reason_codes": [
+        "directory-only-profile",
+        "missing-source-repo"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-92-tensorplex-source-repo-1"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-92-tensorplex-source-repo-1"
+      ],
+      "slug": "sn-92",
+      "source_requirements": [
+        "Prefer an official project/team source.",
+        "The source URL must be public and show the subnet/project relationship.",
+        "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals."
+      ],
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/92",
+        "https://backprop.finance/dtao/subnets/92-luis",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx"
+      ],
+      "submission_route": "direct-candidate-pr",
+      "target_action": "replace-stale-candidate",
+      "target_id": "sn-92-surface-candidate-source-repo",
       "target_type": "surface-candidate"
     },
     {

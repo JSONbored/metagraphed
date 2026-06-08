@@ -2,12 +2,12 @@
   "adapter_count": 9,
   "artifact_budget_summary": {
     "fail_count": 0,
-    "ok_count": 1233,
+    "ok_count": 1239,
     "warn_count": 0
   },
   "artifact_budgets": [],
   "artifact_count": 23,
-  "artifact_size_bytes": 5503854,
+  "artifact_size_bytes": 5513741,
   "artifacts": [
     {
       "path": "api-index.json",
@@ -17,8 +17,8 @@
     },
     {
       "path": "changelog.json",
-      "sha256": "ef7be06bdad818eb7b8becc299cedc175c8004e71495f29b19c82b27314dfaf4",
-      "size_bytes": 1211,
+      "sha256": "07342a0258a055001d33b58b0269105baed6dcb59066d8b434830eaf8e3c0e32",
+      "size_bytes": 1349,
       "storage_tier": "dual"
     },
     {
@@ -29,32 +29,32 @@
     },
     {
       "path": "coverage.json",
-      "sha256": "be50a52345e98af9425c7a91ff2a2028c2b358131d6f49cc0b6adf8669bb20d0",
+      "sha256": "e15de1a1740c72a6938715f9ba971e13b9e534f1bdd18c30bab0de1be7f7361b",
       "size_bytes": 984,
       "storage_tier": "dual"
     },
     {
       "path": "curation.json",
-      "sha256": "116aef5c1a2d93f00a9f7607dd4d961997eec7fe09b194feb62458b423c9a618",
-      "size_bytes": 167520,
+      "sha256": "78e62016c7ed791c64a25d3be5a57223378b8be5cf9136126838b4b58631a291",
+      "size_bytes": 169054,
       "storage_tier": "dual"
     },
     {
       "path": "evidence-ledger.json",
-      "sha256": "6e1a9d5de5d8d1d7beec708ee0d70c94fc14b3b6b2a53d5a5fad4bd066ca9190",
-      "size_bytes": 839374,
+      "sha256": "a7df2193df127f2fd342ae346706b78644dd7f8bcbc9b73a9ff04ff26468e0e7",
+      "size_bytes": 841508,
       "storage_tier": "dual"
     },
     {
       "path": "freshness.json",
-      "sha256": "52f41b04987bb99e55515e810e1101f748549b138184abd870ebbd3912c1b52e",
-      "size_bytes": 7069,
+      "sha256": "e46cc964fb68ed9eb41a503d5082ceced79657449c4044766f9393eba9eba9d7",
+      "size_bytes": 7081,
       "storage_tier": "dual"
     },
     {
       "path": "gaps.json",
-      "sha256": "569c11a331ed46e02ce96e6a5b09f34d2f45515af386276e9e6da178fe2a9904",
-      "size_bytes": 95619,
+      "sha256": "c519a50bfd360afb2ad77a32068aae3cf4f00f4df4bd6561e54c06f870ddb3ef",
+      "size_bytes": 96326,
       "storage_tier": "dual"
     },
     {
@@ -65,44 +65,44 @@
     },
     {
       "path": "profiles.json",
-      "sha256": "93885545344c24e59b9512756973ffbf5400e3318d08c1fd18fb1d9c4f48e2fa",
-      "size_bytes": 448599,
+      "sha256": "79426394ef77b174c0c7be3a85f02d0454fa11ff834afffefd0a043bc8fde6a3",
+      "size_bytes": 449041,
       "storage_tier": "dual"
     },
     {
       "path": "providers.json",
-      "sha256": "0df3da3dc3420583af7b678683803baa94a3388139671274815c88aa66f55ab7",
-      "size_bytes": 33001,
+      "sha256": "528b51d211a126143a1b8106cf423eea0137fc3fb8a1fdf960f7633638ad735e",
+      "size_bytes": 34647,
       "storage_tier": "dual"
     },
     {
       "path": "review/adapter-candidates.json",
-      "sha256": "ecd8bf2bb6440602c594543c82113b497fcc6c845d205c6a68ee2266aa204a40",
-      "size_bytes": 89327,
+      "sha256": "666d8ede7484c50f5cedca39e63f0d1e19d78557b2f88d2cc99530ed25c09808",
+      "size_bytes": 89784,
       "storage_tier": "dual"
     },
     {
       "path": "review/curation.json",
-      "sha256": "0e4d6dc6c8de9dd819d088684a47ddbaa39ce66e6179152bbccfde8c1dd43530",
-      "size_bytes": 156255,
+      "sha256": "9a85946640c5a55557a3ee6742b4c6afbb6b4d24b0385994443fcc97f690f1b1",
+      "size_bytes": 156582,
       "storage_tier": "dual"
     },
     {
       "path": "review/enrichment-queue.json",
-      "sha256": "647590d7e691538c82e56ea0a5131da9360d2052c672a3cf5e3aa7b371867d0f",
-      "size_bytes": 367543,
+      "sha256": "02ad7fb2cafbeee60d3767da1b53ed6c524cdb60d4c190437a2b3518a3266516",
+      "size_bytes": 367011,
       "storage_tier": "dual"
     },
     {
       "path": "review/enrichment-targets.json",
-      "sha256": "c576dcfe828466fa037d85e4e9539e4ec69c99a446d9441f75f1719ecc770c6b",
-      "size_bytes": 764395,
+      "sha256": "0cdf7faa17b56ee087adc9de8196d455365c8c8e4085b66a48f4ffd4c0125d09",
+      "size_bytes": 760515,
       "storage_tier": "git"
     },
     {
       "path": "review/gap-priorities.json",
-      "sha256": "3c09e59f377f37fe80fa3b0a4e0715a38898faf8d9a4de7c7b390505a9b29553",
-      "size_bytes": 65758,
+      "sha256": "e2e3034292efa8f85c87a2f2e5674c6dc961b61cde220ffc9806f7749f49f52c",
+      "size_bytes": 65630,
       "storage_tier": "dual"
     },
     {
@@ -113,38 +113,38 @@
     },
     {
       "path": "review/profile-completeness.json",
-      "sha256": "e6658c097afc446a4df9d336a8edbd754a65e5224ea788431bb4d9319725d8b1",
-      "size_bytes": 143980,
+      "sha256": "0f581ac8d0e397b6b905a3e72743d8ed1522358ae6bb9b61f870b58eeb4859be",
+      "size_bytes": 143903,
       "storage_tier": "git"
     },
     {
       "path": "schema-drift.json",
-      "sha256": "d9b147190baf6b25af57ffc352ad0911fbdfcafd1bc57eaf44c3efc9fe73b2c6",
-      "size_bytes": 5772,
+      "sha256": "8a568403fcf8c5d6835886b3230f372e6b7e7443b5f06de26f19c4a167451970",
+      "size_bytes": 6264,
       "storage_tier": "dual"
     },
     {
       "path": "schemas/index.json",
-      "sha256": "540306734eee662775090a77f086bc3b3d53c669e151c8fd0eaa7fe16f111c49",
-      "size_bytes": 16219,
+      "sha256": "098b5c4e0bcf86782586e59de4065120cbeb5e3004eb77a74a9ceda806e54f1c",
+      "size_bytes": 18221,
       "storage_tier": "dual"
     },
     {
       "path": "search.json",
-      "sha256": "5c21f089a4309ce84967bcb260898865e5b3d0ce02561e6bc41af0dde26d1eed",
-      "size_bytes": 599674,
+      "sha256": "d0a4aeeba02186499c644b8d88d444aab0c878d120192697907122afb83fed87",
+      "size_bytes": 602557,
       "storage_tier": "dual"
     },
     {
       "path": "subnets.json",
-      "sha256": "a6475453f97809b664db3ef6f8bac6166e00fc952c96ea45deed8731fa9ed2dd",
-      "size_bytes": 127598,
+      "sha256": "bb7c220b6209ca623aea5b275761565eae752dd7a3b3ef5ca580f0c5db44df3d",
+      "size_bytes": 128005,
       "storage_tier": "dual"
     },
     {
       "path": "surfaces.json",
-      "sha256": "83b0c22c008b64ce030b518cfdc1e9924cb69d706b7e37039e622b634825c212",
-      "size_bytes": 1112874,
+      "sha256": "150451fa70e3d98724883bc8796a25f6882a456014e455e1e0ea49258c4e8b00",
+      "size_bytes": 1114197,
       "storage_tier": "dual"
     }
   ],
@@ -158,8 +158,8 @@
     "curated_overlay_count": 129,
     "curation_level_counts": {
       "adapter-backed": 2,
-      "machine-verified": 49,
-      "maintainer-reviewed": 78
+      "machine-verified": 46,
+      "maintainer-reviewed": 81
     },
     "generated_at": "1970-01-01T00:00:00.000Z",
     "manifested_count": 0,
@@ -169,7 +169,7 @@
     "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
     "network": "finney",
     "probed_count": 129,
-    "probed_surface_count": 1100,
+    "probed_surface_count": 1104,
     "root_subnet_count": 1,
     "schema_version": 1,
     "source": {
@@ -183,14 +183,14 @@
       },
       "overlays": "registry/subnets"
     },
-    "surface_count": 1107
+    "surface_count": 1111
   },
-  "endpoint_count": 1107,
-  "full_artifact_count": 1233,
-  "full_artifact_size_bytes": 48776056,
+  "endpoint_count": 1111,
+  "full_artifact_count": 1239,
+  "full_artifact_size_bytes": 48833977,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profile_count": 129,
-  "provider_count": 77,
+  "provider_count": 80,
   "public_contract": {
     "url": "/metagraph/contracts.json",
     "version": "2026-06-06.1"
@@ -199,13 +199,13 @@
   "storage_tier_counts": {
     "dual": 21,
     "git": 2,
-    "r2": 1210
+    "r2": 1216
   },
   "storage_tier_size_bytes": {
-    "dual": 4595479,
-    "git": 908375,
-    "r2": 43272202
+    "dual": 4609323,
+    "git": 904418,
+    "r2": 43320236
   },
   "subnet_count": 129,
-  "surface_count": 1107
+  "surface_count": 1111
 }

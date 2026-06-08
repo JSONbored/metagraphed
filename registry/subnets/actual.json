@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "netuid": 95,
+  "name": "Actual",
+  "slug": "actual",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "inference",
+    "model-registry",
+    "official-website"
+  ],
+  "website_url": "https://actual.inc/",
+  "docs_url": null,
+  "dashboard_url": "https://backprop.finance/dtao/subnets/95-actual",
+  "source_repo": null,
+  "baseline_excluded_surface_ids": ["sn-95-website-common-docs"],
+  "notes": "Reviewed overlay for SN95 Actual. The Actual Computer website metadata identifies the project with Bittensor, Subnet 95, decentralized AI, and inference software. The previous GitHub organization candidate currently returns 404 and is not promoted.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T18:08:00.000Z",
+    "verified_at": "2026-06-08T18:08:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "Previously discovered GitHub organization/source candidate currently returns 404.",
+      "No verified live source repository yet.",
+      "Authenticated docs redirect to login and are not promoted as public docs.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-95-actual-website",
+      "name": "Actual Computer website",
+      "kind": "website",
+      "url": "https://actual.inc/",
+      "provider": "actual-computer",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": ["https://actual.inc/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Website metadata identifies Actual Computer with Bittensor, Subnet 95, decentralized AI, and AI inference software."
+    },
+    {
+      "id": "sn-95-actual-model-registry",
+      "name": "Actual model registry",
+      "kind": "data-artifact",
+      "url": "https://models.actual.inc/",
+      "provider": "actual-computer",
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "public_safe": true,
+      "source_urls": ["https://actual.inc/", "https://models.actual.inc/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Actual GGUF model registry page. The page is browser-facing and served publicly; account-specific Actual docs redirect to login and are not listed as public docs."
+    }
+  ]
+}

@@ -12,6 +12,16 @@
       "website_url": "https://github.com/fx-integral/academia"
     },
     {
+      "authority": "provider-claimed",
+      "id": "actual-computer",
+      "kind": "subnet-team",
+      "name": "Actual Computer",
+      "notes": "The public website metadata identifies Actual Computer with Bittensor, Subnet 95, decentralized AI, and AI inference software. The public model registry is listed separately as a data artifact. No live source repository is promoted.",
+      "public_notes": "Provider-claimed website for Actual Computer / SN95.",
+      "schema_version": 1,
+      "website_url": "https://actual.inc/"
+    },
+    {
       "authority": "official",
       "github_url": "https://github.com/ippcteam/SN21-adtao",
       "id": "adtao",
@@ -286,6 +296,18 @@
       "notes": "Provider entry for the Gopher SN42 documentation and subnet source repository. The project website and API hosts were not promoted because they did not return safe public probe responses during review.",
       "schema_version": 1,
       "website_url": "https://developers.gopher-ai.com/"
+    },
+    {
+      "authority": "provider-claimed",
+      "docs_url": "https://api.gradients.io/docs",
+      "github_url": "https://github.com/gradients-ai/G.O.D",
+      "id": "gradients",
+      "kind": "subnet-team",
+      "name": "Gradients",
+      "notes": "The public Gradients website describes decentralized AI training on Bittensor and links to the public API host. The GitHub source repository is live and was observed through public subnet directories.",
+      "public_notes": "Provider profile for Gradients / SN56.",
+      "schema_version": 1,
+      "website_url": "https://www.gradients.io/"
     },
     {
       "authority": "official",
@@ -707,6 +729,16 @@
       "public_notes": "Provider profile for Targon / SN4. Public surfaces include the Targon website, docs, Intel whitepaper, and source repository.",
       "schema_version": 1,
       "website_url": "https://targon.com/"
+    },
+    {
+      "authority": "provider-claimed",
+      "id": "tensorclaw",
+      "kind": "subnet-team",
+      "name": "Tensorclaw",
+      "notes": "The public website identifies Tensorclaw Network as Bittensor Mainnet Subnet 92. The GitHub repository linked from the website currently returns 404, so no source repository is promoted.",
+      "public_notes": "Provider-claimed website for Tensorclaw Network / SN92.",
+      "schema_version": 1,
+      "website_url": "https://www.tensorclaw.ai/"
     },
     {
       "authority": "community",

@@ -10062,7 +10062,7 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/38-colosseum",
       "subject": "surface:sn-38-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-38.",
+      "support_summary": "Listed in curated overlay for colosseum.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10073,7 +10073,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/38",
       "subject": "surface:sn-38-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-38.",
+      "support_summary": "Listed in curated overlay for colosseum.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10084,18 +10084,7 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
       "subject": "surface:sn-38-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-38.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "colosseum website is a public website surface for SN38.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
-      "subject": "surface:sn-38-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-38.",
+      "support_summary": "Listed in curated overlay for colosseum.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10106,7 +10095,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx",
       "subject": "surface:sn-38-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-38.",
+      "support_summary": "Listed in curated overlay for colosseum.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10117,18 +10106,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json",
       "subject": "surface:sn-38-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-38.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "colosseum docs is a public docs surface for SN38.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.taocolosseum.com/",
-      "subject": "surface:sn-38-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-38.",
+      "support_summary": "Listed in curated overlay for colosseum.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -11866,7 +11844,84 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/56-gradients",
       "subject": "surface:sn-56-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-56.",
+      "support_summary": "Listed in curated overlay for gradients.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Gradients last boss battle is a public subnet-api surface for SN56.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://api.gradients.io/openapi.json",
+      "subject": "surface:sn-56-gradients-last-boss-battle",
+      "support_summary": "Listed in curated overlay for gradients.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Gradients latest tournament weights is a public subnet-api surface for SN56.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://api.gradients.io/openapi.json",
+      "subject": "surface:sn-56-gradients-latest-tournament-weights",
+      "support_summary": "Listed in curated overlay for gradients.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Gradients models is a public data-artifact surface for SN56.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://www.gradients.io/",
+      "subject": "surface:sn-56-gradients-models",
+      "support_summary": "Listed in curated overlay for gradients.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Gradients OpenAPI is a public openapi surface for SN56.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://www.gradients.io/",
+      "subject": "surface:sn-56-gradients-openapi",
+      "support_summary": "Listed in curated overlay for gradients.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Gradients source repository is a public source-repo surface for SN56.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://github.com/gradients-ai/G.O.D",
+      "subject": "surface:sn-56-gradients-source-repo",
+      "support_summary": "Listed in curated overlay for gradients.",
+      "verified_at": "2026-06-08T18:12:00.000Z"
+    },
+    {
+      "claim": "Gradients website is a public website surface for SN56.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://www.gradients.io/",
+      "subject": "surface:sn-56-gradients-website",
+      "support_summary": "Listed in curated overlay for gradients.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Gradients static weight projection is a public subnet-api surface for SN56.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://api.gradients.io/openapi.json",
+      "subject": "surface:sn-56-gradients-weight-projection-static",
+      "support_summary": "Listed in curated overlay for gradients.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -11877,7 +11932,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/56",
       "subject": "surface:sn-56-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-56.",
+      "support_summary": "Listed in curated overlay for gradients.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -11888,29 +11943,7 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/56",
       "subject": "surface:sn-56-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-56.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Gradients source repository is a public source-repo surface for SN56.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/56",
-      "subject": "surface:sn-56-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-56.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Gradients website is a public website surface for SN56.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/56",
-      "subject": "surface:sn-56-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-56.",
+      "support_summary": "Listed in curated overlay for gradients.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -11921,7 +11954,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_56/index.mdx",
       "subject": "surface:sn-56-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-56.",
+      "support_summary": "Listed in curated overlay for gradients.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -11932,7 +11965,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/56/subnet.json",
       "subject": "surface:sn-56-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-56.",
+      "support_summary": "Listed in curated overlay for gradients.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -11943,7 +11976,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/56/subnet.json",
       "subject": "surface:sn-56-tensorplex-source-repo-1",
-      "support_summary": "Listed in curated overlay for sn-56.",
+      "support_summary": "Listed in curated overlay for gradients.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -11954,18 +11987,7 @@
       "source_type": "registry-observed",
       "source_url": "https://www.gradients.io/",
       "subject": "surface:sn-56-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-56.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Gradients data artifact is a public data-artifact surface for SN56.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://www.gradients.io/",
-      "subject": "surface:sn-56-website-link-www-gradients-io-data-artifact-9",
-      "support_summary": "Listed in curated overlay for sn-56.",
+      "support_summary": "Listed in curated overlay for gradients.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -15621,6 +15643,28 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Tensorclaw live demo is a public dashboard surface for SN92.",
+      "confidence": "medium",
+      "limits": "Surface is public metadata but requires authentication for access.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://www.tensorclaw.ai/",
+      "subject": "surface:sn-92-tensorclaw-dashboard",
+      "support_summary": "Listed in curated overlay for sn-92.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Tensorclaw website is a public website surface for SN92.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://www.tensorclaw.ai/",
+      "subject": "surface:sn-92-tensorclaw-website",
+      "support_summary": "Listed in curated overlay for sn-92.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "SN92 Tensorplex metadata is a public docs surface for SN92.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -15808,6 +15852,28 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Actual model registry is a public data-artifact surface for SN95.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://actual.inc/",
+      "subject": "surface:sn-95-actual-model-registry",
+      "support_summary": "Listed in curated overlay for actual.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Actual Computer website is a public website surface for SN95.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "provider-claimed",
+      "source_url": "https://actual.inc/",
+      "subject": "surface:sn-95-actual-website",
+      "support_summary": "Listed in curated overlay for actual.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Actual Backprop Finance dashboard is a public dashboard surface for SN95.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -15815,7 +15881,7 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/95-actual",
       "subject": "surface:sn-95-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-95.",
+      "support_summary": "Listed in curated overlay for actual.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -15826,7 +15892,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnetradar.com/subnet/95",
       "subject": "surface:sn-95-subnetradar-dashboard",
-      "support_summary": "Listed in curated overlay for sn-95.",
+      "support_summary": "Listed in curated overlay for actual.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -15837,18 +15903,7 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/95",
       "subject": "surface:sn-95-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-95.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Actual website is a public website surface for SN95.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/95",
-      "subject": "surface:sn-95-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-95.",
+      "support_summary": "Listed in curated overlay for actual.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -15859,7 +15914,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_95/index.mdx",
       "subject": "surface:sn-95-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-95.",
+      "support_summary": "Listed in curated overlay for actual.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -15870,18 +15925,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/95/subnet.json",
       "subject": "surface:sn-95-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-95.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Actual docs is a public docs surface for SN95.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://actual.inc/",
-      "subject": "surface:sn-95-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-95.",
+      "support_summary": "Listed in curated overlay for actual.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -16353,8 +16397,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1486,
+    "claim_count": 1490,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1107
+    "surface_claim_count": 1111
   }
 }

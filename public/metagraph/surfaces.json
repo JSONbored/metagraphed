@@ -10199,7 +10199,7 @@
         "https://backprop.finance/dtao/subnets/38-colosseum"
       ],
       "subnet_name": "colosseum",
-      "subnet_slug": "sn-38",
+      "subnet_slug": "colosseum",
       "url": "https://backprop.finance/dtao/subnets/38-colosseum"
     },
     {
@@ -10231,7 +10231,7 @@
         "https://subnetradar.com/subnet/38"
       ],
       "subnet_name": "colosseum",
-      "subnet_slug": "sn-38",
+      "subnet_slug": "colosseum",
       "url": "https://subnetradar.com/subnet/38"
     },
     {
@@ -10263,40 +10263,8 @@
         "https://api.taomarketcap.com/public/v1/subnets/38"
       ],
       "subnet_name": "colosseum",
-      "subnet_slug": "sn-38",
+      "subnet_slug": "colosseum",
       "url": "https://taomarketcap.com/subnets/38"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-38-taomarketcap-website",
-      "kind": "website",
-      "name": "colosseum website",
-      "netuid": 38,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/38"
-      ],
-      "subnet_name": "colosseum",
-      "subnet_slug": "sn-38",
-      "url": "https://www.taocolosseum.com/"
     },
     {
       "auth_required": false,
@@ -10327,7 +10295,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx"
       ],
       "subnet_name": "colosseum",
-      "subnet_slug": "sn-38",
+      "subnet_slug": "colosseum",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_38/index.mdx"
     },
     {
@@ -10359,40 +10327,8 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json"
       ],
       "subnet_name": "colosseum",
-      "subnet_slug": "sn-38",
+      "subnet_slug": "colosseum",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/38"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-38-website-common-docs",
-      "kind": "docs",
-      "name": "colosseum docs",
-      "netuid": 38,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://www.taocolosseum.com/"
-      ],
-      "subnet_name": "colosseum",
-      "subnet_slug": "sn-38",
-      "url": "https://www.taocolosseum.com/docs"
     },
     {
       "auth_required": false,
@@ -14652,8 +14588,186 @@
         "https://backprop.finance/dtao/subnets/56-gradients"
       ],
       "subnet_name": "Gradients",
-      "subnet_slug": "sn-56",
+      "subnet_slug": "gradients",
       "url": "https://backprop.finance/dtao/subnets/56-gradients"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-56-gradients-last-boss-battle",
+      "kind": "subnet-api",
+      "name": "Gradients last boss battle",
+      "netuid": 56,
+      "notes": "Read-only public performance endpoint from the Gradients OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.gradients.io/openapi.json",
+      "source_urls": [
+        "https://api.gradients.io/openapi.json"
+      ],
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "url": "https://api.gradients.io/v1/performance/last-boss-battle"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-56-gradients-latest-tournament-weights",
+      "kind": "subnet-api",
+      "name": "Gradients latest tournament weights",
+      "netuid": 56,
+      "notes": "Read-only public performance endpoint from the Gradients OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.gradients.io/openapi.json",
+      "source_urls": [
+        "https://api.gradients.io/openapi.json"
+      ],
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "url": "https://api.gradients.io/v1/performance/latest-tournament-weights"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-56-gradients-models",
+      "kind": "data-artifact",
+      "name": "Gradients models",
+      "netuid": 56,
+      "notes": "Public browser-facing Gradients model surface linked from the website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "url": "https://www.gradients.io/app/my-models"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-56-gradients-openapi",
+      "kind": "openapi",
+      "name": "Gradients OpenAPI",
+      "netuid": 56,
+      "notes": "Public FastAPI/Scalar documentation backed by machine-readable OpenAPI.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.gradients.io/openapi.json",
+      "source_urls": [
+        "https://www.gradients.io/",
+        "https://api.gradients.io/docs"
+      ],
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "url": "https://api.gradients.io/docs"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-56-gradients-source-repo",
+      "kind": "source-repo",
+      "name": "Gradients source repository",
+      "netuid": 56,
+      "notes": "Live public source repository observed from public subnet directory metadata.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/gradients-ai/G.O.D",
+        "https://api.taomarketcap.com/public/v1/subnets/56"
+      ],
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "url": "https://github.com/gradients-ai/G.O.D",
+      "verification": {
+        "classification": "live",
+        "confidence_score": 80,
+        "content_type": "text/html; charset=utf-8",
+        "status_code": 200,
+        "verified_at": "2026-06-08T18:12:00.000Z"
+      }
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-56-gradients-website",
+      "kind": "website",
+      "name": "Gradients website",
+      "netuid": 56,
+      "notes": "Website describes decentralized AI training on Bittensor.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.gradients.io/"
+      ],
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "url": "https://www.gradients.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-56-gradients-weight-projection-static",
+      "kind": "subnet-api",
+      "name": "Gradients static weight projection",
+      "netuid": 56,
+      "notes": "Read-only public performance endpoint from the Gradients OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gradients",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.gradients.io/openapi.json",
+      "source_urls": [
+        "https://api.gradients.io/openapi.json"
+      ],
+      "subnet_name": "Gradients",
+      "subnet_slug": "gradients",
+      "url": "https://api.gradients.io/v1/performance/weight-projection-static"
     },
     {
       "auth_required": false,
@@ -14684,7 +14798,7 @@
         "https://subnetradar.com/subnet/56"
       ],
       "subnet_name": "Gradients",
-      "subnet_slug": "sn-56",
+      "subnet_slug": "gradients",
       "url": "https://subnetradar.com/subnet/56"
     },
     {
@@ -14716,71 +14830,8 @@
         "https://api.taomarketcap.com/public/v1/subnets/56"
       ],
       "subnet_name": "Gradients",
-      "subnet_slug": "sn-56",
+      "subnet_slug": "gradients",
       "url": "https://taomarketcap.com/subnets/56"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-56-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Gradients source repository",
-      "netuid": 56,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "archived": false,
-        "has_default_branch": true,
-        "has_recent_push_metadata": true,
-        "public_safe": true,
-        "source_tier": "third-party-index"
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/56"
-      ],
-      "subnet_name": "Gradients",
-      "subnet_slug": "sn-56",
-      "url": "https://github.com/gradients-ai/G.O.D"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-56-taomarketcap-website",
-      "kind": "website",
-      "name": "Gradients website",
-      "netuid": 56,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/56"
-      ],
-      "subnet_name": "Gradients",
-      "subnet_slug": "sn-56",
-      "url": "https://www.gradients.io/"
     },
     {
       "auth_required": false,
@@ -14811,7 +14862,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_56/index.mdx"
       ],
       "subnet_name": "Gradients",
-      "subnet_slug": "sn-56",
+      "subnet_slug": "gradients",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_56/index.mdx"
     },
     {
@@ -14843,7 +14894,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/56/subnet.json"
       ],
       "subnet_name": "Gradients",
-      "subnet_slug": "sn-56",
+      "subnet_slug": "gradients",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/56"
     },
     {
@@ -14874,7 +14925,7 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/56/subnet.json"
       ],
       "subnet_name": "Gradients",
-      "subnet_slug": "sn-56",
+      "subnet_slug": "gradients",
       "url": "https://github.com/rayonlabs/G.O.D"
     },
     {
@@ -14906,40 +14957,8 @@
         "https://www.gradients.io/"
       ],
       "subnet_name": "Gradients",
-      "subnet_slug": "sn-56",
+      "subnet_slug": "gradients",
       "url": "https://www.gradients.io/docs"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-56-website-link-www-gradients-io-data-artifact-9",
-      "kind": "data-artifact",
-      "name": "Gradients data artifact",
-      "netuid": 56,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://www.gradients.io/"
-      ],
-      "subnet_name": "Gradients",
-      "subnet_slug": "sn-56",
-      "url": "https://www.gradients.io/app/my-models"
     },
     {
       "auth_required": false,
@@ -24024,6 +24043,52 @@
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_92/index.mdx"
     },
     {
+      "auth_required": true,
+      "authority": "provider-claimed",
+      "id": "sn-92-tensorclaw-dashboard",
+      "kind": "dashboard",
+      "name": "Tensorclaw live demo",
+      "netuid": 92,
+      "notes": "Public live-demo page for SN92. The page uses Cloudflare Turnstile to unlock trial requests, so it is listed as an auth-gated dashboard surface rather than a public API.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorclaw",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.tensorclaw.ai/"
+      ],
+      "subnet_name": "luis",
+      "subnet_slug": "sn-92",
+      "url": "https://www.tensorclaw.ai/dashboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-92-tensorclaw-website",
+      "kind": "website",
+      "name": "Tensorclaw website",
+      "netuid": 92,
+      "notes": "Website identifies Tensorclaw Network as Bittensor Mainnet Subnet 92 and describes a decentralized LLM inference subnet for autonomous agents.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorclaw",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.tensorclaw.ai/"
+      ],
+      "subnet_name": "luis",
+      "subnet_slug": "sn-92",
+      "url": "https://www.tensorclaw.ai/"
+    },
+    {
       "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-92-tensorplex-docs",
@@ -24559,6 +24624,53 @@
     },
     {
       "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-95-actual-model-registry",
+      "kind": "data-artifact",
+      "name": "Actual model registry",
+      "netuid": 95,
+      "notes": "Public Actual GGUF model registry page. The page is browser-facing and served publicly; account-specific Actual docs redirect to login and are not listed as public docs.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "actual-computer",
+      "public_safe": true,
+      "source_urls": [
+        "https://actual.inc/",
+        "https://models.actual.inc/"
+      ],
+      "subnet_name": "Actual",
+      "subnet_slug": "actual",
+      "url": "https://models.actual.inc/"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-95-actual-website",
+      "kind": "website",
+      "name": "Actual Computer website",
+      "netuid": 95,
+      "notes": "Website metadata identifies Actual Computer with Bittensor, Subnet 95, decentralized AI, and AI inference software.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "actual-computer",
+      "public_safe": true,
+      "source_urls": [
+        "https://actual.inc/"
+      ],
+      "subnet_name": "Actual",
+      "subnet_slug": "actual",
+      "url": "https://actual.inc/"
+    },
+    {
+      "auth_required": false,
       "authority": "registry-observed",
       "id": "sn-95-backprop-dashboard",
       "kind": "dashboard",
@@ -24586,7 +24698,7 @@
         "https://backprop.finance/dtao/subnets/95-actual"
       ],
       "subnet_name": "Actual",
-      "subnet_slug": "sn-95",
+      "subnet_slug": "actual",
       "url": "https://backprop.finance/dtao/subnets/95-actual"
     },
     {
@@ -24618,7 +24730,7 @@
         "https://subnetradar.com/subnet/95"
       ],
       "subnet_name": "Actual",
-      "subnet_slug": "sn-95",
+      "subnet_slug": "actual",
       "url": "https://subnetradar.com/subnet/95"
     },
     {
@@ -24650,40 +24762,8 @@
         "https://api.taomarketcap.com/public/v1/subnets/95"
       ],
       "subnet_name": "Actual",
-      "subnet_slug": "sn-95",
+      "subnet_slug": "actual",
       "url": "https://taomarketcap.com/subnets/95"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-95-taomarketcap-website",
-      "kind": "website",
-      "name": "Actual website",
-      "netuid": 95,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/95"
-      ],
-      "subnet_name": "Actual",
-      "subnet_slug": "sn-95",
-      "url": "https://actual.inc/"
     },
     {
       "auth_required": false,
@@ -24714,7 +24794,7 @@
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_95/index.mdx"
       ],
       "subnet_name": "Actual",
-      "subnet_slug": "sn-95",
+      "subnet_slug": "actual",
       "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_95/index.mdx"
     },
     {
@@ -24746,40 +24826,8 @@
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/95/subnet.json"
       ],
       "subnet_name": "Actual",
-      "subnet_slug": "sn-95",
+      "subnet_slug": "actual",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/95"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-95-website-common-docs",
-      "kind": "docs",
-      "name": "Actual docs",
-      "netuid": 95,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://actual.inc/"
-      ],
-      "subnet_name": "Actual",
-      "subnet_slug": "sn-95",
-      "url": "https://actual.inc/docs"
     },
     {
       "auth_required": false,

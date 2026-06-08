@@ -2708,7 +2708,7 @@ function reusableSchemaDriftArtifact(surfaces, previous) {
   if (
     !previous ||
     previous.source !== "openapi-snapshot" ||
-    !nonPlaceholderTimestamp(previous.generated_at)
+    !schemaSnapshotTimestamp(previous)
   ) {
     return null;
   }
@@ -2726,7 +2726,7 @@ function reusableSchemaIndexArtifact(surfaces, previous) {
   if (
     !previous ||
     previous.source !== "openapi-snapshot" ||
-    !nonPlaceholderTimestamp(previous.generated_at)
+    !schemaSnapshotTimestamp(previous)
   ) {
     return null;
   }
@@ -2888,8 +2888,7 @@ function buildFreshnessArtifact({
   const adapterSnapshotAsOf = latestTimestamp(
     adapterRows.map((row) => row.as_of),
   );
-  const schemaSnapshotAsOf =
-    nonPlaceholderTimestamp(schemaDrift.generated_at) || null;
+  const schemaSnapshotAsOf = schemaSnapshotTimestamp(schemaDrift);
   const sources = [
     freshnessSource({
       asOf: native.captured_at,
@@ -3037,6 +3036,14 @@ function freshnessSource({
     timestamp,
     timestamp_field: timestampField,
   };
+}
+
+function schemaSnapshotTimestamp(value) {
+  return (
+    nonPlaceholderTimestamp(value?.observed_at) ||
+    nonPlaceholderTimestamp(value?.generated_at) ||
+    null
+  );
 }
 
 function nonPlaceholderTimestamp(value) {

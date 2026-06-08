@@ -3,6 +3,51 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profiles": [
     {
+      "candidate_count": 14,
+      "completeness_score": 25,
+      "confidence": "low",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_level": "partial",
+      "identity_surface_count": 1,
+      "missing_critical_count": 6,
+      "missing_identity": [
+        "source-repo",
+        "website"
+      ],
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo",
+        "website"
+      ],
+      "name": "colosseum",
+      "native_name_quality": "chain",
+      "netuid": 38,
+      "operational_interface_count": 0,
+      "priority_score": 119,
+      "profile_level": "directory-only",
+      "review_state": "stale",
+      "slug": "colosseum",
+      "source_count": 6,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs"
+      ]
+    },
+    {
       "candidate_count": 7,
       "completeness_score": 25,
       "confidence": "high",
@@ -41,51 +86,6 @@
       "review_state": "maintainer-reviewed",
       "slug": "metahash",
       "source_count": 5,
-      "suggested_next_action": "submit official docs, website, or source repository evidence",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs"
-      ]
-    },
-    {
-      "candidate_count": 7,
-      "completeness_score": 25,
-      "confidence": "low",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_level": "partial",
-      "identity_surface_count": 1,
-      "missing_critical_count": 6,
-      "missing_identity": [
-        "source-repo",
-        "website"
-      ],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [
-        "source-repo",
-        "website"
-      ],
-      "name": "luis",
-      "native_name_quality": "chain",
-      "netuid": 92,
-      "operational_interface_count": 0,
-      "priority_score": 112,
-      "profile_level": "directory-only",
-      "review_state": "stale",
-      "slug": "sn-92",
-      "source_count": 6,
       "suggested_next_action": "submit official docs, website, or source repository evidence",
       "supported_interface_kinds": [
         "dashboard",
@@ -405,92 +405,6 @@
       "supported_interface_kinds": [
         "dashboard",
         "docs"
-      ]
-    },
-    {
-      "candidate_count": 16,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_level": "partial",
-      "identity_surface_count": 2,
-      "missing_critical_count": 5,
-      "missing_identity": [
-        "source-repo"
-      ],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [
-        "source-repo"
-      ],
-      "name": "Actual",
-      "native_name_quality": "chain",
-      "netuid": 95,
-      "operational_interface_count": 0,
-      "priority_score": 106,
-      "profile_level": "directory-only",
-      "review_state": "machine-generated",
-      "slug": "sn-95",
-      "source_count": 6,
-      "suggested_next_action": "submit official docs, website, or source repository evidence",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 14,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "identity_level": "partial",
-      "identity_surface_count": 2,
-      "missing_critical_count": 5,
-      "missing_identity": [
-        "source-repo"
-      ],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [
-        "source-repo"
-      ],
-      "name": "colosseum",
-      "native_name_quality": "chain",
-      "netuid": 38,
-      "operational_interface_count": 0,
-      "priority_score": 104,
-      "profile_level": "directory-only",
-      "review_state": "machine-generated",
-      "slug": "sn-38",
-      "source_count": 6,
-      "suggested_next_action": "submit official docs, website, or source repository evidence",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "website"
       ]
     },
     {
@@ -911,6 +825,49 @@
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "efficientfrontier",
+      "source_count": 7,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 7,
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
+      "missing_critical_count": 5,
+      "missing_identity": [
+        "source-repo"
+      ],
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
+      "name": "luis",
+      "native_name_quality": "chain",
+      "netuid": 92,
+      "operational_interface_count": 0,
+      "priority_score": 92,
+      "profile_level": "directory-only",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-92",
       "source_count": 7,
       "suggested_next_action": "submit official docs, website, or source repository evidence",
       "supported_interface_kinds": [
@@ -1958,6 +1915,48 @@
         "dashboard",
         "docs",
         "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 16,
+      "completeness_score": 48,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
+      "identity_level": "partial",
+      "identity_surface_count": 2,
+      "missing_critical_count": 4,
+      "missing_identity": [
+        "source-repo"
+      ],
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
+      "name": "Actual",
+      "native_name_quality": "chain",
+      "netuid": 95,
+      "operational_interface_count": 1,
+      "priority_score": 88,
+      "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
+      "slug": "actual",
+      "source_count": 7,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "docs",
         "website"
       ]
     },
@@ -3522,44 +3521,6 @@
       ]
     },
     {
-      "candidate_count": 25,
-      "completeness_score": 58,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse"
-      ],
-      "identity_level": "complete",
-      "identity_surface_count": 3,
-      "missing_critical_count": 3,
-      "missing_identity": [],
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse"
-      ],
-      "missing_required": [],
-      "name": "Gradients",
-      "native_name_quality": "chain",
-      "netuid": 56,
-      "operational_interface_count": 1,
-      "priority_score": 82,
-      "profile_level": "operational",
-      "review_state": "machine-generated",
-      "slug": "sn-56",
-      "source_count": 7,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "data-artifact",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
       "candidate_count": 9,
       "completeness_score": 48,
       "confidence": "high",
@@ -5016,6 +4977,42 @@
       ]
     },
     {
+      "candidate_count": 25,
+      "completeness_score": 93,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-sse"
+      ],
+      "identity_level": "complete",
+      "identity_surface_count": 3,
+      "missing_critical_count": 1,
+      "missing_identity": [],
+      "missing_operational": [
+        "sse"
+      ],
+      "missing_required": [],
+      "name": "Gradients",
+      "native_name_quality": "chain",
+      "netuid": 56,
+      "operational_interface_count": 3,
+      "priority_score": 37,
+      "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
+      "slug": "gradients",
+      "source_count": 9,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "data-artifact",
+        "docs",
+        "openapi",
+        "source-repo",
+        "subnet-api",
+        "website"
+      ]
+    },
+    {
       "candidate_count": 9,
       "completeness_score": 85,
       "confidence": "high",
@@ -5125,9 +5122,9 @@
   "summary": {
     "average_completeness_score": 53,
     "by_confidence": {
-      "high": 74,
+      "high": 77,
       "low": 6,
-      "medium": 49
+      "medium": 46
     },
     "by_identity_level": {
       "complete": 101,
@@ -5135,20 +5132,20 @@
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "directory-only": 27,
+      "directory-only": 26,
       "identity-complete": 74,
-      "operational": 26
+      "operational": 27
     },
     "critical_gap_counts": {
-      "missing-data-artifact": 114,
-      "missing-openapi": 119,
+      "missing-data-artifact": 113,
+      "missing-openapi": 118,
       "missing-source-repo": 21,
       "missing-sse": 127,
-      "missing-subnet-api": 115,
+      "missing-subnet-api": 114,
       "missing-website": 16
     },
     "needs_identity_count": 28,
-    "needs_operational_count": 101,
+    "needs_operational_count": 100,
     "profile_count": 129
   }
 }
