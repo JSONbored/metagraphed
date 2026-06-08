@@ -13,7 +13,8 @@ import {
   sourceHealthQuery,
   endpointIncidentsQuery,
 } from "@/lib/metagraphed/queries";
-import { formatNumber, formatRelative, isStaleFreshness } from "@/lib/metagraphed/format";
+import { formatRelative, isStaleFreshness } from "@/lib/metagraphed/format";
+import { AnimatedNumber } from "@/components/metagraphed/animated-number";
 import type { EndpointIncident } from "@/lib/metagraphed/types";
 
 const INTERVAL_OPTIONS: Array<{ label: string; value: number }> = [
@@ -180,7 +181,7 @@ function AutoRefreshControl({
           ? "Paused"
           : !visible
             ? "Tab hidden"
-            : <><span aria-hidden="true">Next sync · {secondsLeft}s</span><span className="sr-only">Auto-refresh on</span></>}
+            : <><span aria-hidden="true">Next sync · <AnimatedNumber value={secondsLeft} flashOnChange={false} duration={250} />s</span><span className="sr-only">Auto-refresh on</span></>}
       </button>
 
       {enabled && !visible ? (
@@ -217,16 +218,20 @@ function GlobalHealth({ interval }: { interval: number | false }) {
     <div className="space-y-3">
       {stale ? <StaleBanner generatedAt={hRes.meta?.generated_at} /> : null}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border border border-border rounded overflow-hidden">
-        <Cell label="OK" value={formatNumber(h?.ok)} accent="text-health-ok" />
-        <Cell label="Warn" value={formatNumber(h?.warn)} accent="text-health-warn" />
-        <Cell label="Down" value={formatNumber(h?.down)} accent="text-health-down" />
-        <Cell label="Unknown" value={formatNumber(h?.unknown)} accent="text-ink-muted" />
-        <Cell label="Uptime 24h" value={h?.uptime_24h != null ? `${(h.uptime_24h * 100).toFixed(2)}%` : "—"} />
+        <Cell label="OK" num={h?.ok} accent="text-health-ok" />
+        <Cell label="Warn" num={h?.warn} accent="text-health-warn" />
+        <Cell label="Down" num={h?.down} accent="text-health-down" />
+        <Cell label="Unknown" num={h?.unknown} accent="text-ink-muted" />
+        <Cell
+          label="Uptime 24h"
+          num={h?.uptime_24h != null ? h.uptime_24h * 100 : null}
+          format={(n) => `${n.toFixed(2)}%`}
+        />
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-border border border-border rounded overflow-hidden">
-        <Cell label="Avg age" value={f?.avg_age_seconds != null ? `${Math.round(f.avg_age_seconds)}s` : "—"} />
-        <Cell label="Max age" value={f?.max_age_seconds != null ? `${Math.round(f.max_age_seconds)}s` : "—"} />
-        <Cell label="Stale sources" value={formatNumber(f?.stale_count)} />
+        <Cell label="Avg age" num={f?.avg_age_seconds} format={(n) => `${Math.round(n)}s`} />
+        <Cell label="Max age" num={f?.max_age_seconds} format={(n) => `${Math.round(n)}s`} />
+        <Cell label="Stale sources" num={f?.stale_count} />
       </div>
       <div className="text-[11px] font-mono text-ink-muted">
         snapshot {formatRelative(hRes.meta?.generated_at)}
@@ -235,11 +240,23 @@ function GlobalHealth({ interval }: { interval: number | false }) {
   );
 }
 
-function Cell({ label, value, accent }: { label: string; value: string; accent?: string }) {
+function Cell({
+  label,
+  num,
+  accent,
+  format,
+}: {
+  label: string;
+  num: number | null | undefined;
+  accent?: string;
+  format?: (n: number) => string;
+}) {
   return (
     <div className="bg-card p-3">
       <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">{label}</div>
-      <div className={`font-display text-xl font-semibold tabular-nums ${accent ?? "text-ink-strong"}`}>{value}</div>
+      <div className={`font-display text-xl font-semibold tabular-nums ${accent ?? "text-ink-strong"}`}>
+        <AnimatedNumber value={num} format={format} />
+      </div>
     </div>
   );
 }
