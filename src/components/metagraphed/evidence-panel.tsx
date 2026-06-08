@@ -1,10 +1,9 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
 import { evidenceQuery } from "@/lib/metagraphed/queries";
 import { ExternalLink } from "./external-link";
 import { HoverPreview } from "./hover-preview";
 import { EmptyState, Skeleton } from "./states";
-import { QueryErrorBoundary } from "./error-boundary";
 import { formatRelative } from "@/lib/metagraphed/format";
 import type { EvidenceItem } from "@/lib/metagraphed/types";
 
@@ -13,29 +12,30 @@ interface Props {
   limit?: number;
 }
 
+type SortMode = "recent" | "source" | "count";
+
 /**
  * Grouped evidence/source panel. Groups by `source` and renders hover previews
  * for each item (note + recorded_at + URL).
+ *
+ * Supports filtering by source type and sorting by recency / source / group size.
  */
 export function EvidencePanel({ netuid, limit = 200 }: Props) {
-  return (
-    <QueryErrorBoundary>
-      <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-        <EvidenceInner netuid={netuid} limit={limit} />
-      </Suspense>
-    </QueryErrorBoundary>
-  );
-}
-
-function EvidenceInner({ netuid, limit }: Props) {
-  const params: Record<string, string | number> = { limit: limit ?? 200 };
+  const params: Record<string, string | number> = { limit };
   if (netuid != null) params.netuid = netuid;
   const opts = evidenceQuery(params);
-  // Use useQuery (not suspense) so an empty/missing endpoint degrades gracefully.
-  const { data, isLoading, error } = useQuery({
-    ...opts,
-    retry: 0,
-  });
+  const { data, isLoading, error } = useQuery({ ...opts, retry: 0 });
+
+  const [sourceFilter, setSourceFilter] = useState<string>("");
+  const [sortMode, setSortMode] = useState<SortMode>("recent");
+
+  const rows = useMemo(() => (data?.data ?? []) as EvidenceItem[], [data]);
+
+  const sources = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) set.add(r.source ?? "unknown");
+    return Array.from(set).sort();
+  }, [rows]);
 
   if (isLoading) return <Skeleton className="h-24 w-full" />;
   if (error) {
@@ -46,29 +46,75 @@ function EvidenceInner({ netuid, limit }: Props) {
       />
     );
   }
-
-  const rows = (data?.data ?? []) as EvidenceItem[];
   if (rows.length === 0) return <EmptyState title="No evidence recorded" />;
+
+  const filtered = sourceFilter ? rows.filter((r) => (r.source ?? "unknown") === sourceFilter) : rows;
 
   // Group by source label.
   const groups = new Map<string, EvidenceItem[]>();
-  for (const r of rows) {
+  for (const r of filtered) {
     const key = r.source ?? "unknown";
     const arr = groups.get(key) ?? [];
     arr.push(r);
     groups.set(key, arr);
   }
-  const sortedGroups = Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length);
+  // Sort items inside each group by recency for consistent display.
+  for (const [, items] of groups) {
+    items.sort((a, b) => (recordedTime(b) - recordedTime(a)));
+  }
+
+  const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
+    if (sortMode === "count") return b[1].length - a[1].length;
+    if (sortMode === "source") return a[0].localeCompare(b[0]);
+    // recent: order groups by their freshest evidence
+    return recordedTime(b[1][0]) - recordedTime(a[1][0]);
+  });
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+        <span className="font-mono uppercase tracking-widest text-ink-muted">Source</span>
+        <select
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          className="rounded border border-border bg-card px-2 py-1 text-ink"
+          aria-label="Filter evidence by source"
+        >
+          <option value="">all</option>
+          {sources.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <span className="ml-2 font-mono uppercase tracking-widest text-ink-muted">Sort</span>
+        <select
+          value={sortMode}
+          onChange={(e) => setSortMode(e.target.value as SortMode)}
+          className="rounded border border-border bg-card px-2 py-1 text-ink"
+          aria-label="Sort evidence groups"
+        >
+          <option value="recent">most recent</option>
+          <option value="count">most evidence</option>
+          <option value="source">source name</option>
+        </select>
+        <span className="ml-auto font-mono text-ink-muted">
+          {filtered.length} item{filtered.length === 1 ? "" : "s"} · {sortedGroups.length} source
+          {sortedGroups.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
       {sortedGroups.map(([source, items]) => (
         <div key={source} className="rounded border border-border bg-card p-3">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 gap-3">
             <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
               {source}
             </span>
-            <span className="font-mono text-[10px] text-ink-muted">{items.length} item{items.length === 1 ? "" : "s"}</span>
+            <span className="flex items-center gap-2 font-mono text-[10px] text-ink-muted">
+              <span>latest {formatRelative(items[0]?.recorded_at)}</span>
+              <span>·</span>
+              <span>{items.length} item{items.length === 1 ? "" : "s"}</span>
+            </span>
           </div>
           <ul className="flex flex-wrap gap-1.5">
             {items.slice(0, 24).map((item) => (
@@ -110,6 +156,12 @@ function EvidenceInner({ netuid, limit }: Props) {
       ))}
     </div>
   );
+}
+
+function recordedTime(item?: EvidenceItem): number {
+  if (!item?.recorded_at) return 0;
+  const t = Date.parse(item.recorded_at);
+  return Number.isFinite(t) ? t : 0;
 }
 
 function shortLabel(item: EvidenceItem): string {
