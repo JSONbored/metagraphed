@@ -96,6 +96,12 @@ const previousCoverageArtifact = await readOptionalJson(
   path.join(outputRoot, "coverage.json"),
 );
 const previousHealthArtifact = await loadPreviousHealthArtifact();
+const previousSchemaDriftArtifact = await readOptionalJson(
+  path.join(outputRoot, "schema-drift.json"),
+);
+const previousSchemaIndexArtifact = await readOptionalJson(
+  path.join(outputRoot, "schemas/index.json"),
+);
 
 await fs.rm(r2OutputRoot, { recursive: true, force: true });
 
@@ -181,7 +187,12 @@ const curationReview = buildCurationReview(
   verification,
   reviewDecisions,
 );
-const schemaDriftPlaceholder = buildSchemaDriftPlaceholder(surfaces);
+const schemaDriftArtifact =
+  reusableSchemaDriftArtifact(surfaces, previousSchemaDriftArtifact) ||
+  buildSchemaDriftPlaceholder(surfaces);
+const schemaIndexArtifact =
+  reusableSchemaIndexArtifact(surfaces, previousSchemaIndexArtifact) ||
+  buildSchemaIndexPlaceholder();
 const contracts = buildContractsArtifact(generatedAt);
 const openApi = await buildCanonicalOpenApiArtifact(generatedAt);
 
@@ -585,7 +596,7 @@ await writeJson(
     healthArtifacts,
     nativeSnapshot,
     previousFreshness: previousFreshnessArtifact,
-    schemaDrift: schemaDriftPlaceholder,
+    schemaDrift: schemaDriftArtifact,
     verification,
   }),
 );
@@ -638,16 +649,8 @@ await writeJson(
     verification,
   }),
 );
-await writeJson(artifactFile("schema-drift.json"), schemaDriftPlaceholder);
-await writeJson(artifactFile("schemas/index.json"), {
-  schema_version: 1,
-  contract_version: contractVersion,
-  generated_at: generatedAt,
-  source: "artifact-build",
-  notes:
-    "Run npm run schemas:snapshot to capture machine-readable OpenAPI/Swagger schema snapshots.",
-  schemas: [],
-});
+await writeJson(artifactFile("schema-drift.json"), schemaDriftArtifact);
+await writeJson(artifactFile("schemas/index.json"), schemaIndexArtifact);
 await writeJson(artifactFile("review/curation.json"), curationReview);
 await writeJson(artifactFile("review/gap-priorities.json"), {
   schema_version: 1,
@@ -2220,6 +2223,65 @@ function buildSchemaDriftPlaceholder(surfaces) {
         : "ui-only-or-undiscovered",
     })),
   };
+}
+
+function reusableSchemaDriftArtifact(surfaces, previous) {
+  if (
+    !previous ||
+    previous.source !== "openapi-snapshot" ||
+    !nonPlaceholderTimestamp(previous.generated_at)
+  ) {
+    return null;
+  }
+  const currentIds = openApiSurfaceIds(surfaces);
+  const previousIds = (previous.surfaces || [])
+    .map((surface) => surface.surface_id)
+    .sort();
+  if (!sameStringSet(currentIds, previousIds)) {
+    return null;
+  }
+  return previous;
+}
+
+function reusableSchemaIndexArtifact(surfaces, previous) {
+  if (
+    !previous ||
+    previous.source !== "openapi-snapshot" ||
+    !nonPlaceholderTimestamp(previous.generated_at)
+  ) {
+    return null;
+  }
+  const currentIds = openApiSurfaceIds(surfaces);
+  const previousIds = (previous.schemas || [])
+    .map((schema) => schema.surface_id)
+    .sort();
+  if (!sameStringSet(currentIds, previousIds)) {
+    return null;
+  }
+  return previous;
+}
+
+function buildSchemaIndexPlaceholder() {
+  return {
+    schema_version: 1,
+    contract_version: contractVersion,
+    generated_at: generatedAt,
+    source: "artifact-build",
+    notes:
+      "Run npm run schemas:snapshot to capture machine-readable OpenAPI/Swagger schema snapshots.",
+    schemas: [],
+  };
+}
+
+function openApiSurfaceIds(surfaces) {
+  return surfaces
+    .filter((surface) => surface.kind === "openapi")
+    .map((surface) => surface.id)
+    .sort();
+}
+
+function sameStringSet(a, b) {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
 function buildSearchIndex(subnets, surfacesForIndex, providerList) {

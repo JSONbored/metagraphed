@@ -417,6 +417,16 @@ test("public artifacts are internally consistent", () => {
     candidateDiscoverySource.status,
     expectedCandidateDiscoveryAsOf ? "captured" : "missing",
   );
+  if (schemaDrift.source === "openapi-snapshot") {
+    assert.equal(
+      freshness.summary.schema_snapshot_as_of,
+      schemaDrift.generated_at,
+    );
+    assert.equal(
+      freshness.sources.find((source) => source.id === "schema-drift")?.as_of,
+      schemaDrift.generated_at,
+    );
+  }
   assert.equal(
     profiles.profiles.every(
       (profile) =>

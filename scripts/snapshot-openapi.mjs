@@ -89,6 +89,7 @@ if (!dryRun) {
   }
   await writeJson(artifactOutputPath("schemas/index.json"), index);
   await writeJson(artifactOutputPath("schema-drift.json"), drift);
+  await updateFreshnessSchemaSnapshot(drift);
 }
 
 console.log(
@@ -351,4 +352,67 @@ function countBy(items, key) {
       }, {}),
     ).sort(([a], [b]) => a.localeCompare(b)),
   );
+}
+
+async function updateFreshnessSchemaSnapshot(drift) {
+  const freshnessPath = artifactFilePath("freshness.json");
+  let freshness;
+  try {
+    freshness = JSON.parse(await fs.readFile(freshnessPath, "utf8"));
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+
+  const asOf = nonPlaceholderTimestamp(drift.generated_at);
+  if (!asOf) {
+    return;
+  }
+
+  freshness.summary = {
+    ...(freshness.summary || {}),
+    openapi_surface_count: drift.openapi_surface_count,
+    schema_snapshot_as_of: asOf,
+    stale_window_warnings: (
+      freshness.summary?.stale_window_warnings || []
+    ).filter(
+      (warning) =>
+        !String(warning).startsWith("schema-drift has no observed timestamp"),
+    ),
+  };
+
+  const source = {
+    as_of: asOf,
+    id: "schema-drift",
+    lane: "schema-snapshot",
+    notes:
+      "Schema drift snapshots are warning-only until more subnets publish machine-readable schemas.",
+    path: "public/metagraph/schema-drift.json",
+    required_for_publish: false,
+    stale_after_hours: 168,
+    stale_behavior: "warn",
+    status: drift.status,
+    timestamp: asOf,
+    timestamp_field: "schema_snapshot_as_of",
+  };
+  const sources = (freshness.sources || []).filter(
+    (entry) => entry.id !== "schema-drift",
+  );
+  sources.push(source);
+  freshness.sources = sources.sort((a, b) => a.id.localeCompare(b.id));
+
+  await writeJson(freshnessPath, freshness);
+}
+
+function nonPlaceholderTimestamp(value) {
+  if (!value || value === "1970-01-01T00:00:00.000Z") {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString();
 }
