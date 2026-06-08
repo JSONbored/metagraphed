@@ -1212,6 +1212,32 @@ function enrichmentQueueEntry({
       .filter(Boolean)
       .sort()
       .slice(0, 5),
+    sample_live_candidate_ids: sampleCandidateIdsForQueue({
+      candidateClasses: ["live", "redirected"],
+      directSubmissionKinds,
+      missingKinds,
+      subnetCandidates,
+      verificationByCandidate,
+    }),
+    sample_stale_candidate_ids: sampleCandidateIdsForQueue({
+      candidateClasses: [
+        "content-mismatch",
+        "dead",
+        "timeout",
+        "unsafe",
+        "unsupported",
+      ],
+      directSubmissionKinds,
+      missingKinds,
+      subnetCandidates,
+      verificationByCandidate,
+    }),
+    sample_target_candidate_ids: sampleCandidateIdsForQueue({
+      directSubmissionKinds,
+      missingKinds,
+      subnetCandidates,
+      verificationByCandidate,
+    }),
     slug: profile.slug,
     source_urls: (profile.provenance.source_urls || []).slice(0, 8),
     stale_candidate_count: staleCandidateCount(candidateEvidenceByKind),
@@ -1258,6 +1284,7 @@ function candidateEvidenceByKindForQueue({
         (classifications.unknown || 0);
       const deadCount =
         (classifications.dead || 0) +
+        (classifications.timeout || 0) +
         (classifications.unsafe || 0) +
         (classifications.unsupported || 0) +
         (classifications["content-mismatch"] || 0);
@@ -1284,6 +1311,72 @@ function candidateEvidenceByKindForQueue({
       ];
     }),
   );
+}
+
+function sampleCandidateIdsForQueue({
+  candidateClasses = null,
+  directSubmissionKinds,
+  missingKinds,
+  subnetCandidates,
+  verificationByCandidate,
+}) {
+  const relevantKinds = new Set(
+    directSubmissionKinds.length > 0 ? directSubmissionKinds : missingKinds,
+  );
+  const classSet = candidateClasses ? new Set(candidateClasses) : null;
+  return subnetCandidates
+    .filter((candidate) => relevantKinds.has(candidate.kind))
+    .filter((candidate) => {
+      if (!classSet) {
+        return true;
+      }
+      return classSet.has(
+        candidateQueueClassification(candidate, verificationByCandidate),
+      );
+    })
+    .sort(
+      (a, b) =>
+        candidateQueuePriority(a, verificationByCandidate) -
+          candidateQueuePriority(b, verificationByCandidate) ||
+        a.kind.localeCompare(b.kind) ||
+        String(a.id || "").localeCompare(String(b.id || "")),
+    )
+    .map((candidate) => candidate.id)
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+function candidateQueueClassification(candidate, verificationByCandidate) {
+  return (
+    verificationByCandidate.get(candidate.id)?.classification ||
+    candidate.verification?.classification ||
+    candidate.state ||
+    "unknown"
+  );
+}
+
+function candidateQueuePriority(candidate, verificationByCandidate) {
+  const classification = candidateQueueClassification(
+    candidate,
+    verificationByCandidate,
+  );
+  const weights = {
+    live: 0,
+    redirected: 1,
+    verified: 2,
+    "maintainer-review": 3,
+    "schema-valid": 4,
+    unknown: 5,
+    "auth-required": 6,
+    "rate-limited": 7,
+    timeout: 8,
+    "content-mismatch": 9,
+    unsupported: 10,
+    dead: 11,
+    unsafe: 12,
+    rejected: 13,
+  };
+  return weights[classification] ?? 20;
 }
 
 function enrichmentEvidenceAction({

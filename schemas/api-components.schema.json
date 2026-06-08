@@ -3484,6 +3484,24 @@
             },
             "type": "array"
           },
+          "sample_live_candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sample_stale_candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sample_target_candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "slug": {
             "type": "string"
           },
@@ -3529,6 +3547,9 @@
           "recommended_action",
           "review_state",
           "sample_candidate_ids",
+          "sample_live_candidate_ids",
+          "sample_stale_candidate_ids",
+          "sample_target_candidate_ids",
           "slug",
           "source_urls",
           "stale_candidate_count",

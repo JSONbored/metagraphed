@@ -50,6 +50,13 @@
         "sn-7-taomarketcap-website",
         "sn-7-taopedia-article"
       ],
+      "sample_live_candidate_ids": [
+        "sn-7-taomarketcap-dashboard"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-7-taomarketcap-dashboard"
+      ],
       "slug": "allways",
       "source_urls": [
         "https://all-ways.io/",
@@ -123,6 +130,15 @@
         "sn-27-taopedia-article",
         "sn-27-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-27-taomarketcap-website",
+        "sn-27-taomarketcap-source-repo"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-27-taomarketcap-website",
+        "sn-27-taomarketcap-source-repo"
+      ],
       "slug": "sn-27",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/27",
@@ -189,6 +205,13 @@
         "sn-40-taomarketcap-source-repo",
         "sn-40-taopedia-article",
         "sn-40-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-40-taomarketcap-source-repo"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-40-taomarketcap-source-repo"
       ],
       "slug": "sn-40",
       "source_urls": [
@@ -257,6 +280,13 @@
         "sn-53-taopedia-article",
         "sn-53-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-53-taomarketcap-source-repo"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-53-taomarketcap-source-repo"
+      ],
       "slug": "sn-53",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/53",
@@ -322,6 +352,13 @@
         "sn-73-taomarketcap-dashboard",
         "sn-73-taopedia-article",
         "sn-73-tensorplex-docs",
+        "sn-73-tensorplex-source-repo-1"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-73-tensorplex-source-repo-1"
+      ],
+      "sample_target_candidate_ids": [
         "sn-73-tensorplex-source-repo-1"
       ],
       "slug": "sn-73",
@@ -391,6 +428,13 @@
         "sn-92-tensorplex-docs",
         "sn-92-tensorplex-source-repo-1"
       ],
+      "sample_live_candidate_ids": [
+        "sn-92-tensorplex-source-repo-1"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-92-tensorplex-source-repo-1"
+      ],
       "slug": "sn-92",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/92",
@@ -456,6 +500,13 @@
         "sn-116-taomarketcap-dashboard",
         "sn-116-taopedia-article",
         "sn-116-tensorplex-docs",
+        "sn-116-tensorplex-source-repo-1"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-116-tensorplex-source-repo-1"
+      ],
+      "sample_target_candidate_ids": [
         "sn-116-tensorplex-source-repo-1"
       ],
       "slug": "sn-116",
@@ -525,6 +576,13 @@
         "sn-119-taopedia-article",
         "sn-119-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-119-taomarketcap-source-repo"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-119-taomarketcap-source-repo"
+      ],
       "slug": "sn-119",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/119",
@@ -587,6 +645,9 @@
         "sn-28-taopedia-article",
         "sn-28-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-28",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/28",
@@ -649,6 +710,9 @@
         "sn-31-taopedia-article",
         "sn-31-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-31",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/31",
@@ -711,6 +775,9 @@
         "sn-69-taopedia-article",
         "sn-69-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-69",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/69",
@@ -773,6 +840,9 @@
         "sn-86-taopedia-article",
         "sn-86-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-86",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/86",
@@ -835,6 +905,9 @@
         "sn-90-taopedia-article",
         "sn-90-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-90",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/90",
@@ -897,6 +970,9 @@
         "sn-101-taopedia-article",
         "sn-101-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-101",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/101",
@@ -959,6 +1035,9 @@
         "sn-104-taopedia-article",
         "sn-104-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-104",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/104",
@@ -1021,6 +1100,9 @@
         "sn-125-taopedia-article",
         "sn-125-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-125",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/125",
@@ -1094,6 +1176,21 @@
         "sn-25-taomarketcap-dashboard",
         "sn-25-taomarketcap-source-repo"
       ],
+      "sample_live_candidate_ids": [
+        "sn-25-taomarketcap-website",
+        "sn-25-website-link-macrocosmos-ai-website-1",
+        "sn-25-website-link-macrocosmos-ai-website-2",
+        "sn-25-website-link-macrocosmos-ai-website-4",
+        "sn-25-website-link-macrocosmos-ai-website-5"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-25-taomarketcap-website",
+        "sn-25-website-link-macrocosmos-ai-website-1",
+        "sn-25-website-link-macrocosmos-ai-website-2",
+        "sn-25-website-link-macrocosmos-ai-website-4",
+        "sn-25-website-link-macrocosmos-ai-website-5"
+      ],
       "slug": "sn-25",
       "source_urls": [
         "https://github.com/macrocosm-os/mainframe",
@@ -1158,6 +1255,9 @@
         "sn-81-tensorplex-docs",
         "sn-81-tensorplex-source-repo-1"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-81",
       "source_urls": [
         "https://github.com/one-covenant/grail",
@@ -1228,6 +1328,9 @@
         "sn-91-tensorplex-docs",
         "sn-91-website-common-api"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-91",
       "source_urls": [
         "https://app.bitstarter.ai/",
@@ -1300,6 +1403,13 @@
         "sn-20-taopedia-article",
         "sn-20-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-20-taomarketcap-source-repo"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-20-taomarketcap-source-repo"
+      ],
       "slug": "sn-20",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/20",
@@ -1367,6 +1477,21 @@
         "sn-118-taomarketcap-source-repo",
         "sn-118-taomarketcap-website",
         "sn-118-taopedia-article"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-118-website-common-openapi-json",
+        "sn-118-website-common-swagger",
+        "sn-118-website-common-swagger-json",
+        "sn-118-website-common-api",
+        "sn-118-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-118-website-common-openapi-json",
+        "sn-118-website-common-swagger",
+        "sn-118-website-common-swagger-json",
+        "sn-118-website-common-api",
+        "sn-118-website-common-health"
       ],
       "slug": "sn-118",
       "source_urls": [
@@ -1441,6 +1566,9 @@
         "sn-76-tensorplex-docs",
         "sn-76-website-common-api"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-76",
       "source_urls": [
         "https://taomarketcap.com/subnets/76",
@@ -1512,6 +1640,13 @@
         "sn-89-taopedia-article",
         "sn-89-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-89-taomarketcap-website"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-89-taomarketcap-website"
+      ],
       "slug": "sn-89",
       "source_urls": [
         "https://github.com/backend-developers-ltd/InfiniteHash",
@@ -1576,6 +1711,13 @@
         "sn-95-taomarketcap-website",
         "sn-95-taopedia-article",
         "sn-95-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-95-taomarketcap-source-repo"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-95-taomarketcap-source-repo"
       ],
       "slug": "sn-95",
       "source_urls": [
@@ -1647,6 +1789,23 @@
         "sn-114-taopedia-article",
         "sn-114-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [
+        "sn-114-website-link-thesoma-ai-subnet-api-7",
+        "sn-114-website-common-api"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-114-website-common-openapi-json",
+        "sn-114-website-common-swagger",
+        "sn-114-website-common-swagger-json",
+        "sn-114-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-114-website-link-thesoma-ai-subnet-api-7",
+        "sn-114-website-common-api",
+        "sn-114-website-common-openapi-json",
+        "sn-114-website-common-swagger",
+        "sn-114-website-common-swagger-json"
+      ],
       "slug": "sn-114",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/114",
@@ -1713,6 +1872,9 @@
         "sn-47-taopedia-article",
         "sn-47-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-47",
       "source_urls": [
         "https://github.com/openevolai/evolai",
@@ -1782,6 +1944,21 @@
         "sn-14-github-readme-latent-to-taohash-dashboard-1",
         "sn-14-taomarketcap-dashboard",
         "sn-14-taomarketcap-source-repo"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-14-website-common-openapi-json",
+        "sn-14-website-common-swagger",
+        "sn-14-website-common-swagger-json",
+        "sn-14-website-common-api",
+        "sn-14-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-14-github-readme-latent-to-cacheon-subnet-api-2",
+        "sn-14-website-common-openapi-json",
+        "sn-14-website-common-swagger",
+        "sn-14-website-common-swagger-json",
+        "sn-14-website-common-api"
       ],
       "slug": "sn-14",
       "source_urls": [
@@ -1854,6 +2031,21 @@
         "sn-68-taopedia-article",
         "sn-68-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-68-website-common-openapi-json",
+        "sn-68-website-common-swagger",
+        "sn-68-website-common-swagger-json",
+        "sn-68-website-common-api",
+        "sn-68-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-68-website-common-openapi-json",
+        "sn-68-website-common-swagger",
+        "sn-68-website-common-swagger-json",
+        "sn-68-website-common-api",
+        "sn-68-website-common-health"
+      ],
       "slug": "sn-68",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/68",
@@ -1924,6 +2116,21 @@
         "sn-100-taomarketcap-website",
         "sn-100-taopedia-article",
         "sn-100-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-100-website-common-openapi-json",
+        "sn-100-website-common-swagger",
+        "sn-100-website-common-swagger-json",
+        "sn-100-website-common-api",
+        "sn-100-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-100-website-common-openapi-json",
+        "sn-100-website-common-swagger",
+        "sn-100-website-common-swagger-json",
+        "sn-100-website-common-api",
+        "sn-100-website-common-health"
       ],
       "slug": "sn-100",
       "source_urls": [
@@ -1996,6 +2203,21 @@
         "sn-17-taomarketcap-website",
         "sn-17-taopedia-article"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-17-website-common-openapi-json",
+        "sn-17-website-common-swagger",
+        "sn-17-website-common-swagger-json",
+        "sn-17-website-common-api",
+        "sn-17-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-17-website-common-openapi-json",
+        "sn-17-website-common-swagger",
+        "sn-17-website-common-swagger-json",
+        "sn-17-website-common-api",
+        "sn-17-website-common-health"
+      ],
       "slug": "sn-17",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/17",
@@ -2065,6 +2287,21 @@
         "sn-70-taomarketcap-website",
         "sn-70-taopedia-article",
         "sn-70-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-70-website-common-openapi-json",
+        "sn-70-website-common-swagger",
+        "sn-70-website-common-swagger-json",
+        "sn-70-website-common-api",
+        "sn-70-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-70-website-common-openapi-json",
+        "sn-70-website-common-swagger",
+        "sn-70-website-common-swagger-json",
+        "sn-70-website-common-api",
+        "sn-70-website-common-health"
       ],
       "slug": "sn-70",
       "source_urls": [
@@ -2141,6 +2378,21 @@
         "sn-4-taopedia-article",
         "sn-4-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-4-website-common-openapi-json",
+        "sn-4-website-common-swagger",
+        "sn-4-website-common-swagger-json",
+        "sn-4-website-common-api",
+        "sn-4-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-4-website-common-openapi-json",
+        "sn-4-website-common-swagger",
+        "sn-4-website-common-swagger-json",
+        "sn-4-website-common-api",
+        "sn-4-website-common-health"
+      ],
       "slug": "sn-4",
       "source_urls": [
         "https://github.com/manifold-inc/targon",
@@ -2207,6 +2459,17 @@
         "sn-6-taomarketcap-source-repo",
         "sn-6-taomarketcap-website",
         "sn-6-taopedia-article"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-6-website-link-numinouslabs-io-subnet-api-2"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-6-website-link-numinouslabs-io-subnet-api-2",
+        "sn-6-website-common-openapi-json",
+        "sn-6-website-common-swagger",
+        "sn-6-website-common-swagger-json",
+        "sn-6-website-common-api"
       ],
       "slug": "sn-6",
       "source_urls": [
@@ -2282,6 +2545,22 @@
         "sn-18-taopedia-article",
         "sn-18-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [
+        "sn-18-website-common-api"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-18-website-common-openapi-json",
+        "sn-18-website-common-swagger",
+        "sn-18-website-common-swagger-json",
+        "sn-18-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-18-website-common-api",
+        "sn-18-website-common-openapi-json",
+        "sn-18-website-common-swagger",
+        "sn-18-website-common-swagger-json",
+        "sn-18-website-common-health"
+      ],
       "slug": "sn-18",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/18",
@@ -2352,6 +2631,21 @@
         "sn-37-taomarketcap-website",
         "sn-37-taopedia-article",
         "sn-37-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-37-website-common-openapi-json",
+        "sn-37-website-common-swagger",
+        "sn-37-website-common-swagger-json",
+        "sn-37-website-common-api",
+        "sn-37-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-37-website-common-openapi-json",
+        "sn-37-website-common-swagger",
+        "sn-37-website-common-swagger-json",
+        "sn-37-website-common-api",
+        "sn-37-website-common-health"
       ],
       "slug": "sn-37",
       "source_urls": [
@@ -2428,6 +2722,21 @@
         "sn-82-taopedia-article",
         "sn-82-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-82-website-common-openapi-json",
+        "sn-82-website-common-swagger",
+        "sn-82-website-common-swagger-json",
+        "sn-82-website-common-api",
+        "sn-82-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-82-website-common-openapi-json",
+        "sn-82-website-common-swagger",
+        "sn-82-website-common-swagger-json",
+        "sn-82-website-common-api",
+        "sn-82-website-common-health"
+      ],
       "slug": "sn-82",
       "source_urls": [
         "https://compelle.com/",
@@ -2495,6 +2804,21 @@
         "sn-108-taomarketcap-website",
         "sn-108-taopedia-article",
         "sn-108-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-108-website-common-openapi-json",
+        "sn-108-website-common-swagger",
+        "sn-108-website-common-swagger-json",
+        "sn-108-website-common-api",
+        "sn-108-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-108-website-common-openapi-json",
+        "sn-108-website-common-swagger",
+        "sn-108-website-common-swagger-json",
+        "sn-108-website-common-api",
+        "sn-108-website-common-health"
       ],
       "slug": "sn-108",
       "source_urls": [
@@ -2571,6 +2895,21 @@
         "sn-9-taomarketcap-source-repo",
         "sn-9-taomarketcap-website"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-9-website-common-openapi-json",
+        "sn-9-website-common-swagger",
+        "sn-9-website-common-swagger-json",
+        "sn-9-website-common-api",
+        "sn-9-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-9-website-common-openapi-json",
+        "sn-9-website-common-swagger",
+        "sn-9-website-common-swagger-json",
+        "sn-9-website-common-api",
+        "sn-9-website-common-health"
+      ],
       "slug": "sn-9",
       "source_urls": [
         "https://github.com/macrocosm-os/iota",
@@ -2643,6 +2982,21 @@
         "sn-21-taomarketcap-website",
         "sn-21-taopedia-article",
         "sn-21-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-21-website-common-openapi-json",
+        "sn-21-website-common-swagger",
+        "sn-21-website-common-swagger-json",
+        "sn-21-website-common-api",
+        "sn-21-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-21-website-common-openapi-json",
+        "sn-21-website-common-swagger",
+        "sn-21-website-common-swagger-json",
+        "sn-21-website-common-api",
+        "sn-21-website-common-health"
       ],
       "slug": "sn-21",
       "source_urls": [
@@ -2717,6 +3071,23 @@
         "sn-32-taopedia-article",
         "sn-32-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [
+        "sn-32-website-link-its-ai-org-subnet-api-5"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-32-website-common-openapi-json",
+        "sn-32-website-common-swagger-json",
+        "sn-32-website-common-swagger",
+        "sn-32-website-common-api",
+        "sn-32-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-32-website-link-its-ai-org-subnet-api-5",
+        "sn-32-website-common-openapi-json",
+        "sn-32-website-common-swagger-json",
+        "sn-32-website-common-swagger",
+        "sn-32-website-common-api"
+      ],
       "slug": "sn-32",
       "source_urls": [
         "https://github.com/It-s-AI/llm-detection",
@@ -2788,6 +3159,21 @@
         "sn-45-taomarketcap-website",
         "sn-45-taopedia-article",
         "sn-45-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-45-website-common-openapi-json",
+        "sn-45-website-common-swagger",
+        "sn-45-website-common-swagger-json",
+        "sn-45-website-common-api",
+        "sn-45-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-45-website-common-openapi-json",
+        "sn-45-website-common-swagger",
+        "sn-45-website-common-swagger-json",
+        "sn-45-website-common-api",
+        "sn-45-website-common-health"
       ],
       "slug": "sn-45",
       "source_urls": [
@@ -2861,6 +3247,21 @@
         "sn-48-taopedia-article",
         "sn-48-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-48-website-common-openapi-json",
+        "sn-48-website-common-swagger",
+        "sn-48-website-common-swagger-json",
+        "sn-48-website-common-api",
+        "sn-48-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-48-website-common-openapi-json",
+        "sn-48-website-common-swagger",
+        "sn-48-website-common-swagger-json",
+        "sn-48-website-common-api",
+        "sn-48-website-common-health"
+      ],
       "slug": "sn-48",
       "source_urls": [
         "https://github.com/qbittensor-labs/quantum-compute",
@@ -2932,6 +3333,21 @@
         "sn-63-taomarketcap-website",
         "sn-63-taopedia-article",
         "sn-63-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-63-website-common-openapi-json",
+        "sn-63-website-common-swagger",
+        "sn-63-website-common-swagger-json",
+        "sn-63-website-common-api",
+        "sn-63-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-63-website-common-openapi-json",
+        "sn-63-website-common-swagger",
+        "sn-63-website-common-swagger-json",
+        "sn-63-website-common-api",
+        "sn-63-website-common-health"
       ],
       "slug": "sn-63",
       "source_urls": [
@@ -3005,6 +3421,21 @@
         "sn-121-taopedia-article",
         "sn-121-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-121-website-common-openapi-json",
+        "sn-121-website-common-swagger",
+        "sn-121-website-common-swagger-json",
+        "sn-121-website-common-api",
+        "sn-121-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-121-website-common-openapi-json",
+        "sn-121-website-common-swagger",
+        "sn-121-website-common-swagger-json",
+        "sn-121-website-common-api",
+        "sn-121-website-common-health"
+      ],
       "slug": "sn-121",
       "source_urls": [
         "https://github.com/sundae-bar/bittensor-subnet",
@@ -3062,6 +3493,15 @@
         "sn-56-taomarketcap-website",
         "sn-56-taopedia-article",
         "sn-56-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-56-website-common-api",
+        "sn-56-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-56-website-common-api",
+        "sn-56-website-common-health"
       ],
       "slug": "sn-56",
       "source_urls": [
@@ -3134,6 +3574,21 @@
         "sn-11-taopedia-article",
         "sn-11-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-11-website-common-openapi-json",
+        "sn-11-website-common-swagger",
+        "sn-11-website-common-swagger-json",
+        "sn-11-website-common-api",
+        "sn-11-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-11-website-common-openapi-json",
+        "sn-11-website-common-swagger",
+        "sn-11-website-common-swagger-json",
+        "sn-11-website-common-api",
+        "sn-11-website-common-health"
+      ],
       "slug": "sn-11",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/11",
@@ -3204,6 +3659,21 @@
         "sn-26-taomarketcap-website",
         "sn-26-taopedia-article",
         "sn-26-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-26-website-common-openapi-json",
+        "sn-26-website-common-swagger",
+        "sn-26-website-common-swagger-json",
+        "sn-26-website-common-api",
+        "sn-26-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-26-website-common-openapi-json",
+        "sn-26-website-common-swagger",
+        "sn-26-website-common-swagger-json",
+        "sn-26-website-common-api",
+        "sn-26-website-common-health"
       ],
       "slug": "sn-26",
       "source_urls": [
@@ -3276,6 +3746,21 @@
         "sn-36-taopedia-article",
         "sn-36-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-36-website-common-openapi-json",
+        "sn-36-website-common-swagger",
+        "sn-36-website-common-swagger-json",
+        "sn-36-website-common-api",
+        "sn-36-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-36-website-common-openapi-json",
+        "sn-36-website-common-swagger",
+        "sn-36-website-common-swagger-json",
+        "sn-36-website-common-api",
+        "sn-36-website-common-health"
+      ],
       "slug": "sn-36",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/36",
@@ -3337,6 +3822,9 @@
         "sn-42-taopedia-article",
         "sn-42-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-42",
       "source_urls": [
         "https://developers.gopher-ai.com/docs/subnet/intro",
@@ -3401,6 +3889,9 @@
         "sn-109-taopedia-article",
         "sn-109-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-109",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/109",
@@ -3464,6 +3955,9 @@
         "sn-115-taopedia-article",
         "sn-115-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-115",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/115",
@@ -3527,6 +4021,9 @@
         "sn-123-taopedia-article",
         "sn-123-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-123",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/123",
@@ -3595,6 +4092,21 @@
         "sn-126-taopedia-article",
         "sn-126-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-126-website-common-openapi-json",
+        "sn-126-website-common-swagger",
+        "sn-126-website-common-swagger-json",
+        "sn-126-website-common-api",
+        "sn-126-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-126-website-common-openapi-json",
+        "sn-126-website-common-swagger",
+        "sn-126-website-common-swagger-json",
+        "sn-126-website-common-api",
+        "sn-126-website-common-health"
+      ],
       "slug": "sn-126",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/126",
@@ -3656,6 +4168,17 @@
         "sn-51-taomarketcap-source-repo",
         "sn-51-taomarketcap-website",
         "sn-51-taopedia-article"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-51-website-common-openapi-json",
+        "sn-51-website-common-swagger",
+        "sn-51-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-51-website-common-openapi-json",
+        "sn-51-website-common-swagger",
+        "sn-51-website-common-swagger-json"
       ],
       "slug": "sn-51",
       "source_urls": [
@@ -3730,6 +4253,21 @@
         "sn-8-taopedia-article",
         "sn-8-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-8-website-common-openapi-json",
+        "sn-8-website-common-swagger",
+        "sn-8-website-common-swagger-json",
+        "sn-8-website-common-api",
+        "sn-8-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-8-website-common-openapi-json",
+        "sn-8-website-common-swagger",
+        "sn-8-website-common-swagger-json",
+        "sn-8-website-common-api",
+        "sn-8-website-common-health"
+      ],
       "slug": "sn-8",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/8",
@@ -3800,6 +4338,21 @@
         "sn-54-taomarketcap-source-repo",
         "sn-54-taomarketcap-website",
         "sn-54-taopedia-article"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-54-website-common-openapi-json",
+        "sn-54-website-common-swagger-json",
+        "sn-54-website-common-swagger",
+        "sn-54-website-common-api",
+        "sn-54-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-54-website-common-openapi-json",
+        "sn-54-website-common-swagger-json",
+        "sn-54-website-common-swagger",
+        "sn-54-website-common-api",
+        "sn-54-website-common-health"
       ],
       "slug": "sn-54",
       "source_urls": [
@@ -3873,6 +4426,21 @@
         "sn-55-taopedia-article",
         "sn-55-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-55-website-common-openapi-json",
+        "sn-55-website-common-swagger",
+        "sn-55-website-common-swagger-json",
+        "sn-55-website-common-api",
+        "sn-55-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-55-website-common-openapi-json",
+        "sn-55-website-common-swagger",
+        "sn-55-website-common-swagger-json",
+        "sn-55-website-common-api",
+        "sn-55-website-common-health"
+      ],
       "slug": "sn-55",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/55",
@@ -3943,6 +4511,21 @@
         "sn-67-taomarketcap-website",
         "sn-67-taopedia-article",
         "sn-67-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-67-website-common-openapi-json",
+        "sn-67-website-common-swagger",
+        "sn-67-website-common-swagger-json",
+        "sn-67-website-common-api",
+        "sn-67-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-67-website-common-openapi-json",
+        "sn-67-website-common-swagger",
+        "sn-67-website-common-swagger-json",
+        "sn-67-website-common-api",
+        "sn-67-website-common-health"
       ],
       "slug": "sn-67",
       "source_urls": [
@@ -4015,6 +4598,21 @@
         "sn-94-taomarketcap-website",
         "sn-94-taopedia-article",
         "sn-94-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-94-website-common-openapi-json",
+        "sn-94-website-common-swagger",
+        "sn-94-website-common-swagger-json",
+        "sn-94-website-common-api",
+        "sn-94-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-94-website-common-openapi-json",
+        "sn-94-website-common-swagger",
+        "sn-94-website-common-swagger-json",
+        "sn-94-website-common-api",
+        "sn-94-website-common-health"
       ],
       "slug": "sn-94",
       "source_urls": [
@@ -4090,6 +4688,21 @@
         "sn-103-taopedia-article",
         "sn-103-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-103-website-common-openapi-json",
+        "sn-103-website-common-swagger",
+        "sn-103-website-common-swagger-json",
+        "sn-103-website-common-api",
+        "sn-103-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-103-website-common-openapi-json",
+        "sn-103-website-common-swagger",
+        "sn-103-website-common-swagger-json",
+        "sn-103-website-common-api",
+        "sn-103-website-common-health"
+      ],
       "slug": "sn-103",
       "source_urls": [
         "https://github.com/Djinn-Inc/djinn",
@@ -4150,6 +4763,18 @@
         "sn-46-github-readme-resi-labs-ai-resi-models-dashboard-1",
         "sn-46-taomarketcap-dashboard",
         "sn-46-taomarketcap-source-repo"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-46-website-link-zipcode-ai-subnet-api-3"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-46-github-readme-resi-labs-ai-resi-labs-api-subnet-api-1"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-46-website-link-zipcode-ai-subnet-api-3",
+        "sn-46-github-readme-resi-labs-ai-resi-labs-api-subnet-api-1",
+        "sn-46-website-common-api",
+        "sn-46-website-common-health"
       ],
       "slug": "sn-46",
       "source_urls": [
@@ -4223,6 +4848,21 @@
         "sn-5-taopedia-article",
         "sn-5-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-5-website-common-openapi-json",
+        "sn-5-website-common-swagger",
+        "sn-5-website-common-swagger-json",
+        "sn-5-website-common-api",
+        "sn-5-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-5-website-common-openapi-json",
+        "sn-5-website-common-swagger",
+        "sn-5-website-common-swagger-json",
+        "sn-5-website-common-api",
+        "sn-5-website-common-health"
+      ],
       "slug": "sn-5",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/5",
@@ -4293,6 +4933,9 @@
         "sn-39-tensorplex-docs",
         "sn-39-tensorplex-source-repo-1"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-39",
       "source_urls": [
         "https://github.com/one-covenant/basilica",
@@ -4366,6 +5009,21 @@
         "sn-98-taopedia-article",
         "sn-98-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-98-website-common-openapi-json",
+        "sn-98-website-common-swagger",
+        "sn-98-website-common-swagger-json",
+        "sn-98-website-common-api",
+        "sn-98-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-98-website-common-openapi-json",
+        "sn-98-website-common-swagger",
+        "sn-98-website-common-swagger-json",
+        "sn-98-website-common-api",
+        "sn-98-website-common-health"
+      ],
       "slug": "sn-98",
       "source_urls": [
         "https://forevermoney.ai/",
@@ -4433,6 +5091,9 @@
         "sn-117-tensorplex-docs",
         "sn-117-tensorplex-source-repo-1"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-117",
       "source_urls": [
         "https://github.com/shiftlayer-llc/brainplay-subnet",
@@ -4501,6 +5162,21 @@
         "sn-127-taomarketcap-website",
         "sn-127-taopedia-article",
         "sn-127-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-127-website-common-openapi-json",
+        "sn-127-website-common-swagger",
+        "sn-127-website-common-swagger-json",
+        "sn-127-website-common-api",
+        "sn-127-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-127-website-common-openapi-json",
+        "sn-127-website-common-swagger",
+        "sn-127-website-common-swagger-json",
+        "sn-127-website-common-api",
+        "sn-127-website-common-health"
       ],
       "slug": "sn-127",
       "source_urls": [
@@ -4573,6 +5249,21 @@
         "sn-44-taopedia-article",
         "sn-44-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-44-website-common-openapi-json",
+        "sn-44-website-common-swagger",
+        "sn-44-website-common-swagger-json",
+        "sn-44-website-common-api",
+        "sn-44-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-44-website-common-openapi-json",
+        "sn-44-website-common-swagger",
+        "sn-44-website-common-swagger-json",
+        "sn-44-website-common-api",
+        "sn-44-website-common-health"
+      ],
       "slug": "sn-44",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/44",
@@ -4643,6 +5334,21 @@
         "sn-35-taomarketcap-website",
         "sn-35-taopedia-article",
         "sn-35-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-35-website-common-openapi-json",
+        "sn-35-website-common-swagger",
+        "sn-35-website-common-swagger-json",
+        "sn-35-website-common-api",
+        "sn-35-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-35-website-common-openapi-json",
+        "sn-35-website-common-swagger",
+        "sn-35-website-common-swagger-json",
+        "sn-35-website-common-api",
+        "sn-35-website-common-health"
       ],
       "slug": "sn-35",
       "source_urls": [
@@ -4719,6 +5425,22 @@
         "sn-85-taopedia-article",
         "sn-85-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [
+        "sn-85-website-common-swagger",
+        "sn-85-website-common-api",
+        "sn-85-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-85-website-common-openapi-json",
+        "sn-85-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-85-website-common-swagger",
+        "sn-85-website-common-api",
+        "sn-85-website-common-health",
+        "sn-85-website-common-openapi-json",
+        "sn-85-website-common-swagger-json"
+      ],
       "slug": "sn-85",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/85",
@@ -4787,6 +5509,21 @@
         "sn-120-taomarketcap-source-repo",
         "sn-120-taomarketcap-website",
         "sn-120-taopedia-article"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-120-website-common-openapi-json",
+        "sn-120-website-common-swagger",
+        "sn-120-website-common-swagger-json",
+        "sn-120-website-common-api",
+        "sn-120-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-120-website-common-openapi-json",
+        "sn-120-website-common-swagger",
+        "sn-120-website-common-swagger-json",
+        "sn-120-website-common-api",
+        "sn-120-website-common-health"
       ],
       "slug": "sn-120",
       "source_urls": [
@@ -4863,6 +5600,21 @@
         "sn-88-taomarketcap-source-repo",
         "sn-88-taomarketcap-website"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-88-website-common-openapi-json",
+        "sn-88-website-common-swagger",
+        "sn-88-website-common-swagger-json",
+        "sn-88-website-common-api",
+        "sn-88-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-88-github-readme-mobiusfund-investing-subnet-api-2",
+        "sn-88-website-common-openapi-json",
+        "sn-88-website-common-swagger",
+        "sn-88-website-common-swagger-json",
+        "sn-88-website-common-api"
+      ],
       "slug": "sn-88",
       "source_urls": [
         "https://db.investing88.ai/",
@@ -4931,6 +5683,21 @@
         "sn-112-taomarketcap-website",
         "sn-112-taopedia-article",
         "sn-112-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-112-website-common-openapi-json",
+        "sn-112-website-common-swagger",
+        "sn-112-website-common-swagger-json",
+        "sn-112-website-common-api",
+        "sn-112-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-112-website-common-openapi-json",
+        "sn-112-website-common-swagger",
+        "sn-112-website-common-swagger-json",
+        "sn-112-website-common-api",
+        "sn-112-website-common-health"
       ],
       "slug": "sn-112",
       "source_urls": [
@@ -5003,6 +5770,21 @@
         "sn-106-taopedia-article",
         "sn-106-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-106-website-common-openapi-json",
+        "sn-106-website-common-swagger",
+        "sn-106-website-common-swagger-json",
+        "sn-106-website-common-api",
+        "sn-106-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-106-website-common-openapi-json",
+        "sn-106-website-common-swagger",
+        "sn-106-website-common-swagger-json",
+        "sn-106-website-common-api",
+        "sn-106-website-common-health"
+      ],
       "slug": "sn-106",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/106",
@@ -5064,6 +5846,17 @@
         "sn-107-taomarketcap-dashboard",
         "sn-107-taomarketcap-source-repo",
         "sn-107-taomarketcap-website"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-107-website-common-openapi-json",
+        "sn-107-website-common-swagger",
+        "sn-107-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-107-website-common-openapi-json",
+        "sn-107-website-common-swagger",
+        "sn-107-website-common-swagger-json"
       ],
       "slug": "sn-107",
       "source_urls": [
@@ -5136,6 +5929,21 @@
         "sn-10-taomarketcap-website",
         "sn-10-taopedia-article",
         "sn-10-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-10-website-common-openapi-json",
+        "sn-10-website-common-swagger",
+        "sn-10-website-common-swagger-json",
+        "sn-10-website-common-api",
+        "sn-10-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-10-website-common-openapi-json",
+        "sn-10-website-common-swagger",
+        "sn-10-website-common-swagger-json",
+        "sn-10-website-common-api",
+        "sn-10-website-common-health"
       ],
       "slug": "sn-10",
       "source_urls": [
@@ -5212,6 +6020,21 @@
         "sn-102-taomarketcap-website",
         "sn-102-taopedia-article"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-102-website-common-openapi-json",
+        "sn-102-website-common-swagger",
+        "sn-102-website-common-swagger-json",
+        "sn-102-website-common-api",
+        "sn-102-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-102-website-common-openapi-json",
+        "sn-102-website-common-swagger",
+        "sn-102-website-common-swagger-json",
+        "sn-102-website-common-api",
+        "sn-102-website-common-health"
+      ],
       "slug": "sn-102",
       "source_urls": [
         "https://connito.ai/",
@@ -5277,6 +6100,9 @@
         "sn-30-tensorplex-docs",
         "sn-30-website-common-api"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-30",
       "source_urls": [
         "https://docs.endure.network/",
@@ -5335,6 +6161,15 @@
         "sn-65-taomarketcap-website",
         "sn-65-taopedia-article",
         "sn-65-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-65-website-common-api",
+        "sn-65-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-65-website-common-api",
+        "sn-65-website-common-health"
       ],
       "slug": "sn-65",
       "source_urls": [
@@ -5398,6 +6233,15 @@
         "sn-93-taomarketcap-website",
         "sn-93-taopedia-article"
       ],
+      "sample_live_candidate_ids": [
+        "sn-93-website-common-api",
+        "sn-93-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-93-website-common-api",
+        "sn-93-website-common-health"
+      ],
       "slug": "sn-93",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/93",
@@ -5459,6 +6303,17 @@
         "sn-59-taomarketcap-source-repo",
         "sn-59-taomarketcap-website",
         "sn-59-taopedia-article"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-59-website-common-openapi-json",
+        "sn-59-website-common-swagger",
+        "sn-59-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-59-website-common-openapi-json",
+        "sn-59-website-common-swagger",
+        "sn-59-website-common-swagger-json"
       ],
       "slug": "sn-59",
       "source_urls": [
@@ -5528,6 +6383,21 @@
         "sn-24-taomarketcap-source-repo",
         "sn-24-taomarketcap-website",
         "sn-24-taopedia-article"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-24-website-common-openapi-json",
+        "sn-24-website-common-swagger",
+        "sn-24-website-common-swagger-json",
+        "sn-24-website-common-api",
+        "sn-24-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-24-website-common-openapi-json",
+        "sn-24-website-common-swagger",
+        "sn-24-website-common-swagger-json",
+        "sn-24-website-common-api",
+        "sn-24-website-common-health"
       ],
       "slug": "sn-24",
       "source_urls": [
@@ -5602,6 +6472,21 @@
         "sn-72-taomarketcap-website",
         "sn-72-taopedia-article"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-72-website-common-openapi-json",
+        "sn-72-website-common-swagger",
+        "sn-72-website-common-swagger-json",
+        "sn-72-website-common-api",
+        "sn-72-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-72-website-common-openapi-json",
+        "sn-72-website-common-swagger",
+        "sn-72-website-common-swagger-json",
+        "sn-72-website-common-api",
+        "sn-72-website-common-health"
+      ],
       "slug": "sn-72",
       "source_urls": [
         "https://docs.natix.network/whitepaper",
@@ -5662,6 +6547,15 @@
         "sn-2-github-readme-inference-labs-inc-subnet-2-docs-1",
         "sn-2-taomarketcap-dashboard",
         "sn-2-taomarketcap-source-repo"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-2-website-common-api",
+        "sn-2-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-2-website-common-api",
+        "sn-2-website-common-health"
       ],
       "slug": "sn-2",
       "source_urls": [
@@ -5731,6 +6625,17 @@
         "sn-97-taomarketcap-source-repo",
         "sn-97-taomarketcap-website"
       ],
+      "sample_live_candidate_ids": [
+        "sn-97-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-97-website-common-api"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-97-website-common-health",
+        "sn-97-github-readme-unitone-labs-flamewire-subnet-api-2",
+        "sn-97-website-common-api"
+      ],
       "slug": "sn-97",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/97",
@@ -5797,6 +6702,16 @@
         "sn-99-taomarketcap-source-repo",
         "sn-99-taomarketcap-website"
       ],
+      "sample_live_candidate_ids": [
+        "sn-99-website-common-api",
+        "sn-99-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-99-website-common-api",
+        "sn-99-website-common-health",
+        "sn-99-github-readme-rendixnetwork-leoma-subnet-api-1"
+      ],
       "slug": "sn-99",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/99",
@@ -5861,6 +6776,16 @@
         "sn-60-taomarketcap-website",
         "sn-60-taopedia-article"
       ],
+      "sample_live_candidate_ids": [
+        "sn-60-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-60-website-common-api"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-60-website-common-health",
+        "sn-60-website-common-api"
+      ],
       "slug": "sn-60",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/60",
@@ -5922,6 +6847,15 @@
         "sn-78-taomarketcap-website",
         "sn-78-taopedia-article",
         "sn-78-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-78-website-common-api",
+        "sn-78-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-78-website-common-api",
+        "sn-78-website-common-health"
       ],
       "slug": "sn-78",
       "source_urls": [
@@ -5986,6 +6920,16 @@
         "sn-80-taomarketcap-website",
         "sn-80-taopedia-article",
         "sn-80-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-80-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-80-website-common-api"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-80-website-common-health",
+        "sn-80-website-common-api"
       ],
       "slug": "sn-80",
       "source_urls": [
@@ -6058,6 +7002,15 @@
         "sn-62-taopedia-article",
         "sn-62-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-62-website-common-openapi-json",
+        "sn-62-website-common-swagger",
+        "sn-62-website-common-swagger-json",
+        "sn-62-website-common-api",
+        "sn-62-website-common-health"
+      ],
       "slug": "sn-62",
       "source_urls": [
         "https://github.com/ridgesai/ridges",
@@ -6116,6 +7069,15 @@
         "sn-124-taomarketcap-source-repo",
         "sn-124-taomarketcap-website",
         "sn-124-taopedia-article"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-124-website-common-api",
+        "sn-124-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-124-website-common-api",
+        "sn-124-website-common-health"
       ],
       "slug": "sn-124",
       "source_urls": [
@@ -6179,6 +7141,15 @@
         "sn-128-taomarketcap-website",
         "sn-128-taopedia-article",
         "sn-128-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-128-website-common-api",
+        "sn-128-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-128-website-common-api",
+        "sn-128-website-common-health"
       ],
       "slug": "sn-128",
       "source_urls": [
@@ -6252,6 +7223,23 @@
         "sn-75-taopedia-article",
         "sn-75-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [
+        "sn-75-website-link-hippius-com-subnet-api-10"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-75-website-common-openapi-json",
+        "sn-75-website-common-swagger",
+        "sn-75-website-common-swagger-json",
+        "sn-75-website-common-api",
+        "sn-75-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-75-website-link-hippius-com-subnet-api-10",
+        "sn-75-website-common-openapi-json",
+        "sn-75-website-common-swagger",
+        "sn-75-website-common-swagger-json",
+        "sn-75-website-common-api"
+      ],
       "slug": "sn-75",
       "source_urls": [
         "https://docs.hippius.com/",
@@ -6314,6 +7302,15 @@
         "sn-41-taopedia-article",
         "sn-41-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [
+        "sn-41-website-common-api",
+        "sn-41-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-41-website-common-api",
+        "sn-41-website-common-health"
+      ],
       "slug": "sn-41",
       "source_urls": [
         "https://almanac.market/",
@@ -6375,6 +7372,17 @@
         "sn-50-taomarketcap-source-repo",
         "sn-50-taomarketcap-website",
         "sn-50-taopedia-article"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-50-github-readme-mode-network-synth-subnet-subnet-api-1",
+        "sn-50-website-common-api",
+        "sn-50-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-50-github-readme-mode-network-synth-subnet-subnet-api-1",
+        "sn-50-website-common-api",
+        "sn-50-website-common-health"
       ],
       "slug": "sn-50",
       "source_urls": [
@@ -6444,6 +7452,21 @@
         "sn-79-taopedia-article",
         "sn-79-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-79-website-common-openapi-json",
+        "sn-79-website-common-swagger",
+        "sn-79-website-common-swagger-json",
+        "sn-79-website-common-api",
+        "sn-79-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-79-website-common-openapi-json",
+        "sn-79-website-common-swagger",
+        "sn-79-website-common-swagger-json",
+        "sn-79-website-common-api",
+        "sn-79-website-common-health"
+      ],
       "slug": "sn-79",
       "source_urls": [
         "https://github.com/taos-im/sn-79",
@@ -6504,6 +7527,15 @@
         "sn-16-taomarketcap-website",
         "sn-16-taopedia-article",
         "sn-16-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-16-website-common-api",
+        "sn-16-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-16-website-common-api",
+        "sn-16-website-common-health"
       ],
       "slug": "sn-16",
       "source_urls": [
@@ -6567,6 +7599,15 @@
         "sn-38-taopedia-article",
         "sn-38-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [
+        "sn-38-website-common-api",
+        "sn-38-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-38-website-common-api",
+        "sn-38-website-common-health"
+      ],
       "slug": "sn-38",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/38",
@@ -6628,6 +7669,15 @@
         "sn-71-taomarketcap-website",
         "sn-71-taopedia-article",
         "sn-71-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-71-website-common-api",
+        "sn-71-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-71-website-common-api",
+        "sn-71-website-common-health"
       ],
       "slug": "sn-71",
       "source_urls": [
@@ -6691,6 +7741,15 @@
         "sn-77-taopedia-article",
         "sn-77-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [
+        "sn-77-website-common-api",
+        "sn-77-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-77-website-common-api",
+        "sn-77-website-common-health"
+      ],
       "slug": "sn-77",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/77",
@@ -6753,6 +7812,15 @@
         "sn-83-taopedia-article",
         "sn-83-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [
+        "sn-83-website-common-api",
+        "sn-83-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-83-website-common-api",
+        "sn-83-website-common-health"
+      ],
       "slug": "sn-83",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/83",
@@ -6814,6 +7882,15 @@
         "sn-105-taomarketcap-website",
         "sn-105-taopedia-article",
         "sn-105-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-105-website-common-api",
+        "sn-105-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-105-website-common-api",
+        "sn-105-website-common-health"
       ],
       "slug": "sn-105",
       "source_urls": [
@@ -6880,6 +7957,25 @@
         "sn-23-taomarketcap-dashboard",
         "sn-23-taomarketcap-source-repo",
         "sn-23-taomarketcap-website"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-23-taopedia-article",
+        "sn-23-tensorplex-docs",
+        "sn-23-website-link-trishool-ai-docs-1",
+        "sn-23-website-link-trishool-ai-docs-2"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-23-website-common-docs",
+        "sn-23-website-common-openapi-json",
+        "sn-23-website-common-swagger",
+        "sn-23-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-23-taopedia-article",
+        "sn-23-tensorplex-docs",
+        "sn-23-website-link-trishool-ai-docs-1",
+        "sn-23-website-link-trishool-ai-docs-2",
+        "sn-23-website-common-docs"
       ],
       "slug": "sn-23",
       "source_urls": [
@@ -6950,6 +8046,21 @@
         "sn-13-github-readme-macrocosm-os-data-universe-subnet-api-2",
         "sn-13-taomarketcap-dashboard",
         "sn-13-taomarketcap-source-repo"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-13-website-common-openapi-json",
+        "sn-13-website-common-swagger",
+        "sn-13-website-common-swagger-json",
+        "sn-13-website-common-api",
+        "sn-13-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-13-github-readme-macrocosm-os-data-universe-subnet-api-2",
+        "sn-13-website-common-openapi-json",
+        "sn-13-website-common-swagger",
+        "sn-13-website-common-swagger-json",
+        "sn-13-website-common-api"
       ],
       "slug": "sn-13",
       "source_urls": [
@@ -7023,6 +8134,21 @@
         "sn-19-taomarketcap-website",
         "sn-19-taopedia-article"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-19-website-common-openapi-json",
+        "sn-19-website-common-swagger",
+        "sn-19-website-common-swagger-json",
+        "sn-19-website-common-api",
+        "sn-19-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-19-website-common-openapi-json",
+        "sn-19-website-common-swagger",
+        "sn-19-website-common-swagger-json",
+        "sn-19-website-common-api",
+        "sn-19-website-common-health"
+      ],
       "slug": "sn-19",
       "source_urls": [
         "https://blockmachine.io/",
@@ -7084,6 +8210,22 @@
         "sn-64-github-readme-rayonlabs-chutes-miner-subnet-api-1",
         "sn-64-taomarketcap-dashboard",
         "sn-64-taomarketcap-source-repo"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-64-website-link-chutes-ai-data-artifact-5",
+        "sn-64-website-link-chutes-ai-data-artifact-6"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-64-website-common-openapi-json",
+        "sn-64-website-common-swagger",
+        "sn-64-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-64-website-link-chutes-ai-data-artifact-5",
+        "sn-64-website-link-chutes-ai-data-artifact-6",
+        "sn-64-website-common-openapi-json",
+        "sn-64-website-common-swagger",
+        "sn-64-website-common-swagger-json"
       ],
       "slug": "sn-64",
       "source_urls": [
@@ -7157,6 +8299,11 @@
         "sn-33-taomarketcap-source-repo",
         "sn-33-taopedia-article"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-33-github-readme-afterpartyai-bittensor-conversation-genome-project-subnet-api-2"
+      ],
       "slug": "sn-33",
       "source_urls": [
         "https://github.com/afterpartyai/bittensor-conversation-genome-project",
@@ -7216,6 +8363,9 @@
         "sn-87-taopedia-article",
         "sn-87-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-87",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/87",
@@ -7288,6 +8438,13 @@
         "sn-12-taopedia-article",
         "sn-12-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [
+        "sn-12-github-readme-backend-developers-ltd-computehorde-subnet-api-1"
+      ],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-12-github-readme-backend-developers-ltd-computehorde-subnet-api-1"
+      ],
       "slug": "sn-12",
       "source_urls": [
         "https://computehorde.io/",
@@ -7358,6 +8515,21 @@
         "sn-15-taomarketcap-dashboard",
         "sn-15-taomarketcap-source-repo"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-15-website-common-openapi-json",
+        "sn-15-website-common-swagger",
+        "sn-15-website-common-swagger-json",
+        "sn-15-website-common-api",
+        "sn-15-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-15-github-readme-oro-ai-oro-subnet-api-3",
+        "sn-15-website-common-openapi-json",
+        "sn-15-website-common-swagger",
+        "sn-15-website-common-swagger-json",
+        "sn-15-website-common-api"
+      ],
       "slug": "sn-15",
       "source_urls": [
         "https://docs.oroagents.com/docs/miners/quick-start",
@@ -7420,6 +8592,9 @@
         "sn-3-tensorplex-docs",
         "sn-3-tensorplex-source-repo-1"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-3",
       "source_urls": [
         "https://docs.tplr.ai/",
@@ -7489,6 +8664,21 @@
         "sn-1-taomarketcap-website",
         "sn-1-taopedia-article"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-1-website-common-openapi-json",
+        "sn-1-website-common-swagger",
+        "sn-1-website-common-swagger-json",
+        "sn-1-website-common-api",
+        "sn-1-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-1-website-common-openapi-json",
+        "sn-1-website-common-swagger",
+        "sn-1-website-common-swagger-json",
+        "sn-1-website-common-api",
+        "sn-1-website-common-health"
+      ],
       "slug": "sn-1",
       "source_urls": [
         "https://apex.macrocosmos.ai/",
@@ -7556,6 +8746,9 @@
         "sn-43-taopedia-article",
         "sn-43-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-43",
       "source_urls": [
         "https://github.com/GraphiteAI/Graphite-Subnet",
@@ -7622,6 +8815,9 @@
         "sn-57-tensorplex-docs",
         "sn-57-tensorplex-source-repo-1"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-57",
       "source_urls": [
         "https://api.github.com/repos/sparket-ai/sparket-ai",
@@ -7688,6 +8884,9 @@
         "sn-111-taopedia-article",
         "sn-111-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-111",
       "source_urls": [
         "https://api.github.com/repos/oneoneone-io/subnet-111",
@@ -7755,6 +8954,21 @@
         "sn-113-taomarketcap-source-repo",
         "sn-113-taomarketcap-website",
         "sn-113-taopedia-article"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-113-website-common-openapi-json",
+        "sn-113-website-common-swagger",
+        "sn-113-website-common-swagger-json",
+        "sn-113-website-common-api",
+        "sn-113-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-113-website-common-openapi-json",
+        "sn-113-website-common-swagger",
+        "sn-113-website-common-swagger-json",
+        "sn-113-website-common-api",
+        "sn-113-website-common-health"
       ],
       "slug": "sn-113",
       "source_urls": [
@@ -7830,6 +9044,22 @@
         "sn-74-taomarketcap-source-repo",
         "sn-74-taomarketcap-website"
       ],
+      "sample_live_candidate_ids": [
+        "sn-74-website-common-swagger",
+        "sn-74-website-common-api",
+        "sn-74-website-common-health"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-74-website-common-openapi-json",
+        "sn-74-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-74-website-common-swagger",
+        "sn-74-website-common-api",
+        "sn-74-website-common-health",
+        "community-sn-74-openapi-api-gittensor-io",
+        "sn-74-website-common-openapi-json"
+      ],
       "slug": "gittensor",
       "source_urls": [
         "https://docs.gittensor.io/",
@@ -7888,6 +9118,17 @@
         "sn-110-taopedia-article",
         "sn-110-tensorplex-docs",
         "sn-110-tensorplex-source-repo-1"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-110-website-common-openapi-json",
+        "sn-110-website-common-swagger",
+        "sn-110-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-110-website-common-openapi-json",
+        "sn-110-website-common-swagger",
+        "sn-110-website-common-swagger-json"
       ],
       "slug": "sn-110",
       "source_urls": [
@@ -7959,6 +9200,21 @@
         "sn-61-taomarketcap-source-repo",
         "sn-61-taomarketcap-website"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-61-website-common-openapi-json",
+        "sn-61-website-common-swagger",
+        "sn-61-website-common-swagger-json",
+        "sn-61-website-common-api",
+        "sn-61-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-61-website-common-openapi-json",
+        "sn-61-website-common-swagger",
+        "sn-61-website-common-swagger-json",
+        "sn-61-website-common-api",
+        "sn-61-website-common-health"
+      ],
       "slug": "sn-61",
       "source_urls": [
         "https://dashboard.theredteam.io/",
@@ -8020,6 +9276,18 @@
         "sn-66-taomarketcap-website",
         "sn-66-taopedia-article",
         "sn-66-tensorplex-docs"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-66-website-common-swagger"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-66-website-common-openapi-json",
+        "sn-66-website-common-swagger-json"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-66-website-common-swagger",
+        "sn-66-website-common-openapi-json",
+        "sn-66-website-common-swagger-json"
       ],
       "slug": "sn-66",
       "source_urls": [
@@ -8085,6 +9353,9 @@
         "sn-29-tensorplex-docs",
         "sn-29-tensorplex-source-repo-1"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-29",
       "source_urls": [
         "https://coldint.io/",
@@ -8149,6 +9420,9 @@
         "sn-52-taopedia-article",
         "sn-52-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-52",
       "source_urls": [
         "https://docs.tensorplex.ai/tensorplex-docs/tensorplex-dojo-bittensor-subnet/subnet-mechanism",
@@ -8213,6 +9487,9 @@
         "sn-84-tensorplex-source-repo-1",
         "sn-84-tensorplex-source-repo-2"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-84",
       "source_urls": [
         "https://api.github.com/repos/TatsuProject/ChipForge_SN84",
@@ -8275,6 +9552,9 @@
         "sn-34-taopedia-article",
         "sn-34-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-34",
       "source_urls": [
         "https://api.github.com/repos/BitMind-AI/bitmind-subnet",
@@ -8337,6 +9617,9 @@
         "sn-122-tensorplex-docs",
         "sn-122-tensorplex-source-repo-1"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-122",
       "source_urls": [
         "https://api.github.com/repos/bitrecs/bitrecs-subnet",
@@ -8392,6 +9675,9 @@
         "sn-58-taopedia-article",
         "sn-58-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-58",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/58",
@@ -8455,6 +9741,9 @@
         "sn-0-taomarketcap-dashboard",
         "sn-0-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "root",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/0",
@@ -8513,6 +9802,9 @@
         "sn-49-taomarketcap-source-repo",
         "sn-49-taomarketcap-website"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-49",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/49",
@@ -8571,6 +9863,9 @@
         "sn-96-taomarketcap-source-repo",
         "sn-96-taomarketcap-website"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-96",
       "source_urls": [
         "https://api.taomarketcap.com/public/v1/subnets/96",
@@ -8629,6 +9924,9 @@
         "sn-22-taopedia-article",
         "sn-22-tensorplex-docs"
       ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [],
       "slug": "sn-22",
       "source_urls": [
         "https://api.desearch.ai",

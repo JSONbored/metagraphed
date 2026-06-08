@@ -121,7 +121,7 @@ export function renderCurationBrief(snapshot) {
     ...numberedRows(
       enrichmentQueue,
       (row) =>
-        `SN${row.netuid} ${row.name} - ${row.lane}; ${row.evidence_action || "unknown-action"}; priority ${row.priority_score}; ${row.recommended_action}; target kinds: ${row.direct_submission_kinds.join(", ") || "n/a"}`,
+        `SN${row.netuid} ${row.name} - ${row.lane}; ${row.evidence_action || "unknown-action"}; priority ${row.priority_score}; ${row.recommended_action}; target kinds: ${row.direct_submission_kinds.join(", ") || "n/a"}; candidates: ${formatCandidateSamples(row)}`,
     ),
     "",
     "## Lowest Profile Completeness",
@@ -218,6 +218,9 @@ function enrichmentBriefRow(entry) {
     manual_review_required: entry.manual_review_required,
     reason_codes: entry.reason_codes || [],
     recommended_action: entry.recommended_action,
+    sample_live_candidate_ids: entry.sample_live_candidate_ids || [],
+    sample_stale_candidate_ids: entry.sample_stale_candidate_ids || [],
+    sample_target_candidate_ids: entry.sample_target_candidate_ids || [],
   };
 }
 
@@ -234,6 +237,22 @@ function formatCounts(counts) {
     return "none";
   }
   return entries.map(([key, value]) => `${key} ${value}`).join(", ");
+}
+
+function formatCandidateSamples(row) {
+  const live = row.sample_live_candidate_ids || [];
+  const target = row.sample_target_candidate_ids || [];
+  const stale = row.sample_stale_candidate_ids || [];
+  if (live.length > 0) {
+    return `live ${live.join(", ")}`;
+  }
+  if (target.length > 0) {
+    return target.join(", ");
+  }
+  if (stale.length > 0) {
+    return `stale ${stale.join(", ")}`;
+  }
+  return "n/a";
 }
 
 async function readArtifact(relativePath) {

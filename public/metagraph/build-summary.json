@@ -7,7 +7,7 @@
   },
   "artifact_budgets": [],
   "artifact_count": 22,
-  "artifact_size_bytes": 3365457,
+  "artifact_size_bytes": 3412327,
   "artifacts": [
     {
       "path": "api-index.json",
@@ -17,8 +17,8 @@
     },
     {
       "path": "changelog.json",
-      "sha256": "a1065b0dc43d906e2f26f7cf1088786f2b5e72dbc6d0114f26fdec353abdcdf1",
-      "size_bytes": 1497,
+      "sha256": "8d527c2950c9337d67c95546bea2924abc8d57a62fdf696392e6af014bf19dfa",
+      "size_bytes": 1361,
       "storage_tier": "dual"
     },
     {
@@ -59,8 +59,8 @@
     },
     {
       "path": "openapi.json",
-      "sha256": "0ab6b0a3c71cf7d38907eb19bea8578a13fec49be0884f740b57096a38d32ab8",
-      "size_bytes": 322254,
+      "sha256": "d57c54893b6e55b1795e3cd4babd57508518827115bfe4eb721fd75c16a2e4b5",
+      "size_bytes": 322830,
       "storage_tier": "dual"
     },
     {
@@ -89,8 +89,8 @@
     },
     {
       "path": "review/enrichment-queue.json",
-      "sha256": "173d3422c62e7916c9ae8c969e28847ef0b3e2c683b2c3a9007f6b4bdcdd2d77",
-      "size_bytes": 281928,
+      "sha256": "5df0ef6efbb61ddd5436c2b08d9e174ab4ec2391115311720857fe19612b9ba6",
+      "size_bytes": 328358,
       "storage_tier": "dual"
     },
     {
@@ -181,7 +181,7 @@
   },
   "endpoint_count": 662,
   "full_artifact_count": 1203,
-  "full_artifact_size_bytes": 23499866,
+  "full_artifact_size_bytes": 23546736,
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profile_count": 129,
   "provider_count": 66,
@@ -196,7 +196,7 @@
     "r2": 1181
   },
   "storage_tier_size_bytes": {
-    "dual": 3235523,
+    "dual": 3282393,
     "git": 129934,
     "r2": 20134409
   },

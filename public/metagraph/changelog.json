@@ -3,12 +3,8 @@
     "added": [],
     "modified": [
       {
-        "hash": "0ab6b0a3c71cf7d38907eb19bea8578a13fec49be0884f740b57096a38d32ab8",
-        "path": "openapi.json"
-      },
-      {
-        "hash": "c2a359370d210be098a02134e027702401e04a615fc64b78c540446273f54f86",
-        "path": "review/profile-completeness.json"
+        "hash": "5df0ef6efbb61ddd5436c2b08d9e174ab4ec2391115311720857fe19612b9ba6",
+        "path": "review/enrichment-queue.json"
       }
     ],
     "removed": []
@@ -28,7 +24,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 2,
+    "artifact_modified_count": 1,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {

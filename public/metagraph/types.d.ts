@@ -1527,6 +1527,9 @@ export interface components {
             recommended_action: string;
             review_state: components["schemas"]["ReviewState"];
             sample_candidate_ids: string[];
+            sample_live_candidate_ids: string[];
+            sample_stale_candidate_ids: string[];
+            sample_target_candidate_ids: string[];
             slug: string;
             source_urls: string[];
             stale_candidate_count: number;

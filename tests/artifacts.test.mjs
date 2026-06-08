@@ -660,6 +660,21 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   assert.equal(
+    enrichmentQueue.queue.every(
+      (entry) =>
+        Array.isArray(entry.sample_live_candidate_ids) &&
+        Array.isArray(entry.sample_stale_candidate_ids) &&
+        Array.isArray(entry.sample_target_candidate_ids),
+    ),
+    true,
+  );
+  assert.equal(
+    enrichmentQueue.queue.some(
+      (entry) => entry.sample_target_candidate_ids.length > 0,
+    ),
+    true,
+  );
+  assert.equal(
     enrichmentEvidence.entries.some(
       (entry) => entry.candidate_evidence_by_kind["source-repo"],
     ),
