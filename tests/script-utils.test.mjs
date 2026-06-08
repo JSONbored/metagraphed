@@ -110,6 +110,16 @@ describe("script utility contracts", () => {
     }
   });
 
+  test("refresh pipeline persists candidate discovery timestamps", async () => {
+    const source = await readFile(
+      path.join(repoRoot, "scripts/pipeline.mjs"),
+      "utf8",
+    );
+
+    assert.match(source, /METAGRAPH_DISCOVERY_OBSERVED_AT:\s*refreshTimestamp/);
+    assert.match(source, /METAGRAPH_PERSIST_DISCOVERY_OBSERVED_AT:\s*"1"/);
+  });
+
   test("classifies artifact storage tiers for files and route templates", async () => {
     assert.equal(
       artifactRelativePath("/metagraph/subnets/7.json"),

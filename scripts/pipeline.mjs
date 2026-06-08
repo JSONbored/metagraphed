@@ -90,6 +90,7 @@ function refreshCommands(refreshTimestamp) {
   const refreshEnv = {
     METAGRAPH_BUILD_TIMESTAMP: refreshTimestamp,
     METAGRAPH_DISCOVERY_OBSERVED_AT: refreshTimestamp,
+    METAGRAPH_PERSIST_DISCOVERY_OBSERVED_AT: "1",
   };
   const commands = [
     step("sync:subnets"),
