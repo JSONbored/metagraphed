@@ -177,7 +177,7 @@ function AutoRefreshControl({
           ? "Paused"
           : !visible
             ? "Tab hidden"
-            : `Next sync · ${secondsLeft}s`}
+            : <><span aria-hidden="true">Next sync · {secondsLeft}s</span><span className="sr-only">Auto-refresh on</span></>}
       </button>
 
       {enabled && !visible ? (
@@ -196,9 +196,10 @@ function AutoRefreshControl({
         <RefreshCw className={`size-3 ${fetching ? "animate-spin text-ink-strong" : "text-ink-muted"}`} />
         {fetching ? "syncing" : "idle"}
       </span>
-      <span role="status" aria-live="polite" className="sr-only">
-        {fetching ? "Refreshing health data" : ""}
+      <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {announcement}
       </span>
+
     </div>
   );
 }
