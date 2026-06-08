@@ -308,19 +308,21 @@ async function discoverFromTensorplexSubnetDocs() {
 }
 
 async function discoverFromTaopediaArticles() {
-  const treeUrl =
-    "https://api.github.com/repos/e35ventura/taopedia-articles/git/trees/main?recursive=1";
-  const tree = await fetchJson(treeUrl, githubHeaders());
-  if (!Array.isArray(tree?.tree)) {
-    warnings.push("taopedia-articles: failed to list repository tree");
+  const pagesUrl =
+    "https://api.github.com/repos/e35ventura/taopedia-articles/contents/content/pages?ref=main";
+  const pages = await fetchJson(pagesUrl, githubHeaders());
+  if (!Array.isArray(pages)) {
+    warnings.push("taopedia-articles: failed to list content pages");
     restoreExistingCandidatesForProvider("taopedia-articles");
     return;
   }
 
-  for (const entry of tree.tree) {
-    const match = /^content\/pages\/subnet_(\d+)[^/]*\/index\.mdx$/.exec(
-      entry.path || "",
-    );
+  for (const entry of pages) {
+    if (entry.type !== "dir") {
+      continue;
+    }
+
+    const match = /^subnet_(\d+)[^/]*$/.exec(entry.name || "");
     if (!match) {
       continue;
     }
@@ -330,7 +332,7 @@ async function discoverFromTaopediaArticles() {
       continue;
     }
 
-    const url = `https://github.com/e35ventura/taopedia-articles/blob/main/${entry.path}`;
+    const url = `https://github.com/e35ventura/taopedia-articles/blob/main/${entry.path}/index.mdx`;
     addCandidate({
       id: `sn-${netuid}-taopedia-article`,
       netuid,
