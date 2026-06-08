@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/metagraphed/client";
 import { ExternalLink } from "./external-link";
 import { HoverPreview } from "./hover-preview";
 import { EmptyState, Skeleton } from "./states";
+import { TimeAgo } from "./time-ago";
 import { formatRelative } from "@/lib/metagraphed/format";
 import type { ApiMeta, EvidenceItem } from "@/lib/metagraphed/types";
 
