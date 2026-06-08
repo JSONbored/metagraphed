@@ -2,7 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { EmptyState, PageHeading, Skeleton, StaleBanner } from "@/components/metagraphed/states";
+import { EmptyState, PageHeading, Skeleton, StaleBanner, RECOVERY } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ProfileHero } from "@/components/metagraphed/profile-hero";
 import { PrimaryLinksRail } from "@/components/metagraphed/primary-links-rail";
