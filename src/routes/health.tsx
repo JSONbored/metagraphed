@@ -252,9 +252,9 @@ function Cell({
   format?: (n: number) => string;
 }) {
   return (
-    <div className="bg-card p-3">
+    <div className="bg-card p-3 mg-kpi">
       <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">{label}</div>
-      <div className={`font-display text-xl font-semibold tabular-nums ${accent ?? "text-ink-strong"}`}>
+      <div className={`mg-kpi-num font-display text-xl font-semibold tabular-nums ${accent ?? "text-ink-strong"}`}>
         <AnimatedNumber value={num} format={format} />
       </div>
     </div>
