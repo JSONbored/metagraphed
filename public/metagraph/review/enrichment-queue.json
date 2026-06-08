@@ -1043,18 +1043,18 @@
       ],
       "sample_live_candidate_ids": [],
       "sample_stale_candidate_ids": [
-        "sn-70-website-common-health",
         "sn-70-website-common-openapi-json",
         "sn-70-website-common-swagger",
         "sn-70-website-common-swagger-json",
-        "sn-70-website-common-api"
+        "sn-70-website-common-api",
+        "sn-70-website-common-health"
       ],
       "sample_target_candidate_ids": [
-        "sn-70-website-common-health",
         "sn-70-website-common-openapi-json",
         "sn-70-website-common-swagger",
         "sn-70-website-common-swagger-json",
-        "sn-70-website-common-api"
+        "sn-70-website-common-api",
+        "sn-70-website-common-health"
       ],
       "slug": "sn-70",
       "source_urls": [
@@ -2774,6 +2774,97 @@
       "verified_candidate_count": 17
     },
     {
+      "adapter_score": 9,
+      "candidate_count": 16,
+      "candidate_evidence_summary": {
+        "candidate_count": 5,
+        "kinds_with_candidates": [
+          "openapi",
+          "subnet-api"
+        ],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 5,
+        "stale_kinds": [
+          "openapi",
+          "subnet-api"
+        ],
+        "stale_or_failed_count": 5,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 50,
+      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
+      "curation_level": "machine-verified",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
+      "endpoint_count": 9,
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_identity": [],
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "OxMarkets",
+      "netuid": 35,
+      "operational_interface_count": 0,
+      "priority_score": 120,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "machine-generated",
+      "sample_candidate_ids": [
+        "sn-35-backprop-dashboard",
+        "sn-35-native-chain-github",
+        "sn-35-native-chain-website",
+        "sn-35-subnetradar-dashboard",
+        "sn-35-taomarketcap-dashboard"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [
+        "sn-35-website-common-openapi-json",
+        "sn-35-website-common-swagger",
+        "sn-35-website-common-swagger-json",
+        "sn-35-website-common-api",
+        "sn-35-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-35-website-common-openapi-json",
+        "sn-35-website-common-swagger",
+        "sn-35-website-common-swagger-json",
+        "sn-35-website-common-api",
+        "sn-35-website-common-health"
+      ],
+      "slug": "sn-35",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/35",
+        "https://backprop.finance/dtao/subnets/35-oxmarkets",
+        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html",
+        "https://github.com/General-Tao-Ventures/cartha-validator",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_35/index.mdx",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/35/subnet.json",
+        "https://subnetradar.com/subnet/35",
+        "https://www.0xmarkets.io/"
+      ],
+      "stale_candidate_count": 5,
+      "surface_count": 9,
+      "verified_candidate_count": 10
+    },
+    {
       "adapter_score": 8,
       "candidate_count": 16,
       "candidate_evidence_summary": {
@@ -3312,97 +3403,6 @@
       ],
       "stale_candidate_count": 6,
       "surface_count": 9,
-      "verified_candidate_count": 9
-    },
-    {
-      "adapter_score": 8,
-      "candidate_count": 15,
-      "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 8,
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "identity_surface_count": 3,
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_identity": [],
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "OxMarkets",
-      "netuid": 35,
-      "operational_interface_count": 0,
-      "priority_score": 118,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-35-backprop-dashboard",
-        "sn-35-native-chain-github",
-        "sn-35-native-chain-website",
-        "sn-35-subnetradar-dashboard",
-        "sn-35-taomarketcap-dashboard"
-      ],
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [
-        "sn-35-website-common-openapi-json",
-        "sn-35-website-common-swagger",
-        "sn-35-website-common-swagger-json",
-        "sn-35-website-common-api",
-        "sn-35-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-35-website-common-openapi-json",
-        "sn-35-website-common-swagger",
-        "sn-35-website-common-swagger-json",
-        "sn-35-website-common-api",
-        "sn-35-website-common-health"
-      ],
-      "slug": "sn-35",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/35",
-        "https://backprop.finance/dtao/subnets/35-oxmarkets",
-        "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html",
-        "https://github.com/General-Tao-Ventures/cartha-validator",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_35/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/35/subnet.json",
-        "https://subnetradar.com/subnet/35",
-        "https://www.0xmarkets.io/"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 8,
       "verified_candidate_count": 9
     },
     {
@@ -5542,6 +5542,100 @@
     },
     {
       "adapter_score": 8,
+      "candidate_count": 25,
+      "candidate_evidence_summary": {
+        "candidate_count": 6,
+        "kinds_with_candidates": [
+          "openapi",
+          "subnet-api"
+        ],
+        "live_kinds": [
+          "subnet-api"
+        ],
+        "live_or_redirected_count": 1,
+        "reviewable_count": 6,
+        "stale_kinds": [
+          "openapi",
+          "subnet-api"
+        ],
+        "stale_or_failed_count": 5,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 55,
+      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
+      "endpoint_count": 8,
+      "evidence_action": "replace-stale-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_identity": [],
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "ItsAI",
+      "netuid": 32,
+      "operational_interface_count": 0,
+      "priority_score": 106,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-32-backprop-dashboard",
+        "sn-32-native-chain-github",
+        "sn-32-native-chain-website",
+        "sn-32-subnetradar-dashboard",
+        "sn-32-taomarketcap-dashboard"
+      ],
+      "sample_live_candidate_ids": [
+        "sn-32-website-link-its-ai-org-subnet-api-5"
+      ],
+      "sample_stale_candidate_ids": [
+        "sn-32-website-common-openapi-json",
+        "sn-32-website-common-swagger-json",
+        "sn-32-website-common-swagger",
+        "sn-32-website-common-api",
+        "sn-32-website-common-health"
+      ],
+      "sample_target_candidate_ids": [
+        "sn-32-website-link-its-ai-org-subnet-api-5",
+        "sn-32-website-common-openapi-json",
+        "sn-32-website-common-swagger-json",
+        "sn-32-website-common-swagger",
+        "sn-32-website-common-api"
+      ],
+      "slug": "sn-32",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/32",
+        "https://backprop.finance/dtao/subnets/32-itsai",
+        "https://github.com/It-s-AI/llm-detection",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_32/index.mdx",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/32/subnet.json",
+        "https://its-ai.org/en",
+        "https://subnetradar.com/subnet/32",
+        "https://taomarketcap.com/subnets/32"
+      ],
+      "stale_candidate_count": 5,
+      "surface_count": 8,
+      "verified_candidate_count": 19
+    },
+    {
+      "adapter_score": 8,
       "candidate_count": 26,
       "candidate_evidence_summary": {
         "candidate_count": 5,
@@ -6169,100 +6263,6 @@
       "stale_candidate_count": 5,
       "surface_count": 7,
       "verified_candidate_count": 16
-    },
-    {
-      "adapter_score": 7,
-      "candidate_count": 24,
-      "candidate_evidence_summary": {
-        "candidate_count": 6,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [
-          "subnet-api"
-        ],
-        "live_or_redirected_count": 1,
-        "reviewable_count": 6,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 55,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "maintainer-reviewed",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 7,
-      "evidence_action": "replace-stale-evidence",
-      "identity_level": "complete",
-      "identity_surface_count": 3,
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_identity": [],
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "ItsAI",
-      "netuid": 32,
-      "operational_interface_count": 0,
-      "priority_score": 103,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "maintainer-reviewed",
-      "sample_candidate_ids": [
-        "sn-32-backprop-dashboard",
-        "sn-32-native-chain-github",
-        "sn-32-native-chain-website",
-        "sn-32-subnetradar-dashboard",
-        "sn-32-taomarketcap-dashboard"
-      ],
-      "sample_live_candidate_ids": [
-        "sn-32-website-link-its-ai-org-subnet-api-5"
-      ],
-      "sample_stale_candidate_ids": [
-        "sn-32-website-common-openapi-json",
-        "sn-32-website-common-swagger-json",
-        "sn-32-website-common-swagger",
-        "sn-32-website-common-api",
-        "sn-32-website-common-health"
-      ],
-      "sample_target_candidate_ids": [
-        "sn-32-website-link-its-ai-org-subnet-api-5",
-        "sn-32-website-common-openapi-json",
-        "sn-32-website-common-swagger-json",
-        "sn-32-website-common-swagger",
-        "sn-32-website-common-api"
-      ],
-      "slug": "sn-32",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/32",
-        "https://backprop.finance/dtao/subnets/32-itsai",
-        "https://github.com/It-s-AI/llm-detection",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_32/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/32/subnet.json",
-        "https://its-ai.org/en",
-        "https://subnetradar.com/subnet/32",
-        "https://taomarketcap.com/subnets/32"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 7,
-      "verified_candidate_count": 18
     },
     {
       "adapter_score": 7,
@@ -9101,6 +9101,87 @@
       "verified_candidate_count": 10
     },
     {
+      "adapter_score": 7,
+      "candidate_count": 15,
+      "candidate_evidence_summary": {
+        "candidate_count": 5,
+        "kinds_with_candidates": [
+          "openapi",
+          "subnet-api"
+        ],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 5,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 55,
+      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
+      "endpoint_count": 7,
+      "evidence_action": "verify-existing-evidence",
+      "identity_level": "complete",
+      "identity_surface_count": 3,
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_identity": [],
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Ridges",
+      "netuid": 62,
+      "operational_interface_count": 0,
+      "priority_score": 90,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-62-backprop-dashboard",
+        "sn-62-native-chain-github",
+        "sn-62-native-chain-website",
+        "sn-62-subnetradar-dashboard",
+        "sn-62-taomarketcap-dashboard"
+      ],
+      "sample_live_candidate_ids": [],
+      "sample_stale_candidate_ids": [],
+      "sample_target_candidate_ids": [
+        "sn-62-website-common-openapi-json",
+        "sn-62-website-common-swagger",
+        "sn-62-website-common-swagger-json",
+        "sn-62-website-common-api",
+        "sn-62-website-common-health"
+      ],
+      "slug": "sn-62",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/62",
+        "https://backprop.finance/dtao/subnets/62-ridges",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_62/index.mdx",
+        "https://github.com/ridgesai/ridges",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/62/subnet.json",
+        "https://subnetradar.com/subnet/62",
+        "https://taomarketcap.com/subnets/62",
+        "https://www.ridges.ai/"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 7,
+      "verified_candidate_count": 8
+    },
+    {
       "adapter_score": 8,
       "candidate_count": 14,
       "candidate_evidence_summary": {
@@ -9345,87 +9426,6 @@
       "stale_candidate_count": 0,
       "surface_count": 13,
       "verified_candidate_count": 9
-    },
-    {
-      "adapter_score": 6,
-      "candidate_count": 14,
-      "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 55,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "maintainer-reviewed",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 6,
-      "evidence_action": "verify-existing-evidence",
-      "identity_level": "complete",
-      "identity_surface_count": 3,
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_identity": [],
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Ridges",
-      "netuid": 62,
-      "operational_interface_count": 0,
-      "priority_score": 88,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "maintainer-reviewed",
-      "sample_candidate_ids": [
-        "sn-62-backprop-dashboard",
-        "sn-62-native-chain-github",
-        "sn-62-native-chain-website",
-        "sn-62-subnetradar-dashboard",
-        "sn-62-taomarketcap-dashboard"
-      ],
-      "sample_live_candidate_ids": [],
-      "sample_stale_candidate_ids": [],
-      "sample_target_candidate_ids": [
-        "sn-62-website-common-openapi-json",
-        "sn-62-website-common-swagger",
-        "sn-62-website-common-swagger-json",
-        "sn-62-website-common-api",
-        "sn-62-website-common-health"
-      ],
-      "slug": "sn-62",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/62",
-        "https://backprop.finance/dtao/subnets/62-ridges",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_62/index.mdx",
-        "https://github.com/ridgesai/ridges",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/62/subnet.json",
-        "https://subnetradar.com/subnet/62",
-        "https://taomarketcap.com/subnets/62",
-        "https://www.ridges.ai/"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 6,
-      "verified_candidate_count": 7
     },
     {
       "adapter_score": 31,

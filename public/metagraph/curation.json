@@ -1423,7 +1423,7 @@
       "surface_count": 5
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1436,7 +1436,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": "2026-06-08T10:10:00.000Z"
       },
       "gap_count": 4,
@@ -1464,7 +1464,7 @@
       "name": "ItsAI",
       "netuid": 32,
       "slug": "sn-32",
-      "surface_count": 7
+      "surface_count": 8
     },
     {
       "candidate_count": 9,
@@ -1549,7 +1549,7 @@
       "surface_count": 9
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -1561,7 +1561,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": null
       },
       "gap_count": 4,
@@ -1588,7 +1588,7 @@
       "name": "OxMarkets",
       "netuid": 35,
       "slug": "sn-35",
-      "surface_count": 8
+      "surface_count": 9
     },
     {
       "candidate_count": 18,
@@ -2709,7 +2709,7 @@
       "surface_count": 8
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
@@ -2723,7 +2723,7 @@
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-08T09:25:00.000Z",
-        "source_count": 6,
+        "source_count": 7,
         "verified_at": "2026-06-08T09:25:00.000Z"
       },
       "gap_count": 4,
@@ -2752,7 +2752,7 @@
       "name": "Ridges",
       "netuid": 62,
       "slug": "sn-62",
-      "surface_count": 6
+      "surface_count": 7
     },
     {
       "candidate_count": 24,

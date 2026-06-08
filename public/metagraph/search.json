@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1350,
+  "document_count": 1353,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -17437,6 +17437,25 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-32-website-subdomain-docs-docs-its-ai-org",
+      "netuid": 32,
+      "slug": "sn-32",
+      "subtitle": "docs / its-ai",
+      "title": "ItsAI docs subdomain",
+      "tokens": [
+        "32",
+        "ai",
+        "docs",
+        "its",
+        "itsai",
+        "sn",
+        "subdomain"
+      ],
+      "type": "surface",
+      "url": "https://docs.its-ai.org/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-32-itsai-source",
       "netuid": 32,
       "slug": "sn-32",
@@ -20942,6 +20961,24 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "netuid": 35,
+      "slug": "sn-35",
+      "subtitle": "docs / opentensor",
+      "title": "OxMarkets docs subdomain",
+      "tokens": [
+        "35",
+        "docs",
+        "opentensor",
+        "oxmarkets",
+        "sn",
+        "subdomain"
+      ],
+      "type": "surface",
+      "url": "https://docs.0xmarkets.io/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-35-native-chain-github",
       "netuid": 35,
       "slug": "sn-35",
@@ -22427,6 +22464,23 @@
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/62-ridges"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-62-website-subdomain-docs-docs-ridges-ai",
+      "netuid": 62,
+      "slug": "sn-62",
+      "subtitle": "docs / ridges",
+      "title": "Ridges docs subdomain",
+      "tokens": [
+        "62",
+        "docs",
+        "ridges",
+        "sn",
+        "subdomain"
+      ],
+      "type": "surface",
+      "url": "https://docs.ridges.ai/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

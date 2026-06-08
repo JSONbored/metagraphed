@@ -7,17 +7,23 @@ import {
   isUnsafeResolvedUrl,
   redactCredentialedUrl,
   loadCandidates,
+  readJson,
   repoRoot,
   stableStringify,
   writeJson,
 } from "./lib.mjs";
+import { preservePreviousGithubMetadata } from "./verification-quality.mjs";
 
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
 const candidates = await loadCandidates();
+const previousVerificationByCandidate = await loadPreviousVerificationIndex();
 const startedAt = new Date().toISOString();
-const results = await mapLimit(candidates, 16, verifyCandidate);
+const results = (await mapLimit(candidates, 16, verifyCandidate)).map(
+  (result) =>
+    preservePreviousGithubMetadata(result, previousVerificationByCandidate),
+);
 const finishedAt = new Date().toISOString();
 
 const artifact = {
@@ -87,10 +93,28 @@ async function verifyCandidate(candidate) {
   return verifyHttpSurface(base, candidate);
 }
 
+async function loadPreviousVerificationIndex() {
+  try {
+    const previous = await readJson(
+      path.join(repoRoot, "registry/verification/promotions.json"),
+    );
+    return new Map(
+      (previous.results || []).map((result) => [result.candidate_id, result]),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
 function compactVerificationArtifact(artifactValue) {
+  const observedAt =
+    process.env.METAGRAPH_VERIFICATION_OBSERVED_AT ||
+    artifactValue.verification_finished_at ||
+    null;
   return {
     schema_version: artifactValue.schema_version,
     generated_at: buildTimestamp(),
+    observed_at: observedAt,
     verification_started_at: null,
     verification_finished_at: null,
     candidate_count: artifactValue.candidate_count,

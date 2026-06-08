@@ -3,18 +3,18 @@
   "contract_version": "2026-06-06.1",
   "dimensions": {
     "openapi_schemas": {
-      "captured_at": "2026-06-08T16:07:25.886Z",
+      "captured_at": "2026-06-08T22:54:34.678Z",
       "captured_count": 1,
       "schema_count": 1,
       "schemas": [
         {
           "auth_required": false,
-          "captured_at": "2026-06-08T16:07:25.886Z",
+          "captured_at": "2026-06-08T22:54:34.678Z",
           "content_type": "application/json; charset=utf-8",
           "hash": "d8a18908415e864944add3f5d950e788045e56c7a4adca2c168f0b14e8b33ebc",
-          "latency_ms": 191,
+          "latency_ms": 162,
           "name": "Zipcode OpenAPI JSON",
-          "provider": "taomarketcap",
+          "provider": "opentensor",
           "schema_url": "https://zipcode.ai/openapi.json",
           "shape": {
             "component_schema_count": 3,
@@ -68,7 +68,7 @@
       "total_path_count": 41
     },
     "public_api_surfaces": {
-      "captured_at": "2026-06-08T16:07:25.886Z",
+      "captured_at": "2026-06-08T22:54:34.678Z",
       "status": "captured",
       "surface_count": 0,
       "surfaces": []

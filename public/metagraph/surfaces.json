@@ -9025,6 +9025,38 @@
     {
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-32-website-subdomain-docs-docs-its-ai-org",
+      "kind": "docs",
+      "name": "ItsAI docs subdomain",
+      "netuid": 32,
+      "notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "its-ai",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://its-ai.org/en"
+      ],
+      "subnet_name": "ItsAI",
+      "subnet_slug": "sn-32",
+      "url": "https://docs.its-ai.org/"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
       "id": "sn-33-backprop-dashboard",
       "kind": "dashboard",
       "name": "ReadyAI Backprop Finance dashboard",
@@ -9808,6 +9840,38 @@
       "subnet_name": "OxMarkets",
       "subnet_slug": "sn-35",
       "url": "https://github.com/General-Tao-Ventures/cartha-cli"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "kind": "docs",
+      "name": "OxMarkets docs subdomain",
+      "netuid": 35,
+      "notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "opentensor",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.0xmarkets.io/"
+      ],
+      "subnet_name": "OxMarkets",
+      "subnet_slug": "sn-35",
+      "url": "https://docs.0xmarkets.io/"
     },
     {
       "auth_required": false,
@@ -13363,12 +13427,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -13654,12 +13717,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -14462,12 +14524,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -14657,12 +14718,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -15190,12 +15250,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -15859,12 +15918,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -16118,12 +16176,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -16312,12 +16369,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -16761,6 +16817,38 @@
       "subnet_name": "Ridges",
       "subnet_slug": "sn-62",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/62"
+    },
+    {
+      "auth_required": false,
+      "authority": "registry-observed",
+      "id": "sn-62-website-subdomain-docs-docs-ridges-ai",
+      "kind": "docs",
+      "name": "Ridges docs subdomain",
+      "netuid": 62,
+      "notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ridges",
+      "public_safe": true,
+      "quality_signals": {
+        "content_type_matches_kind": true,
+        "public_safe": true,
+        "rate_limited": false,
+        "redirected": false,
+        "source_tier": "provider-claimed",
+        "transient_failure": false
+      },
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "source_urls": [
+        "https://www.ridges.ai/"
+      ],
+      "subnet_name": "Ridges",
+      "subnet_slug": "sn-62",
+      "url": "https://docs.ridges.ai/"
     },
     {
       "auth_required": false,
@@ -17307,12 +17395,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -17339,12 +17426,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -17467,12 +17553,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -18097,12 +18182,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -18291,12 +18375,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -18742,12 +18825,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -19032,12 +19114,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -19985,12 +20066,11 @@
       "provider": "gittensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -20325,12 +20405,11 @@
       "provider": "hippius",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -20702,12 +20781,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -20961,12 +21039,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -21187,12 +21264,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -21544,12 +21620,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -22032,12 +22107,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -22270,12 +22344,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -22334,12 +22407,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -22792,12 +22864,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -24530,12 +24601,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -24789,12 +24859,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -25355,12 +25424,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -25595,12 +25663,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -25789,12 +25856,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -26221,12 +26287,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -26415,12 +26480,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -27925,12 +27989,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -28215,12 +28278,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -28409,12 +28471,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -28537,12 +28598,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -29439,12 +29499,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -30678,12 +30737,11 @@
       "provider": "shiftlayer",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -31390,12 +31448,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -32237,12 +32294,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -32695,12 +32751,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -32921,12 +32976,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -33147,12 +33201,11 @@
       "provider": "opentensor",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "native-chain",
-        "transient_failure": false
+        "source_tier": "native-chain"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
@@ -33342,12 +33395,11 @@
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "quality_signals": {
-        "content_type_matches_kind": true,
+        "archived": false,
+        "has_default_branch": true,
+        "has_recent_push_metadata": true,
         "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
+        "source_tier": "community-docs"
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [

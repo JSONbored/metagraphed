@@ -11379,6 +11379,27 @@
     {
       "auth_required": false,
       "confidence": "low",
+      "id": "sn-32-website-subdomain-docs-docs-its-ai-org",
+      "kind": "docs",
+      "name": "ItsAI docs subdomain",
+      "netuid": 32,
+      "provider": "its-ai",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://its-ai.org/en",
+      "source_urls": [
+        "https://its-ai.org/en"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.its-ai.org/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
       "id": "sn-32-website-common-openapi-json",
       "kind": "openapi",
       "name": "ItsAI OpenAPI JSON",
@@ -12222,6 +12243,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.0xmarkets.io/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-35-website-subdomain-docs-docs-0xmarkets-io",
+      "kind": "docs",
+      "name": "OxMarkets docs subdomain",
+      "netuid": 35,
+      "provider": "opentensor",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.0xmarkets.io/",
+      "source_urls": [
+        "https://www.0xmarkets.io/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.0xmarkets.io/"
     },
     {
       "auth_required": false,
@@ -20824,6 +20866,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.ridges.ai/docs"
+    },
+    {
+      "auth_required": false,
+      "confidence": "low",
+      "id": "sn-62-website-subdomain-docs-docs-ridges-ai",
+      "kind": "docs",
+      "name": "Ridges docs subdomain",
+      "netuid": 62,
+      "provider": "ridges",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Docs subdomain candidate inferred from a public project website root for a subnet without project-level docs. Requires verification before promotion.",
+      "schema_version": 1,
+      "source_tier": "provider-claimed",
+      "source_type": "project-website-docs-subdomain",
+      "source_url": "https://www.ridges.ai/",
+      "source_urls": [
+        "https://www.ridges.ai/"
+      ],
+      "state": "schema-valid",
+      "url": "https://docs.ridges.ai/"
     },
     {
       "auth_required": false,
@@ -42600,9 +42663,9 @@
   ],
   "generated_at": "1970-01-01T00:00:00.000Z",
   "generated_by": "metagraphed-discover-candidates",
-  "native_snapshot_captured_at": "2026-06-08T20:51:35Z",
+  "native_snapshot_captured_at": "2026-06-08T22:53:27Z",
   "notes": "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
-  "observed_at": null,
+  "observed_at": "2026-06-08T22:52:53.437Z",
   "schema_version": 1,
   "sources": [
     {

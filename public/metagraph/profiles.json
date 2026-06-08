@@ -4737,7 +4737,7 @@
       "team": null
     },
     {
-      "candidate_count": 24,
+      "candidate_count": 25,
       "categories": [
         "baseline-augmented",
         "baseline-curated",
@@ -4770,7 +4770,7 @@
       "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 7,
+      "endpoint_count": 8,
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -4778,7 +4778,7 @@
         "missing-data-artifact"
       ],
       "identity_evidence": {
-        "candidate_identity_count": 14,
+        "candidate_identity_count": 15,
         "curated_identity_count": 3,
         "curated_identity_kinds": [
           "docs",
@@ -4815,7 +4815,7 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "monitored_endpoint_count": 7,
+      "monitored_endpoint_count": 8,
       "name": "ItsAI",
       "native_identity": {
         "additional": "ItsAI is a bittensor subnet focused on high-quality AI detection for texts. Recognised as the most accurate AI detector by MGTD benchmark.",
@@ -4880,7 +4880,7 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 7,
+      "surface_count": 8,
       "symbol": "ח",
       "team": null
     },
@@ -5181,7 +5181,7 @@
       "team": null
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "categories": [
         "baseline-curated"
       ],
@@ -5210,7 +5210,7 @@
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
-      "endpoint_count": 8,
+      "endpoint_count": 9,
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -5218,7 +5218,7 @@
         "missing-data-artifact"
       ],
       "identity_evidence": {
-        "candidate_identity_count": 6,
+        "candidate_identity_count": 7,
         "curated_identity_count": 3,
         "curated_identity_kinds": [
           "docs",
@@ -5255,7 +5255,7 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "monitored_endpoint_count": 8,
+      "monitored_endpoint_count": 9,
       "name": "OxMarkets",
       "native_identity": {
         "additional": "https://x.com/0x_Markets",
@@ -5320,7 +5320,7 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 8,
+      "surface_count": 9,
       "symbol": "ך",
       "team": null
     },
@@ -9107,7 +9107,7 @@
       "team": null
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "categories": [
         "agents",
         "baseline-augmented",
@@ -9140,7 +9140,7 @@
       "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
-      "endpoint_count": 6,
+      "endpoint_count": 7,
       "gap_reasons": [
         "missing-openapi",
         "missing-subnet-api",
@@ -9148,7 +9148,7 @@
         "missing-data-artifact"
       ],
       "identity_evidence": {
-        "candidate_identity_count": 5,
+        "candidate_identity_count": 6,
         "curated_identity_count": 3,
         "curated_identity_kinds": [
           "docs",
@@ -9185,7 +9185,7 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "monitored_endpoint_count": 6,
+      "monitored_endpoint_count": 7,
       "name": "Ridges",
       "native_identity": {
         "additional": null,
@@ -9250,7 +9250,7 @@
         "source-repo",
         "website"
       ],
-      "surface_count": 6,
+      "surface_count": 7,
       "symbol": "ز",
       "team": null
     },

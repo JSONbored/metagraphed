@@ -60,6 +60,7 @@ import { buildCanonicalOpenApiArtifact } from "../scripts/openapi-components.mjs
 import { renderCurationBrief } from "../scripts/curation-brief.mjs";
 import { renderEndpointOpsBrief } from "../scripts/endpoint-ops-brief.mjs";
 import { generateBaselineOverlaySet } from "../scripts/generated-overlays.mjs";
+import { preservePreviousGithubMetadata } from "../scripts/verification-quality.mjs";
 import {
   buildIssueIntakeReport,
   buildEndpointStatusReportIntakeReport,
@@ -87,6 +88,53 @@ const native = {
 const providers = [{ id: "allways" }, { id: "gittensor" }];
 
 describe("script utility contracts", () => {
+  test("preserves previous GitHub metadata when source-repo API enrichment degrades", () => {
+    const current = {
+      candidate_id: "sn-1-native-chain-github",
+      classification: "live",
+      confidence_score: 45,
+      kind: "source-repo",
+      quality_signals: {
+        public_safe: true,
+        source_tier: "native-chain",
+      },
+      status: "ok",
+    };
+    const previousByCandidate = new Map([
+      [
+        "sn-1-native-chain-github",
+        {
+          candidate_id: "sn-1-native-chain-github",
+          classification: "live",
+          confidence_score: 80,
+          kind: "source-repo",
+          quality_signals: {
+            archived: false,
+            has_default_branch: true,
+            has_recent_push_metadata: true,
+            public_safe: true,
+            source_tier: "native-chain",
+          },
+          status: "ok",
+        },
+      ],
+    ]);
+
+    const preserved = preservePreviousGithubMetadata(
+      current,
+      previousByCandidate,
+    );
+
+    assert.equal(preserved.confidence_score, 80);
+    assert.deepEqual(preserved.quality_signals, {
+      archived: false,
+      has_default_branch: true,
+      has_recent_push_metadata: true,
+      public_safe: true,
+      source_tier: "native-chain",
+    });
+  });
+
   test("reads, writes, and lists JSON files deterministically", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "metagraphed-test-"));
     try {

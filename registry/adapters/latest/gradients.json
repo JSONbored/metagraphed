@@ -1,0 +1,127 @@
+{
+  "adapter_kind": "generic-openapi",
+  "contract_version": "2026-06-06.1",
+  "dimensions": {
+    "openapi_schemas": {
+      "captured_at": "2026-06-08T22:54:34.929Z",
+      "captured_count": 1,
+      "schema_count": 1,
+      "schemas": [
+        {
+          "auth_required": false,
+          "captured_at": "2026-06-08T22:54:34.929Z",
+          "content_type": "application/json",
+          "hash": "06d41d91c60dd8b9c9b114f083b3aa78231184bd57ff74c3d53f2abf31965003",
+          "latency_ms": 215,
+          "name": "Gradients OpenAPI",
+          "provider": "gradients",
+          "schema_url": "https://api.gradients.io/openapi.json",
+          "shape": {
+            "component_schema_count": 96,
+            "has_global_security": false,
+            "method_counts": {
+              "delete": 2,
+              "get": 22,
+              "post": 29,
+              "put": 2
+            },
+            "openapi_version": "3.1.0",
+            "operation_count": 55,
+            "path_count": 54,
+            "sample_paths": [
+              "/account-balance-check",
+              "/account-create",
+              "/account-get-info",
+              "/account-get-logs",
+              "/account-get-public-key",
+              "/account-recovery-challenge",
+              "/account-recovery-verify",
+              "/account-set-data",
+              "/account-transactions",
+              "/account-username-check",
+              "/add-balance",
+              "/api-key-create",
+              "/apply-voucher",
+              "/auditing/scores-url",
+              "/auditing/tasks",
+              "/auditing/tasks/{task_id}",
+              "/auth-with-fingerprint",
+              "/signing-challenge-generate",
+              "/signing-challenge-verify",
+              "/tournament/fees"
+            ],
+            "security_scheme_count": 1,
+            "server_count": 0,
+            "tag_count": 0,
+            "title": "rayon API",
+            "version": "0.0.1"
+          },
+          "status": "captured",
+          "status_code": 200,
+          "surface_id": "sn-56-gradients-openapi",
+          "url": "https://api.gradients.io/docs"
+        }
+      ],
+      "status": "captured",
+      "total_operation_count": 55,
+      "total_path_count": 54
+    },
+    "public_api_surfaces": {
+      "captured_at": "2026-06-08T22:54:34.929Z",
+      "status": "captured",
+      "surface_count": 4,
+      "surfaces": [
+        {
+          "auth_required": false,
+          "id": "sn-56-gradients-last-boss-battle",
+          "kind": "subnet-api",
+          "name": "Gradients last boss battle",
+          "probe_enabled": true,
+          "provider": "gradients",
+          "schema_url": "https://api.gradients.io/openapi.json",
+          "url": "https://api.gradients.io/v1/performance/last-boss-battle"
+        },
+        {
+          "auth_required": false,
+          "id": "sn-56-gradients-latest-tournament-weights",
+          "kind": "subnet-api",
+          "name": "Gradients latest tournament weights",
+          "probe_enabled": true,
+          "provider": "gradients",
+          "schema_url": "https://api.gradients.io/openapi.json",
+          "url": "https://api.gradients.io/v1/performance/latest-tournament-weights"
+        },
+        {
+          "auth_required": false,
+          "id": "sn-56-gradients-models",
+          "kind": "data-artifact",
+          "name": "Gradients models",
+          "probe_enabled": true,
+          "provider": "gradients",
+          "schema_url": null,
+          "url": "https://www.gradients.io/app/my-models"
+        },
+        {
+          "auth_required": false,
+          "id": "sn-56-gradients-weight-projection-static",
+          "kind": "subnet-api",
+          "name": "Gradients static weight projection",
+          "probe_enabled": true,
+          "provider": "gradients",
+          "schema_url": "https://api.gradients.io/openapi.json",
+          "url": "https://api.gradients.io/v1/performance/weight-projection-static"
+        }
+      ]
+    }
+  },
+  "generated_at": "1970-01-01T00:00:00.000Z",
+  "netuid": 56,
+  "notes": [
+    "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",
+    "Raw schemas, protected method calls, credentialed data, and API response payloads are not persisted."
+  ],
+  "schema_version": 1,
+  "slug": "gradients",
+  "source": "adapter-snapshot",
+  "status": "captured"
+}

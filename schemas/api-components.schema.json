@@ -6640,6 +6640,13 @@
                 "minimum": 0,
                 "type": "integer"
               },
+              "observed_at": {
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "results": {
                 "items": {
                   "$ref": "#/components/schemas/VerificationResult"

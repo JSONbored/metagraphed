@@ -1450,6 +1450,10 @@
                 "type": "integer",
                 "minimum": 0
               },
+              "observed_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
               "summary": {
                 "type": "object",
                 "additionalProperties": true

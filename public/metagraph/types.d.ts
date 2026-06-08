@@ -2243,6 +2243,8 @@ export interface components {
         });
         VerificationArtifact: components["schemas"]["ArtifactBase"] & ({
             candidate_count: number;
+            /** Format: date-time */
+            observed_at?: string | null;
             results: components["schemas"]["VerificationResult"][];
             summary?: {
                 [key: string]: unknown;

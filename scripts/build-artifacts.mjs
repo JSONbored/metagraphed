@@ -3090,6 +3090,7 @@ function buildFreshnessArtifact({
     nonPlaceholderTimestamp(candidateDiscovery?.generated_at) ||
     null;
   const verificationAsOf =
+    nonPlaceholderTimestamp(verificationArtifact.observed_at) ||
     verificationArtifact.verification_finished_at ||
     nonPlaceholderTimestamp(verificationArtifact.generated_at) ||
     previousFreshness?.sources?.find(
