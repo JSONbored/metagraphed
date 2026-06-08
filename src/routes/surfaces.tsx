@@ -75,13 +75,14 @@ function SurfacesTable() {
 
   const onSort = (field: string) =>
     navigate({
-      search: (prev) =>
+      search: (prev: { sort?: string; order?: "asc" | "desc" }) =>
         ({
           ...prev,
           sort: field,
           order: prev.sort === field && prev.order === "asc" ? "desc" : "asc",
         }) as never,
     });
+
 
   const filtered = all.filter((s) => {
     if (!matchesQuery([s.name, s.url, s.provider, s.provider_slug, s.netuid], search.q)) return false;
