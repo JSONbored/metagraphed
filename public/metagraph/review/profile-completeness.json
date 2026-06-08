@@ -1132,7 +1132,7 @@
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-4",
-      "source_count": 8,
+      "source_count": 9,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
         "dashboard",
@@ -3668,41 +3668,6 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "DSperse",
-      "native_name_quality": "chain",
-      "netuid": 2,
-      "operational_interface_count": 1,
-      "priority_score": 67,
-      "profile_level": "operational",
-      "review_state": "machine-generated",
-      "slug": "sn-2",
-      "source_count": 8,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "openapi",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 17,
-      "completeness_score": 65,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 3,
-      "missing_operational": [
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
       "name": "Leoma",
       "native_name_quality": "chain",
       "netuid": 99,
@@ -4212,6 +4177,41 @@
       ]
     },
     {
+      "candidate_count": 17,
+      "completeness_score": 70,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "DSperse",
+      "native_name_quality": "chain",
+      "netuid": 2,
+      "operational_interface_count": 1,
+      "priority_score": 62,
+      "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
+      "slug": "dsperse",
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
       "candidate_count": 25,
       "completeness_score": 73,
       "confidence": "medium",
@@ -4660,9 +4660,9 @@
   "summary": {
     "average_completeness_score": 55,
     "by_confidence": {
-      "high": 73,
+      "high": 74,
       "low": 6,
-      "medium": 50
+      "medium": 49
     },
     "by_profile_level": {
       "adapter-backed": 2,

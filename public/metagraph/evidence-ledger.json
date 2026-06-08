@@ -8192,7 +8192,40 @@
       "source_type": "registry-observed",
       "source_url": "https://backprop.finance/dtao/subnets/2-dsperse",
       "subject": "surface:sn-2-backprop-dashboard",
-      "support_summary": "Listed in curated overlay for sn-2.",
+      "support_summary": "Listed in curated overlay for dsperse.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "DSperse docs is a public docs surface for SN2.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://sn2-docs.inferencelabs.com/",
+      "subject": "surface:sn-2-dsperse-docs",
+      "support_summary": "Listed in curated overlay for dsperse.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "DSperse source repository is a public source-repo surface for SN2.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://github.com/inference-labs-inc/subnet-2",
+      "subject": "surface:sn-2-dsperse-source-repo",
+      "support_summary": "Listed in curated overlay for dsperse.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "DSperse website is a public website surface for SN2.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://subnet2.inferencelabs.com/",
+      "subject": "surface:sn-2-dsperse-website",
+      "support_summary": "Listed in curated overlay for dsperse.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8203,7 +8236,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
       "subject": "surface:sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-2",
-      "support_summary": "Listed in curated overlay for sn-2.",
+      "support_summary": "Listed in curated overlay for dsperse.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8214,40 +8247,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
       "subject": "surface:sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-3",
-      "support_summary": "Listed in curated overlay for sn-2.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "DSperse docs is a public docs surface for SN2.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
-      "subject": "surface:sn-2-github-readme-inference-labs-inc-subnet-2-docs-1",
-      "support_summary": "Listed in curated overlay for sn-2.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "DSperse source repository is a public source-repo surface for SN2.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/2",
-      "subject": "surface:sn-2-taomarketcap-source-repo",
-      "support_summary": "Listed in curated overlay for sn-2.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "DSperse website is a public website surface for SN2.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/2",
-      "subject": "surface:sn-2-taomarketcap-website",
-      "support_summary": "Listed in curated overlay for sn-2.",
+      "support_summary": "Listed in curated overlay for dsperse.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8258,7 +8258,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_2/index.mdx",
       "subject": "surface:sn-2-taopedia-article",
-      "support_summary": "Listed in curated overlay for sn-2.",
+      "support_summary": "Listed in curated overlay for dsperse.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8269,7 +8269,7 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/2/subnet.json",
       "subject": "surface:sn-2-tensorplex-docs",
-      "support_summary": "Listed in curated overlay for sn-2.",
+      "support_summary": "Listed in curated overlay for dsperse.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8280,7 +8280,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnet2.inferencelabs.com/",
       "subject": "surface:sn-2-website-common-docs",
-      "support_summary": "Listed in curated overlay for sn-2.",
+      "support_summary": "Listed in curated overlay for dsperse.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8291,7 +8291,7 @@
       "source_type": "registry-observed",
       "source_url": "https://subnet2.inferencelabs.com/",
       "subject": "surface:sn-2-website-common-swagger",
-      "support_summary": "Listed in curated overlay for sn-2.",
+      "support_summary": "Listed in curated overlay for dsperse.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10363,6 +10363,28 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Targon docs is a public docs surface for SN4.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://targon.com/",
+      "subject": "surface:sn-4-targon-docs",
+      "support_summary": "Listed in curated overlay for sn-4.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Targon Intel whitepaper is a public docs surface for SN4.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://targon.com/",
+      "subject": "surface:sn-4-targon-intel-whitepaper",
+      "support_summary": "Listed in curated overlay for sn-4.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Targon source repository is a public source-repo surface for SN4.",
       "confidence": "high",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10403,17 +10425,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/4/subnet.json",
       "subject": "surface:sn-4-tensorplex-hardware-docs",
-      "support_summary": "Listed in curated overlay for sn-4.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Targon docs is a public docs surface for SN4.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://targon.com/",
-      "subject": "surface:sn-4-website-link-targon-com-docs-4",
       "support_summary": "Listed in curated overlay for sn-4.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -16628,8 +16639,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1511,
+    "claim_count": 1512,
     "subnet_claim_count": 129,
-    "surface_claim_count": 1132
+    "surface_claim_count": 1133
   }
 }

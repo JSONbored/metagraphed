@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "netuid": 2,
+  "name": "DSperse",
+  "slug": "dsperse",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website",
+    "verifiable-oracles",
+    "zkml"
+  ],
+  "website_url": "https://subnet2.inferencelabs.com/",
+  "docs_url": "https://sn2-docs.inferencelabs.com/",
+  "dashboard_url": null,
+  "source_repo": "https://github.com/inference-labs-inc/subnet-2",
+  "notes": "Reviewed overlay for SN2 DSperse / Inference Labs. Official website, docs, and source repository are verified live. Common API/OpenAPI probe paths currently serve the public SPA shell, so no machine-readable API or schema surface is promoted yet.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T16:10:00.000Z",
+    "verified_at": "2026-06-08T16:10:00.000Z",
+    "source_count": 6,
+    "gap_notes": [
+      "Official website, docs, and source repository are verified live.",
+      "Common `/api`, `/health`, `/swagger`, and `/openapi.json` paths currently serve the public SPA shell, not API/schema data.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-2-dsperse-website",
+      "name": "DSperse website",
+      "kind": "website",
+      "url": "https://subnet2.inferencelabs.com/",
+      "provider": "inference-labs",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://subnet2.inferencelabs.com/",
+        "https://github.com/inference-labs-inc/subnet-2"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official DSperse website for SN2."
+    },
+    {
+      "id": "sn-2-dsperse-docs",
+      "name": "DSperse docs",
+      "kind": "docs",
+      "url": "https://sn2-docs.inferencelabs.com/",
+      "provider": "inference-labs",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://sn2-docs.inferencelabs.com/",
+        "https://github.com/inference-labs-inc/subnet-2"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official DSperse / SN2 documentation."
+    },
+    {
+      "id": "sn-2-dsperse-source-repo",
+      "name": "DSperse source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/inference-labs-inc/subnet-2",
+      "provider": "inference-labs",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/inference-labs-inc/subnet-2",
+        "https://subnet2.inferencelabs.com/"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public source repository for DSperse / SN2."
+    }
+  ]
+}

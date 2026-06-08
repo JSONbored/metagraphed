@@ -278,7 +278,7 @@
     },
     {
       "candidate_api_count": 5,
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "name": "DSperse",
       "netuid": 2,
       "operational_kinds": [
@@ -286,7 +286,7 @@
       ],
       "operational_surface_count": 1,
       "priority_score": 30,
-      "slug": "sn-2"
+      "slug": "dsperse"
     },
     {
       "candidate_api_count": 6,
@@ -584,6 +584,16 @@
     },
     {
       "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Targon",
+      "netuid": 4,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 10,
+      "slug": "sn-4"
+    },
+    {
+      "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "Plaτform",
       "netuid": 100,
@@ -611,16 +621,6 @@
       "operational_surface_count": 0,
       "priority_score": 9,
       "slug": "sn-1"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Targon",
-      "netuid": 4,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 9,
-      "slug": "sn-4"
     },
     {
       "candidate_api_count": 5,

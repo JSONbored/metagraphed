@@ -4,7 +4,9 @@
   "name": "Targon",
   "kind": "subnet-team",
   "website_url": "https://targon.com/",
+  "docs_url": "https://docs.targon.com/",
   "github_url": "https://github.com/manifold-inc/targon",
   "authority": "official",
-  "notes": "Provider entry for Targon SN4 website and source repository."
+  "public_notes": "Provider profile for Targon / SN4. Public surfaces include the Targon website, docs, Intel whitepaper, and source repository.",
+  "notes": "No safe public subnet API/OpenAPI/SSE surface is promoted yet."
 }

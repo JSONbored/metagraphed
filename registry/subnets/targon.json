@@ -7,21 +7,23 @@
   "categories": [
     "baseline-curated",
     "identity-reviewed",
+    "official-docs",
     "official-source-repo",
     "official-website"
   ],
   "source_repo": "https://github.com/manifold-inc/targon",
-  "dashboard_url": "https://taomarketcap.com/subnets/4",
+  "docs_url": "https://docs.targon.com/",
+  "dashboard_url": null,
   "website_url": "https://targon.com/",
-  "notes": "Reviewed overlay for SN4 using the official Targon website and source repository. No public API, OpenAPI schema, SSE stream, or standalone data artifact is verified yet.",
+  "notes": "Reviewed overlay for SN4 using the official Targon website, docs, Intel whitepaper, and source repository. No public API, OpenAPI schema, SSE stream, or standalone data artifact is verified yet.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:10:00.000Z",
-    "verified_at": "2026-06-08T10:10:00.000Z",
-    "source_count": 4,
+    "reviewed_at": "2026-06-08T16:10:00.000Z",
+    "verified_at": "2026-06-08T16:10:00.000Z",
+    "source_count": 6,
     "gap_notes": [
-      "No verified official docs URL yet.",
+      "Official website, docs, Intel whitepaper, and source repository are verified live.",
       "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet.",
@@ -46,6 +48,45 @@
         "timeout_ms": 10000
       },
       "notes": "Official Targon website."
+    },
+    {
+      "id": "sn-4-targon-docs",
+      "name": "Targon docs",
+      "kind": "docs",
+      "url": "https://docs.targon.com/",
+      "provider": "targon",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://targon.com/", "https://docs.targon.com/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Targon documentation."
+    },
+    {
+      "id": "sn-4-targon-intel-whitepaper",
+      "name": "Targon Intel whitepaper",
+      "kind": "docs",
+      "url": "https://targon.com/releases/intel-whitepaper",
+      "provider": "targon",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://targon.com/",
+        "https://targon.com/releases/intel-whitepaper"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Targon Intel whitepaper / release page."
     },
     {
       "id": "sn-4-targon-source",

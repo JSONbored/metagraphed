@@ -701,23 +701,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "DSperse",
-      "netuid": 2,
-      "priority_score": 57,
-      "review_state": "machine-generated",
-      "slug": "sn-2",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 10,
-      "verified_candidate_count": 15
-    },
-    {
-      "candidate_count": 17,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "Leoma",
       "netuid": 99,
       "priority_score": 57,
@@ -1477,7 +1460,7 @@
       "review_state": "maintainer-reviewed",
       "slug": "sn-4",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
-      "surface_count": 9,
+      "surface_count": 10,
       "verified_candidate_count": 19
     },
     {
@@ -2090,6 +2073,23 @@
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
       "surface_count": 6,
       "verified_candidate_count": 7
+    },
+    {
+      "candidate_count": 17,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "DSperse",
+      "netuid": 2,
+      "priority_score": 12,
+      "review_state": "maintainer-reviewed",
+      "slug": "dsperse",
+      "suggested_next_action": "evaluate for subnet-specific adapter",
+      "surface_count": 10,
+      "verified_candidate_count": 15
     },
     {
       "candidate_count": 11,

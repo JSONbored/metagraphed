@@ -278,7 +278,7 @@
     },
     {
       "candidate_api_count": 5,
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "name": "DSperse",
       "netuid": 2,
       "operational_kinds": [
@@ -286,7 +286,7 @@
       ],
       "operational_surface_count": 1,
       "priority_score": 30,
-      "slug": "sn-2"
+      "slug": "dsperse"
     },
     {
       "candidate_api_count": 6,
@@ -584,6 +584,16 @@
     },
     {
       "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Targon",
+      "netuid": 4,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 10,
+      "slug": "sn-4"
+    },
+    {
+      "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "Plaτform",
       "netuid": 100,
@@ -611,16 +621,6 @@
       "operational_surface_count": 0,
       "priority_score": 9,
       "slug": "sn-1"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "maintainer-reviewed",
-      "name": "Targon",
-      "netuid": 4,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 9,
-      "slug": "sn-4"
     },
     {
       "candidate_api_count": 5,
@@ -1784,23 +1784,6 @@
         "sse",
         "data-artifact"
       ],
-      "name": "DSperse",
-      "netuid": 2,
-      "priority_score": 57,
-      "review_state": "machine-generated",
-      "slug": "sn-2",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 10,
-      "verified_candidate_count": 15
-    },
-    {
-      "candidate_count": 17,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
       "name": "Leoma",
       "netuid": 99,
       "priority_score": 57,
@@ -2560,7 +2543,7 @@
       "review_state": "maintainer-reviewed",
       "slug": "sn-4",
       "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
-      "surface_count": 9,
+      "surface_count": 10,
       "verified_candidate_count": 19
     },
     {
@@ -3175,6 +3158,23 @@
       "verified_candidate_count": 7
     },
     {
+      "candidate_count": 17,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "DSperse",
+      "netuid": 2,
+      "priority_score": 12,
+      "review_state": "maintainer-reviewed",
+      "slug": "dsperse",
+      "suggested_next_action": "evaluate for subnet-specific adapter",
+      "surface_count": 10,
+      "verified_candidate_count": 15
+    },
+    {
       "candidate_count": 11,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
@@ -3442,7 +3442,7 @@
       "website": 16
     },
     "maintainer_decision_count": 3,
-    "needs_maintainer_review_count": 56,
+    "needs_maintainer_review_count": 55,
     "subnet_count": 129
   }
 }

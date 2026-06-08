@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 1337,
+  "document_count": 1339,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -488,6 +488,21 @@
       ],
       "type": "provider",
       "url": "https://hippius.com/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:inference-labs",
+      "subtitle": "subnet-team",
+      "title": "Inference Labs",
+      "tokens": [
+        "inference",
+        "labs",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://subnet2.inferencelabs.com/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -2056,15 +2071,24 @@
       "artifact_path": "/metagraph/subnets/2.json",
       "id": "subnet:2",
       "netuid": 2,
-      "slug": "sn-2",
+      "slug": "dsperse",
       "subtitle": "SN2 β",
       "title": "DSperse",
       "tokens": [
-        "2",
+        "augmented",
         "baseline",
         "curated",
+        "docs",
         "dsperse",
-        "sn"
+        "identity",
+        "official",
+        "oracles",
+        "repo",
+        "reviewed",
+        "source",
+        "verifiable",
+        "website",
+        "zkml"
       ],
       "type": "subnet",
       "url": "/subnets/2"
@@ -3653,6 +3677,7 @@
         "augmented",
         "baseline",
         "curated",
+        "docs",
         "identity",
         "official",
         "repo",
@@ -11163,16 +11188,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-2-backprop-dashboard",
       "netuid": 2,
-      "slug": "sn-2",
+      "slug": "dsperse",
       "subtitle": "dashboard / backprop-finance",
       "title": "DSperse Backprop Finance dashboard",
       "tokens": [
-        "2",
         "backprop",
         "dashboard",
         "dsperse",
-        "finance",
-        "sn"
+        "finance"
       ],
       "type": "surface",
       "url": "https://backprop.finance/dtao/subnets/2-dsperse"
@@ -11181,14 +11204,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-2",
       "netuid": 2,
-      "slug": "sn-2",
+      "slug": "dsperse",
       "subtitle": "dashboard / taomarketcap",
       "title": "DSperse dashboard",
       "tokens": [
-        "2",
         "dashboard",
         "dsperse",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -11198,14 +11219,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-2-github-readme-inference-labs-inc-subnet-2-dashboard-3",
       "netuid": 2,
-      "slug": "sn-2",
+      "slug": "dsperse",
       "subtitle": "dashboard / taomarketcap",
       "title": "DSperse dashboard",
       "tokens": [
-        "2",
         "dashboard",
         "dsperse",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -11213,17 +11232,16 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-2-github-readme-inference-labs-inc-subnet-2-docs-1",
+      "id": "surface:sn-2-dsperse-docs",
       "netuid": 2,
-      "slug": "sn-2",
-      "subtitle": "docs / taomarketcap",
+      "slug": "dsperse",
+      "subtitle": "docs / inference-labs",
       "title": "DSperse docs",
       "tokens": [
-        "2",
         "docs",
         "dsperse",
-        "sn",
-        "taomarketcap"
+        "inference",
+        "labs"
       ],
       "type": "surface",
       "url": "https://sn2-docs.inferencelabs.com/"
@@ -11232,14 +11250,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-2-website-common-docs",
       "netuid": 2,
-      "slug": "sn-2",
+      "slug": "dsperse",
       "subtitle": "docs / taomarketcap",
       "title": "DSperse docs",
       "tokens": [
-        "2",
         "docs",
         "dsperse",
-        "sn",
         "taomarketcap"
       ],
       "type": "surface",
@@ -11247,19 +11263,18 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-2-taomarketcap-source-repo",
+      "id": "surface:sn-2-dsperse-source-repo",
       "netuid": 2,
-      "slug": "sn-2",
-      "subtitle": "source-repo / taomarketcap",
+      "slug": "dsperse",
+      "subtitle": "source-repo / inference-labs",
       "title": "DSperse source repository",
       "tokens": [
-        "2",
         "dsperse",
+        "inference",
+        "labs",
         "repo",
         "repository",
-        "sn",
-        "source",
-        "taomarketcap"
+        "source"
       ],
       "type": "surface",
       "url": "https://github.com/inference-labs-inc/subnet-2"
@@ -11268,14 +11283,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-2-website-common-swagger",
       "netuid": 2,
-      "slug": "sn-2",
+      "slug": "dsperse",
       "subtitle": "openapi / taomarketcap",
       "title": "DSperse Swagger UI",
       "tokens": [
-        "2",
         "dsperse",
         "openapi",
-        "sn",
         "swagger",
         "taomarketcap",
         "ui"
@@ -11287,16 +11300,14 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-2-taopedia-article",
       "netuid": 2,
-      "slug": "sn-2",
+      "slug": "dsperse",
       "subtitle": "docs / taopedia-articles",
       "title": "DSperse Taopedia article",
       "tokens": [
-        "2",
         "article",
         "articles",
         "docs",
         "dsperse",
-        "sn",
         "taopedia"
       ],
       "type": "surface",
@@ -11306,14 +11317,12 @@
       "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-2-tensorplex-docs",
       "netuid": 2,
-      "slug": "sn-2",
+      "slug": "dsperse",
       "subtitle": "docs / tensorplex-subnet-docs",
       "title": "DSperse Tensorplex subnet docs",
       "tokens": [
-        "2",
         "docs",
         "dsperse",
-        "sn",
         "subnet",
         "tensorplex"
       ],
@@ -11322,16 +11331,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-2-taomarketcap-website",
+      "id": "surface:sn-2-dsperse-website",
       "netuid": 2,
-      "slug": "sn-2",
-      "subtitle": "website / taomarketcap",
+      "slug": "dsperse",
+      "subtitle": "website / inference-labs",
       "title": "DSperse website",
       "tokens": [
-        "2",
         "dsperse",
-        "sn",
-        "taomarketcap",
+        "inference",
+        "labs",
         "website"
       ],
       "type": "surface",
@@ -22126,16 +22134,15 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-4-website-link-targon-com-docs-4",
+      "id": "surface:sn-4-targon-docs",
       "netuid": 4,
       "slug": "sn-4",
-      "subtitle": "docs / taomarketcap",
+      "subtitle": "docs / targon",
       "title": "Targon docs",
       "tokens": [
         "4",
         "docs",
         "sn",
-        "taomarketcap",
         "targon"
       ],
       "type": "surface",
@@ -22160,6 +22167,24 @@
       ],
       "type": "surface",
       "url": "https://github.com/manifold-inc/targon"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-4-targon-intel-whitepaper",
+      "netuid": 4,
+      "slug": "sn-4",
+      "subtitle": "docs / targon",
+      "title": "Targon Intel whitepaper",
+      "tokens": [
+        "4",
+        "docs",
+        "intel",
+        "sn",
+        "targon",
+        "whitepaper"
+      ],
+      "type": "surface",
+      "url": "https://targon.com/releases/intel-whitepaper"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

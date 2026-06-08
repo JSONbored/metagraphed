@@ -89,22 +89,28 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified subnet API surface yet.",
+          "Official website, docs, and source repository are verified live.",
+          "Common `/api`, `/health`, `/swagger`, and `/openapi.json` paths currently serve the public SPA shell, not API/schema data.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
-        "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
-        "source_count": 6,
-        "verified_at": null
+        "level": "maintainer-reviewed",
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-08T16:10:00.000Z",
+        "source_count": 7,
+        "verified_at": "2026-06-08T16:10:00.000Z"
       },
       "gap_count": 3,
       "gaps": {
         "gap_notes": [
-          "No verified subnet API surface yet.",
+          "Official website, docs, and source repository are verified live.",
+          "Common `/api`, `/health`, `/swagger`, and `/openapi.json` paths currently serve the public SPA shell, not API/schema data.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "subnet-api",
@@ -121,7 +127,7 @@
       },
       "name": "DSperse",
       "netuid": 2,
-      "slug": "sn-2",
+      "slug": "dsperse",
       "surface_count": 10
     },
     {
@@ -173,7 +179,7 @@
       "coverage_level": "probed",
       "curation": {
         "gap_notes": [
-          "No verified official docs URL yet.",
+          "Official website, docs, Intel whitepaper, and source repository are verified live.",
           "No verified safe public subnet API endpoint yet.",
           "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
@@ -181,14 +187,14 @@
         ],
         "level": "maintainer-reviewed",
         "review_state": "maintainer-reviewed",
-        "reviewed_at": "2026-06-08T10:10:00.000Z",
-        "source_count": 7,
-        "verified_at": "2026-06-08T10:10:00.000Z"
+        "reviewed_at": "2026-06-08T16:10:00.000Z",
+        "source_count": 9,
+        "verified_at": "2026-06-08T16:10:00.000Z"
       },
       "gap_count": 4,
       "gaps": {
         "gap_notes": [
-          "No verified official docs URL yet.",
+          "Official website, docs, Intel whitepaper, and source repository are verified live.",
           "No verified safe public subnet API endpoint yet.",
           "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
@@ -210,7 +216,7 @@
       "name": "Targon",
       "netuid": 4,
       "slug": "sn-4",
-      "surface_count": 9
+      "surface_count": 10
     },
     {
       "candidate_count": 18,

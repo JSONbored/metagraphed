@@ -57,12 +57,15 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified subnet API surface yet.",
+          "Official website, docs, and source repository are verified live.",
+          "Common `/api`, `/health`, `/swagger`, and `/openapi.json` paths currently serve the public SPA shell, not API/schema data.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
+          "No verified safe public subnet API endpoint yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "subnet-api",
@@ -79,7 +82,7 @@
       },
       "name": "DSperse",
       "netuid": 2,
-      "slug": "sn-2"
+      "slug": "dsperse"
     },
     {
       "coverage_level": "probed",
@@ -114,7 +117,7 @@
       "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified official docs URL yet.",
+          "Official website, docs, Intel whitepaper, and source repository are verified live.",
           "No verified safe public subnet API endpoint yet.",
           "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
