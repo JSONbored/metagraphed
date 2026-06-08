@@ -47,7 +47,7 @@ function EvidenceInner({ netuid, limit }: Props) {
     );
   }
 
-  const rows = ((data?.data ?? []) as EvidenceItem[]) ?? [];
+  const rows = (data?.data ?? []) as EvidenceItem[];
   if (rows.length === 0) return <EmptyState title="No evidence recorded" />;
 
   // Group by source label.
