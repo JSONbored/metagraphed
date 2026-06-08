@@ -196,13 +196,22 @@ function SubnetsTable() {
           className="block rounded border border-border bg-card p-3 min-h-11 active:bg-surface"
         >
           <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <div className="font-mono text-[11px] text-ink-muted">
-                #{String(s.netuid).padStart(3, "0")}
-                {s.symbol ? ` · ${s.symbol}` : ""}
-              </div>
-              <div className="font-medium text-ink-strong truncate">
-                {s.name ?? `Subnet ${s.netuid}`}
+            <div className="flex items-center gap-3 min-w-0">
+              <BrandIcon
+                url={s.website}
+                iconUrl={s.icon_url}
+                name={s.name}
+                fallback={s.netuid}
+                size={32}
+              />
+              <div className="min-w-0">
+                <div className="font-mono text-[11px] text-ink-muted">
+                  #{String(s.netuid).padStart(3, "0")}
+                  {s.symbol ? ` · ${s.symbol}` : ""}
+                </div>
+                <div className="font-medium text-ink-strong truncate">
+                  {s.name ?? `Subnet ${s.netuid}`}
+                </div>
               </div>
             </div>
             <HealthPill state={s.health} />
