@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronUp, Radio, Database, AlertOctagon } from "lucide-react";
 import { HealthDot } from "./chips";
-import { EmptyState } from "./states";
+import { EmptyState, RECOVERY } from "./states";
 import { classNames } from "@/lib/metagraphed/format";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Endpoint } from "@/lib/metagraphed/types";
 
 interface Bucket {
@@ -56,28 +57,55 @@ function dominantHealth(items: Endpoint[]): Endpoint["health"] {
 
 /**
  * Compact "Endpoints at a glance" card — three operational buckets with a
- * one-tap expand to reveal the full inline endpoint table.
+ * one-tap expand to reveal the full inline endpoint table. On desktop the
+ * full list is open by default; on mobile it's collapsed and scrolls into
+ * view when expanded.
  */
 export function EndpointsGlance({
   endpoints,
   fullList,
-  defaultOpen = false,
+  lastChecked,
 }: {
   endpoints: Endpoint[];
   /** Render-prop for the full inline table when expanded. */
   fullList: () => ReactNode;
-  defaultOpen?: boolean;
+  lastChecked?: string;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const isMobile = useIsMobile();
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const userToggled = useRef(false);
+
+  // Default-open on desktop, collapsed on mobile; respect explicit user toggle.
+  useEffect(() => {
+    if (!userToggled.current) setOpen(!isMobile);
+  }, [isMobile]);
+
+  // Smooth-scroll the expanded panel into view on small screens.
+  useEffect(() => {
+    if (!open || !isMobile) return;
+    const t = window.setTimeout(() => {
+      panelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 180);
+    return () => window.clearTimeout(t);
+  }, [open, isMobile]);
 
   if (endpoints.length === 0) {
     return (
       <EmptyState
         title="No tracked endpoints"
         description="Once endpoints are registered, this card surfaces RPC/WSS, data streams, and incidents at a glance."
+        lastChecked={lastChecked}
+        action={RECOVERY.endpoints}
       />
     );
   }
+
+  const toggle = () => {
+    userToggled.current = true;
+    setOpen((v) => !v);
+  };
 
   return (
     <div className="rounded-lg border border-border bg-card">
@@ -89,7 +117,7 @@ export function EndpointsGlance({
           return (
             <li
               key={b.key}
-              className="flex items-center gap-3 px-4 py-3"
+              className="flex items-center gap-3 px-4 py-3 min-h-11"
             >
               <Icon className="size-3.5 shrink-0 text-ink-muted" />
               <div className="min-w-0 flex-1">
@@ -112,11 +140,12 @@ export function EndpointsGlance({
       </ul>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         className={classNames(
-          "flex w-full items-center justify-center gap-1.5 border-t border-border bg-surface/40 px-3 py-2 text-[11px] font-medium text-ink-muted hover:text-ink-strong",
+          "flex w-full items-center justify-center gap-1.5 border-t border-border bg-surface/40 px-3 py-3 text-[11px] font-medium text-ink-muted hover:text-accent hover:bg-surface min-h-11 transition-colors",
         )}
         aria-expanded={open}
+        aria-controls={panelId}
       >
         {open ? (
           <>
@@ -128,7 +157,19 @@ export function EndpointsGlance({
           </>
         )}
       </button>
-      {open ? <div className="border-t border-border p-3">{fullList()}</div> : null}
+      <div
+        id={panelId}
+        ref={panelRef}
+        className={classNames(
+          "grid border-t border-border transition-[grid-template-rows,opacity] duration-200 ease-out",
+          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
+        aria-hidden={!open}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="p-3">{fullList()}</div>
+        </div>
+      </div>
     </div>
   );
 }
