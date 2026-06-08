@@ -1,7 +1,16 @@
 {
   "artifacts": {
     "added": [],
-    "modified": [],
+    "modified": [
+      {
+        "hash": "4f5b64f88a1728791fffe1acc03efcefeccbf2f58f16930a4376925e0fa0275a",
+        "path": "api-index.json"
+      },
+      {
+        "hash": "58cbd2f1bacb35879f88cbf76b8f99ce4d4b7fe306b1e6aa0b3eb21c085530e4",
+        "path": "openapi.json"
+      }
+    ],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
@@ -19,7 +28,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 0,
+    "artifact_modified_count": 2,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {

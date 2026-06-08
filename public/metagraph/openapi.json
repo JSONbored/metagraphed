@@ -9342,6 +9342,76 @@
           },
           {
             "in": "query",
+            "name": "candidate_api_kinds",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "operational_kinds",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reason_codes",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "recommended_adapter_kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "custom-adapter",
+                "data-artifact-adapter",
+                "generic-openapi-or-custom",
+                "stream-adapter"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -9366,11 +9436,14 @@
             "schema": {
               "enum": [
                 "candidate_api_count",
+                "candidate_api_kinds",
                 "curation_level",
                 "name",
                 "netuid",
+                "operational_kinds",
                 "operational_surface_count",
-                "priority_score"
+                "priority_score",
+                "recommended_adapter_kind"
               ],
               "type": "string"
             }

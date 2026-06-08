@@ -1894,7 +1894,11 @@
       "query_collection": "adapter-candidates",
       "query_filter_names": [
         "netuid",
-        "curation_level"
+        "curation_level",
+        "candidate_api_kinds",
+        "operational_kinds",
+        "reason_codes",
+        "recommended_adapter_kind"
       ],
       "query_parameters": [
         {
@@ -1913,6 +1917,68 @@
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "candidate_api_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "operational_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "reason_codes",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "recommended_adapter_kind",
+          "schema": {
+            "enum": [
+              "custom-adapter",
+              "data-artifact-adapter",
+              "generic-openapi-or-custom",
+              "stream-adapter"
             ],
             "type": "string"
           }
@@ -1937,11 +2003,14 @@
           "schema": {
             "enum": [
               "candidate_api_count",
+              "candidate_api_kinds",
               "curation_level",
               "name",
               "netuid",
+              "operational_kinds",
               "operational_surface_count",
-              "priority_score"
+              "priority_score",
+              "recommended_adapter_kind"
             ],
             "type": "string"
           }

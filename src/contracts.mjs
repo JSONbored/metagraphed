@@ -74,6 +74,12 @@ export const QUERY_ENUMS = {
   ],
   endpointIncidentSeverity: ["critical", "warning", "info"],
   endpointIncidentState: ["active", "resolved"],
+  recommendedAdapterKind: [
+    "custom-adapter",
+    "data-artifact-adapter",
+    "generic-openapi-or-custom",
+    "stream-adapter",
+  ],
   surfaceKind: [
     "archive",
     "dashboard",
@@ -257,14 +263,21 @@ export const API_QUERY_COLLECTIONS = {
     filters: {
       netuid: integerSchema,
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
+      candidate_api_kinds: enumSchema(QUERY_ENUMS.surfaceKind),
+      operational_kinds: enumSchema(QUERY_ENUMS.surfaceKind),
+      reason_codes: textSchema,
+      recommended_adapter_kind: enumSchema(QUERY_ENUMS.recommendedAdapterKind),
     },
     sort: [
       "candidate_api_count",
+      "candidate_api_kinds",
       "curation_level",
       "name",
       "netuid",
+      "operational_kinds",
       "operational_surface_count",
       "priority_score",
+      "recommended_adapter_kind",
     ],
   }),
   "enrichment-queue": queryCollection("queue", {

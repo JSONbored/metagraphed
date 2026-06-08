@@ -945,6 +945,32 @@ describe("Worker runtime", () => {
           body.data.candidates.every((candidate) => candidate.netuid === 7),
       ],
       [
+        "https://metagraph.sh/api/v1/review/adapter-candidates?recommended_adapter_kind=generic-openapi-or-custom",
+        (body) =>
+          body.data.candidates.length > 0 &&
+          body.data.candidates.every(
+            (candidate) =>
+              candidate.recommended_adapter_kind ===
+              "generic-openapi-or-custom",
+          ),
+      ],
+      [
+        "https://metagraph.sh/api/v1/review/adapter-candidates?operational_kinds=openapi",
+        (body) =>
+          body.data.candidates.length > 0 &&
+          body.data.candidates.every((candidate) =>
+            candidate.operational_kinds.includes("openapi"),
+          ),
+      ],
+      [
+        "https://metagraph.sh/api/v1/review/adapter-candidates?reason_codes=existing-adapter",
+        (body) =>
+          body.data.candidates.length > 0 &&
+          body.data.candidates.every((candidate) =>
+            candidate.reason_codes.includes("existing-adapter"),
+          ),
+      ],
+      [
         "https://metagraph.sh/api/v1/subnets/7/health?status=ok",
         (body) =>
           body.data.surfaces.every(
@@ -980,6 +1006,7 @@ describe("Worker runtime", () => {
       "https://metagraph.sh/api/v1/subnets?netuid=not-a-number",
       "https://metagraph.sh/api/v1/subnets?coverage_level=fake",
       "https://metagraph.sh/api/v1/candidates?state=approved",
+      "https://metagraph.sh/api/v1/review/adapter-candidates?recommended_adapter_kind=generic",
       "https://metagraph.sh/api/v1/subnets/7/health?status=alive",
     ];
 

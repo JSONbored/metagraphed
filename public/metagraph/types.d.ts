@@ -3718,9 +3718,13 @@ export interface operations {
             query?: {
                 netuid?: number;
                 curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                candidate_api_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                operational_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                reason_codes?: string;
+                recommended_adapter_kind?: "custom-adapter" | "data-artifact-adapter" | "generic-openapi-or-custom" | "stream-adapter";
                 limit?: number;
                 cursor?: number;
-                sort?: "candidate_api_count" | "curation_level" | "name" | "netuid" | "operational_surface_count" | "priority_score";
+                sort?: "candidate_api_count" | "candidate_api_kinds" | "curation_level" | "name" | "netuid" | "operational_kinds" | "operational_surface_count" | "priority_score" | "recommended_adapter_kind";
                 order?: "asc" | "desc";
             };
             header?: never;

@@ -466,7 +466,12 @@ function filterRows(rows, params, keys) {
       if (!params.has(key)) {
         return true;
       }
-      return String(row[key]) === params.get(key);
+      const expected = params.get(key);
+      const value = row[key];
+      if (Array.isArray(value)) {
+        return value.map(String).includes(expected);
+      }
+      return String(value) === expected;
     }),
   );
 }
