@@ -39,7 +39,7 @@ function SurfacesPage() {
         eyebrow="Registry"
         title="Surfaces"
         description="Verified public interfaces across subnets — filter by kind, provider, and netuid."
-        right={<ResetLink to="/surfaces" />}
+        right={<><ShareButton /><ResetLink to="/surfaces" /></>}
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>

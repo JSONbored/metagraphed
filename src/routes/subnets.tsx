@@ -42,7 +42,7 @@ function SubnetsPage() {
         eyebrow="Registry"
         title="Subnets"
         description="Every active Finney netuid — root and application — with curation level, surface count, health, and freshness."
-        right={<ResetLink to="/subnets" />}
+        right={<><ShareButton /><ResetLink to="/subnets" /></>}
       />
       <QueryErrorBoundary>
         <Suspense fallback={<Skeleton className="h-96 w-full" />}>
