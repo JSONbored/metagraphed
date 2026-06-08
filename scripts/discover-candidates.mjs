@@ -42,6 +42,7 @@ await discoverFromTaoMarketCap();
 await discoverFromTensorplexSubnetDocs();
 await discoverFromTaopediaArticles();
 await discoverUniversalTaoMarketCapDashboards();
+await discoverUniversalBackpropFinanceDashboards();
 if (restoredProviders.size === 0) {
   await discoverFromGithubReadmes();
   await discoverFromProjectWebsites();
@@ -93,6 +94,10 @@ if (!dryRun) {
         {
           id: "taomarketcap",
           url: "https://api.taomarketcap.com/public/v1/subnets/",
+        },
+        {
+          id: "backprop-finance",
+          url: "https://backprop.finance/dtao/subnets/",
         },
         {
           id: "tensorplex-subnet-docs",
@@ -358,6 +363,28 @@ async function discoverUniversalTaoMarketCapDashboards() {
       provider: "taomarketcap",
       review_notes:
         "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+    });
+  }
+}
+
+async function discoverUniversalBackpropFinanceDashboards() {
+  for (const subnet of nativeSnapshot.subnets) {
+    const displayName = displayNameForNetuid(subnet.netuid);
+    const subnetSlug = slugify(displayName) || `subnet-${subnet.netuid}`;
+    const url = `https://backprop.finance/dtao/subnets/${subnet.netuid}-${subnetSlug}`;
+    addCandidate({
+      id: `sn-${subnet.netuid}-backprop-dashboard`,
+      netuid: subnet.netuid,
+      name: `${displayName} Backprop Finance dashboard`,
+      kind: "dashboard",
+      url,
+      source_url: url,
+      source_type: "backprop-dashboard",
+      source_tier: "third-party-index",
+      confidence: "medium",
+      provider: "backprop-finance",
+      review_notes:
+        "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
     });
   }
 }

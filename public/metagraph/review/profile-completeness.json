@@ -3,7 +3,7 @@
   "generated_at": "1970-01-01T00:00:00.000Z",
   "profiles": [
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -30,7 +30,7 @@
       "native_name_quality": "chain",
       "netuid": 27,
       "operational_interface_count": 0,
-      "priority_score": 121,
+      "priority_score": 122,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-27",
@@ -42,7 +42,7 @@
       ]
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "completeness_score": 25,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -68,7 +68,7 @@
       "native_name_quality": "chain",
       "netuid": 25,
       "operational_interface_count": 0,
-      "priority_score": 121,
+      "priority_score": 122,
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "sn-25",
@@ -80,7 +80,7 @@
       ]
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "completeness_score": 25,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -106,7 +106,7 @@
       "native_name_quality": "chain",
       "netuid": 91,
       "operational_interface_count": 0,
-      "priority_score": 115,
+      "priority_score": 116,
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "sn-91",
@@ -118,7 +118,7 @@
       ]
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -145,7 +145,7 @@
       "native_name_quality": "chain",
       "netuid": 40,
       "operational_interface_count": 0,
-      "priority_score": 114,
+      "priority_score": 115,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-40",
@@ -157,7 +157,7 @@
       ]
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -184,7 +184,7 @@
       "native_name_quality": "chain",
       "netuid": 53,
       "operational_interface_count": 0,
-      "priority_score": 114,
+      "priority_score": 115,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-53",
@@ -196,7 +196,7 @@
       ]
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -223,7 +223,7 @@
       "native_name_quality": "chain",
       "netuid": 73,
       "operational_interface_count": 0,
-      "priority_score": 114,
+      "priority_score": 115,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-73",
@@ -235,7 +235,7 @@
       ]
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -262,7 +262,7 @@
       "native_name_quality": "chain",
       "netuid": 92,
       "operational_interface_count": 0,
-      "priority_score": 114,
+      "priority_score": 115,
       "profile_level": "directory-only",
       "review_state": "stale",
       "slug": "sn-92",
@@ -274,7 +274,7 @@
       ]
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -301,7 +301,7 @@
       "native_name_quality": "chain",
       "netuid": 116,
       "operational_interface_count": 0,
-      "priority_score": 114,
+      "priority_score": 115,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-116",
@@ -313,7 +313,7 @@
       ]
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -340,7 +340,7 @@
       "native_name_quality": "chain",
       "netuid": 119,
       "operational_interface_count": 0,
-      "priority_score": 114,
+      "priority_score": 115,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-119",
@@ -352,7 +352,7 @@
       ]
     },
     {
-      "candidate_count": 3,
+      "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -379,7 +379,7 @@
       "native_name_quality": "chain",
       "netuid": 28,
       "operational_interface_count": 0,
-      "priority_score": 113,
+      "priority_score": 114,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-28",
@@ -391,7 +391,7 @@
       ]
     },
     {
-      "candidate_count": 3,
+      "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -418,7 +418,7 @@
       "native_name_quality": "chain",
       "netuid": 31,
       "operational_interface_count": 0,
-      "priority_score": 113,
+      "priority_score": 114,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-31",
@@ -430,7 +430,7 @@
       ]
     },
     {
-      "candidate_count": 3,
+      "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -457,7 +457,7 @@
       "native_name_quality": "chain",
       "netuid": 69,
       "operational_interface_count": 0,
-      "priority_score": 113,
+      "priority_score": 114,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-69",
@@ -469,7 +469,7 @@
       ]
     },
     {
-      "candidate_count": 3,
+      "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -496,7 +496,7 @@
       "native_name_quality": "placeholder",
       "netuid": 86,
       "operational_interface_count": 0,
-      "priority_score": 113,
+      "priority_score": 114,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-86",
@@ -508,7 +508,7 @@
       ]
     },
     {
-      "candidate_count": 3,
+      "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -535,7 +535,7 @@
       "native_name_quality": "chain",
       "netuid": 90,
       "operational_interface_count": 0,
-      "priority_score": 113,
+      "priority_score": 114,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-90",
@@ -547,7 +547,7 @@
       ]
     },
     {
-      "candidate_count": 3,
+      "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -574,7 +574,7 @@
       "native_name_quality": "chain",
       "netuid": 101,
       "operational_interface_count": 0,
-      "priority_score": 113,
+      "priority_score": 114,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-101",
@@ -586,7 +586,7 @@
       ]
     },
     {
-      "candidate_count": 3,
+      "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -613,7 +613,7 @@
       "native_name_quality": "chain",
       "netuid": 104,
       "operational_interface_count": 0,
-      "priority_score": 113,
+      "priority_score": 114,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-104",
@@ -625,7 +625,7 @@
       ]
     },
     {
-      "candidate_count": 3,
+      "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -652,7 +652,7 @@
       "native_name_quality": "chain",
       "netuid": 125,
       "operational_interface_count": 0,
-      "priority_score": 113,
+      "priority_score": 114,
       "profile_level": "directory-only",
       "review_state": "machine-generated",
       "slug": "sn-125",
@@ -664,7 +664,7 @@
       ]
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "completeness_score": 25,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -690,7 +690,7 @@
       "native_name_quality": "chain",
       "netuid": 20,
       "operational_interface_count": 0,
-      "priority_score": 113,
+      "priority_score": 114,
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "sn-20",
@@ -702,7 +702,7 @@
       ]
     },
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "completeness_score": 25,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -728,7 +728,7 @@
       "native_name_quality": "chain",
       "netuid": 76,
       "operational_interface_count": 0,
-      "priority_score": 111,
+      "priority_score": 112,
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "sn-76",
@@ -740,7 +740,7 @@
       ]
     },
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "completeness_score": 25,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -766,7 +766,7 @@
       "native_name_quality": "chain",
       "netuid": 89,
       "operational_interface_count": 0,
-      "priority_score": 111,
+      "priority_score": 112,
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "sn-89",
@@ -778,7 +778,7 @@
       ]
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "completeness_score": 25,
       "confidence": "low",
       "curation_level": "maintainer-reviewed",
@@ -804,7 +804,7 @@
       "native_name_quality": "chain",
       "netuid": 81,
       "operational_interface_count": 0,
-      "priority_score": 105,
+      "priority_score": 106,
       "profile_level": "directory-only",
       "review_state": "needs-review",
       "slug": "sn-81",
@@ -816,7 +816,7 @@
       ]
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "completeness_score": 25,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -842,7 +842,7 @@
       "native_name_quality": "chain",
       "netuid": 109,
       "operational_interface_count": 0,
-      "priority_score": 104,
+      "priority_score": 105,
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "sn-109",
@@ -854,7 +854,7 @@
       ]
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "completeness_score": 25,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -880,7 +880,7 @@
       "native_name_quality": "chain",
       "netuid": 115,
       "operational_interface_count": 0,
-      "priority_score": 104,
+      "priority_score": 105,
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "sn-115",
@@ -892,7 +892,7 @@
       ]
     },
     {
-      "candidate_count": 4,
+      "candidate_count": 5,
       "completeness_score": 25,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -918,7 +918,7 @@
       "native_name_quality": "chain",
       "netuid": 123,
       "operational_interface_count": 0,
-      "priority_score": 104,
+      "priority_score": 105,
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "sn-123",
@@ -930,7 +930,7 @@
       ]
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -953,10 +953,46 @@
       "native_name_quality": "chain",
       "netuid": 4,
       "operational_interface_count": 0,
-      "priority_score": 102,
+      "priority_score": 103,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-4",
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 23,
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Compelle",
+      "native_name_quality": "chain",
+      "netuid": 82,
+      "operational_interface_count": 0,
+      "priority_score": 103,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-82",
       "source_count": 3,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -985,47 +1021,11 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "Compelle",
-      "native_name_quality": "chain",
-      "netuid": 82,
-      "operational_interface_count": 0,
-      "priority_score": 102,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-82",
-      "source_count": 3,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 21,
-      "completeness_score": 40,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-docs",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
       "name": "iota",
       "native_name_quality": "chain",
       "netuid": 9,
       "operational_interface_count": 0,
-      "priority_score": 101,
+      "priority_score": 102,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-9",
@@ -1038,7 +1038,7 @@
       ]
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -1061,7 +1061,7 @@
       "native_name_quality": "chain",
       "netuid": 21,
       "operational_interface_count": 0,
-      "priority_score": 101,
+      "priority_score": 102,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-21",
@@ -1074,7 +1074,7 @@
       ]
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -1097,7 +1097,7 @@
       "native_name_quality": "chain",
       "netuid": 32,
       "operational_interface_count": 0,
-      "priority_score": 101,
+      "priority_score": 102,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-32",
@@ -1110,7 +1110,7 @@
       ]
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -1133,7 +1133,7 @@
       "native_name_quality": "chain",
       "netuid": 45,
       "operational_interface_count": 0,
-      "priority_score": 101,
+      "priority_score": 102,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-45",
@@ -1146,7 +1146,7 @@
       ]
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -1169,7 +1169,7 @@
       "native_name_quality": "chain",
       "netuid": 48,
       "operational_interface_count": 0,
-      "priority_score": 101,
+      "priority_score": 102,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-48",
@@ -1182,7 +1182,7 @@
       ]
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -1205,10 +1205,46 @@
       "native_name_quality": "chain",
       "netuid": 63,
       "operational_interface_count": 0,
-      "priority_score": 101,
+      "priority_score": 102,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-63",
+      "source_count": 3,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 22,
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "sundae_bar",
+      "native_name_quality": "chain",
+      "netuid": 121,
+      "operational_interface_count": 0,
+      "priority_score": 102,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-121",
       "source_count": 3,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -1237,14 +1273,14 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "sundae_bar",
+      "name": "Djinn",
       "native_name_quality": "chain",
-      "netuid": 121,
+      "netuid": 103,
       "operational_interface_count": 0,
       "priority_score": 101,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
-      "slug": "sn-121",
+      "slug": "sn-103",
       "source_count": 3,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -1273,14 +1309,14 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "Djinn",
+      "name": "ForeverMoney",
       "native_name_quality": "chain",
-      "netuid": 103,
+      "netuid": 98,
       "operational_interface_count": 0,
       "priority_score": 100,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
-      "slug": "sn-103",
+      "slug": "sn-98",
       "source_count": 3,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -1309,47 +1345,11 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "ForeverMoney",
-      "native_name_quality": "chain",
-      "netuid": 98,
-      "operational_interface_count": 0,
-      "priority_score": 99,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-98",
-      "source_count": 3,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 18,
-      "completeness_score": 40,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-docs",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
       "name": "Vidaio",
       "native_name_quality": "chain",
       "netuid": 85,
       "operational_interface_count": 0,
-      "priority_score": 98,
+      "priority_score": 99,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-85",
@@ -1362,7 +1362,7 @@
       ]
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -1387,7 +1387,7 @@
       "native_name_quality": "chain",
       "netuid": 30,
       "operational_interface_count": 0,
-      "priority_score": 97,
+      "priority_score": 98,
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "sn-30",
@@ -1400,7 +1400,7 @@
       ]
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -1423,7 +1423,7 @@
       "native_name_quality": "chain",
       "netuid": 102,
       "operational_interface_count": 0,
-      "priority_score": 96,
+      "priority_score": 97,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-102",
@@ -1436,7 +1436,7 @@
       ]
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "completeness_score": 33,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -1460,7 +1460,7 @@
       "native_name_quality": "chain",
       "netuid": 47,
       "operational_interface_count": 1,
-      "priority_score": 93,
+      "priority_score": 94,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-47",
@@ -1473,7 +1473,7 @@
       ]
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -1495,7 +1495,7 @@
       "native_name_quality": "chain",
       "netuid": 118,
       "operational_interface_count": 0,
-      "priority_score": 92,
+      "priority_score": 93,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
       "slug": "sn-118",
@@ -1509,7 +1509,7 @@
       ]
     },
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -1532,7 +1532,7 @@
       "native_name_quality": "chain",
       "netuid": 62,
       "operational_interface_count": 0,
-      "priority_score": 91,
+      "priority_score": 92,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-62",
@@ -1545,7 +1545,7 @@
       ]
     },
     {
-      "candidate_count": 3,
+      "candidate_count": 4,
       "completeness_score": 40,
       "confidence": "low",
       "curation_level": "maintainer-reviewed",
@@ -1570,7 +1570,7 @@
       "native_name_quality": "placeholder",
       "netuid": 42,
       "operational_interface_count": 0,
-      "priority_score": 88,
+      "priority_score": 89,
       "profile_level": "directory-only",
       "review_state": "needs-review",
       "slug": "sn-42",
@@ -1583,7 +1583,7 @@
       ]
     },
     {
-      "candidate_count": 3,
+      "candidate_count": 4,
       "completeness_score": 40,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -1608,7 +1608,7 @@
       "native_name_quality": "placeholder",
       "netuid": 87,
       "operational_interface_count": 0,
-      "priority_score": 88,
+      "priority_score": 89,
       "profile_level": "directory-only",
       "review_state": "maintainer-reviewed",
       "slug": "sn-87",
@@ -1621,7 +1621,7 @@
       ]
     },
     {
-      "candidate_count": 23,
+      "candidate_count": 24,
       "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -1643,7 +1643,7 @@
       "native_name_quality": "chain",
       "netuid": 75,
       "operational_interface_count": 0,
-      "priority_score": 88,
+      "priority_score": 89,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-75",
@@ -1657,7 +1657,7 @@
       ]
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -1679,11 +1679,11 @@
       "native_name_quality": "chain",
       "netuid": 14,
       "operational_interface_count": 0,
-      "priority_score": 87,
+      "priority_score": 88,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
       "slug": "sn-14",
-      "source_count": 8,
+      "source_count": 9,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
         "dashboard",
@@ -1693,7 +1693,7 @@
       ]
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -1715,7 +1715,7 @@
       "native_name_quality": "chain",
       "netuid": 17,
       "operational_interface_count": 0,
-      "priority_score": 87,
+      "priority_score": 88,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
       "slug": "sn-17",
@@ -1729,7 +1729,7 @@
       ]
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -1751,10 +1751,46 @@
       "native_name_quality": "chain",
       "netuid": 100,
       "operational_interface_count": 0,
-      "priority_score": 87,
+      "priority_score": 88,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
       "slug": "sn-100",
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 18,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "TalkHead",
+      "native_name_quality": "chain",
+      "netuid": 108,
+      "operational_interface_count": 0,
+      "priority_score": 88,
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-108",
       "source_count": 6,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -1783,47 +1819,11 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "TalkHead",
-      "native_name_quality": "chain",
-      "netuid": 108,
-      "operational_interface_count": 0,
-      "priority_score": 87,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-108",
-      "source_count": 6,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 16,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
       "name": "Numinous",
       "native_name_quality": "chain",
       "netuid": 6,
       "operational_interface_count": 0,
-      "priority_score": 86,
+      "priority_score": 87,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
       "slug": "sn-6",
@@ -1837,7 +1837,7 @@
       ]
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -1859,10 +1859,226 @@
       "native_name_quality": "chain",
       "netuid": 18,
       "operational_interface_count": 0,
-      "priority_score": 86,
+      "priority_score": 87,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
       "slug": "sn-18",
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 17,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Aurelius",
+      "native_name_quality": "chain",
+      "netuid": 37,
+      "operational_interface_count": 0,
+      "priority_score": 87,
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-37",
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 22,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "blockmachine",
+      "native_name_quality": "chain",
+      "netuid": 19,
+      "operational_interface_count": 0,
+      "priority_score": 87,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-19",
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 6,
+      "completeness_score": 40,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Compute Horde",
+      "native_name_quality": "chain",
+      "netuid": 12,
+      "operational_interface_count": 0,
+      "priority_score": 86,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-12",
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 6,
+      "completeness_score": 40,
+      "confidence": "low",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Basilica",
+      "native_name_quality": "chain",
+      "netuid": 39,
+      "operational_interface_count": 0,
+      "priority_score": 86,
+      "profile_level": "identity-complete",
+      "review_state": "needs-review",
+      "slug": "sn-39",
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 6,
+      "completeness_score": 40,
+      "confidence": "low",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "BrainPlay",
+      "native_name_quality": "placeholder",
+      "netuid": 117,
+      "operational_interface_count": 0,
+      "priority_score": 86,
+      "profile_level": "identity-complete",
+      "review_state": "needs-review",
+      "slug": "sn-117",
+      "source_count": 4,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 16,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "TrajectoryRL",
+      "native_name_quality": "chain",
+      "netuid": 11,
+      "operational_interface_count": 0,
+      "priority_score": 86,
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-11",
       "source_count": 6,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -1891,14 +2107,122 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "Aurelius",
+      "name": "Perturb",
       "native_name_quality": "chain",
-      "netuid": 37,
+      "netuid": 26,
       "operational_interface_count": 0,
       "priority_score": 86,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
-      "slug": "sn-37",
+      "slug": "sn-26",
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 16,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Eirel",
+      "native_name_quality": "chain",
+      "netuid": 36,
+      "operational_interface_count": 0,
+      "priority_score": 86,
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-36",
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 16,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "NIOME",
+      "native_name_quality": "chain",
+      "netuid": 55,
+      "operational_interface_count": 0,
+      "priority_score": 86,
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-55",
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 16,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Poker44",
+      "native_name_quality": "chain",
+      "netuid": 126,
+      "operational_interface_count": 0,
+      "priority_score": 86,
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-126",
       "source_count": 6,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -1927,15 +2251,15 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "blockmachine",
+      "name": "Data Universe",
       "native_name_quality": "chain",
-      "netuid": 19,
+      "netuid": 13,
       "operational_interface_count": 0,
       "priority_score": 86,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
-      "slug": "sn-19",
-      "source_count": 4,
+      "slug": "sn-13",
+      "source_count": 10,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
         "dashboard",
@@ -1964,14 +2288,14 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "Compute Horde",
+      "name": "Graphite",
       "native_name_quality": "chain",
-      "netuid": 12,
+      "netuid": 43,
       "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
-      "slug": "sn-12",
+      "slug": "sn-43",
       "source_count": 4,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -1983,7 +2307,7 @@
     {
       "candidate_count": 5,
       "completeness_score": 40,
-      "confidence": "low",
+      "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
@@ -2000,14 +2324,14 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "Basilica",
+      "name": "Sparket",
       "native_name_quality": "chain",
-      "netuid": 39,
+      "netuid": 57,
       "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
-      "review_state": "needs-review",
-      "slug": "sn-39",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-57",
       "source_count": 4,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -2019,7 +2343,7 @@
     {
       "candidate_count": 5,
       "completeness_score": 40,
-      "confidence": "low",
+      "confidence": "high",
       "curation_level": "maintainer-reviewed",
       "gap_reasons": [
         "missing-docs",
@@ -2036,14 +2360,14 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "BrainPlay",
-      "native_name_quality": "placeholder",
-      "netuid": 117,
+      "name": "oneoneone",
+      "native_name_quality": "chain",
+      "netuid": 111,
       "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
-      "review_state": "needs-review",
-      "slug": "sn-117",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-111",
       "source_count": 4,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -2071,14 +2395,14 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "TrajectoryRL",
+      "name": "Hone",
       "native_name_quality": "chain",
-      "netuid": 11,
+      "netuid": 5,
       "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
-      "slug": "sn-11",
+      "slug": "sn-5",
       "source_count": 6,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -2107,14 +2431,14 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "Perturb",
+      "name": "Vanta",
       "native_name_quality": "chain",
-      "netuid": 26,
+      "netuid": 8,
       "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
-      "slug": "sn-26",
+      "slug": "sn-8",
       "source_count": 6,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -2143,14 +2467,86 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "Eirel",
+      "name": "Yanez MIID",
       "native_name_quality": "chain",
-      "netuid": 36,
+      "netuid": 54,
       "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
-      "slug": "sn-36",
+      "slug": "sn-54",
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 15,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Harnyx",
+      "native_name_quality": "chain",
+      "netuid": 67,
+      "operational_interface_count": 0,
+      "priority_score": 85,
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-67",
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 15,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Bitsota",
+      "native_name_quality": "chain",
+      "netuid": 94,
+      "operational_interface_count": 0,
+      "priority_score": 85,
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-94",
       "source_count": 6,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -2179,50 +2575,14 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "NIOME",
+      "name": "Astrid",
       "native_name_quality": "chain",
-      "netuid": 55,
+      "netuid": 127,
       "operational_interface_count": 0,
       "priority_score": 85,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
-      "slug": "sn-55",
-      "source_count": 6,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 15,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Poker44",
-      "native_name_quality": "chain",
-      "netuid": 126,
-      "operational_interface_count": 0,
-      "priority_score": 85,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-126",
+      "slug": "sn-127",
       "source_count": 6,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -2251,371 +2611,11 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "Data Universe",
-      "native_name_quality": "chain",
-      "netuid": 13,
-      "operational_interface_count": 0,
-      "priority_score": 85,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-13",
-      "source_count": 10,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 4,
-      "completeness_score": 40,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-docs",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Graphite",
-      "native_name_quality": "chain",
-      "netuid": 43,
-      "operational_interface_count": 0,
-      "priority_score": 84,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-43",
-      "source_count": 4,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 4,
-      "completeness_score": 40,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-docs",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Sparket",
-      "native_name_quality": "chain",
-      "netuid": 57,
-      "operational_interface_count": 0,
-      "priority_score": 84,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-57",
-      "source_count": 4,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 4,
-      "completeness_score": 40,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-docs",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "oneoneone",
-      "native_name_quality": "chain",
-      "netuid": 111,
-      "operational_interface_count": 0,
-      "priority_score": 84,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-111",
-      "source_count": 4,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 14,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Hone",
-      "native_name_quality": "chain",
-      "netuid": 5,
-      "operational_interface_count": 0,
-      "priority_score": 84,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-5",
-      "source_count": 6,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 14,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Vanta",
-      "native_name_quality": "chain",
-      "netuid": 8,
-      "operational_interface_count": 0,
-      "priority_score": 84,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-8",
-      "source_count": 6,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 14,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Yanez MIID",
-      "native_name_quality": "chain",
-      "netuid": 54,
-      "operational_interface_count": 0,
-      "priority_score": 84,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-54",
-      "source_count": 7,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 14,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Harnyx",
-      "native_name_quality": "chain",
-      "netuid": 67,
-      "operational_interface_count": 0,
-      "priority_score": 84,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-67",
-      "source_count": 7,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 14,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Bitsota",
-      "native_name_quality": "chain",
-      "netuid": 94,
-      "operational_interface_count": 0,
-      "priority_score": 84,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-94",
-      "source_count": 6,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 14,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Astrid",
-      "native_name_quality": "chain",
-      "netuid": 127,
-      "operational_interface_count": 0,
-      "priority_score": 84,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-127",
-      "source_count": 6,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 19,
-      "completeness_score": 55,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
       "name": "ORO",
       "native_name_quality": "chain",
       "netuid": 15,
       "operational_interface_count": 0,
-      "priority_score": 84,
+      "priority_score": 85,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-15",
@@ -2629,7 +2629,7 @@
       ]
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "completeness_score": 48,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -2650,7 +2650,7 @@
       "native_name_quality": "chain",
       "netuid": 88,
       "operational_interface_count": 1,
-      "priority_score": 83,
+      "priority_score": 84,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-88",
@@ -2664,7 +2664,7 @@
       ]
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -2686,7 +2686,7 @@
       "native_name_quality": "chain",
       "netuid": 44,
       "operational_interface_count": 0,
-      "priority_score": 83,
+      "priority_score": 84,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
       "slug": "sn-44",
@@ -2700,7 +2700,7 @@
       ]
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -2723,7 +2723,7 @@
       "native_name_quality": "chain",
       "netuid": 95,
       "operational_interface_count": 1,
-      "priority_score": 83,
+      "priority_score": 84,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-95",
@@ -2733,6 +2733,150 @@
         "dashboard",
         "docs",
         "openapi",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 19,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Apex",
+      "native_name_quality": "chain",
+      "netuid": 1,
+      "operational_interface_count": 0,
+      "priority_score": 84,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-1",
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 13,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "OxMarkets",
+      "native_name_quality": "chain",
+      "netuid": 35,
+      "operational_interface_count": 0,
+      "priority_score": 83,
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-35",
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 13,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "minotaur",
+      "native_name_quality": "chain",
+      "netuid": 112,
+      "operational_interface_count": 0,
+      "priority_score": 83,
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-112",
+      "source_count": 6,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 13,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Affine",
+      "native_name_quality": "chain",
+      "netuid": 120,
+      "operational_interface_count": 0,
+      "priority_score": 83,
+      "profile_level": "identity-complete",
+      "review_state": "machine-generated",
+      "slug": "sn-120",
+      "source_count": 7,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
         "website"
       ]
     },
@@ -2755,155 +2899,11 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "Apex",
-      "native_name_quality": "chain",
-      "netuid": 1,
-      "operational_interface_count": 0,
-      "priority_score": 83,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-1",
-      "source_count": 5,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 12,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "OxMarkets",
-      "native_name_quality": "chain",
-      "netuid": 35,
-      "operational_interface_count": 0,
-      "priority_score": 82,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-35",
-      "source_count": 6,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 12,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "minotaur",
-      "native_name_quality": "chain",
-      "netuid": 112,
-      "operational_interface_count": 0,
-      "priority_score": 82,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-112",
-      "source_count": 6,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 12,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Affine",
-      "native_name_quality": "chain",
-      "netuid": 120,
-      "operational_interface_count": 0,
-      "priority_score": 82,
-      "profile_level": "identity-complete",
-      "review_state": "machine-generated",
-      "slug": "sn-120",
-      "source_count": 6,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 17,
-      "completeness_score": 55,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
       "name": "TensorUSD",
       "native_name_quality": "chain",
       "netuid": 113,
       "operational_interface_count": 0,
-      "priority_score": 82,
+      "priority_score": 83,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-113",
@@ -2917,7 +2917,7 @@
       ]
     },
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -2939,7 +2939,7 @@
       "native_name_quality": "chain",
       "netuid": 10,
       "operational_interface_count": 0,
-      "priority_score": 81,
+      "priority_score": 82,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
       "slug": "sn-10",
@@ -2953,7 +2953,44 @@
       ]
     },
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
+      "completeness_score": 50,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [
+        "source-repo"
+      ],
+      "name": "colosseum",
+      "native_name_quality": "chain",
+      "netuid": 38,
+      "operational_interface_count": 1,
+      "priority_score": 82,
+      "profile_level": "operational",
+      "review_state": "machine-generated",
+      "slug": "sn-38",
+      "source_count": 5,
+      "suggested_next_action": "submit official docs, website, or source repository evidence",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 12,
       "completeness_score": 50,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -2975,7 +3012,7 @@
       "native_name_quality": "chain",
       "netuid": 106,
       "operational_interface_count": 0,
-      "priority_score": 81,
+      "priority_score": 82,
       "profile_level": "identity-complete",
       "review_state": "machine-generated",
       "slug": "sn-106",
@@ -2989,7 +3026,7 @@
       ]
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "completeness_score": 58,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -3009,7 +3046,7 @@
       "native_name_quality": "chain",
       "netuid": 72,
       "operational_interface_count": 1,
-      "priority_score": 79,
+      "priority_score": 80,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-72",
@@ -3023,7 +3060,7 @@
       ]
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -3045,7 +3082,7 @@
       "native_name_quality": "chain",
       "netuid": 61,
       "operational_interface_count": 0,
-      "priority_score": 78,
+      "priority_score": 79,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-61",
@@ -3059,7 +3096,7 @@
       ]
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -3080,7 +3117,7 @@
       "native_name_quality": "chain",
       "netuid": 23,
       "operational_interface_count": 1,
-      "priority_score": 76,
+      "priority_score": 77,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-23",
@@ -3094,7 +3131,7 @@
       ]
     },
     {
-      "candidate_count": 19,
+      "candidate_count": 20,
       "completeness_score": 58,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3114,7 +3151,7 @@
       "native_name_quality": "chain",
       "netuid": 114,
       "operational_interface_count": 1,
-      "priority_score": 76,
+      "priority_score": 77,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-114",
@@ -3129,7 +3166,7 @@
       ]
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "completeness_score": 63,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -3149,7 +3186,7 @@
       "native_name_quality": "chain",
       "netuid": 79,
       "operational_interface_count": 1,
-      "priority_score": 74,
+      "priority_score": 75,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-79",
@@ -3164,7 +3201,7 @@
       ]
     },
     {
-      "candidate_count": 8,
+      "candidate_count": 9,
       "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -3186,7 +3223,7 @@
       "native_name_quality": "chain",
       "netuid": 52,
       "operational_interface_count": 0,
-      "priority_score": 73,
+      "priority_score": 74,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "sn-52",
@@ -3200,7 +3237,7 @@
       ]
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "completeness_score": 58,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3220,7 +3257,7 @@
       "native_name_quality": "chain",
       "netuid": 68,
       "operational_interface_count": 1,
-      "priority_score": 73,
+      "priority_score": 74,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-68",
@@ -3235,7 +3272,7 @@
       ]
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "completeness_score": 58,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3255,7 +3292,7 @@
       "native_name_quality": "chain",
       "netuid": 70,
       "operational_interface_count": 1,
-      "priority_score": 73,
+      "priority_score": 74,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-70",
@@ -3270,7 +3307,7 @@
       ]
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3290,7 +3327,7 @@
       "native_name_quality": "chain",
       "netuid": 51,
       "operational_interface_count": 1,
-      "priority_score": 72,
+      "priority_score": 73,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-51",
@@ -3305,7 +3342,7 @@
       ]
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3325,7 +3362,7 @@
       "native_name_quality": "chain",
       "netuid": 46,
       "operational_interface_count": 1,
-      "priority_score": 71,
+      "priority_score": 72,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-46",
@@ -3335,6 +3372,78 @@
         "dashboard",
         "docs",
         "openapi",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 6,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "ansuz",
+      "native_name_quality": "chain",
+      "netuid": 84,
+      "operational_interface_count": 0,
+      "priority_score": 71,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-84",
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 5,
+      "completeness_score": 55,
+      "confidence": "low",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Templar",
+      "native_name_quality": "chain",
+      "netuid": 3,
+      "operational_interface_count": 0,
+      "priority_score": 70,
+      "profile_level": "identity-complete",
+      "review_state": "needs-review",
+      "slug": "sn-3",
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
         "source-repo",
         "website"
       ]
@@ -3358,14 +3467,14 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "ansuz",
+      "name": "BitMind",
       "native_name_quality": "chain",
-      "netuid": 84,
+      "netuid": 34,
       "operational_interface_count": 0,
       "priority_score": 70,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
-      "slug": "sn-84",
+      "slug": "sn-34",
       "source_count": 5,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
@@ -3376,7 +3485,43 @@
       ]
     },
     {
-      "candidate_count": 26,
+      "candidate_count": 5,
+      "completeness_score": 55,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "missing_operational": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Bitrecs",
+      "native_name_quality": "chain",
+      "netuid": 122,
+      "operational_interface_count": 0,
+      "priority_score": 70,
+      "profile_level": "identity-complete",
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-122",
+      "source_count": 5,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "source-repo",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 27,
       "completeness_score": 70,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -3411,115 +3556,7 @@
       ]
     },
     {
-      "candidate_count": 4,
-      "completeness_score": 55,
-      "confidence": "low",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Templar",
-      "native_name_quality": "chain",
-      "netuid": 3,
-      "operational_interface_count": 0,
-      "priority_score": 69,
-      "profile_level": "identity-complete",
-      "review_state": "needs-review",
-      "slug": "sn-3",
-      "source_count": 5,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 4,
-      "completeness_score": 55,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "BitMind",
-      "native_name_quality": "chain",
-      "netuid": 34,
-      "operational_interface_count": 0,
-      "priority_score": 69,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-34",
-      "source_count": 5,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 4,
-      "completeness_score": 55,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "Bitrecs",
-      "native_name_quality": "chain",
-      "netuid": 122,
-      "operational_interface_count": 0,
-      "priority_score": 69,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "sn-122",
-      "source_count": 5,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 18,
+      "candidate_count": 19,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3539,7 +3576,7 @@
       "native_name_quality": "chain",
       "netuid": 107,
       "operational_interface_count": 1,
-      "priority_score": 68,
+      "priority_score": 69,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-107",
@@ -3554,7 +3591,7 @@
       ]
     },
     {
-      "candidate_count": 2,
+      "candidate_count": 3,
       "completeness_score": 55,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -3576,7 +3613,7 @@
       "native_name_quality": "chain",
       "netuid": 0,
       "operational_interface_count": 0,
-      "priority_score": 67,
+      "priority_score": 68,
       "profile_level": "identity-complete",
       "review_state": "maintainer-reviewed",
       "slug": "root",
@@ -3592,7 +3629,7 @@
       ]
     },
     {
-      "candidate_count": 15,
+      "candidate_count": 16,
       "completeness_score": 63,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -3612,7 +3649,7 @@
       "native_name_quality": "chain",
       "netuid": 24,
       "operational_interface_count": 1,
-      "priority_score": 67,
+      "priority_score": 68,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-24",
@@ -3627,7 +3664,7 @@
       ]
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3647,7 +3684,7 @@
       "native_name_quality": "chain",
       "netuid": 65,
       "operational_interface_count": 1,
-      "priority_score": 67,
+      "priority_score": 68,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-65",
@@ -3662,7 +3699,7 @@
       ]
     },
     {
-      "candidate_count": 17,
+      "candidate_count": 18,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3682,7 +3719,7 @@
       "native_name_quality": "chain",
       "netuid": 93,
       "operational_interface_count": 1,
-      "priority_score": 67,
+      "priority_score": 68,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-93",
@@ -3697,7 +3734,7 @@
       ]
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "completeness_score": 63,
       "confidence": "high",
       "curation_level": "adapter-backed",
@@ -3717,7 +3754,7 @@
       "native_name_quality": "chain",
       "netuid": 74,
       "operational_interface_count": 1,
-      "priority_score": 66,
+      "priority_score": 67,
       "profile_level": "adapter-backed",
       "review_state": "maintainer-reviewed",
       "slug": "gittensor",
@@ -3732,7 +3769,7 @@
       ]
     },
     {
-      "candidate_count": 16,
+      "candidate_count": 17,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3752,7 +3789,7 @@
       "native_name_quality": "chain",
       "netuid": 59,
       "operational_interface_count": 1,
-      "priority_score": 66,
+      "priority_score": 67,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-59",
@@ -3763,6 +3800,41 @@
         "docs",
         "source-repo",
         "subnet-api",
+        "website"
+      ]
+    },
+    {
+      "candidate_count": 16,
+      "completeness_score": 65,
+      "confidence": "medium",
+      "curation_level": "machine-verified",
+      "gap_reasons": [
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 3,
+      "missing_operational": [
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "missing_required": [],
+      "name": "Albedo",
+      "native_name_quality": "chain",
+      "netuid": 97,
+      "operational_interface_count": 1,
+      "priority_score": 66,
+      "profile_level": "operational",
+      "review_state": "machine-generated",
+      "slug": "sn-97",
+      "source_count": 8,
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "supported_interface_kinds": [
+        "dashboard",
+        "docs",
+        "openapi",
+        "source-repo",
         "website"
       ]
     },
@@ -3783,46 +3855,11 @@
         "data-artifact"
       ],
       "missing_required": [],
-      "name": "Albedo",
-      "native_name_quality": "chain",
-      "netuid": 97,
-      "operational_interface_count": 1,
-      "priority_score": 65,
-      "profile_level": "operational",
-      "review_state": "machine-generated",
-      "slug": "sn-97",
-      "source_count": 8,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "openapi",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 14,
-      "completeness_score": 65,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 3,
-      "missing_operational": [
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
       "name": "DSperse",
       "native_name_quality": "chain",
       "netuid": 2,
       "operational_interface_count": 1,
-      "priority_score": 64,
+      "priority_score": 65,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-2",
@@ -3837,7 +3874,7 @@
       ]
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3857,11 +3894,11 @@
       "native_name_quality": "chain",
       "netuid": 99,
       "operational_interface_count": 1,
-      "priority_score": 64,
+      "priority_score": 65,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-99",
-      "source_count": 6,
+      "source_count": 8,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
         "dashboard",
@@ -3872,7 +3909,7 @@
       ]
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "completeness_score": 58,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -3892,7 +3929,7 @@
       "native_name_quality": "chain",
       "netuid": 33,
       "operational_interface_count": 1,
-      "priority_score": 63,
+      "priority_score": 64,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-33",
@@ -3906,7 +3943,7 @@
       ]
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3926,11 +3963,11 @@
       "native_name_quality": "chain",
       "netuid": 60,
       "operational_interface_count": 1,
-      "priority_score": 63,
+      "priority_score": 64,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-60",
-      "source_count": 6,
+      "source_count": 8,
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
       "supported_interface_kinds": [
         "dashboard",
@@ -3941,7 +3978,7 @@
       ]
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3961,7 +3998,7 @@
       "native_name_quality": "chain",
       "netuid": 78,
       "operational_interface_count": 1,
-      "priority_score": 63,
+      "priority_score": 64,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-78",
@@ -3976,7 +4013,7 @@
       ]
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -3996,7 +4033,7 @@
       "native_name_quality": "chain",
       "netuid": 80,
       "operational_interface_count": 1,
-      "priority_score": 63,
+      "priority_score": 64,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-80",
@@ -4011,7 +4048,7 @@
       ]
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -4031,7 +4068,7 @@
       "native_name_quality": "chain",
       "netuid": 41,
       "operational_interface_count": 1,
-      "priority_score": 62,
+      "priority_score": 63,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-41",
@@ -4046,7 +4083,7 @@
       ]
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -4066,7 +4103,7 @@
       "native_name_quality": "chain",
       "netuid": 50,
       "operational_interface_count": 1,
-      "priority_score": 62,
+      "priority_score": 63,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-50",
@@ -4081,7 +4118,7 @@
       ]
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -4101,7 +4138,7 @@
       "native_name_quality": "chain",
       "netuid": 124,
       "operational_interface_count": 1,
-      "priority_score": 62,
+      "priority_score": 63,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-124",
@@ -4116,7 +4153,7 @@
       ]
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -4136,7 +4173,7 @@
       "native_name_quality": "chain",
       "netuid": 128,
       "operational_interface_count": 1,
-      "priority_score": 62,
+      "priority_score": 63,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-128",
@@ -4151,7 +4188,7 @@
       ]
     },
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -4171,7 +4208,7 @@
       "native_name_quality": "chain",
       "netuid": 16,
       "operational_interface_count": 1,
-      "priority_score": 61,
+      "priority_score": 62,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-16",
@@ -4186,42 +4223,7 @@
       ]
     },
     {
-      "candidate_count": 11,
-      "completeness_score": 65,
-      "confidence": "medium",
-      "curation_level": "machine-verified",
-      "gap_reasons": [
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 3,
-      "missing_operational": [
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "colosseum",
-      "native_name_quality": "chain",
-      "netuid": 38,
-      "operational_interface_count": 1,
-      "priority_score": 61,
-      "profile_level": "operational",
-      "review_state": "machine-generated",
-      "slug": "sn-38",
-      "source_count": 6,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "openapi",
-        "source-repo",
-        "website"
-      ]
-    },
-    {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -4241,7 +4243,7 @@
       "native_name_quality": "chain",
       "netuid": 71,
       "operational_interface_count": 1,
-      "priority_score": 61,
+      "priority_score": 62,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-71",
@@ -4256,7 +4258,7 @@
       ]
     },
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -4276,7 +4278,7 @@
       "native_name_quality": "chain",
       "netuid": 77,
       "operational_interface_count": 1,
-      "priority_score": 61,
+      "priority_score": 62,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-77",
@@ -4291,7 +4293,7 @@
       ]
     },
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -4311,7 +4313,7 @@
       "native_name_quality": "chain",
       "netuid": 83,
       "operational_interface_count": 1,
-      "priority_score": 61,
+      "priority_score": 62,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-83",
@@ -4326,7 +4328,7 @@
       ]
     },
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "completeness_score": 65,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -4346,7 +4348,7 @@
       "native_name_quality": "chain",
       "netuid": 105,
       "operational_interface_count": 1,
-      "priority_score": 61,
+      "priority_score": 62,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-105",
@@ -4361,7 +4363,7 @@
       ]
     },
     {
-      "candidate_count": 14,
+      "candidate_count": 15,
       "completeness_score": 70,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -4381,7 +4383,7 @@
       "native_name_quality": "chain",
       "netuid": 66,
       "operational_interface_count": 1,
-      "priority_score": 59,
+      "priority_score": 60,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-66",
@@ -4396,7 +4398,7 @@
       ]
     },
     {
-      "candidate_count": 22,
+      "candidate_count": 23,
       "completeness_score": 73,
       "confidence": "medium",
       "curation_level": "machine-verified",
@@ -4414,7 +4416,7 @@
       "native_name_quality": "chain",
       "netuid": 56,
       "operational_interface_count": 2,
-      "priority_score": 59,
+      "priority_score": 60,
       "profile_level": "operational",
       "review_state": "machine-generated",
       "slug": "sn-56",
@@ -4430,7 +4432,7 @@
       ]
     },
     {
-      "candidate_count": 5,
+      "candidate_count": 6,
       "completeness_score": 63,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -4450,7 +4452,7 @@
       "native_name_quality": "chain",
       "netuid": 29,
       "operational_interface_count": 1,
-      "priority_score": 57,
+      "priority_score": 58,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-29",
@@ -4465,7 +4467,7 @@
       ]
     },
     {
-      "candidate_count": 21,
+      "candidate_count": 22,
       "completeness_score": 78,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -4483,7 +4485,7 @@
       "native_name_quality": "chain",
       "netuid": 110,
       "operational_interface_count": 2,
-      "priority_score": 53,
+      "priority_score": 54,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-110",
@@ -4499,7 +4501,7 @@
       ]
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "completeness_score": 85,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -4517,7 +4519,7 @@
       "native_name_quality": "chain",
       "netuid": 49,
       "operational_interface_count": 2,
-      "priority_score": 38,
+      "priority_score": 39,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-49",
@@ -4533,7 +4535,7 @@
       ]
     },
     {
-      "candidate_count": 13,
+      "candidate_count": 14,
       "completeness_score": 85,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -4551,7 +4553,7 @@
       "native_name_quality": "chain",
       "netuid": 96,
       "operational_interface_count": 2,
-      "priority_score": 38,
+      "priority_score": 39,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-96",
@@ -4567,7 +4569,7 @@
       ]
     },
     {
-      "candidate_count": 11,
+      "candidate_count": 12,
       "completeness_score": 85,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -4585,7 +4587,7 @@
       "native_name_quality": "chain",
       "netuid": 22,
       "operational_interface_count": 2,
-      "priority_score": 36,
+      "priority_score": 37,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-22",
@@ -4601,7 +4603,7 @@
       ]
     },
     {
-      "candidate_count": 6,
+      "candidate_count": 7,
       "completeness_score": 85,
       "confidence": "high",
       "curation_level": "maintainer-reviewed",
@@ -4619,7 +4621,7 @@
       "native_name_quality": "chain",
       "netuid": 58,
       "operational_interface_count": 2,
-      "priority_score": 31,
+      "priority_score": 32,
       "profile_level": "operational",
       "review_state": "maintainer-reviewed",
       "slug": "sn-58",
@@ -4635,7 +4637,7 @@
       ]
     },
     {
-      "candidate_count": 12,
+      "candidate_count": 13,
       "completeness_score": 92,
       "confidence": "high",
       "curation_level": "adapter-backed",
@@ -4651,7 +4653,7 @@
       "native_name_quality": "chain",
       "netuid": 7,
       "operational_interface_count": 3,
-      "priority_score": 25,
+      "priority_score": 26,
       "profile_level": "adapter-backed",
       "review_state": "maintainer-reviewed",
       "slug": "allways",
@@ -4685,12 +4687,12 @@
       "missing-data-artifact": 116,
       "missing-docs": 32,
       "missing-openapi": 103,
-      "missing-source-repo": 21,
+      "missing-source-repo": 22,
       "missing-sse": 128,
       "missing-subnet-api": 117,
       "missing-website": 23
     },
-    "needs_identity_count": 29,
+    "needs_identity_count": 30,
     "needs_operational_count": 85,
     "profile_count": 129
   }

@@ -1041,11 +1041,13 @@
       "curation_level": "machine-verified",
       "gaps": {
         "gap_notes": [
+          "No verified source repository yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
           "No verified data artifact yet."
         ],
         "missing_kinds": [
+          "source-repo",
           "subnet-api",
           "sse",
           "data-artifact"
@@ -1054,7 +1056,6 @@
           "dashboard",
           "docs",
           "openapi",
-          "source-repo",
           "website"
         ]
       },

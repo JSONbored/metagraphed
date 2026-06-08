@@ -121,7 +121,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run build`: regenerate deterministic public artifacts from current registry inputs.
 - `npm run validate`: validate native snapshot, overlays, candidates, review decisions, generated artifacts, and required schemas.
 - `npm run sync:subnets`: update the native Finney snapshot.
-- `npm run discover:candidates`: refresh public-source candidate discovery. GitHub README-derived links are capped, de-duplicated by kind/domain, and limited to project-affiliated provenance before they enter the generated candidate bundle.
+- `npm run discover:candidates`: refresh public-source candidate discovery from chain-adjacent enrichment sources, third-party subnet dashboards, GitHub README links, and public project websites. GitHub README-derived links are capped, de-duplicated by kind/domain, and limited to project-affiliated provenance before they enter the generated candidate bundle.
 - `npm run verify:candidates`: safely verify public candidates.
 - `npm run curate:baseline`: derive generated overlays from verified candidates, commit only compact checksum metadata, and stage expanded generated overlays outside Git for R2.
 - `npm run review:promote`: apply public-safe maintainer review decisions to overlays.

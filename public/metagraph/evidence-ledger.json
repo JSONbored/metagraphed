@@ -12,6 +12,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "root Backprop Finance dashboard is a candidate dashboard surface for SN0.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/0-root",
+      "subject": "candidate:sn-0-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "root TaoMarketCap dashboard is a candidate dashboard surface for SN0.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -31,6 +42,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/0/subnet.json",
       "subject": "candidate:sn-0-tensorplex-docs",
       "support_summary": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Apex Backprop Finance dashboard is a candidate dashboard surface for SN1.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/1-apex",
+      "subject": "candidate:sn-1-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -232,6 +254,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Swap Backprop Finance dashboard is a candidate dashboard surface for SN10.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/10-swap",
+      "subject": "candidate:sn-10-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Swap TaoMarketCap dashboard is a candidate dashboard surface for SN10.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -350,6 +383,17 @@
       "source_url": "https://www.taofi.com/pool",
       "subject": "candidate:sn-10-website-common-swagger-json",
       "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TrajectoryRL Backprop Finance dashboard is a candidate dashboard surface for SN11.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/11-trajectoryrl",
+      "subject": "candidate:sn-11-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -518,6 +562,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Compute Horde Backprop Finance dashboard is a candidate dashboard surface for SN12.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/12-compute-horde",
+      "subject": "candidate:sn-12-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Compute Horde API surface is a candidate subnet-api surface for SN12.",
       "confidence": "low",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -570,6 +625,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/12/subnet.json",
       "subject": "candidate:sn-12-tensorplex-docs",
       "support_summary": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Data Universe Backprop Finance dashboard is a candidate dashboard surface for SN13.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/13-data-universe",
+      "subject": "candidate:sn-13-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -793,6 +859,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Cacheon Backprop Finance dashboard is a candidate dashboard surface for SN14.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/14-cacheon",
+      "subject": "candidate:sn-14-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Cacheon docs is a candidate docs surface for SN14.",
       "confidence": "low",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -977,6 +1054,17 @@
       "source_url": "https://cacheon.ai/",
       "subject": "candidate:sn-14-website-link-cacheon-ai-docs-4",
       "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ORO Backprop Finance dashboard is a candidate dashboard surface for SN15.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/15-oro",
+      "subject": "candidate:sn-15-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1189,6 +1277,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "BitAds Backprop Finance dashboard is a candidate dashboard surface for SN16.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/16-bitads",
+      "subject": "candidate:sn-16-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "BitAds TaoMarketCap dashboard is a candidate dashboard surface for SN16.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -1288,190 +1387,14 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "BitAds Swagger UI is a candidate openapi surface for SN16.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://bitads.ai/",
-      "subject": "candidate:sn-16-website-common-swagger",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "BitAds Swagger JSON is a candidate openapi surface for SN16.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://bitads.ai/",
-      "subject": "candidate:sn-16-website-common-swagger-json",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN dashboard is a candidate dashboard surface for SN17.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "github-readme-link",
-      "source_url": "https://github.com/404-Repo/three-gen-subnet/blob/main/README.md",
-      "subject": "candidate:sn-17-github-readme-404-repo-three-gen-subnet-dashboard-1",
-      "support_summary": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN TaoMarketCap dashboard is a candidate dashboard surface for SN17.",
+      "claim": "DSperse Backprop Finance dashboard is a candidate dashboard surface for SN2.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
       "source_tier": "third-party-index",
-      "source_type": "taomarketcap-dashboard",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/17",
-      "subject": "candidate:sn-17-taomarketcap-dashboard",
-      "support_summary": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN source repository is a candidate source-repo surface for SN17.",
-      "confidence": "medium",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "third-party-index",
-      "source_type": "taomarketcap-subnet-identity-v3",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/17",
-      "subject": "candidate:sn-17-taomarketcap-source-repo",
-      "support_summary": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN website is a candidate website surface for SN17.",
-      "confidence": "medium",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "third-party-index",
-      "source_type": "taomarketcap-subnet-identity-v3",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/17",
-      "subject": "candidate:sn-17-taomarketcap-website",
-      "support_summary": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN Taopedia article is a candidate docs surface for SN17.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "taopedia-article",
-      "source_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_17/index.mdx",
-      "subject": "candidate:sn-17-taopedia-article",
-      "support_summary": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN Tensorplex subnet docs is a candidate docs surface for SN17.",
-      "confidence": "medium",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "tensorplex-subnet-docs",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json",
-      "subject": "candidate:sn-17-tensorplex-docs",
-      "support_summary": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN source repository is a candidate source-repo surface for SN17.",
-      "confidence": "medium",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "community-docs",
-      "source_type": "tensorplex-subnet-docs-github",
-      "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json",
-      "subject": "candidate:sn-17-tensorplex-source-repo-1",
-      "support_summary": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN API is a candidate subnet-api surface for SN17.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://www.404.xyz/",
-      "subject": "candidate:sn-17-website-common-api",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN docs is a candidate docs surface for SN17.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://www.404.xyz/",
-      "subject": "candidate:sn-17-website-common-docs",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN health endpoint is a candidate subnet-api surface for SN17.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://www.404.xyz/",
-      "subject": "candidate:sn-17-website-common-health",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN OpenAPI JSON is a candidate openapi surface for SN17.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://www.404.xyz/",
-      "subject": "candidate:sn-17-website-common-openapi-json",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN Swagger UI is a candidate openapi surface for SN17.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://www.404.xyz/",
-      "subject": "candidate:sn-17-website-common-swagger",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN Swagger JSON is a candidate openapi surface for SN17.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-common-path",
-      "source_url": "https://www.404.xyz/",
-      "subject": "candidate:sn-17-website-common-swagger-json",
-      "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN website page is a candidate website surface for SN17.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://www.404.xyz/",
-      "subject": "candidate:sn-17-website-link-www-404-xyz-website-1",
-      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "404—GEN website page is a candidate website surface for SN17.",
-      "confidence": "low",
-      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
-      "source_tier": "provider-claimed",
-      "source_type": "project-website-link",
-      "source_url": "https://www.404.xyz/",
-      "subject": "candidate:sn-17-website-link-www-404-xyz-website-2",
-      "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/2-dsperse",
+      "subject": "candidate:sn-2-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1629,6 +1552,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "deprecated Backprop Finance dashboard is a candidate dashboard surface for SN3.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/3-deprecated",
+      "subject": "candidate:sn-3-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "deprecated TaoMarketCap dashboard is a candidate dashboard surface for SN3.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -1670,6 +1604,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/3/subnet.json",
       "subject": "candidate:sn-3-tensorplex-source-repo-1",
       "support_summary": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Targon Backprop Finance dashboard is a candidate dashboard surface for SN4.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/4-targon",
+      "subject": "candidate:sn-4-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -1915,6 +1860,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Hone Backprop Finance dashboard is a candidate dashboard surface for SN5.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/5-hone",
+      "subject": "candidate:sn-5-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Hone TaoMarketCap dashboard is a candidate dashboard surface for SN5.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -2066,6 +2022,17 @@
       "source_url": "https://www.hone.training/",
       "subject": "candidate:sn-5-website-link-www-hone-training-website-3",
       "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Numinous Backprop Finance dashboard is a candidate dashboard surface for SN6.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/6-numinous",
+      "subject": "candidate:sn-6-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -2245,6 +2212,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Allways Backprop Finance dashboard is a candidate dashboard surface for SN7.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/7-allways",
+      "subject": "candidate:sn-7-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Allways TaoMarketCap dashboard is a candidate dashboard surface for SN7.",
       "confidence": "medium",
       "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
@@ -2363,6 +2341,17 @@
       "source_url": "https://all-ways.io/",
       "subject": "candidate:sn-7-website-common-swagger-json",
       "support_summary": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Vanta Backprop Finance dashboard is a candidate dashboard surface for SN8.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/8-vanta",
+      "subject": "candidate:sn-8-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -2517,6 +2506,17 @@
       "source_url": "https://www.vantanetwork.io/",
       "subject": "candidate:sn-8-website-link-www-vantanetwork-io-website-3",
       "support_summary": "Discovered from a public project website link. Requires verification before promotion.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "iota Backprop Finance dashboard is a candidate dashboard surface for SN9.",
+      "confidence": "medium",
+      "limits": "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/9-iota",
+      "subject": "candidate:sn-9-backprop-dashboard",
+      "support_summary": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -4577,6 +4577,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Swap Backprop Finance dashboard is a public dashboard surface for SN10.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/10-swap",
+      "subject": "surface:sn-10-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-10.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Swap TaoMarketCap dashboard is a public dashboard surface for SN10.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -4629,6 +4640,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/10/subnet.json",
       "subject": "surface:sn-10-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-10.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Plaτform Backprop Finance dashboard is a public dashboard surface for SN100.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/100-pla-form",
+      "subject": "surface:sn-100-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-100.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -4720,6 +4742,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "eni Backprop Finance dashboard is a public dashboard surface for SN101.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/101-eni",
+      "subject": "surface:sn-101-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-101.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "eni TaoMarketCap dashboard is a public dashboard surface for SN101.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -4797,6 +4830,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "for sale (burn to uid1) Backprop Finance dashboard is a public dashboard surface for SN104.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/104-for-sale-burn-to-uid1",
+      "subject": "surface:sn-104-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-104.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "for sale (burn to uid1) TaoMarketCap dashboard is a public dashboard surface for SN104.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -4827,6 +4871,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/104/subnet.json",
       "subject": "surface:sn-104-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-104.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Beam Backprop Finance dashboard is a public dashboard surface for SN105.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/105-beam",
+      "subject": "surface:sn-105-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-105.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -4907,6 +4962,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "VoidAI Backprop Finance dashboard is a public dashboard surface for SN106.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/106-voidai",
+      "subject": "surface:sn-106-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-106.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "VoidAI TaoMarketCap dashboard is a public dashboard surface for SN106.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -4970,6 +5036,17 @@
       "source_url": "https://voidai.com/",
       "subject": "surface:sn-106-website-common-docs",
       "support_summary": "Listed in curated overlay for sn-106.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Minos Backprop Finance dashboard is a public dashboard surface for SN107.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/107-minos",
+      "subject": "surface:sn-107-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-107.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -5072,6 +5149,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "TalkHead Backprop Finance dashboard is a public dashboard surface for SN108.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/108-talkhead",
+      "subject": "surface:sn-108-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-108.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "TalkHead TaoMarketCap dashboard is a public dashboard surface for SN108.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5135,6 +5223,17 @@
       "source_url": "https://github.com/fx-integral/academia",
       "subject": "surface:sn-109-academia-source",
       "support_summary": "Listed in curated overlay for sn-109.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "TrajectoryRL Backprop Finance dashboard is a public dashboard surface for SN11.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/11-trajectoryrl",
+      "subject": "surface:sn-11-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-11.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -5314,6 +5413,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "minotaur Backprop Finance dashboard is a public dashboard surface for SN112.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/112-minotaur",
+      "subject": "surface:sn-112-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-112.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "minotaur TaoMarketCap dashboard is a public dashboard surface for SN112.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5399,6 +5509,17 @@
       "source_url": "https://github.com/TensorUSD/subnet",
       "subject": "surface:sn-113-tensorusd-website",
       "support_summary": "Listed in curated overlay for sn-113.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "SOMA Backprop Finance dashboard is a public dashboard surface for SN114.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/114-soma",
+      "subject": "surface:sn-114-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-114.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -5501,6 +5622,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "hard_sign Backprop Finance dashboard is a public dashboard surface for SN116.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/116-hard-sign",
+      "subject": "surface:sn-116-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-116.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "hard_sign TaoMarketCap dashboard is a public dashboard surface for SN116.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5553,6 +5685,17 @@
       "source_url": "https://github.com/shiftlayer-llc/brainplay-subnet",
       "subject": "surface:sn-117-brainplay-source",
       "support_summary": "Listed in curated overlay for sn-117.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Ditto Backprop Finance dashboard is a public dashboard surface for SN118.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/118-ditto",
+      "subject": "surface:sn-118-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-118.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -5644,6 +5787,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Satori Backprop Finance dashboard is a public dashboard surface for SN119.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/119-satori",
+      "subject": "surface:sn-119-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-119.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Satori TaoMarketCap dashboard is a public dashboard surface for SN119.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5696,6 +5850,17 @@
       "source_url": "https://learnbittensor.org/subnets/12",
       "subject": "surface:sn-12-compute-horde-website",
       "support_summary": "Listed in curated overlay for sn-12.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Affine Backprop Finance dashboard is a public dashboard surface for SN120.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/120-affine",
+      "subject": "surface:sn-120-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-120.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -5831,6 +5996,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Swarm Backprop Finance dashboard is a public dashboard surface for SN124.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/124-swarm",
+      "subject": "surface:sn-124-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-124.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Swarm dashboard is a public dashboard surface for SN124.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5919,6 +6095,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "8 Ball Backprop Finance dashboard is a public dashboard surface for SN125.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/125-8-ball",
+      "subject": "surface:sn-125-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-125.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "8 Ball TaoMarketCap dashboard is a public dashboard surface for SN125.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -5949,6 +6136,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/125/subnet.json",
       "subject": "surface:sn-125-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-125.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Poker44 Backprop Finance dashboard is a public dashboard surface for SN126.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/126-poker44",
+      "subject": "surface:sn-126-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-126.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -6018,6 +6216,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Astrid Backprop Finance dashboard is a public dashboard surface for SN127.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/127-astrid",
+      "subject": "surface:sn-127-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-127.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Astrid TaoMarketCap dashboard is a public dashboard surface for SN127.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6070,6 +6279,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/127/subnet.json",
       "subject": "surface:sn-127-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-127.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "ByteLeap Backprop Finance dashboard is a public dashboard surface for SN128.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/128-byteleap",
+      "subject": "surface:sn-128-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-128.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -6249,6 +6469,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Cacheon Backprop Finance dashboard is a public dashboard surface for SN14.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/14-cacheon",
+      "subject": "surface:sn-14-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-14.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Cacheon docs is a public docs surface for SN14.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6256,6 +6487,17 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/latent-to/cacheon/blob/main/README.md",
       "subject": "surface:sn-14-github-readme-latent-to-cacheon-docs-1",
+      "support_summary": "Listed in curated overlay for sn-14.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Cacheon dashboard is a public dashboard surface for SN14.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/latent-to/taohash/blob/main/README.md",
+      "subject": "surface:sn-14-github-readme-latent-to-taohash-dashboard-1",
       "support_summary": "Listed in curated overlay for sn-14.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6326,13 +6568,13 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Cacheon dashboard is a public dashboard surface for SN14.",
+      "claim": "Cacheon docs is a public docs surface for SN14.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
       "source_type": "registry-observed",
       "source_url": "https://cacheon.ai/",
-      "subject": "surface:sn-14-website-link-cacheon-ai-dashboard-1",
+      "subject": "surface:sn-14-website-link-cacheon-ai-docs-3",
       "support_summary": "Listed in curated overlay for sn-14.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -6367,6 +6609,17 @@
       "source_url": "https://github.com/ORO-AI/oro",
       "subject": "surface:sn-15-oro-website",
       "support_summary": "Listed in curated overlay for sn-15.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "BitAds Backprop Finance dashboard is a public dashboard surface for SN16.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/16-bitads",
+      "subject": "surface:sn-16-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-16.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -6447,6 +6700,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "404—GEN Backprop Finance dashboard is a public dashboard surface for SN17.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/17-404-gen",
+      "subject": "surface:sn-17-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-17.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "404—GEN dashboard is a public dashboard surface for SN17.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6521,6 +6785,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/17/subnet.json",
       "subject": "surface:sn-17-tensorplex-source-repo-1",
       "support_summary": "Listed in curated overlay for sn-17.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Zeus Backprop Finance dashboard is a public dashboard surface for SN18.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/18-zeus",
+      "subject": "surface:sn-18-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-18.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -6634,6 +6909,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "DSperse Backprop Finance dashboard is a public dashboard surface for SN2.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/2-dsperse",
+      "subject": "surface:sn-2-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-2.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "DSperse dashboard is a public dashboard surface for SN2.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -6663,17 +6949,6 @@
       "source_type": "registry-observed",
       "source_url": "https://github.com/inference-labs-inc/subnet-2/blob/main/README.md",
       "subject": "surface:sn-2-github-readme-inference-labs-inc-subnet-2-docs-1",
-      "support_summary": "Listed in curated overlay for sn-2.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "DSperse TaoMarketCap dashboard is a public dashboard surface for SN2.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/2",
-      "subject": "surface:sn-2-taomarketcap-dashboard",
       "support_summary": "Listed in curated overlay for sn-2.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7008,6 +7283,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Perturb Backprop Finance dashboard is a public dashboard surface for SN26.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/26-perturb",
+      "subject": "surface:sn-26-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-26.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Perturb TaoMarketCap dashboard is a public dashboard surface for SN26.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7074,6 +7360,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Nodexo Backprop Finance dashboard is a public dashboard surface for SN27.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/27-nodexo",
+      "subject": "surface:sn-27-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-27.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Nodexo TaoMarketCap dashboard is a public dashboard surface for SN27.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7104,6 +7401,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/27/subnet.json",
       "subject": "surface:sn-27-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-27.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "gm Backprop Finance dashboard is a public dashboard surface for SN28.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/28-gm",
+      "subject": "surface:sn-28-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-28.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7283,6 +7591,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Recall Backprop Finance dashboard is a public dashboard surface for SN31.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/31-recall",
+      "subject": "surface:sn-31-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-31.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Recall TaoMarketCap dashboard is a public dashboard surface for SN31.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7437,6 +7756,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "OxMarkets Backprop Finance dashboard is a public dashboard surface for SN35.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/35-oxmarkets",
+      "subject": "surface:sn-35-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-35.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "OxMarkets TaoMarketCap dashboard is a public dashboard surface for SN35.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7500,6 +7830,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/35/subnet.json",
       "subject": "surface:sn-35-tensorplex-source-repo-1",
       "support_summary": "Listed in curated overlay for sn-35.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Eirel Backprop Finance dashboard is a public dashboard surface for SN36.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/36-eirel",
+      "subject": "surface:sn-36-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-36.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7580,6 +7921,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Aurelius Backprop Finance dashboard is a public dashboard surface for SN37.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/37-aurelius",
+      "subject": "surface:sn-37-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-37.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Aurelius TaoMarketCap dashboard is a public dashboard surface for SN37.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7646,6 +7998,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "colosseum Backprop Finance dashboard is a public dashboard surface for SN38.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/38-colosseum",
+      "subject": "surface:sn-38-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-38.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "colosseum TaoMarketCap dashboard is a public dashboard surface for SN38.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7653,17 +8016,6 @@
       "source_type": "registry-observed",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
       "subject": "surface:sn-38-taomarketcap-dashboard",
-      "support_summary": "Listed in curated overlay for sn-38.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "colosseum source repository is a public source-repo surface for SN38.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
-      "subject": "surface:sn-38-taomarketcap-source-repo",
       "support_summary": "Listed in curated overlay for sn-38.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -7767,6 +8119,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Chunking Backprop Finance dashboard is a public dashboard surface for SN40.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/40-chunking",
+      "subject": "surface:sn-40-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-40.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Chunking TaoMarketCap dashboard is a public dashboard surface for SN40.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -7797,6 +8160,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json",
       "subject": "surface:sn-40-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-40.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Almanac Backprop Finance dashboard is a public dashboard surface for SN41.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/41-almanac",
+      "subject": "surface:sn-41-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-41.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -7921,6 +8295,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Score Backprop Finance dashboard is a public dashboard surface for SN44.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/44-score",
+      "subject": "surface:sn-44-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-44.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Score TaoMarketCap dashboard is a public dashboard surface for SN44.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -8006,6 +8391,17 @@
       "source_url": "https://github.com/Team-Rizzo/talisman-ai",
       "subject": "surface:sn-45-talisman-ai-website",
       "support_summary": "Listed in curated overlay for sn-45.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Zipcode Backprop Finance dashboard is a public dashboard surface for SN46.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/46-zipcode",
+      "subject": "surface:sn-46-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-46.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8115,17 +8511,6 @@
       "source_type": "registry-observed",
       "source_url": "https://zipcode.ai/",
       "subject": "surface:sn-46-website-common-openapi-json",
-      "support_summary": "Listed in curated overlay for sn-46.",
-      "verified_at": "1970-01-01T00:00:00.000Z"
-    },
-    {
-      "claim": "Zipcode dashboard is a public dashboard surface for SN46.",
-      "confidence": "medium",
-      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
-      "source_tier": "community-docs",
-      "source_type": "registry-observed",
-      "source_url": "https://zipcode.ai/",
-      "subject": "surface:sn-46-website-link-zipcode-ai-dashboard-1",
       "support_summary": "Listed in curated overlay for sn-46.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
@@ -8273,6 +8658,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Hone Backprop Finance dashboard is a public dashboard surface for SN5.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/5-hone",
+      "subject": "surface:sn-5-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-5.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Hone TaoMarketCap dashboard is a public dashboard surface for SN5.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -8325,6 +8721,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/5/subnet.json",
       "subject": "surface:sn-5-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-5.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Synth Backprop Finance dashboard is a public dashboard surface for SN50.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/50-synth",
+      "subject": "surface:sn-50-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-50.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8402,6 +8809,17 @@
       "source_url": "https://synthdata.co/",
       "subject": "surface:sn-50-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-50.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "lium.io Backprop Finance dashboard is a public dashboard surface for SN51.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/51-lium-io",
+      "subject": "surface:sn-51-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-51.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8548,6 +8966,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "EfficientFrontier Backprop Finance dashboard is a public dashboard surface for SN53.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/53-efficientfrontier",
+      "subject": "surface:sn-53-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-53.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "EfficientFrontier TaoMarketCap dashboard is a public dashboard surface for SN53.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -8578,6 +9007,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json",
       "subject": "surface:sn-53-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-53.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Yanez MIID Backprop Finance dashboard is a public dashboard surface for SN54.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/54-yanez-miid",
+      "subject": "surface:sn-54-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-54.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8647,6 +9087,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "NIOME Backprop Finance dashboard is a public dashboard surface for SN55.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/55-niome",
+      "subject": "surface:sn-55-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-55.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "NIOME TaoMarketCap dashboard is a public dashboard surface for SN55.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -8699,6 +9150,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/55/subnet.json",
       "subject": "surface:sn-55-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-55.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Gradients Backprop Finance dashboard is a public dashboard surface for SN56.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/56-gradients",
+      "subject": "surface:sn-56-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-56.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -8933,6 +9395,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Babelbit Backprop Finance dashboard is a public dashboard surface for SN59.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/59-babelbit",
+      "subject": "surface:sn-59-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-59.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Babelbit API surface is a public subnet-api surface for SN59.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -9010,6 +9483,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Numinous Backprop Finance dashboard is a public dashboard surface for SN6.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/6-numinous",
+      "subject": "surface:sn-6-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-6.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Numinous dashboard is a public dashboard surface for SN6.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -9076,14 +9560,25 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Numinous dashboard is a public dashboard surface for SN6.",
+      "claim": "Bitsec.ai Backprop Finance dashboard is a public dashboard surface for SN60.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
       "source_type": "registry-observed",
-      "source_url": "https://numinouslabs.io/",
-      "subject": "surface:sn-6-website-link-numinouslabs-io-dashboard-3",
-      "support_summary": "Listed in curated overlay for sn-6.",
+      "source_url": "https://backprop.finance/dtao/subnets/60-bitsec-ai",
+      "subject": "surface:sn-60-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-60.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Bitsec.ai docs is a public docs surface for SN60.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/Bitsec-AI/sandbox/blob/main/README.md",
+      "subject": "surface:sn-60-github-readme-bitsec-ai-sandbox-docs-1",
+      "support_summary": "Listed in curated overlay for sn-60.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9373,6 +9868,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "TAO Private Network Backprop Finance dashboard is a public dashboard surface for SN65.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/65-tao-private-network",
+      "subject": "surface:sn-65-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-65.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "TAO Private Network TaoMarketCap dashboard is a public dashboard surface for SN65.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -9560,6 +10066,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Harnyx Backprop Finance dashboard is a public dashboard surface for SN67.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/67-harnyx",
+      "subject": "surface:sn-67-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-67.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Harnyx dashboard is a public dashboard surface for SN67.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -9626,14 +10143,14 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Harnyx dashboard is a public dashboard surface for SN67.",
+      "claim": "NOVA Backprop Finance dashboard is a public dashboard surface for SN68.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
       "source_type": "registry-observed",
-      "source_url": "https://harnyx.ai/",
-      "subject": "surface:sn-67-website-link-harnyx-ai-dashboard-1",
-      "support_summary": "Listed in curated overlay for sn-67.",
+      "source_url": "https://backprop.finance/dtao/subnets/68-nova",
+      "subject": "surface:sn-68-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-68.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9725,6 +10242,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "ain Backprop Finance dashboard is a public dashboard surface for SN69.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/69-ain",
+      "subject": "surface:sn-69-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-69.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "ain TaoMarketCap dashboard is a public dashboard surface for SN69.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -9755,6 +10283,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/69/subnet.json",
       "subject": "surface:sn-69-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-69.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "NexisGen Backprop Finance dashboard is a public dashboard surface for SN70.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/70-nexisgen",
+      "subject": "surface:sn-70-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-70.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9832,6 +10371,17 @@
       "source_url": "https://nexisgen.ai/",
       "subject": "surface:sn-70-website-link-nexisgen-ai-data-artifact-5",
       "support_summary": "Listed in curated overlay for sn-70.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Leadpoet Backprop Finance dashboard is a public dashboard surface for SN71.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/71-leadpoet",
+      "subject": "surface:sn-71-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-71.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -9978,6 +10528,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Parked Backprop Finance dashboard is a public dashboard surface for SN73.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/73-parked",
+      "subject": "surface:sn-73-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-73.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Parked TaoMarketCap dashboard is a public dashboard surface for SN73.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10077,6 +10638,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Liquidity Backprop Finance dashboard is a public dashboard surface for SN77.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/77-liquidity",
+      "subject": "surface:sn-77-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-77.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Liquidity TaoMarketCap dashboard is a public dashboard surface for SN77.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10151,6 +10723,17 @@
       "source_url": "https://sn77.xyz/",
       "subject": "surface:sn-77-website-common-swagger",
       "support_summary": "Listed in curated overlay for sn-77.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Vocence Backprop Finance dashboard is a public dashboard surface for SN78.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/78-vocence",
+      "subject": "surface:sn-78-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-78.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10286,6 +10869,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Vanta Backprop Finance dashboard is a public dashboard surface for SN8.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/8-vanta",
+      "subject": "surface:sn-8-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-8.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Vanta TaoMarketCap dashboard is a public dashboard surface for SN8.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10349,6 +10943,17 @@
       "source_url": "https://www.vantanetwork.io/",
       "subject": "surface:sn-8-website-link-www-vantanetwork-io-dashboard-1",
       "support_summary": "Listed in curated overlay for sn-8.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "dogelayer Backprop Finance dashboard is a public dashboard surface for SN80.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/80-dogelayer",
+      "subject": "surface:sn-80-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-80.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10506,6 +11111,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "CliqueAI Backprop Finance dashboard is a public dashboard surface for SN83.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/83-cliqueai",
+      "subject": "surface:sn-83-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-83.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "CliqueAI TaoMarketCap dashboard is a public dashboard surface for SN83.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10635,6 +11251,17 @@
       "source_url": "https://vidaio.io/",
       "subject": "surface:sn-85-vidaio-website",
       "support_summary": "Listed in curated overlay for sn-85.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Subnet 86 Backprop Finance dashboard is a public dashboard surface for SN86.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/86-subnet-86",
+      "subject": "surface:sn-86-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-86.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10825,6 +11452,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "ogham Backprop Finance dashboard is a public dashboard surface for SN90.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/90-ogham",
+      "subject": "surface:sn-90-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-90.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "ogham TaoMarketCap dashboard is a public dashboard surface for SN90.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -10899,6 +11537,17 @@
       "source_url": "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/92/subnet.json",
       "subject": "surface:sn-92-tensorplex-docs",
       "support_summary": "Listed in curated overlay for sn-92.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Bitcast Backprop Finance dashboard is a public dashboard surface for SN93.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/93-bitcast",
+      "subject": "surface:sn-93-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-93.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -10990,14 +11639,14 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
-      "claim": "Bitcast dashboard is a public dashboard surface for SN93.",
+      "claim": "Bitsota Backprop Finance dashboard is a public dashboard surface for SN94.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
       "source_tier": "community-docs",
       "source_type": "registry-observed",
-      "source_url": "https://stats.bitcast.network/",
-      "subject": "surface:sn-93-website-link-stats-bitcast-network-dashboard-2",
-      "support_summary": "Listed in curated overlay for sn-93.",
+      "source_url": "https://backprop.finance/dtao/subnets/94-bitsota",
+      "subject": "surface:sn-94-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-94.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -11075,6 +11724,17 @@
       "source_url": "https://bitsota.ai/",
       "subject": "surface:sn-94-website-link-bitsota-ai-dashboard-3",
       "support_summary": "Listed in curated overlay for sn-94.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Actual Backprop Finance dashboard is a public dashboard surface for SN95.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/95-actual",
+      "subject": "surface:sn-95-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-95.",
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
@@ -11243,6 +11903,17 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Albedo Backprop Finance dashboard is a public dashboard surface for SN97.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/97-albedo",
+      "subject": "surface:sn-97-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-97.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Albedo docs is a public docs surface for SN97.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -11364,6 +12035,28 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Leoma Backprop Finance dashboard is a public dashboard surface for SN99.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://backprop.finance/dtao/subnets/99-leoma",
+      "subject": "surface:sn-99-backprop-dashboard",
+      "support_summary": "Listed in curated overlay for sn-99.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Leoma docs is a public docs surface for SN99.",
+      "confidence": "medium",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "community-docs",
+      "source_type": "registry-observed",
+      "source_url": "https://github.com/RendixNetwork/leoma/blob/main/README.md",
+      "subject": "surface:sn-99-github-readme-rendixnetwork-leoma-docs-2",
+      "support_summary": "Listed in curated overlay for sn-99.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Leoma TaoMarketCap dashboard is a public dashboard surface for SN99.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -11458,8 +12151,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1041,
+    "claim_count": 1104,
     "subnet_claim_count": 129,
-    "surface_claim_count": 662
+    "surface_claim_count": 725
   }
 }

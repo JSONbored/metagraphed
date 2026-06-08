@@ -3,6 +3,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-0-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "root Backprop Finance dashboard",
+      "netuid": 0,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/0-root",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/0-root"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/0-root"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-0-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "root TaoMarketCap dashboard",
@@ -41,6 +62,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/0"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-1-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Apex Backprop Finance dashboard",
+      "netuid": 1,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/1-apex",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/1-apex"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/1-apex"
     },
     {
       "auth_required": false,
@@ -289,7 +331,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/1",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/1"
+        "https://api.taomarketcap.com/public/v1/subnets/1",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/macrocosm-os/apex"
@@ -419,6 +462,27 @@
       ],
       "state": "schema-valid",
       "url": "https://macrocosmos.ai/team"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-2-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "DSperse Backprop Finance dashboard",
+      "netuid": 2,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/2-dsperse",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/2-dsperse"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/2-dsperse"
     },
     {
       "auth_required": false,
@@ -646,7 +710,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/2",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/2"
+        "https://api.taomarketcap.com/public/v1/subnets/2",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/2/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/inference-labs-inc/subnet-2"
@@ -713,6 +778,27 @@
       ],
       "state": "schema-valid",
       "url": "https://subnet2.inferencelabs.com/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-3-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "deprecated Backprop Finance dashboard",
+      "netuid": 3,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/3-deprecated",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/3-deprecated"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/3-deprecated"
     },
     {
       "auth_required": false,
@@ -797,6 +883,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tplr-ai/templar"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-4-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Targon Backprop Finance dashboard",
+      "netuid": 4,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/4-targon",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/4-targon"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/4-targon"
     },
     {
       "auth_required": false,
@@ -1045,7 +1152,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/4",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/4"
+        "https://api.taomarketcap.com/public/v1/subnets/4",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/4/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/manifold-inc/targon"
@@ -1263,6 +1371,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-5-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Hone Backprop Finance dashboard",
+      "netuid": 5,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/5-hone",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/5-hone"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/5-hone"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-5-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Hone TaoMarketCap dashboard",
@@ -1423,7 +1552,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/5",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/5"
+        "https://api.taomarketcap.com/public/v1/subnets/5",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/5/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/manifold-inc/hone"
@@ -1553,6 +1683,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.hone.training/projects"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-6-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Numinous Backprop Finance dashboard",
+      "netuid": 6,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/6-numinous",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/6-numinous"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/6-numinous"
     },
     {
       "auth_required": false,
@@ -1759,7 +1910,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/6",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/6"
+        "https://api.taomarketcap.com/public/v1/subnets/6",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/6/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/numinouslabs/numinous"
@@ -1889,6 +2041,27 @@
       ],
       "state": "schema-valid",
       "url": "https://eversight.numinouslabs.io/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-7-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Allways Backprop Finance dashboard",
+      "netuid": 7,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/7-allways",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/7-allways"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/7-allways"
     },
     {
       "auth_required": false,
@@ -2053,7 +2226,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/7",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/7"
+        "https://api.taomarketcap.com/public/v1/subnets/7",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/7/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/entrius/allways"
@@ -2120,6 +2294,27 @@
       ],
       "state": "schema-valid",
       "url": "https://all-ways.io/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-8-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Vanta Backprop Finance dashboard",
+      "netuid": 8,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/8-vanta",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/8-vanta"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/8-vanta"
     },
     {
       "auth_required": false,
@@ -2305,7 +2500,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/8",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/8"
+        "https://api.taomarketcap.com/public/v1/subnets/8",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/8/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/taoshidev/vanta-network"
@@ -2414,6 +2610,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.vantanetwork.io/transparency"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-9-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "iota Backprop Finance dashboard",
+      "netuid": 9,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/9-iota",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/9-iota"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/9-iota"
     },
     {
       "auth_required": false,
@@ -2704,7 +2921,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/9",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/9"
+        "https://api.taomarketcap.com/public/v1/subnets/9",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/9/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/macrocosm-os/iota"
@@ -2855,6 +3073,27 @@
       ],
       "state": "schema-valid",
       "url": "https://tah.iota.macrocosmos.ai/download/token/release-iota-signup"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-10-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Swap Backprop Finance dashboard",
+      "netuid": 10,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/10-swap",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/10-swap"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/10-swap"
     },
     {
       "auth_required": false,
@@ -3019,7 +3258,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/10",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/10"
+        "https://api.taomarketcap.com/public/v1/subnets/10",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/10/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/Swap-Subnet/swap-subnet"
@@ -3086,6 +3326,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.taofi.com/pool"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-11-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "TrajectoryRL Backprop Finance dashboard",
+      "netuid": 11,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/11-trajectoryrl",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/11-trajectoryrl"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/11-trajectoryrl"
     },
     {
       "auth_required": false,
@@ -3271,7 +3532,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/11",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/11"
+        "https://api.taomarketcap.com/public/v1/subnets/11",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/11/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/trajectoryRL/trajectoryRL"
@@ -3405,6 +3667,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-12-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Compute Horde Backprop Finance dashboard",
+      "netuid": 12,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/12-compute-horde",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/12-compute-horde"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/12-compute-horde"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-12-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Compute Horde TaoMarketCap dashboard",
@@ -3481,7 +3764,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/12",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/12"
+        "https://api.taomarketcap.com/public/v1/subnets/12",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/12/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/backend-developers-ltd/ComputeHorde"
@@ -3506,6 +3790,27 @@
       ],
       "state": "schema-valid",
       "url": "https://grafana.bactensor.io/d/subnet/metagraph-subnet?var-subnet=12"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-13-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Data Universe Backprop Finance dashboard",
+      "netuid": 13,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/13-data-universe",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/13-data-universe"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/13-data-universe"
     },
     {
       "auth_required": false,
@@ -3754,7 +4059,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/13",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/13"
+        "https://api.taomarketcap.com/public/v1/subnets/13",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/13/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/macrocosm-os/data-universe"
@@ -3926,6 +4232,27 @@
       ],
       "state": "schema-valid",
       "url": "https://macrocosmos.ai/team"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-14-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Cacheon Backprop Finance dashboard",
+      "netuid": 14,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/14-cacheon",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/14-cacheon"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/14-cacheon"
     },
     {
       "auth_required": false,
@@ -4286,6 +4613,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-15-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "ORO Backprop Finance dashboard",
+      "netuid": 15,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/15-oro",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/15-oro"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/15-oro"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-15-github-readme-oro-ai-oro-dashboard-1",
       "kind": "dashboard",
@@ -4573,7 +4921,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/15",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/15"
+        "https://api.taomarketcap.com/public/v1/subnets/15",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/ORO-AI/oro"
@@ -4682,6 +5031,27 @@
       ],
       "state": "schema-valid",
       "url": "https://oroagents.com/blog"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-16-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "BitAds Backprop Finance dashboard",
+      "netuid": 16,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/16-bitads",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/16-bitads"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/16-bitads"
     },
     {
       "auth_required": false,
@@ -4913,6 +5283,27 @@
       ],
       "state": "schema-valid",
       "url": "https://bitads.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-17-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "404—GEN Backprop Finance dashboard",
+      "netuid": 17,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/17-404-gen",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/17-404-gen"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/17-404-gen"
     },
     {
       "auth_required": false,
@@ -5274,6 +5665,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-18-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Zeus Backprop Finance dashboard",
+      "netuid": 18,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/18-zeus",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/18-zeus"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/18-zeus"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-18-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Zeus TaoMarketCap dashboard",
@@ -5476,7 +5888,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/18",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/18"
+        "https://api.taomarketcap.com/public/v1/subnets/18",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/18/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/Orpheus-AI/Zeus"
@@ -5606,6 +6019,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.zeussubnet.com/map"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-19-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "blockmachine Backprop Finance dashboard",
+      "netuid": 19,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/19-blockmachine",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/19-blockmachine"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/19-blockmachine"
     },
     {
       "auth_required": false,
@@ -5812,7 +6246,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/19",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/19"
+        "https://api.taomarketcap.com/public/v1/subnets/19",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/19/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/taostat/blockmachine"
@@ -6047,6 +6482,27 @@
       ],
       "state": "schema-valid",
       "url": "https://blockmachine.io/buybacks"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-20-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "GroundLayer Backprop Finance dashboard",
+      "netuid": 20,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/20-groundlayer",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/20-groundlayer"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/20-groundlayer"
     },
     {
       "auth_required": false,
@@ -6320,6 +6776,27 @@
       ],
       "state": "schema-valid",
       "url": "https://groundlayer.xyz/roadmap"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-21-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "AdTAO Backprop Finance dashboard",
+      "netuid": 21,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/21-adtao",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/21-adtao"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/21-adtao"
     },
     {
       "auth_required": false,
@@ -6765,6 +7242,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-22-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Desearch Backprop Finance dashboard",
+      "netuid": 22,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/22-desearch",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/22-desearch"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/22-desearch"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-22-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Desearch TaoMarketCap dashboard",
@@ -6925,7 +7423,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/22",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/22"
+        "https://api.taomarketcap.com/public/v1/subnets/22",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/22/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/datura-ai/desearch"
@@ -6992,6 +7491,27 @@
       ],
       "state": "schema-valid",
       "url": "https://desearch.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-23-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Trishool Backprop Finance dashboard",
+      "netuid": 23,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/23-trishool",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/23-trishool"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/23-trishool"
     },
     {
       "auth_required": false,
@@ -7332,6 +7852,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-24-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Quasar Backprop Finance dashboard",
+      "netuid": 24,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/24-quasar",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/24-quasar"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/24-quasar"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-24-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Quasar TaoMarketCap dashboard",
@@ -7534,7 +8075,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/24",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/24"
+        "https://api.taomarketcap.com/public/v1/subnets/24",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/24/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/SILX-LABS/QUASAR-SUBNET"
@@ -7643,6 +8185,27 @@
       ],
       "state": "schema-valid",
       "url": "https://silxinc.com/about"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-25-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Mainframe Backprop Finance dashboard",
+      "netuid": 25,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/25-mainframe",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/25-mainframe"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/25-mainframe"
     },
     {
       "auth_required": false,
@@ -7891,7 +8454,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/25",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/25"
+        "https://api.taomarketcap.com/public/v1/subnets/25",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/25/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/macrocosm-os/mainframe"
@@ -8084,6 +8648,27 @@
       ],
       "state": "schema-valid",
       "url": "https://macrocosmos.ai/our-purpose"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-26-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Perturb Backprop Finance dashboard",
+      "netuid": 26,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/26-perturb",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/26-perturb"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/26-perturb"
     },
     {
       "auth_required": false,
@@ -8403,6 +8988,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-27-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Nodexo Backprop Finance dashboard",
+      "netuid": 27,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/27-nodexo",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/27-nodexo"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/27-nodexo"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-27-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Nodexo TaoMarketCap dashboard",
@@ -8563,7 +9169,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/27",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/27"
+        "https://api.taomarketcap.com/public/v1/subnets/27",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/27/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/neuralinternet/compute-subnet"
@@ -8634,6 +9241,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-28-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "gm Backprop Finance dashboard",
+      "netuid": 28,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/28-gm",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/28-gm"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/28-gm"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-28-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "gm TaoMarketCap dashboard",
@@ -8693,6 +9321,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/28"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-29-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Coldint Backprop Finance dashboard",
+      "netuid": 29,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/29-coldint",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/29-coldint"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/29-coldint"
     },
     {
       "auth_required": false,
@@ -8773,7 +9422,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/29",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/29"
+        "https://api.taomarketcap.com/public/v1/subnets/29",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/29/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/coldint/coldint_validator"
@@ -8798,6 +9448,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/coldint/sn29"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-30-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Endure Network Backprop Finance dashboard",
+      "netuid": 30,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/30-endure-network",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/30-endure-network"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/30-endure-network"
     },
     {
       "auth_required": false,
@@ -9054,6 +9725,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-31-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Recall Backprop Finance dashboard",
+      "netuid": 31,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/31-recall",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/31-recall"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/31-recall"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-31-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Recall TaoMarketCap dashboard",
@@ -9113,6 +9805,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/31"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-32-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "ItsAI Backprop Finance dashboard",
+      "netuid": 32,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/32-itsai",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/32-itsai"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/32-itsai"
     },
     {
       "auth_required": false,
@@ -9277,7 +9990,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/32",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/32"
+        "https://api.taomarketcap.com/public/v1/subnets/32",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/32/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/It-s-AI/llm-detection"
@@ -9558,6 +10272,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-33-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "ReadyAI Backprop Finance dashboard",
+      "netuid": 33,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/33-readyai",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/33-readyai"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/33-readyai"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-33-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "ReadyAI TaoMarketCap dashboard",
@@ -9655,7 +10390,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/33",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/33"
+        "https://api.taomarketcap.com/public/v1/subnets/33",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/33/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/afterpartyai/bittensor-conversation-genome-project"
@@ -9680,6 +10416,27 @@
       ],
       "state": "schema-valid",
       "url": "https://api.conversations.xyz/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-34-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "BitMind Backprop Finance dashboard",
+      "netuid": 34,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/34-bitmind",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/34-bitmind"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/34-bitmind"
     },
     {
       "auth_required": false,
@@ -9760,10 +10517,32 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/34",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/34"
+        "https://api.taomarketcap.com/public/v1/subnets/34",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/34/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/BitMind-AI/bitmind-subnet"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-35-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "OxMarkets Backprop Finance dashboard",
+      "netuid": 35,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/35-oxmarkets",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/35-oxmarkets"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/35-oxmarkets"
     },
     {
       "auth_required": false,
@@ -10016,6 +10795,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.0xmarkets.io/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-36-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Eirel Backprop Finance dashboard",
+      "netuid": 36,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/36-eirel",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/36-eirel"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/36-eirel"
     },
     {
       "auth_required": false,
@@ -10331,6 +11131,27 @@
       ],
       "state": "schema-valid",
       "url": "https://eirel.ai/terms"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-37-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Aurelius Backprop Finance dashboard",
+      "netuid": 37,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/37-aurelius",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/37-aurelius"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/37-aurelius"
     },
     {
       "auth_required": false,
@@ -10671,6 +11492,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-38-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "colosseum Backprop Finance dashboard",
+      "netuid": 38,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/38-colosseum",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/38-colosseum"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/38-colosseum"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-38-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "colosseum TaoMarketCap dashboard",
@@ -10831,7 +11673,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/38",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/38"
+        "https://api.taomarketcap.com/public/v1/subnets/38",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/38/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/TAO-Colosseum/tao-colosseum-subnet"
@@ -10898,6 +11741,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.taocolosseum.com/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-39-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "deprecated Backprop Finance dashboard",
+      "netuid": 39,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/39-deprecated",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/39-deprecated"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/39-deprecated"
     },
     {
       "auth_required": false,
@@ -11007,6 +11871,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-40-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Chunking Backprop Finance dashboard",
+      "netuid": 40,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/40-chunking",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/40-chunking"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/40-chunking"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-40-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Chunking TaoMarketCap dashboard",
@@ -11083,10 +11968,32 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/40",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/40"
+        "https://api.taomarketcap.com/public/v1/subnets/40",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/VectorChat/chunking_subnet"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-41-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Almanac Backprop Finance dashboard",
+      "netuid": 41,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/41-almanac",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/41-almanac"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/41-almanac"
     },
     {
       "auth_required": false,
@@ -11251,7 +12158,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/41",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/41"
+        "https://api.taomarketcap.com/public/v1/subnets/41",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/41/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/sportstensor/sn41"
@@ -11343,9 +12251,30 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-42-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Gopher Backprop Finance dashboard",
+      "netuid": 42,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/42-gopher",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/42-gopher"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/42-gopher"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-42-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "Subnet 42 TaoMarketCap dashboard",
+      "name": "Gopher TaoMarketCap dashboard",
       "netuid": 42,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -11387,7 +12316,7 @@
       "confidence": "medium",
       "id": "sn-42-tensorplex-docs",
       "kind": "docs",
-      "name": "Subnet 42 Tensorplex subnet docs",
+      "name": "Gopher Tensorplex subnet docs",
       "netuid": 42,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -11402,6 +12331,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/42"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-43-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Graphite Backprop Finance dashboard",
+      "netuid": 43,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/43-graphite",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/43-graphite"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/43-graphite"
     },
     {
       "auth_required": false,
@@ -11482,10 +12432,32 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/43",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/43"
+        "https://api.taomarketcap.com/public/v1/subnets/43",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/43/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/GraphiteAI/Graphite-Subnet"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-44-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Score Backprop Finance dashboard",
+      "netuid": 44,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/44-score",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/44-score"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/44-score"
     },
     {
       "auth_required": false,
@@ -11759,6 +12731,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.wearescore.com/get-started"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-45-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Talisman AI Backprop Finance dashboard",
+      "netuid": 45,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/45-talisman-ai",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/45-talisman-ai"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/45-talisman-ai"
     },
     {
       "auth_required": false,
@@ -12200,6 +13193,27 @@
       ],
       "state": "schema-valid",
       "url": "https://app.talisman.xyz/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-46-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Zipcode Backprop Finance dashboard",
+      "netuid": 46,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/46-zipcode",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/46-zipcode"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/46-zipcode"
     },
     {
       "auth_required": false,
@@ -12645,6 +13659,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-47-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "EvolAI Backprop Finance dashboard",
+      "netuid": 47,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/47-evolai",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/47-evolai"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/47-evolai"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-47-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "EvolAI TaoMarketCap dashboard",
@@ -12767,6 +13802,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/reboot-org/reboot-subnet"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-48-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Quantum Compute Backprop Finance dashboard",
+      "netuid": 48,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/48-quantum-compute",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/48-quantum-compute"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/48-quantum-compute"
     },
     {
       "auth_required": false,
@@ -13212,6 +14268,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-49-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Nepher Robotics Backprop Finance dashboard",
+      "netuid": 49,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/49-nepher-robotics",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/49-nepher-robotics"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/49-nepher-robotics"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-49-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Nepher Robotics TaoMarketCap dashboard",
@@ -13485,6 +14562,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-50-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Synth Backprop Finance dashboard",
+      "netuid": 50,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/50-synth",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/50-synth"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/50-synth"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-50-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Synth TaoMarketCap dashboard",
@@ -13645,7 +14743,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/50",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/50"
+        "https://api.taomarketcap.com/public/v1/subnets/50",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/50/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/mode-network/synth-subnet"
@@ -13733,6 +14832,27 @@
       ],
       "state": "schema-valid",
       "url": "https://synthdata.co/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-51-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "lium.io Backprop Finance dashboard",
+      "netuid": 51,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/51-lium-io",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/51-lium-io"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/51-lium-io"
     },
     {
       "auth_required": false,
@@ -13939,7 +15059,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/51",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/51"
+        "https://api.taomarketcap.com/public/v1/subnets/51",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/51/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/Datura-ai/lium-io"
@@ -14199,6 +15320,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-52-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Dojo Backprop Finance dashboard",
+      "netuid": 52,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/52-dojo",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/52-dojo"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/52-dojo"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-52-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Dojo TaoMarketCap dashboard",
@@ -14296,7 +15438,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/52",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/52"
+        "https://api.taomarketcap.com/public/v1/subnets/52",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/52/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/dojo"
@@ -14363,6 +15506,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/dojo-worker-api"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-53-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "EfficientFrontier Backprop Finance dashboard",
+      "netuid": 53,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/53-efficientfrontier",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/53-efficientfrontier"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/53-efficientfrontier"
     },
     {
       "auth_required": false,
@@ -14443,10 +15607,32 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/53",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/53"
+        "https://api.taomarketcap.com/public/v1/subnets/53",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/EfficientFrontier-SignalPlus/EfficientFrontier"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-54-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Yanez MIID Backprop Finance dashboard",
+      "netuid": 54,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/54-yanez-miid",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/54-yanez-miid"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/54-yanez-miid"
     },
     {
       "auth_required": false,
@@ -14632,7 +15818,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/54",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/54"
+        "https://api.taomarketcap.com/public/v1/subnets/54",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/54/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/yanez-compliance/MIID-subnet"
@@ -14741,6 +15928,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.yanez.ai/resources"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-55-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "NIOME Backprop Finance dashboard",
+      "netuid": 55,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/55-niome",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/55-niome"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/55-niome"
     },
     {
       "auth_required": false,
@@ -14905,7 +16113,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/55",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/55"
+        "https://api.taomarketcap.com/public/v1/subnets/55",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/55/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/genomesio/subnet-niome"
@@ -15056,6 +16265,27 @@
       ],
       "state": "schema-valid",
       "url": "https://blog.genomes.io/the-niome-manifesto-f9f861cb0bd4"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-56-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Gradients Backprop Finance dashboard",
+      "netuid": 56,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/56-gradients",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/56-gradients"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/56-gradients"
     },
     {
       "auth_required": false,
@@ -15522,6 +16752,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-57-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "gaia Backprop Finance dashboard",
+      "netuid": 57,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/57-gaia",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/57-gaia"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/57-gaia"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-57-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "gaia TaoMarketCap dashboard",
@@ -15602,6 +16853,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/sparket-ai/sparket-ai"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-58-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Pending Backprop Finance dashboard",
+      "netuid": 58,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/58-pending",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/58-pending"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/58-pending"
     },
     {
       "auth_required": false,
@@ -15728,6 +17000,27 @@
       ],
       "state": "schema-valid",
       "url": "https://handshake58.com/api/drain/signing"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-59-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Babelbit Backprop Finance dashboard",
+      "netuid": 59,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/59-babelbit",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/59-babelbit"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/59-babelbit"
     },
     {
       "auth_required": false,
@@ -15913,7 +17206,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/59",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/59"
+        "https://api.taomarketcap.com/public/v1/subnets/59",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/59/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/babelbit/babelbit_subnet"
@@ -16064,6 +17358,27 @@
       ],
       "state": "schema-valid",
       "url": "https://babelbit.ai/policy"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-60-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Bitsec.ai Backprop Finance dashboard",
+      "netuid": 60,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/60-bitsec-ai",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/60-bitsec-ai"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/60-bitsec-ai"
     },
     {
       "auth_required": false,
@@ -16340,6 +17655,27 @@
     },
     {
       "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-61-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "RedTeam Backprop Finance dashboard",
+      "netuid": 61,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/61-redteam",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/61-redteam"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/61-redteam"
+    },
+    {
+      "auth_required": false,
       "confidence": "low",
       "id": "sn-61-github-readme-redteamsubnet-redteam-dashboard-1",
       "kind": "dashboard",
@@ -16543,7 +17879,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/61",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/61"
+        "https://api.taomarketcap.com/public/v1/subnets/61",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/RedTeamSubnet/RedTeam"
@@ -16610,6 +17947,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.theredteam.io/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-62-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Ridges Backprop Finance dashboard",
+      "netuid": 62,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/62-ridges",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/62-ridges"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/62-ridges"
     },
     {
       "auth_required": false,
@@ -16774,7 +18132,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/62",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/62"
+        "https://api.taomarketcap.com/public/v1/subnets/62",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/62/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/ridgesai/ridges"
@@ -16841,6 +18200,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.ridges.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-63-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Enigma Backprop Finance dashboard",
+      "netuid": 63,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/63-enigma",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/63-enigma"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/63-enigma"
     },
     {
       "auth_required": false,
@@ -17282,6 +18662,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.qbittensorlabs.com/enigma/rules"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-64-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Chutes Backprop Finance dashboard",
+      "netuid": 64,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/64-chutes",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/64-chutes"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/64-chutes"
     },
     {
       "auth_required": false,
@@ -17832,6 +19233,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-65-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "TAO Private Network Backprop Finance dashboard",
+      "netuid": 65,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/65-tao-private-network",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/65-tao-private-network"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/65-tao-private-network"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-65-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "TAO Private Network TaoMarketCap dashboard",
@@ -18097,7 +19519,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/65",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/65"
+        "https://api.taomarketcap.com/public/v1/subnets/65",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/65/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/taofu-labs/tpn-subnet"
@@ -18185,6 +19608,27 @@
       ],
       "state": "schema-valid",
       "url": "https://taofu.xyz/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-66-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "ninja Backprop Finance dashboard",
+      "netuid": 66,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/66-ninja",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/66-ninja"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/66-ninja"
     },
     {
       "auth_required": false,
@@ -18370,7 +19814,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/66",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/66"
+        "https://api.taomarketcap.com/public/v1/subnets/66",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/66/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/unarbos/tau"
@@ -18479,6 +19924,27 @@
       ],
       "state": "schema-valid",
       "url": "https://ninja.arbos.life/duels.html?duel="
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-67-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Harnyx Backprop Finance dashboard",
+      "netuid": 67,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/67-harnyx",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/67-harnyx"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/67-harnyx"
     },
     {
       "auth_required": false,
@@ -18777,6 +20243,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-68-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "NOVA Backprop Finance dashboard",
+      "netuid": 68,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/68-nova",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/68-nova"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/68-nova"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-68-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "NOVA TaoMarketCap dashboard",
@@ -19000,7 +20487,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/68",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/68"
+        "https://api.taomarketcap.com/public/v1/subnets/68",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/68/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/metanova-labs/nova"
@@ -19113,6 +20601,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-69-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "ain Backprop Finance dashboard",
+      "netuid": 69,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/69-ain",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/69-ain"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/69-ain"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-69-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "ain TaoMarketCap dashboard",
@@ -19172,6 +20681,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/69"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-70-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "NexisGen Backprop Finance dashboard",
+      "netuid": 70,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/70-nexisgen",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/70-nexisgen"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/70-nexisgen"
     },
     {
       "auth_required": false,
@@ -19512,6 +21042,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-71-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Leadpoet Backprop Finance dashboard",
+      "netuid": 71,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/71-leadpoet",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/71-leadpoet"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/71-leadpoet"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-71-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Leadpoet TaoMarketCap dashboard",
@@ -19672,7 +21223,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/71",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/71"
+        "https://api.taomarketcap.com/public/v1/subnets/71",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/71/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/leadpoet/leadpoet"
@@ -19739,6 +21291,27 @@
       ],
       "state": "schema-valid",
       "url": "https://leadpoet.com/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-72-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "StreetVision by NATIX Backprop Finance dashboard",
+      "netuid": 72,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/72-streetvision-by-natix",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/72-streetvision-by-natix"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/72-streetvision-by-natix"
     },
     {
       "auth_required": false,
@@ -19945,7 +21518,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/72",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/72"
+        "https://api.taomarketcap.com/public/v1/subnets/72",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/72/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/natixnetwork/streetvision-subnet"
@@ -20205,6 +21779,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-73-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Parked Backprop Finance dashboard",
+      "netuid": 73,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/73-parked",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/73-parked"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/73-parked"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-73-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Parked TaoMarketCap dashboard",
@@ -20285,6 +21880,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/fx-integral/metahash"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-74-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Gittensor Backprop Finance dashboard",
+      "netuid": 74,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/74-gittensor",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/74-gittensor"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/74-gittensor"
     },
     {
       "auth_required": false,
@@ -20562,6 +22178,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-75-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Hippius Backprop Finance dashboard",
+      "netuid": 75,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/75-hippius",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/75-hippius"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/75-hippius"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-75-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Hippius TaoMarketCap dashboard",
@@ -20743,7 +22380,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/75",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/75"
+        "https://api.taomarketcap.com/public/v1/subnets/75",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/75/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/thenervelab/thebrain"
@@ -21045,6 +22683,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-76-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Byzantium Backprop Finance dashboard",
+      "netuid": 76,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/76-byzantium",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/76-byzantium"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/76-byzantium"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-76-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Byzantium TaoMarketCap dashboard",
@@ -21276,6 +22935,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-77-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Liquidity Backprop Finance dashboard",
+      "netuid": 77,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/77-liquidity",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/77-liquidity"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/77-liquidity"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-77-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Liquidity TaoMarketCap dashboard",
@@ -21436,7 +23116,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/77",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/77"
+        "https://api.taomarketcap.com/public/v1/subnets/77",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/77/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/creativebuilds/sn77"
@@ -21503,6 +23184,27 @@
       ],
       "state": "schema-valid",
       "url": "https://sn77.xyz/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-78-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Vocence Backprop Finance dashboard",
+      "netuid": 78,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/78-vocence",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/78-vocence"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/78-vocence"
     },
     {
       "auth_required": false,
@@ -21776,6 +23478,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.vocence.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-79-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "MVTRX Backprop Finance dashboard",
+      "netuid": 79,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/79-mvtrx",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/79-mvtrx"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/79-mvtrx"
     },
     {
       "auth_required": false,
@@ -22242,6 +23965,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-80-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "dogelayer Backprop Finance dashboard",
+      "netuid": 80,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/80-dogelayer",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/80-dogelayer"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/80-dogelayer"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-80-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "dogelayer TaoMarketCap dashboard",
@@ -22515,6 +24259,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-81-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "deprecated Backprop Finance dashboard",
+      "netuid": 81,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/81-deprecated",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/81-deprecated"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/81-deprecated"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-81-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "deprecated TaoMarketCap dashboard",
@@ -22616,6 +24381,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tplr-ai/grail"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-82-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Compelle Backprop Finance dashboard",
+      "netuid": 82,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/82-compelle",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/82-compelle"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/82-compelle"
     },
     {
       "auth_required": false,
@@ -23082,6 +24868,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-83-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "CliqueAI Backprop Finance dashboard",
+      "netuid": 83,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/83-cliqueai",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/83-cliqueai"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/83-cliqueai"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-83-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "CliqueAI TaoMarketCap dashboard",
@@ -23242,7 +25049,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/83",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/83"
+        "https://api.taomarketcap.com/public/v1/subnets/83",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/83/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/toptensor/CliqueAI"
@@ -23309,6 +25117,27 @@
       ],
       "state": "schema-valid",
       "url": "https://cliqueai.toptensor.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-84-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "ansuz Backprop Finance dashboard",
+      "netuid": 84,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/84-ansuz",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/84-ansuz"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/84-ansuz"
     },
     {
       "auth_required": false,
@@ -23414,6 +25243,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/TatsuProject/chipforge_eda_server"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-85-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Vidaio Backprop Finance dashboard",
+      "netuid": 85,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/85-vidaio",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/85-vidaio"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/85-vidaio"
     },
     {
       "auth_required": false,
@@ -23641,7 +25491,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/85",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/85"
+        "https://api.taomarketcap.com/public/v1/subnets/85",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/85/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/vidaio-subnet/vidaio-subnet"
@@ -23796,6 +25647,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-86-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Subnet 86 Backprop Finance dashboard",
+      "netuid": 86,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/86-subnet-86",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/86-subnet-86"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/86-subnet-86"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-86-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Subnet 86 TaoMarketCap dashboard",
@@ -23859,6 +25731,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-87-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Luminar Network Backprop Finance dashboard",
+      "netuid": 87,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/87-luminar-network",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/87-luminar-network"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/87-luminar-network"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-87-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Luminar Network TaoMarketCap dashboard",
@@ -23918,6 +25811,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/87"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-88-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Investing Backprop Finance dashboard",
+      "netuid": 88,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/88-investing",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/88-investing"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/88-investing"
     },
     {
       "auth_required": false,
@@ -24103,7 +26017,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/88",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/88"
+        "https://api.taomarketcap.com/public/v1/subnets/88",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/88/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/mobiusfund/investing"
@@ -24254,6 +26169,27 @@
       ],
       "state": "schema-valid",
       "url": "https://db.investing88.ai/88-public-index"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-89-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "InfiniteHash Backprop Finance dashboard",
+      "netuid": 89,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/89-infinitehash",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/89-infinitehash"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/89-infinitehash"
     },
     {
       "auth_required": false,
@@ -24418,7 +26354,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/89",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/89"
+        "https://api.taomarketcap.com/public/v1/subnets/89",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/89/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/backend-developers-ltd/InfiniteHash"
@@ -24489,6 +26426,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-90-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "ogham Backprop Finance dashboard",
+      "netuid": 90,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/90-ogham",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/90-ogham"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/90-ogham"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-90-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "ogham TaoMarketCap dashboard",
@@ -24548,6 +26506,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/90"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-91-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Bitstarter #1 Backprop Finance dashboard",
+      "netuid": 91,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/91-bitstarter-1",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/91-bitstarter-1"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/91-bitstarter-1"
     },
     {
       "auth_required": false,
@@ -24867,6 +26846,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-92-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "luis Backprop Finance dashboard",
+      "netuid": 92,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/92-luis",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/92-luis"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/92-luis"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-92-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "luis TaoMarketCap dashboard",
@@ -24947,6 +26947,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorclaw/tensorclaw"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-93-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Bitcast Backprop Finance dashboard",
+      "netuid": 93,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/93-bitcast",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/93-bitcast"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/93-bitcast"
     },
     {
       "auth_required": false,
@@ -25216,7 +27237,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/93",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/93"
+        "https://api.taomarketcap.com/public/v1/subnets/93",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/93/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/bitcast-network/bitcast"
@@ -25304,6 +27326,27 @@
       ],
       "state": "schema-valid",
       "url": "https://bitcast.network/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-94-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Bitsota Backprop Finance dashboard",
+      "netuid": 94,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/94-bitsota",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/94-bitsota"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/94-bitsota"
     },
     {
       "auth_required": false,
@@ -25602,6 +27645,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-95-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Actual Backprop Finance dashboard",
+      "netuid": 95,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/95-actual",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/95-actual"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/95-actual"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-95-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Actual TaoMarketCap dashboard",
@@ -25875,6 +27939,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-96-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Verathos Backprop Finance dashboard",
+      "netuid": 96,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/96-verathos",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/96-verathos"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/96-verathos"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-96-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Verathos TaoMarketCap dashboard",
@@ -26144,6 +28229,27 @@
       ],
       "state": "schema-valid",
       "url": "https://verathos.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-97-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Albedo Backprop Finance dashboard",
+      "netuid": 97,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/97-albedo",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/97-albedo"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/97-albedo"
     },
     {
       "auth_required": false,
@@ -26459,6 +28565,27 @@
       ],
       "state": "schema-valid",
       "url": "https://us-east-1.hippius.com/albedo/kings.html"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-98-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "ForeverMoney Backprop Finance dashboard",
+      "netuid": 98,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/98-forevermoney",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/98-forevermoney"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/98-forevermoney"
     },
     {
       "auth_required": false,
@@ -26862,6 +28989,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-99-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Leoma Backprop Finance dashboard",
+      "netuid": 99,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/99-leoma",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/99-leoma"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/99-leoma"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-99-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Leoma TaoMarketCap dashboard",
@@ -27152,6 +29300,27 @@
       ],
       "state": "schema-valid",
       "url": "https://leoma.ai/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-100-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Plaτform Backprop Finance dashboard",
+      "netuid": 100,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/100-pla-form",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/100-pla-form"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/100-pla-form"
     },
     {
       "auth_required": false,
@@ -27513,6 +29682,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-101-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "eni Backprop Finance dashboard",
+      "netuid": 101,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/101-eni",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/101-eni"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/101-eni"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-101-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "eni TaoMarketCap dashboard",
@@ -27572,6 +29762,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/101"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-102-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "ConnitoAI Backprop Finance dashboard",
+      "netuid": 102,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/102-connitoai",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/102-connitoai"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/102-connitoai"
     },
     {
       "auth_required": false,
@@ -27908,6 +30119,27 @@
       ],
       "state": "schema-valid",
       "url": "https://connito.ai/blog"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-103-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Djinn Backprop Finance dashboard",
+      "netuid": 103,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/103-djinn",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/103-djinn"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/103-djinn"
     },
     {
       "auth_required": false,
@@ -28332,6 +30564,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-104-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "for sale (burn to uid1) Backprop Finance dashboard",
+      "netuid": 104,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/104-for-sale-burn-to-uid1",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/104-for-sale-burn-to-uid1"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/104-for-sale-burn-to-uid1"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-104-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "for sale (burn to uid1) TaoMarketCap dashboard",
@@ -28391,6 +30644,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/104"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-105-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Beam Backprop Finance dashboard",
+      "netuid": 105,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/105-beam",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/105-beam"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/105-beam"
     },
     {
       "auth_required": false,
@@ -28626,6 +30900,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-106-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "VoidAI Backprop Finance dashboard",
+      "netuid": 106,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/106-voidai",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/106-voidai"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/106-voidai"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-106-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "VoidAI TaoMarketCap dashboard",
@@ -28853,6 +31148,27 @@
       ],
       "state": "schema-valid",
       "url": "https://voidai.com/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-107-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Minos Backprop Finance dashboard",
+      "netuid": 107,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/107-minos",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/107-minos"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/107-minos"
     },
     {
       "auth_required": false,
@@ -29235,6 +31551,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-108-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "TalkHead Backprop Finance dashboard",
+      "netuid": 108,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/108-talkhead",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/108-talkhead"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/108-talkhead"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-108-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "TalkHead TaoMarketCap dashboard",
@@ -29416,7 +31753,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/108",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/108"
+        "https://api.taomarketcap.com/public/v1/subnets/108",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/108/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/talkheadai/talkhead-subnet"
@@ -29592,6 +31930,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-109-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Academia Backprop Finance dashboard",
+      "netuid": 109,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/109-academia",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/109-academia"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/109-academia"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-109-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Academia TaoMarketCap dashboard",
@@ -29672,6 +32031,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/fx-integral/academia"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-110-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Green Compute Backprop Finance dashboard",
+      "netuid": 110,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/110-green-compute",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/110-green-compute"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/110-green-compute"
     },
     {
       "auth_required": false,
@@ -30117,6 +32497,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-111-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "oneoneone Backprop Finance dashboard",
+      "netuid": 111,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/111-oneoneone",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/111-oneoneone"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/111-oneoneone"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-111-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "oneoneone TaoMarketCap dashboard",
@@ -30193,10 +32594,32 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/111",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/111"
+        "https://api.taomarketcap.com/public/v1/subnets/111",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/111/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/oneoneone-io/subnet-111"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-112-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "minotaur Backprop Finance dashboard",
+      "netuid": 112,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/112-minotaur",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/112-minotaur"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/112-minotaur"
     },
     {
       "auth_required": false,
@@ -30361,7 +32784,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/112",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/112"
+        "https://api.taomarketcap.com/public/v1/subnets/112",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/112/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/subnet112/minotaur_subnet"
@@ -30449,6 +32873,27 @@
       ],
       "state": "schema-valid",
       "url": "https://minotaursubnet.com/roadmap"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-113-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "TensorUSD Backprop Finance dashboard",
+      "netuid": 113,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/113-tensorusd",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/113-tensorusd"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/113-tensorusd"
     },
     {
       "auth_required": false,
@@ -30806,6 +33251,27 @@
       ],
       "state": "schema-valid",
       "url": "https://tensorusd.com/faq"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-114-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "SOMA Backprop Finance dashboard",
+      "netuid": 114,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/114-soma",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/114-soma"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/114-soma"
     },
     {
       "auth_required": false,
@@ -31209,6 +33675,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-115-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "HashiChain Backprop Finance dashboard",
+      "netuid": 115,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/115-hashichain",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/115-hashichain"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/115-hashichain"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-115-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "HashiChain TaoMarketCap dashboard",
@@ -31289,6 +33776,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/hashi115/hashichain"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-116-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "hard_sign Backprop Finance dashboard",
+      "netuid": 116,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/116-hard-sign",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/116-hard-sign"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/116-hard-sign"
     },
     {
       "auth_required": false,
@@ -31377,9 +33885,30 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-117-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "BrainPlay Backprop Finance dashboard",
+      "netuid": 117,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/117-brainplay",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/117-brainplay"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/117-brainplay"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-117-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "Subnet 117 TaoMarketCap dashboard",
+      "name": "BrainPlay TaoMarketCap dashboard",
       "netuid": 117,
       "provider": "taomarketcap",
       "public_safe": true,
@@ -31421,7 +33950,7 @@
       "confidence": "medium",
       "id": "sn-117-tensorplex-docs",
       "kind": "docs",
-      "name": "Subnet 117 Tensorplex subnet docs",
+      "name": "BrainPlay Tensorplex subnet docs",
       "netuid": 117,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -31463,7 +33992,7 @@
       "confidence": "medium",
       "id": "sn-117-tensorplex-source-repo-1",
       "kind": "source-repo",
-      "name": "Subnet 117 source repository",
+      "name": "BrainPlay source repository",
       "netuid": 117,
       "provider": "tensorplex-subnet-docs",
       "public_safe": true,
@@ -31478,6 +34007,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/shiftlayer-llc/brainplay-subnet"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-118-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Ditto Backprop Finance dashboard",
+      "netuid": 118,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/118-ditto",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/118-ditto"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/118-ditto"
     },
     {
       "auth_required": false,
@@ -31944,6 +34494,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-119-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Satori Backprop Finance dashboard",
+      "netuid": 119,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/119-satori",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/119-satori"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/119-satori"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-119-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Satori TaoMarketCap dashboard",
@@ -32024,6 +34595,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/Satori119/Satori"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-120-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Affine Backprop Finance dashboard",
+      "netuid": 120,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/120-affine",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/120-affine"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/120-affine"
     },
     {
       "auth_required": false,
@@ -32209,7 +34801,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/120",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/120"
+        "https://api.taomarketcap.com/public/v1/subnets/120",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/120/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/AffineFoundation/affine"
@@ -32276,6 +34869,27 @@
       ],
       "state": "schema-valid",
       "url": "https://www.affine.io/"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-121-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "sundae_bar Backprop Finance dashboard",
+      "netuid": 121,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/121-sundae-bar",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/121-sundae-bar"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/121-sundae-bar"
     },
     {
       "auth_required": false,
@@ -32721,6 +35335,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-122-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "gamma_small Backprop Finance dashboard",
+      "netuid": 122,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/122-gamma-small",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/122-gamma-small"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/122-gamma-small"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-122-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "gamma_small TaoMarketCap dashboard",
@@ -32805,6 +35440,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-123-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "MANTIS Backprop Finance dashboard",
+      "netuid": 123,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/123-mantis",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/123-mantis"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/123-mantis"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-123-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "MANTIS TaoMarketCap dashboard",
@@ -32881,10 +35537,32 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/123",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/123"
+        "https://api.taomarketcap.com/public/v1/subnets/123",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/123/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/Barbariandev/MANTIS"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-124-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Swarm Backprop Finance dashboard",
+      "netuid": 124,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/124-swarm",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/124-swarm"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/124-swarm"
     },
     {
       "auth_required": false,
@@ -33070,7 +35748,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/124",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/124"
+        "https://api.taomarketcap.com/public/v1/subnets/124",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/124/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/swarm-subnet/swarm"
@@ -33141,6 +35820,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-125-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "8 Ball Backprop Finance dashboard",
+      "netuid": 125,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/125-8-ball",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/125-8-ball"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/125-8-ball"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-125-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "8 Ball TaoMarketCap dashboard",
@@ -33200,6 +35900,27 @@
       ],
       "state": "schema-valid",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/125"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "sn-126-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Poker44 Backprop Finance dashboard",
+      "netuid": 126,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/126-poker44",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/126-poker44"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/126-poker44"
     },
     {
       "auth_required": false,
@@ -33519,6 +36240,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-127-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "Astrid Backprop Finance dashboard",
+      "netuid": 127,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/127-astrid",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/127-astrid"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/127-astrid"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-127-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "Astrid TaoMarketCap dashboard",
@@ -33813,6 +36555,27 @@
     {
       "auth_required": false,
       "confidence": "medium",
+      "id": "sn-128-backprop-dashboard",
+      "kind": "dashboard",
+      "name": "ByteLeap Backprop Finance dashboard",
+      "netuid": 128,
+      "provider": "backprop-finance",
+      "public_safe": true,
+      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
+      "review_notes": "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "schema_version": 1,
+      "source_tier": "third-party-index",
+      "source_type": "backprop-dashboard",
+      "source_url": "https://backprop.finance/dtao/subnets/128-byteleap",
+      "source_urls": [
+        "https://backprop.finance/dtao/subnets/128-byteleap"
+      ],
+      "state": "schema-valid",
+      "url": "https://backprop.finance/dtao/subnets/128-byteleap"
+    },
+    {
+      "auth_required": false,
+      "confidence": "medium",
       "id": "sn-128-taomarketcap-dashboard",
       "kind": "dashboard",
       "name": "ByteLeap TaoMarketCap dashboard",
@@ -33973,7 +36736,8 @@
       "source_type": "taomarketcap-subnet-identity-v3",
       "source_url": "https://api.taomarketcap.com/public/v1/subnets/128",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/128"
+        "https://api.taomarketcap.com/public/v1/subnets/128",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/128/subnet.json"
       ],
       "state": "schema-valid",
       "url": "https://github.com/byteleapai/byteleap-Miner"
@@ -34063,16 +36827,20 @@
       "url": "https://byteleap.ai/"
     }
   ],
-  "generated_at": "2026-06-08T09:02:00.000Z",
+  "generated_at": "1970-01-01T00:00:00.000Z",
   "generated_by": "metagraphed-discover-candidates",
   "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
   "notes": "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
-  "observed_at": "2026-06-08T09:02:00.000Z",
+  "observed_at": "2026-06-08T11:59:34.000Z",
   "schema_version": 1,
   "sources": [
     {
       "id": "taomarketcap",
       "url": "https://api.taomarketcap.com/public/v1/subnets/"
+    },
+    {
+      "id": "backprop-finance",
+      "url": "https://backprop.finance/dtao/subnets/"
     },
     {
       "id": "tensorplex-subnet-docs",

@@ -32,6 +32,16 @@
       "website_url": "https://all-ways.io"
     },
     {
+      "authority": "provider-claimed",
+      "docs_url": "https://backprop.finance/dtao/subnets/",
+      "id": "backprop-finance",
+      "kind": "data-provider",
+      "name": "Backprop Finance",
+      "notes": "Third-party Bittensor dTAO dashboard. Used as enrichment and candidate discovery for public subnet dashboard surfaces, not canonical subnet identity authority.",
+      "schema_version": 1,
+      "website_url": "https://backprop.finance"
+    },
+    {
       "authority": "official",
       "docs_url": "https://docs.bitmind.ai/",
       "github_url": "https://github.com/BitMind-AI",

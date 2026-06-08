@@ -400,10 +400,12 @@ test("public artifacts are internally consistent", () => {
     (source) => source.id === "candidate-discovery",
   );
   const expectedCandidateDiscoveryAsOf =
-    generatedCandidateDiscovery.generated_at &&
+    generatedCandidateDiscovery.observed_at ||
+    generatedCandidateDiscovery.last_observed_at ||
+    (generatedCandidateDiscovery.generated_at &&
     generatedCandidateDiscovery.generated_at !== "1970-01-01T00:00:00.000Z"
       ? generatedCandidateDiscovery.generated_at
-      : null;
+      : null);
   assert.equal(
     freshness.summary.candidate_discovery_as_of,
     expectedCandidateDiscoveryAsOf,

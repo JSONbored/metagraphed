@@ -213,7 +213,7 @@ npm run probes:smoke
 
 `sync:subnets` uses the Bittensor Python SDK through `uvx` to fetch decoded native Finney subnet metadata without committing Python dependencies to this repo.
 
-`discover:candidates` reads public enrichment sources and writes unverified candidate surfaces into `registry/candidates/generated/public-sources.json`. GitHub README-derived links are intentionally capped, de-duplicated by kind/domain, and limited to project-affiliated provenance so broad reference docs do not flood refresh PRs.
+`discover:candidates` reads public enrichment sources and writes unverified candidate surfaces into `registry/candidates/generated/public-sources.json`. Current sources include TaoMarketCap, Tensorplex subnet-docs, Taopedia articles, Backprop Finance dTAO dashboard routes, GitHub README links, and public project websites. Third-party dashboards are enrichment candidates only, not chain or identity authority. GitHub README-derived links are intentionally capped, de-duplicated by kind/domain, and limited to project-affiliated provenance so broad reference docs do not flood refresh PRs.
 
 `verify:candidates` safely checks candidate URLs, writes a compact promotion snapshot to `registry/verification/promotions.json`, and stages the full volatile verification run outside Git for R2.
 
