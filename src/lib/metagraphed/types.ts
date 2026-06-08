@@ -198,6 +198,7 @@ export interface Provider {
   homepage?: string;
   website?: string;
   docs?: string;
+  repo?: string;
   notes?: string;
   authority?: "official" | "community" | "third-party" | string;
   endpoints_count?: number;
