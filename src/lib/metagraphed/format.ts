@@ -50,3 +50,45 @@ export function isStaleFreshness(iso?: string | null, thresholdMs = 5 * 60_000):
 export function classNames(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
 }
+
+/**
+ * Humanise a duration in seconds into a compact label like "42s", "5m",
+ * "5h 39m", or "2d 4h". Used for freshness / age numbers that would
+ * otherwise display as raw seconds (e.g. "20363s").
+ */
+export function humaniseSeconds(
+  sec: number | null | undefined,
+  fallback = "—",
+): string {
+  if (sec === null || sec === undefined || !Number.isFinite(sec)) return fallback;
+  const s = Math.max(0, Math.round(sec));
+  if (s < 60) return `${s}s`;
+  if (s < 3600) {
+    const m = Math.floor(s / 60);
+    const rs = s % 60;
+    return rs && m < 10 ? `${m}m ${rs}s` : `${m}m`;
+  }
+  if (s < 86400) {
+    const h = Math.floor(s / 3600);
+    const rm = Math.round((s % 3600) / 60);
+    return rm && h < 10 ? `${h}h ${rm}m` : `${h}h`;
+  }
+  const d = Math.floor(s / 86400);
+  const rh = Math.round((s % 86400) / 3600);
+  return rh && d < 10 ? `${d}d ${rh}h` : `${d}d`;
+}
+
+/**
+ * Compute a compact "elapsed" label between two ISO timestamps. If `end`
+ * is null/undefined the duration runs to now (useful for ongoing incidents).
+ */
+export function durationLabel(
+  start?: string | null,
+  end?: string | null,
+): string {
+  if (!start) return "—";
+  const sMs = Date.parse(start);
+  if (!Number.isFinite(sMs)) return "—";
+  const eMs = end ? Date.parse(end) : Date.now();
+  return humaniseSeconds(Math.max(0, (eMs - sMs) / 1000));
+}

@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
+import { BrandIcon } from "@/components/metagraphed/brand-icon";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
@@ -14,7 +15,7 @@ import {
   adapterQuery,
 } from "@/lib/metagraphed/queries";
 import { API_BASE } from "@/lib/metagraphed/config";
-import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
+import { formatNumber, humaniseSeconds } from "@/lib/metagraphed/format";
 import type { Subnet } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/")({
@@ -41,9 +42,8 @@ function OverviewPage() {
         right={<CopyableCode label="API" value={`${API_BASE}/api/v1`} truncate={false} />}
       />
 
-      <Suspense fallback={<StatStripSkeleton />}>
-        <StatStrip />
-      </Suspense>
+      <StatStrip />
+
 
       <section className="mt-8">
         <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-ink-strong mb-3">
@@ -79,18 +79,8 @@ function OverviewPage() {
   );
 }
 
-function StatStripSkeleton() {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border border-border rounded overflow-hidden">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="bg-card p-4">
-          <Skeleton className="h-3 w-24 mb-2" />
-          <Skeleton className="h-7 w-20" />
-        </div>
-      ))}
-    </div>
-  );
-}
+
+
 
 function StatCell({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -109,22 +99,11 @@ function StatCell({ label, value, hint }: { label: string; value: string; hint?:
 }
 
 function StatStrip() {
-  let coverage, freshness, health;
-  try {
-    coverage = useSuspenseQuery(coverageQuery()).data.data;
-  } catch {
-    /* tolerate */
-  }
-  try {
-    freshness = useSuspenseQuery(freshnessQuery()).data.data;
-  } catch {
-    /* tolerate */
-  }
-  try {
-    health = useSuspenseQuery(healthQuery()).data.data;
-  } catch {
-    /* tolerate */
-  }
+  // Stat strip is a small at-a-glance widget; partial loading is fine and
+  // useSuspenseQuery + try/catch would swallow the suspense Promise.
+  const coverage = useQuery(coverageQuery()).data?.data;
+  const freshness = useQuery(freshnessQuery()).data?.data;
+  const health = useQuery(healthQuery()).data?.data;
 
   const total = coverage?.netuids_total ?? coverage?.netuids_active;
   const active = coverage?.netuids_active;
@@ -148,7 +127,7 @@ function StatStrip() {
       />
       <StatCell
         label="Avg freshness"
-        value={avgAge != null ? `${Math.round(avgAge)}s` : "—"}
+        value={avgAge != null ? humaniseSeconds(avgAge) : "—"}
         hint="poll lag"
       />
       <StatCell
@@ -262,6 +241,7 @@ function TableSkeleton() {
 function SubnetPreviewTable() {
   const { data, refetch } = useSuspenseQuery(subnetsQuery({ limit: 12 }));
   const { data: healthRes } = useSuspenseQuery(healthQuery());
+  const coverage = useQuery(coverageQuery()).data?.data;
   const subnets = (data.data ?? []) as Subnet[];
   const healthBySubnet = new Map<number, "ok" | "warn" | "down" | "unknown">();
   const hsubs = (healthRes.data as { subnets?: Array<{ netuid: number; status?: string }> })
@@ -283,6 +263,8 @@ function SubnetPreviewTable() {
       />
     );
   }
+
+  const total = coverage?.netuids_active ?? coverage?.netuids_total;
 
   return (
     <div className="rounded border border-border bg-card overflow-hidden">
@@ -316,9 +298,16 @@ function SubnetPreviewTable() {
                   <Link
                     to="/subnets/$netuid"
                     params={{ netuid: String(s.netuid) }}
-                    className="font-medium text-ink-strong hover:underline"
+                    className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
                   >
-                    {s.name ?? `Subnet ${s.netuid}`}
+                    <BrandIcon
+                      size={20}
+                      name={s.name ?? `Subnet ${s.netuid}`}
+                      fallback={s.netuid}
+                      url={s.website}
+                      netuid={s.netuid}
+                    />
+                    <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
                   </Link>
                 </td>
                 <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
@@ -345,7 +334,13 @@ function SubnetPreviewTable() {
         </table>
       </div>
       <div className="border-t border-border bg-surface/30 px-4 py-2 flex justify-between text-[11px] font-mono text-ink-muted">
-        <span>Showing first {Math.min(12, subnets.length)} of {subnets.length}</span>
+        <span>
+          Showing {Math.min(12, subnets.length)}
+          {total ? ` of ${formatNumber(total)}` : ""} ·{" "}
+          <Link to="/subnets" className="hover:text-ink-strong underline underline-offset-2">
+            view all
+          </Link>
+        </span>
         <button onClick={() => refetch()} className="hover:text-ink-strong">refresh</button>
       </div>
     </div>
