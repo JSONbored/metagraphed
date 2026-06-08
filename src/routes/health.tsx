@@ -131,6 +131,22 @@ function AutoRefreshControl({
     return () => window.clearInterval(i);
   }, [active, intervalMs]);
 
+  // Quiet aria-live: only announce meaningful state transitions, never the
+  // per-second countdown. Screen readers read at human cadence, not 1Hz.
+  const [announcement, setAnnouncement] = useState("");
+  useEffect(() => {
+    if (!enabled) {
+      setAnnouncement("Auto-refresh paused.");
+      return;
+    }
+    if (!visible) {
+      setAnnouncement("Auto-refresh paused while tab is hidden.");
+      return;
+    }
+    setAnnouncement(`Auto-refresh on, every ${Math.round(intervalMs / 1000)} seconds.`);
+  }, [enabled, visible, intervalMs]);
+
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <label className="sr-only" htmlFor="health-interval">
