@@ -10,14 +10,14 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SurfacesRouteImport } from './routes/surfaces'
-import { Route as SubnetsRouteImport } from './routes/subnets'
 import { Route as SchemasRouteImport } from './routes/schemas'
-import { Route as ProvidersRouteImport } from './routes/providers'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as GapsRouteImport } from './routes/gaps'
 import { Route as EndpointsRouteImport } from './routes/endpoints'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SubnetsIndexRouteImport } from './routes/subnets.index'
+import { Route as ProvidersIndexRouteImport } from './routes/providers.index'
 import { Route as SubnetsNetuidRouteImport } from './routes/subnets.$netuid'
 import { Route as ProvidersSlugRouteImport } from './routes/providers.$slug'
 
@@ -26,19 +26,9 @@ const SurfacesRoute = SurfacesRouteImport.update({
   path: '/surfaces',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SubnetsRoute = SubnetsRouteImport.update({
-  id: '/subnets',
-  path: '/subnets',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SchemasRoute = SchemasRouteImport.update({
   id: '/schemas',
   path: '/schemas',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProvidersRoute = ProvidersRouteImport.update({
-  id: '/providers',
-  path: '/providers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HealthRoute = HealthRouteImport.update({
@@ -66,15 +56,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SubnetsIndexRoute = SubnetsIndexRouteImport.update({
+  id: '/subnets/',
+  path: '/subnets/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProvidersIndexRoute = ProvidersIndexRouteImport.update({
+  id: '/providers/',
+  path: '/providers/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SubnetsNetuidRoute = SubnetsNetuidRouteImport.update({
-  id: '/$netuid',
-  path: '/$netuid',
-  getParentRoute: () => SubnetsRoute,
+  id: '/subnets/$netuid',
+  path: '/subnets/$netuid',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ProvidersSlugRoute = ProvidersSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => ProvidersRoute,
+  id: '/providers/$slug',
+  path: '/providers/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -83,12 +83,12 @@ export interface FileRoutesByFullPath {
   '/endpoints': typeof EndpointsRoute
   '/gaps': typeof GapsRoute
   '/health': typeof HealthRoute
-  '/providers': typeof ProvidersRouteWithChildren
   '/schemas': typeof SchemasRoute
-  '/subnets': typeof SubnetsRouteWithChildren
   '/surfaces': typeof SurfacesRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
+  '/providers/': typeof ProvidersIndexRoute
+  '/subnets/': typeof SubnetsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -96,12 +96,12 @@ export interface FileRoutesByTo {
   '/endpoints': typeof EndpointsRoute
   '/gaps': typeof GapsRoute
   '/health': typeof HealthRoute
-  '/providers': typeof ProvidersRouteWithChildren
   '/schemas': typeof SchemasRoute
-  '/subnets': typeof SubnetsRouteWithChildren
   '/surfaces': typeof SurfacesRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
+  '/providers': typeof ProvidersIndexRoute
+  '/subnets': typeof SubnetsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -110,12 +110,12 @@ export interface FileRoutesById {
   '/endpoints': typeof EndpointsRoute
   '/gaps': typeof GapsRoute
   '/health': typeof HealthRoute
-  '/providers': typeof ProvidersRouteWithChildren
   '/schemas': typeof SchemasRoute
-  '/subnets': typeof SubnetsRouteWithChildren
   '/surfaces': typeof SurfacesRoute
   '/providers/$slug': typeof ProvidersSlugRoute
   '/subnets/$netuid': typeof SubnetsNetuidRoute
+  '/providers/': typeof ProvidersIndexRoute
+  '/subnets/': typeof SubnetsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -125,12 +125,12 @@ export interface FileRouteTypes {
     | '/endpoints'
     | '/gaps'
     | '/health'
-    | '/providers'
     | '/schemas'
-    | '/subnets'
     | '/surfaces'
     | '/providers/$slug'
     | '/subnets/$netuid'
+    | '/providers/'
+    | '/subnets/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -138,12 +138,12 @@ export interface FileRouteTypes {
     | '/endpoints'
     | '/gaps'
     | '/health'
-    | '/providers'
     | '/schemas'
-    | '/subnets'
     | '/surfaces'
     | '/providers/$slug'
     | '/subnets/$netuid'
+    | '/providers'
+    | '/subnets'
   id:
     | '__root__'
     | '/'
@@ -151,12 +151,12 @@ export interface FileRouteTypes {
     | '/endpoints'
     | '/gaps'
     | '/health'
-    | '/providers'
     | '/schemas'
-    | '/subnets'
     | '/surfaces'
     | '/providers/$slug'
     | '/subnets/$netuid'
+    | '/providers/'
+    | '/subnets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -165,10 +165,12 @@ export interface RootRouteChildren {
   EndpointsRoute: typeof EndpointsRoute
   GapsRoute: typeof GapsRoute
   HealthRoute: typeof HealthRoute
-  ProvidersRoute: typeof ProvidersRouteWithChildren
   SchemasRoute: typeof SchemasRoute
-  SubnetsRoute: typeof SubnetsRouteWithChildren
   SurfacesRoute: typeof SurfacesRoute
+  ProvidersSlugRoute: typeof ProvidersSlugRoute
+  SubnetsNetuidRoute: typeof SubnetsNetuidRoute
+  ProvidersIndexRoute: typeof ProvidersIndexRoute
+  SubnetsIndexRoute: typeof SubnetsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -180,25 +182,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SurfacesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/subnets': {
-      id: '/subnets'
-      path: '/subnets'
-      fullPath: '/subnets'
-      preLoaderRoute: typeof SubnetsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/schemas': {
       id: '/schemas'
       path: '/schemas'
       fullPath: '/schemas'
       preLoaderRoute: typeof SchemasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/providers': {
-      id: '/providers'
-      path: '/providers'
-      fullPath: '/providers'
-      preLoaderRoute: typeof ProvidersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/health': {
@@ -236,45 +224,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/subnets/': {
+      id: '/subnets/'
+      path: '/subnets'
+      fullPath: '/subnets/'
+      preLoaderRoute: typeof SubnetsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/providers/': {
+      id: '/providers/'
+      path: '/providers'
+      fullPath: '/providers/'
+      preLoaderRoute: typeof ProvidersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/subnets/$netuid': {
       id: '/subnets/$netuid'
-      path: '/$netuid'
+      path: '/subnets/$netuid'
       fullPath: '/subnets/$netuid'
       preLoaderRoute: typeof SubnetsNetuidRouteImport
-      parentRoute: typeof SubnetsRoute
+      parentRoute: typeof rootRouteImport
     }
     '/providers/$slug': {
       id: '/providers/$slug'
-      path: '/$slug'
+      path: '/providers/$slug'
       fullPath: '/providers/$slug'
       preLoaderRoute: typeof ProvidersSlugRouteImport
-      parentRoute: typeof ProvidersRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface ProvidersRouteChildren {
-  ProvidersSlugRoute: typeof ProvidersSlugRoute
-}
-
-const ProvidersRouteChildren: ProvidersRouteChildren = {
-  ProvidersSlugRoute: ProvidersSlugRoute,
-}
-
-const ProvidersRouteWithChildren = ProvidersRoute._addFileChildren(
-  ProvidersRouteChildren,
-)
-
-interface SubnetsRouteChildren {
-  SubnetsNetuidRoute: typeof SubnetsNetuidRoute
-}
-
-const SubnetsRouteChildren: SubnetsRouteChildren = {
-  SubnetsNetuidRoute: SubnetsNetuidRoute,
-}
-
-const SubnetsRouteWithChildren =
-  SubnetsRoute._addFileChildren(SubnetsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -282,11 +261,23 @@ const rootRouteChildren: RootRouteChildren = {
   EndpointsRoute: EndpointsRoute,
   GapsRoute: GapsRoute,
   HealthRoute: HealthRoute,
-  ProvidersRoute: ProvidersRouteWithChildren,
   SchemasRoute: SchemasRoute,
-  SubnetsRoute: SubnetsRouteWithChildren,
   SurfacesRoute: SurfacesRoute,
+  ProvidersSlugRoute: ProvidersSlugRoute,
+  SubnetsNetuidRoute: SubnetsNetuidRoute,
+  ProvidersIndexRoute: ProvidersIndexRoute,
+  SubnetsIndexRoute: SubnetsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
