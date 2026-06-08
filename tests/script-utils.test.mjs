@@ -29,6 +29,7 @@ import {
   listJsonFiles,
   listJsonFilesRecursive,
   loadCandidates,
+  loadDetailedVerification,
   loadVerification,
   nativeDisplayName,
   nativeNameQuality,
@@ -113,6 +114,14 @@ describe("script utility contracts", () => {
     assert.equal(
       artifactRelativePath("/metagraph/subnets/7.json"),
       "subnets/7.json",
+    );
+    assert.equal(
+      artifactRelativePath("metagraph/latest.json"),
+      "metagraph/latest.json",
+    );
+    assert.equal(
+      artifactStorageTierForRelativePath("metagraph/latest.json"),
+      ARTIFACT_STORAGE_TIERS.r2,
     );
     assert.equal(
       artifactStorageTierForRelativePath("subnets/{netuid}.json"),
@@ -232,9 +241,15 @@ describe("script utility contracts", () => {
   test("loads checked-in candidates and verification fallback contracts", async () => {
     const candidates = await loadCandidates();
     const verification = await loadVerification();
+    const compactVerification = await loadVerification({
+      preferDetailed: false,
+    });
+    const detailedVerification = await loadDetailedVerification();
 
     assert.equal(candidates.length > 0, true);
     assert.equal(verification.schema_version, 1);
+    assert.equal(compactVerification.schema_version, 1);
+    assert.equal(detailedVerification.schema_version, 1);
     assert.equal(existsSync(path.join(repoRoot, "package.json")), true);
   });
 

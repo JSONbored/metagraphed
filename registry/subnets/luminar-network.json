@@ -1,7 +1,5 @@
 {
-  "categories": [
-    "baseline-curated"
-  ],
+  "categories": ["baseline-curated", "identity-reviewed"],
   "curation": {
     "gap_notes": [
       "No verified source repository yet.",
@@ -12,27 +10,27 @@
       "No verified data artifact yet."
     ],
     "level": "machine-verified",
-    "review_state": "machine-generated",
-    "reviewed_at": null,
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-07T00:00:00.000Z",
     "source_count": 3,
     "verified_at": null
   },
-  "dashboard_url": "https://taomarketcap.com/subnets/31",
-  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_31/index.mdx",
+  "dashboard_url": "https://taomarketcap.com/subnets/87",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx",
   "links": [],
-  "name": "Recall",
-  "netuid": 31,
-  "notes": "Machine-generated baseline overlay from verified public-source candidates.",
+  "name": "Luminar Network",
+  "netuid": 87,
+  "notes": "Reviewed identity overlay because live chain metadata currently reports a placeholder name for SN87.",
   "schema_version": 1,
-  "slug": "sn-31",
+  "slug": "sn-87",
   "status": "active",
   "surfaces": [
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-31-taopedia-article",
+      "id": "sn-87-taopedia-article",
       "kind": "docs",
-      "name": "Recall Taopedia article",
+      "name": "Luminar Network Taopedia article",
       "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
       "probe": {
         "enabled": true,
@@ -52,16 +50,16 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_31/index.mdx"
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx"
       ],
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_31/index.mdx"
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx"
     },
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-31-tensorplex-docs",
+      "id": "sn-87-tensorplex-docs",
       "kind": "docs",
-      "name": "Recall Tensorplex subnet docs",
+      "name": "Luminar Network Tensorplex subnet docs",
       "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
       "probe": {
         "enabled": true,
@@ -81,16 +79,16 @@
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/31/subnet.json"
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/87/subnet.json"
       ],
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/31"
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/87"
     },
     {
       "auth_required": false,
       "authority": "registry-observed",
-      "id": "sn-31-taomarketcap-dashboard",
+      "id": "sn-87-taomarketcap-dashboard",
       "kind": "dashboard",
-      "name": "Recall TaoMarketCap dashboard",
+      "name": "Luminar Network TaoMarketCap dashboard",
       "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "probe": {
         "enabled": true,
@@ -109,10 +107,8 @@
         "transient_failure": false
       },
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/31"
-      ],
-      "url": "https://taomarketcap.com/subnets/31"
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/87"],
+      "url": "https://taomarketcap.com/subnets/87"
     }
   ]
 }

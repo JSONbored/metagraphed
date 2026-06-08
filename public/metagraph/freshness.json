@@ -4,7 +4,7 @@
   "schema_version": 1,
   "sources": [
     {
-      "as_of": "2026-06-07T15:30:10.650Z",
+      "as_of": "2026-06-07T21:52:49.513Z",
       "id": "adapter-snapshots",
       "lane": "adapter-snapshot",
       "notes": "",
@@ -13,11 +13,11 @@
       "stale_after_hours": 12,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-07T15:30:10.650Z",
+      "timestamp": "2026-06-07T21:52:49.513Z",
       "timestamp_field": "adapter_snapshot_as_of"
     },
     {
-      "as_of": "2026-06-07T15:30:10.650Z",
+      "as_of": "2026-06-07T21:52:48.909Z",
       "id": "adapter:allways",
       "lane": "adapter-snapshot",
       "notes": "",
@@ -26,11 +26,11 @@
       "stale_after_hours": 12,
       "stale_behavior": "warn",
       "status": "captured",
-      "timestamp": "2026-06-07T15:30:10.650Z",
+      "timestamp": "2026-06-07T21:52:48.909Z",
       "timestamp_field": null
     },
     {
-      "as_of": "2026-06-07T15:30:09.603Z",
+      "as_of": "2026-06-07T21:52:49.513Z",
       "id": "adapter:gittensor",
       "lane": "adapter-snapshot",
       "notes": "",
@@ -39,7 +39,7 @@
       "stale_after_hours": 12,
       "stale_behavior": "warn",
       "status": "captured",
-      "timestamp": "2026-06-07T15:30:09.603Z",
+      "timestamp": "2026-06-07T21:52:49.513Z",
       "timestamp_field": null
     },
     {
@@ -56,20 +56,20 @@
       "timestamp_field": "candidate_discovery_as_of"
     },
     {
-      "as_of": "2026-06-07T20:53:42.403Z",
+      "as_of": "2026-06-07T22:30:40.414Z",
       "id": "candidate-verification",
       "lane": "candidate-verification",
       "notes": "",
-      "path": "registry/verification/latest.json",
+      "path": "registry/verification/promotions.json",
       "required_for_publish": true,
       "stale_after_hours": 24,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-07T20:53:42.403Z",
+      "timestamp": "2026-06-07T22:30:40.414Z",
       "timestamp_field": "verification_as_of"
     },
     {
-      "as_of": "2026-06-07T15:29:09Z",
+      "as_of": "2026-06-07T21:51:54Z",
       "id": "native-subnets",
       "lane": "native-data",
       "notes": "",
@@ -78,7 +78,7 @@
       "stale_after_hours": 24,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-07T15:29:09Z",
+      "timestamp": "2026-06-07T21:51:54Z",
       "timestamp_field": "native_data_as_of"
     },
     {
@@ -95,7 +95,7 @@
       "timestamp_field": "schema_snapshot_as_of"
     },
     {
-      "as_of": "2026-06-07T17:40:50.048Z",
+      "as_of": "2026-06-07T21:53:25.348Z",
       "id": "surface-health",
       "lane": "health-probe",
       "notes": "Observed health is probe-derived.",
@@ -104,20 +104,20 @@
       "stale_after_hours": 6,
       "stale_behavior": "block",
       "status": "captured",
-      "timestamp": "2026-06-07T17:40:50.048Z",
+      "timestamp": "2026-06-07T21:53:25.348Z",
       "timestamp_field": "health_probe_as_of"
     }
   ],
   "summary": {
     "adapter_count": 2,
-    "adapter_snapshot_as_of": "2026-06-07T15:30:10.650Z",
+    "adapter_snapshot_as_of": "2026-06-07T21:52:49.513Z",
     "blocking_source_count": 5,
     "candidate_discovery_as_of": null,
-    "health_probe_as_of": "2026-06-07T17:40:50.048Z",
+    "health_probe_as_of": "2026-06-07T21:53:25.348Z",
     "health_surface_count": 852,
     "missing_blocking_source_count": 1,
-    "native_data_as_of": "2026-06-07T15:29:09Z",
-    "native_snapshot_captured_at": "2026-06-07T15:29:09Z",
+    "native_data_as_of": "2026-06-07T21:51:54Z",
+    "native_snapshot_captured_at": "2026-06-07T21:51:54Z",
     "openapi_surface_count": 28,
     "publish_ready_without_age_check": false,
     "schema_snapshot_as_of": null,
@@ -125,7 +125,7 @@
       "candidate-discovery has no observed timestamp; production publish should block.",
       "schema-drift has no observed timestamp; review before relying on this lane."
     ],
-    "verification_as_of": "2026-06-07T20:53:42.403Z",
+    "verification_as_of": "2026-06-07T22:30:40.414Z",
     "verification_generated_at": "1970-01-01T00:00:00.000Z",
     "warning_source_count": 3
   }

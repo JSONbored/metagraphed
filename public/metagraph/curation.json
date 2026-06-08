@@ -53,7 +53,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 4,
+        "source_count": 3,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2577,7 +2577,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 4,
         "verified_at": null
       },
       "gap_count": 4,
@@ -2703,7 +2703,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 7,
+        "source_count": 6,
         "verified_at": null
       },
       "gap_count": 2,
@@ -3662,8 +3662,8 @@
           "No verified data artifact yet."
         ],
         "level": "machine-verified",
-        "review_state": "machine-generated",
-        "reviewed_at": null,
+        "review_state": "maintainer-reviewed",
+        "reviewed_at": "2026-06-07T00:00:00.000Z",
         "source_count": 3,
         "verified_at": null
       },
@@ -3707,7 +3707,7 @@
         "level": "machine-verified",
         "review_state": "machine-generated",
         "reviewed_at": null,
-        "source_count": 5,
+        "source_count": 4,
         "verified_at": null
       },
       "gap_count": 3,

@@ -17,6 +17,10 @@ const shouldWrite = args.has("--write");
 const dryRun = args.has("--dry-run") || !shouldWrite;
 const nativeSnapshot = await loadNativeSnapshot();
 const existingOverlays = await loadSubnets();
+const observedAt =
+  process.env.METAGRAPH_PERSIST_DISCOVERY_OBSERVED_AT === "1"
+    ? process.env.METAGRAPH_DISCOVERY_OBSERVED_AT || new Date().toISOString()
+    : null;
 const nativeByNetuid = new Map(
   nativeSnapshot.subnets.map((subnet) => [subnet.netuid, subnet]),
 );
@@ -75,6 +79,7 @@ if (!dryRun) {
       native_snapshot_captured_at: nativeSnapshot.captured_at,
       notes:
         "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
+      observed_at: observedAt,
       sources: [
         {
           id: "taomarketcap",
@@ -556,11 +561,19 @@ function restoreCandidate(candidate) {
     source_tier: candidate.source_tier,
     confidence: candidate.confidence,
     provider: candidate.provider,
-    review_notes: `${
-      candidate.review_notes ||
-      "Candidate restored from previous generated bundle."
-    } Source refresh failed; preserved pending a successful refresh.`,
+    review_notes:
+      stripRefreshFailureNote(candidate.review_notes) ||
+      "Candidate restored from previous generated bundle.",
   });
+}
+
+function stripRefreshFailureNote(value) {
+  return String(value || "")
+    .replace(
+      /\s*Source refresh failed; preserved pending a successful refresh\./g,
+      "",
+    )
+    .trim();
 }
 
 function displayNameForNetuid(netuid) {

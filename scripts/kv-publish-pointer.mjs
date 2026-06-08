@@ -1,6 +1,12 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { hashJson, readJson, repoRoot, stableStringify } from "./lib.mjs";
+import {
+  artifactFilePath,
+  hashJson,
+  readJson,
+  repoRoot,
+  stableStringify,
+} from "./lib.mjs";
 
 const args = new Set(process.argv.slice(2));
 const write = args.has("--write");
@@ -10,12 +16,8 @@ const manifest = await readJson(
 const freshness = await readJson(
   path.join(repoRoot, "public/metagraph/freshness.json"),
 );
-const endpointPools = await readJson(
-  path.join(repoRoot, "public/metagraph/endpoint-pools.json"),
-);
-const sourceHealth = await readJson(
-  path.join(repoRoot, "public/metagraph/source-health.json"),
-);
+const endpointPools = await readJson(artifactFilePath("endpoint-pools.json"));
+const sourceHealth = await readJson(artifactFilePath("source-health.json"));
 
 const pointer = {
   contract_version: manifest.contract_version,

@@ -11,9 +11,11 @@ const PROBE_DERIVED_PUBLIC_ARTIFACTS = new Set([
   "public/metagraph/endpoints.json",
   "public/metagraph/freshness.json",
   "public/metagraph/health/summary.json",
+  "public/metagraph/metagraph/latest.json",
   "public/metagraph/r2-manifest.json",
   "public/metagraph/rpc-endpoints.json",
   "public/metagraph/rpc/pools.json",
+  "public/metagraph/source-health.json",
 ]);
 
 const submittedArtifacts = readFileSync(changedFilesPath, "utf8")

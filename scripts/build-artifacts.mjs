@@ -53,9 +53,6 @@ const overlayByNetuid = new Map(
 );
 const chainSubnets = nativeSnapshot.subnets;
 const candidatesByNetuid = groupByNetuid(candidates);
-const verificationByCandidate = new Map(
-  (verification.results || []).map((result) => [result.candidate_id, result]),
-);
 const mergedSubnets = chainSubnets.map((nativeSubnet) =>
   mergeSubnet(
     nativeSubnet,
@@ -74,6 +71,16 @@ const outputRoot = path.join(repoRoot, "public/metagraph");
 const r2OutputRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 const generatedAt = buildTimestamp();
 const contractVersion = CONTRACT_VERSION;
+const fullVerification = buildFullVerificationArtifact(verification, {
+  contractVersion,
+  generatedAt,
+});
+const fullVerificationByCandidate = new Map(
+  (fullVerification.results || []).map((result) => [
+    result.candidate_id,
+    result,
+  ]),
+);
 const previousArtifactDigests = await collectArtifactDigests({
   includeR2Root: false,
   publicRoot: outputRoot,
@@ -241,7 +248,8 @@ const coverage = {
 const candidateIndex = candidates.map((candidate) => ({
   ...candidate,
   verification:
-    verificationByCandidate.get(candidate.id) || candidate.verification || null,
+    fullVerificationByCandidate.get(candidate.id) ||
+    fullVerificationResultOrNull(candidate.verification),
   subnet_name:
     nativeSnapshot.subnets.find((subnet) => subnet.netuid === candidate.netuid)
       ?.name || null,
@@ -428,22 +436,19 @@ await writeJson(artifactFile("gaps.json"), {
   gaps: gapsIndex,
 });
 
-await writeJson(artifactFile("verification/latest.json"), {
-  ...verification,
-  generated_at: verification.generated_at || generatedAt,
-});
+await writeJson(artifactFile("verification/latest.json"), fullVerification);
 await fs.rm(r2ArtifactDir("verification/subnets"), {
   recursive: true,
   force: true,
 });
 for (const subnet of mergedSubnets) {
-  const results = (verification.results || []).filter(
+  const results = (fullVerification.results || []).filter(
     (result) => result.netuid === subnet.netuid,
   );
   await writeJson(artifactFile(`verification/subnets/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
-    generated_at: verification.generated_at || generatedAt,
+    generated_at: fullVerification.generated_at,
     candidate_count: results.length,
     netuid: subnet.netuid,
     slug: subnet.slug,
@@ -1644,7 +1649,11 @@ function buildFreshnessArtifact({
     };
   });
   const candidateDiscoveryAsOf =
-    nonPlaceholderTimestamp(candidateDiscovery?.generated_at) || null;
+    nonPlaceholderTimestamp(process.env.METAGRAPH_DISCOVERY_OBSERVED_AT) ||
+    nonPlaceholderTimestamp(candidateDiscovery?.observed_at) ||
+    nonPlaceholderTimestamp(candidateDiscovery?.discovered_at) ||
+    nonPlaceholderTimestamp(candidateDiscovery?.generated_at) ||
+    null;
   const verificationAsOf =
     verificationArtifact.verification_finished_at ||
     nonPlaceholderTimestamp(verificationArtifact.generated_at) ||
@@ -1677,13 +1686,14 @@ function buildFreshnessArtifact({
       pathValue: "registry/candidates/generated/public-sources.json",
       requiredForPublish: true,
       staleAfterHours: 24,
+      status: candidateDiscoveryAsOf ? "captured" : null,
       timestampField: "candidate_discovery_as_of",
     }),
     freshnessSource({
       asOf: verificationAsOf,
       id: "candidate-verification",
       lane: "candidate-verification",
-      pathValue: "registry/verification/latest.json",
+      pathValue: "registry/verification/promotions.json",
       requiredForPublish: true,
       staleAfterHours: 24,
       timestampField: "verification_as_of",
@@ -1813,6 +1823,38 @@ function nonPlaceholderTimestamp(value) {
     return null;
   }
   return value;
+}
+
+function buildFullVerificationArtifact(
+  verificationArtifact,
+  { contractVersion, generatedAt },
+) {
+  const results = (verificationArtifact.results || []).filter(
+    isFullVerificationResult,
+  );
+  return {
+    ...verificationArtifact,
+    schema_version: verificationArtifact.schema_version || 1,
+    contract_version: verificationArtifact.contract_version || contractVersion,
+    generated_at: verificationArtifact.generated_at || generatedAt,
+    candidate_count: results.length,
+    results,
+  };
+}
+
+function fullVerificationResultOrNull(result) {
+  return isFullVerificationResult(result) ? result : null;
+}
+
+function isFullVerificationResult(result) {
+  return Boolean(
+    result &&
+    result.candidate_id &&
+    result.classification &&
+    result.status &&
+    result.url &&
+    result.verified_at,
+  );
 }
 
 function latestTimestamp(values) {
@@ -2075,7 +2117,7 @@ async function buildSourceSnapshots({
     sourceSnapshot(
       "candidate-verification",
       "probe-results",
-      "registry/verification/latest.json",
+      "registry/verification/promotions.json",
       verificationArtifact,
       verificationArtifact.results?.length || 0,
       verificationArtifact.generated_at || timestamp,

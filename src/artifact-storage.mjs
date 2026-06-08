@@ -10,17 +10,24 @@ const R2_ONLY_PATTERNS = [
   /^adapters\/[^/]+\.json$/,
   /^candidates\.json$/,
   /^candidates\/(?:\d+|\{netuid\})\.json$/,
+  /^endpoint-incidents\.json$/,
+  /^endpoint-pools\.json$/,
+  /^endpoints\.json$/,
   /^endpoints\/(?:\d+|\{netuid\})\.json$/,
   /^health\/badges\/(?:\d+|\{netuid\})\.json$/,
   /^health\/history\/(?:\d{4}-\d{2}-\d{2}|\{date\})\.json$/,
   /^health\/latest\.json$/,
+  /^health\/summary\.json$/,
   /^health\/subnets\/(?:\d+|\{netuid\})\.json$/,
   /^metagraph\/latest\.json$/,
   /^profiles\/(?:\d+|\{netuid\})\.json$/,
   /^providers\/[^/]+\.json$/,
   /^providers\/[^/]+\/endpoints\.json$/,
   /^review-queue\.json$/,
+  /^rpc\/pools\.json$/,
+  /^rpc-endpoints\.json$/,
   /^schemas\/(?!index\.json$).+\.json$/,
+  /^source-health\.json$/,
   /^source-snapshots\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\.json$/,
   /^surfaces\/(?:\d+|\{netuid\})\.json$/,
@@ -35,13 +42,9 @@ const DUAL_PATTERNS = [
   /^contracts\.json$/,
   /^coverage\.json$/,
   /^curation\.json$/,
-  /^endpoint-incidents\.json$/,
-  /^endpoint-pools\.json$/,
-  /^endpoints\.json$/,
   /^evidence-ledger\.json$/,
   /^freshness\.json$/,
   /^gaps\.json$/,
-  /^health\/summary\.json$/,
   /^openapi\.json$/,
   /^profiles\.json$/,
   /^providers\.json$/,
@@ -50,21 +53,21 @@ const DUAL_PATTERNS = [
   /^review\/curation\.json$/,
   /^review\/gap-priorities\.json$/,
   /^review\/maintainer-decisions\.json$/,
-  /^rpc\/pools\.json$/,
-  /^rpc-endpoints\.json$/,
   /^schema-drift\.json$/,
   /^schemas\/index\.json$/,
   /^search\.json$/,
-  /^source-health\.json$/,
   /^subnets\.json$/,
   /^surfaces\.json$/,
   /^types\.d\.ts$/,
 ];
 
 export function artifactRelativePath(artifactPath = "") {
-  return String(artifactPath)
-    .replace(/^\/+/, "")
-    .replace(/^metagraph\//, "");
+  const value = String(artifactPath);
+  const normalized = value.replace(/^\/+/, "");
+  if (value.startsWith("/") && normalized.startsWith("metagraph/")) {
+    return normalized.replace(/^metagraph\//, "");
+  }
+  return normalized;
 }
 
 export function artifactStorageTierForRelativePath(relativePath = "") {

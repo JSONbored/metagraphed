@@ -96,6 +96,12 @@ export function buildSubmissionDiscordPayload(decision = {}) {
   const number = decision.pr_number || decision.issue_number || "submission";
   const targetUrl = decision.pr_url || decision.issue_url || undefined;
   const candidate = decision.candidate || {};
+  const sourceUrl =
+    candidate.source_url ||
+    candidate.source_urls?.[0] ||
+    decision.source_url ||
+    candidate.url ||
+    null;
   const subjectSource = {
     ...candidate,
     netuid: candidate.netuid ?? decision.netuid,
@@ -108,10 +114,8 @@ export function buildSubmissionDiscordPayload(decision = {}) {
     field("Submitter", decision.submitter || "n/a"),
   ];
 
-  if (candidate.source_url || decision.source_url) {
-    fields.push(
-      field("Source", candidate.source_url || decision.source_url, false),
-    );
+  if (sourceUrl) {
+    fields.push(field("Source", sourceUrl, false));
   }
   if (targetUrl) {
     fields.push(field("GitHub", targetUrl, false));
@@ -129,7 +133,7 @@ export function buildSubmissionDiscordPayload(decision = {}) {
         color: meta.color,
         description:
           sanitizeNotificationSummary(decision.summary) ||
-          "Metagraphed submission gate completed a terminal decision.",
+          fallbackNotificationSummary(meta, subjectSource),
         fields,
         footer: {
           text: "JSONbored/metagraphed · Metagraphed submission gate",
@@ -213,6 +217,18 @@ function compactSubject(title, candidate = {}) {
     .replace(/^(add|create|submit|update)\s+/i, "")
     .trim();
   return truncate(text || fromCandidate || "submission", 120);
+}
+
+function fallbackNotificationSummary(meta, candidate = {}) {
+  const kind = candidate.kind ? `${candidate.kind} ` : "";
+  const netuid =
+    candidate.netuid !== undefined && candidate.netuid !== null
+      ? `for SN${candidate.netuid}`
+      : "for the registry";
+  return truncate(
+    `Metagraphed ${meta.action} this ${kind}submission ${netuid}.`,
+    DISCORD_MAX_DESCRIPTION_LENGTH,
+  );
 }
 
 function normalizeTimestamp(value) {

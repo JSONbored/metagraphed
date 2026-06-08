@@ -5,6 +5,23 @@ import worker, { handleRequest } from "../workers/api.mjs";
 
 const env = createLocalArtifactEnv();
 
+function r2ArchiveFixture(artifactsByKey) {
+  return {
+    async get(key) {
+      const artifact =
+        artifactsByKey[key] || artifactsByKey[key.replace(/^latest\//, "")];
+      if (!artifact) {
+        return null;
+      }
+      return {
+        async json() {
+          return artifact;
+        },
+      };
+    },
+  };
+}
+
 describe("Worker runtime", () => {
   test("default export delegates to handleRequest", async () => {
     const response = await worker.fetch(
@@ -82,8 +99,46 @@ describe("Worker runtime", () => {
     assert.equal(assetMissing.status, 404);
   });
 
-  test("falls back to static assets for generated raw artifacts outside public contracts", async () => {
+  test("allows explicit static fallback for R2-only artifacts in local mode", async () => {
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/endpoints.json"),
+      {
+        ASSETS: {
+          async fetch() {
+            return Response.json({
+              schema_version: 1,
+              generated_at: "1970-01-01T00:00:00.000Z",
+              endpoints: [{ id: "local-fallback", status: "unknown" }],
+            });
+          },
+        },
+        METAGRAPH_ARCHIVE: {
+          async get() {
+            return null;
+          },
+        },
+        METAGRAPH_ALLOW_R2_STATIC_FALLBACK: "true",
+      },
+      {},
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(
+      response.headers.get("x-metagraph-artifact-source"),
+      "static-assets",
+    );
+    assert.equal(response.headers.get("x-metagraph-storage-tier"), "r2");
+    assert.equal((await response.json()).endpoints[0].id, "local-fallback");
+  });
+
+  test("serves metagraph latest as an R2-backed raw artifact", async () => {
     const r2KeysRequested = [];
+    const metagraphLatest = {
+      schema_version: 1,
+      generated_at: "1970-01-01T00:00:00.000Z",
+      network: "finney",
+      subnets: [],
+    };
     const response = await handleRequest(
       new Request("https://metagraph.sh/metagraph/metagraph/latest.json"),
       {
@@ -91,7 +146,12 @@ describe("Worker runtime", () => {
         METAGRAPH_ARCHIVE: {
           async get(key) {
             r2KeysRequested.push(key);
-            return null;
+            assert.equal(key, "latest/metagraph/latest.json");
+            return {
+              async json() {
+                return metagraphLatest;
+              },
+            };
           },
         },
       },
@@ -99,9 +159,9 @@ describe("Worker runtime", () => {
     );
 
     assert.equal(response.status, 200);
-    assert.equal(response.headers.get("x-metagraph-artifact-source"), "assets");
-    assert.equal(response.headers.get("x-metagraph-storage-tier"), "git");
-    assert.deepEqual(r2KeysRequested, []);
+    assert.equal(response.headers.get("x-metagraph-artifact-source"), "r2");
+    assert.equal(response.headers.get("x-metagraph-storage-tier"), "r2");
+    assert.deepEqual(r2KeysRequested, ["latest/metagraph/latest.json"]);
     assert.equal((await response.json()).network, "finney");
   });
 
@@ -189,6 +249,43 @@ describe("Worker runtime", () => {
       rpcOptions.headers.get("access-control-allow-methods"),
       "POST, OPTIONS",
     );
+  });
+
+  test("validates list query parameters with route-specific contracts", async () => {
+    const invalidCases = [
+      ["/api/v1/subnets?limit=0", "limit"],
+      ["/api/v1/subnets?limit=1001", "limit"],
+      ["/api/v1/subnets?cursor=nope", "cursor"],
+      ["/api/v1/subnets?order=sideways", "order"],
+      ["/api/v1/subnets?sort=nope", "sort"],
+      ["/api/v1/subnets?netuid=nope", "netuid"],
+      ["/api/v1/subnets?subnet_type=nope", "subnet_type"],
+    ];
+
+    for (const [path, parameter] of invalidCases) {
+      const response = await handleRequest(
+        new Request(`https://metagraph.sh${path}`),
+        env,
+        {},
+      );
+      assert.equal(response.status, 400);
+      const body = await response.json();
+      assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, parameter);
+    }
+
+    const response = await handleRequest(
+      new Request(
+        "https://metagraph.sh/api/v1/subnets?q=allways&sort=netuid&order=desc&limit=1&cursor=0",
+      ),
+      env,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.meta.pagination.collection, "subnets");
+    assert.equal(body.meta.pagination.limit, 1);
+    assert.equal(body.meta.pagination.sort, "netuid");
   });
 
   test("returns deterministic API errors", async () => {
@@ -311,59 +408,20 @@ describe("Worker runtime", () => {
     assert.equal((await r2Miss.json()).error.code, "artifact_not_found");
   });
 
-  test("prefers static assets for operational dual artifacts with R2 fallback", async () => {
+  test("serves operational endpoint indexes from R2", async () => {
     const r2KeysRequested = [];
+    const endpointArtifact = {
+      schema_version: 1,
+      generated_at: "1970-01-01T00:00:00.000Z",
+      endpoints: [
+        {
+          id: "endpoint-r2",
+          status: "ok",
+          provider: "r2",
+        },
+      ],
+    };
     const response = await handleRequest(
-      new Request("https://metagraph.sh/api/v1/endpoints"),
-      {
-        ASSETS: {
-          async fetch() {
-            return Response.json({
-              schema_version: 1,
-              generated_at: "1970-01-01T00:00:00.000Z",
-              endpoints: [
-                {
-                  id: "endpoint-static",
-                  status: "unknown",
-                  provider: "static",
-                },
-              ],
-            });
-          },
-        },
-        METAGRAPH_ARCHIVE: {
-          async get(key) {
-            r2KeysRequested.push(key);
-            assert.equal(key, "latest/endpoints.json");
-            return {
-              async json() {
-                return {
-                  schema_version: 1,
-                  generated_at: "1970-01-01T00:00:00.000Z",
-                  endpoints: [
-                    {
-                      id: "endpoint-r2",
-                      status: "ok",
-                      provider: "r2",
-                    },
-                  ],
-                };
-              },
-            };
-          },
-        },
-      },
-      {},
-    );
-
-    assert.equal(response.status, 200);
-    const body = await response.json();
-    assert.equal(body.meta.source, "static-assets");
-    assert.deepEqual(r2KeysRequested, []);
-    assert.equal(body.data.endpoints[0].id, "endpoint-static");
-    assert.equal(body.data.endpoints[0].status, "unknown");
-
-    const fallback = await handleRequest(
       new Request("https://metagraph.sh/api/v1/endpoints"),
       {
         ASSETS: {
@@ -377,17 +435,7 @@ describe("Worker runtime", () => {
             assert.equal(key, "latest/endpoints.json");
             return {
               async json() {
-                return {
-                  schema_version: 1,
-                  generated_at: "1970-01-01T00:00:00.000Z",
-                  endpoints: [
-                    {
-                      id: "endpoint-r2",
-                      status: "ok",
-                      provider: "r2",
-                    },
-                  ],
-                };
+                return endpointArtifact;
               },
             };
           },
@@ -396,11 +444,33 @@ describe("Worker runtime", () => {
       {},
     );
 
-    assert.equal(fallback.status, 200);
-    const fallbackBody = await fallback.json();
-    assert.equal(fallbackBody.meta.source, "r2");
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.meta.source, "r2");
     assert.deepEqual(r2KeysRequested, ["latest/endpoints.json"]);
-    assert.equal(fallbackBody.data.endpoints[0].id, "endpoint-r2");
+    assert.equal(body.data.endpoints[0].id, "endpoint-r2");
+
+    const missing = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/endpoints"),
+      {
+        ASSETS: {
+          async fetch() {
+            return new Response("not found", { status: 404 });
+          },
+        },
+        METAGRAPH_ARCHIVE: {
+          async get(key) {
+            r2KeysRequested.push(key);
+            assert.equal(key, "latest/endpoints.json");
+            return null;
+          },
+        },
+      },
+      {},
+    );
+
+    assert.equal(missing.status, 404);
+    assert.equal((await missing.json()).error.code, "artifact_not_found");
   });
 
   test("keeps RPC proxy disabled and blocks unsafe methods", async () => {
@@ -517,23 +587,18 @@ describe("Worker runtime", () => {
       }),
       {
         METAGRAPH_ENABLE_RPC_PROXY: "true",
-        ASSETS: {
-          async fetch() {
-            return new Response(
-              JSON.stringify({
-                schema_version: 1,
-                generated_at: "1970-01-01T00:00:00.000Z",
-                pools: [
-                  {
-                    id: "finney-rpc",
-                    endpoints: [{ id: "bad", pool_eligible: false }],
-                  },
-                ],
-              }),
-              { status: 200, headers: { "content-type": "application/json" } },
-            );
+        METAGRAPH_ARCHIVE: r2ArchiveFixture({
+          "rpc/pools.json": {
+            schema_version: 1,
+            generated_at: "1970-01-01T00:00:00.000Z",
+            pools: [
+              {
+                id: "finney-rpc",
+                endpoints: [{ id: "bad", pool_eligible: false }],
+              },
+            ],
           },
-        },
+        }),
       },
       {},
     );
@@ -564,33 +629,25 @@ describe("Worker runtime", () => {
           }),
           {
             METAGRAPH_ENABLE_RPC_PROXY: "true",
-            ASSETS: {
-              async fetch() {
-                return new Response(
-                  JSON.stringify({
-                    schema_version: 1,
-                    generated_at: "1970-01-01T00:00:00.000Z",
-                    pools: [
+            METAGRAPH_ARCHIVE: r2ArchiveFixture({
+              "rpc/pools.json": {
+                schema_version: 1,
+                generated_at: "1970-01-01T00:00:00.000Z",
+                pools: [
+                  {
+                    id: "finney-rpc",
+                    endpoints: [
                       {
-                        id: "finney-rpc",
-                        endpoints: [
-                          {
-                            id: "unsafe",
-                            pool_eligible: true,
-                            provider: "fixture",
-                            url: unsafeUrl,
-                          },
-                        ],
+                        id: "unsafe",
+                        pool_eligible: true,
+                        provider: "fixture",
+                        url: unsafeUrl,
                       },
                     ],
-                  }),
-                  {
-                    status: 200,
-                    headers: { "content-type": "application/json" },
                   },
-                );
+                ],
               },
-            },
+            }),
           },
           {},
         );
@@ -634,18 +691,13 @@ describe("Worker runtime", () => {
 
     const poolEnv = (endpoints) => ({
       METAGRAPH_ENABLE_RPC_PROXY: "true",
-      ASSETS: {
-        async fetch() {
-          return new Response(
-            JSON.stringify({
-              schema_version: 1,
-              generated_at: "1970-01-01T00:00:00.000Z",
-              pools: [{ id: "finney-rpc", endpoints }],
-            }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
+      METAGRAPH_ARCHIVE: r2ArchiveFixture({
+        "rpc/pools.json": {
+          schema_version: 1,
+          generated_at: "1970-01-01T00:00:00.000Z",
+          pools: [{ id: "finney-rpc", endpoints }],
         },
-      },
+      }),
     });
 
     try {

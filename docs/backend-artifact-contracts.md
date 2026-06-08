@@ -30,6 +30,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/types.d.ts`: generated TypeScript definitions for consumers.
 - `/metagraph/changelog.json`: reviewable generated artifact and subnet-change summary.
 - `/metagraph/subnets.json`: compact all-subnet index.
+- `/metagraph/metagraph/latest.json`: latest normalized all-subnet metagraph index. R2-backed.
 - `/metagraph/subnets/{netuid}.json`: per-subnet detail with native data, curated surfaces, candidates, curation, and gaps. R2-backed.
 - `/metagraph/profiles.json`: public-safe subnet identity and completeness profiles.
 - `/metagraph/profiles/{netuid}.json`: per-subnet public-safe profile detail. R2-backed.
@@ -118,7 +119,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run sync:subnets`: update the native Finney snapshot.
 - `npm run discover:candidates`: refresh public-source candidate discovery.
 - `npm run verify:candidates`: safely verify public candidates.
-- `npm run curate:baseline`: promote verified candidates into generated overlays.
+- `npm run curate:baseline`: derive generated overlays from verified candidates, commit only compact checksum metadata, and stage expanded generated overlays outside Git for R2.
 - `npm run review:promote`: apply public-safe maintainer review decisions to overlays.
 - `npm run schemas:snapshot`: fetch machine-readable OpenAPI/Swagger JSON snapshots and update schema drift.
 - `npm run schemas:bundle`: bundle canonical modular JSON Schema components into `schemas/api-components.schema.json`.

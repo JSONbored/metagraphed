@@ -37,94 +37,11 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Sync native subnet snapshot
-        run: npm run sync:subnets
-
-      - name: Discover candidate surfaces
-        run: npm run discover:candidates
+      - name: Refresh registry pipeline
+        run: npm run pipeline:refresh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify candidate surfaces
-        run: npm run verify:candidates
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Curate baseline overlays
-        run: npm run curate:baseline
-
-      - name: Apply maintainer review decisions
-        run: npm run review:promote
-
-      - name: Snapshot subnet adapters
-        run: npm run adapters:snapshot
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build artifacts
-        run: npm run build
-
-      - name: Snapshot OpenAPI schemas
-        run: npm run schemas:snapshot
-
-      - name: Probe curated surfaces
-        run: npm run probes:smoke
-        env:
           METAGRAPH_WRITE_PROBE_RESULTS: "1"
-
-      - name: Refresh build summary
-        run: npm run build-summary:refresh
-
-      - name: Generate R2 manifest
-        run: npm run r2:manifest
-
-      - name: Validate registry
-        run: npm run validate
-
-      - name: Test
-        run: npm test
-
-      - name: Validate JSON schemas
-        run: npm run validate:schemas
-
-      - name: Validate Worker API
-        run: npm run validate:api
-
-      - name: Validate OpenAPI
-        run: npm run validate:openapi
-
-      - name: Validate generated API types
-        run: npm run validate:types
-
-      - name: Validate artifact size budgets
-        run: npm run validate:artifact-budgets
-
-      - name: Validate documentation contracts
-        run: npm run validate:docs
-
-      - name: Validate intake templates
-        run: npm run validate:intake
-
-      - name: Validate workflows
-        run: npm run validate:workflows
-
-      - name: Validate Cloudflare config
-        run: npm run cloudflare:verify:dry-run
-
-      - name: Validate R2 manifest
-        run: |
-          npm run r2:manifest:dry-run
-          npm run r2:download:dry-run
-          npm run kv:publish:dry-run
-
-      - name: Worker deploy dry-run
-        run: npm run worker:deploy:dry-run
-
-      - name: Public-safety scan
-        run: npm run scan:public-safety
-
-      - name: Validate private boundary
-        run: npm run validate:private-boundary
 
       - name: Generate sync summary
         run: |
@@ -136,16 +53,18 @@ jobs:
         run: |
           allowed_paths=(
             public/metagraph
+            registry/adapters/latest
             registry/candidates/generated
-            registry/candidates/verification
+            registry/generated
             registry/native/finney-subnets.json
             registry/subnets
+            registry/verification
           )
           git ls-files --others --exclude-standard > "$RUNNER_TEMP/sync-output/untracked-files.txt"
           while IFS= read -r file; do
             [ -n "$file" ] || continue
             case "$file" in
-              public/metagraph/*|registry/candidates/generated/*|registry/candidates/verification/*|registry/native/finney-subnets.json|registry/subnets/*) ;;
+              public/metagraph/*|registry/adapters/latest/*|registry/candidates/generated/*|registry/generated/*|registry/native/finney-subnets.json|registry/subnets/*|registry/verification/*) ;;
               *)
                 echo "Unexpected untracked file outside the sync allowlist: $file" >&2
                 exit 1
@@ -157,7 +76,7 @@ jobs:
           while IFS= read -r file; do
             [ -n "$file" ] || continue
             case "$file" in
-              public/metagraph/*|registry/candidates/generated/*|registry/candidates/verification/*|registry/native/finney-subnets.json|registry/subnets/*) ;;
+              public/metagraph/*|registry/adapters/latest/*|registry/candidates/generated/*|registry/generated/*|registry/native/finney-subnets.json|registry/subnets/*|registry/verification/*) ;;
               *)
                 echo "Unexpected generated change outside the sync allowlist: $file" >&2
                 exit 1

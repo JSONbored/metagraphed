@@ -33,7 +33,7 @@ Native subnet names can degrade to placeholders such as `unknown` when the upstr
 
 ## Curated Overlays
 
-`registry/subnets/*.json` and `registry/subnets/generated/*.json` contain curated interface metadata.
+`registry/subnets/*.json` contains reviewed subnet overlays. Machine-generated baseline overlays are derived from the native snapshot, candidate bundle, and compact verification snapshot during validation/build.
 
 Overlays are canonical for:
 
@@ -77,9 +77,9 @@ Candidates are never treated as verified surfaces. They must pass verification a
 
 `npm run discover:candidates` generates a public-source candidate bundle from enrichment sources such as TaoMarketCap, Tensorplex subnet-docs, Taopedia articles, GitHub README links, and public websites.
 
-`npm run verify:candidates` writes `registry/verification/latest.json` with live, redirected, auth-required, dead, unsafe, unsupported, rate-limited, transient, timeout, or content-mismatch classifications.
+`npm run verify:candidates` writes a compact Git-reviewed promotion snapshot to `registry/verification/promotions.json` and stages the full volatile verification run for R2. Classification values include live, redirected, auth-required, dead, unsafe, unsupported, rate-limited, transient, timeout, and content-mismatch.
 
-`npm run curate:baseline` promotes only live/redirected public-safe candidates into generated baseline overlays. It does not overwrite hand-curated overlays.
+`npm run curate:baseline` promotes only live/redirected public-safe candidates into derived generated baseline overlays. It does not overwrite hand-curated overlays. Git stores a compact generated-overlay checksum summary, while the expanded generated overlay bundle is staged outside Git for R2.
 
 ## Review Workflow
 
@@ -102,17 +102,17 @@ Generated artifacts expose review state through:
 
 `public/metagraph/surfaces.json` lists only curated/verified public interface surfaces.
 
-`public/metagraph/rpc-endpoints.json` lists Bittensor base-layer RPC/WSS endpoints and live probe metadata.
+`/metagraph/rpc-endpoints.json` lists Bittensor base-layer RPC/WSS endpoints and live probe metadata. It is R2-backed because endpoint health, block height, and latency are volatile.
 
 `public/metagraph/rpc/pools.json` scores RPC/WSS endpoints for future read-only endpoint routing.
 
-`public/metagraph/endpoints.json` lists generalized endpoint resources derived from curated surfaces plus probe-derived health.
+`/metagraph/endpoints.json` lists generalized endpoint resources derived from curated surfaces plus probe-derived health. It is R2-backed for the same reason.
 
 `/metagraph/endpoints/{netuid}.json` exposes R2-backed endpoint resources for one subnet.
 
 `/metagraph/providers/{slug}/endpoints.json` exposes R2-backed endpoint resources for one provider/operator.
 
-`public/metagraph/endpoint-pools.json` scores monitored endpoint pools. In v1, only root/system RPC/WSS/archive-capable endpoints are candidates for future routing.
+`/metagraph/endpoint-pools.json` scores monitored endpoint pools. In v1, only root/system RPC/WSS/archive-capable endpoints are candidates for future routing. It is R2-backed because scores change with each probe run.
 
 `public/metagraph/coverage.json` summarizes chain coverage, curated overlays, native-only stubs, probed subnets, surfaces, and candidate counts.
 

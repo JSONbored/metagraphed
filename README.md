@@ -212,9 +212,9 @@ npm run probes:smoke
 
 `discover:candidates` reads public enrichment sources and writes unverified candidate surfaces into `registry/candidates/generated/public-sources.json`.
 
-`verify:candidates` safely checks candidate URLs and writes live/dead/auth/unsupported classifications into `registry/verification/latest.json`.
+`verify:candidates` safely checks candidate URLs, writes a compact promotion snapshot to `registry/verification/promotions.json`, and stages the full volatile verification run outside Git for R2.
 
-`curate:baseline` promotes verified public-safe candidates into generated baseline overlays for every active netuid that does not already have a hand-curated overlay.
+`curate:baseline` derives generated baseline overlays for every active netuid that does not already have a hand-curated overlay. Git stores only a compact checksum summary; the expanded generated overlay bundle is staged outside Git for R2.
 
 `review:promote` applies public-safe maintainer review decisions from `registry/reviews/maintainer-reviewed.json`.
 
