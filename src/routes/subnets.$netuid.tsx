@@ -248,27 +248,28 @@ function DetailSkeleton() {
 /* ----------------------------- overview ----------------------------- */
 
 function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetProfile }) {
+  // The hero already shows description + primary links + stats, so the
+  // Overview goes straight to the operational data developers need first:
+  // endpoints, surfaces, drift, then gaps. No duplicated "About" or
+  // "At a glance" rail.
+  const hasDescription = !!profile?.description;
+  const hasExtraNotes = !!profile?.notes && profile.notes !== profile.description;
   return (
     <>
-      <Section title="At a glance" subtitle="Quickest paths into this subnet's public footprint.">
+      <Section
+        title="Endpoints"
+        subtitle="Probe-derived health and latency for every tracked resource."
+      >
         <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-24 w-full" />}>
-            <QuickAccessResources netuid={netuid} />
+          <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+            <EndpointsList netuid={netuid} compact />
           </Suspense>
         </QueryErrorBoundary>
       </Section>
 
-      {profile?.notes ? (
-        <Section title="About">
-          <div className="rounded border border-border bg-card p-3 text-sm leading-relaxed text-ink">
-            {profile.notes}
-          </div>
-        </Section>
-      ) : null}
-
       <Section
         title="Surfaces"
-        subtitle="Curated public interfaces with provenance."
+        subtitle="Curated public interfaces, grouped by kind."
       >
         <QueryErrorBoundary>
           <Suspense fallback={<Skeleton className="h-32 w-full" />}>
@@ -278,15 +279,23 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
       </Section>
 
       <Section
-        title="Endpoints"
-        subtitle="Probed resources — health and latency are probe-derived."
+        title="Schema drift"
+        subtitle="OpenAPI/JSON Schema snapshots joined from /api/v1/schemas."
       >
         <QueryErrorBoundary>
-          <Suspense fallback={<Skeleton className="h-32 w-full" />}>
-            <EndpointsList netuid={netuid} compact />
+          <Suspense fallback={<Skeleton className="h-20 w-full" />}>
+            <SchemaDriftSummary netuid={netuid} compact />
           </Suspense>
         </QueryErrorBoundary>
       </Section>
+
+      {hasExtraNotes && !hasDescription ? (
+        <Section title="Notes">
+          <div className="rounded border border-border bg-card p-3 text-sm leading-relaxed text-ink">
+            {profile?.notes}
+          </div>
+        </Section>
+      ) : null}
 
       {(profile?.missing_kinds?.length ?? 0) > 0 ||
       (profile?.gap_notes?.length ?? 0) > 0 ? (
@@ -296,102 +305,6 @@ function OverviewPanel({ netuid, profile }: { netuid: number; profile?: SubnetPr
   );
 }
 
-/* ----------------------------- quick access ----------------------------- */
-
-interface ResourceCard {
-  label: string;
-  href: string;
-  kind: string;
-  icon: typeof Globe;
-}
-
-function iconFor(kind?: string): typeof Globe {
-  const k = (kind ?? "").toLowerCase();
-  if (k === "docs") return BookOpen;
-  if (k === "source-repo" || k === "repo") return Github;
-  if (k === "dashboard") return LayoutDashboard;
-  if (k === "subnet-api" || k === "api" || k === "openapi") return Code2;
-  if (k === "sdk") return Wrench;
-  if (k === "data" || k === "data-artifact") return Database;
-  if (k === "sse") return Radio;
-  if (k === "schema") return FileCode;
-  return Globe;
-}
-
-function hostFor(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
-function QuickAccessResources({ netuid }: { netuid: number }) {
-  const profileRes = useSuspenseQuery(subnetProfileQuery(netuid)).data;
-  const surfacesRes = useSuspenseQuery(subnetSurfacesQuery(netuid)).data;
-  const profile = profileRes.data as SubnetProfile | undefined;
-  const surfaces = (surfacesRes.data ?? []) as Surface[];
-
-  const out: ResourceCard[] = [];
-  const seen = new Set<string>();
-  const push = (c: ResourceCard) => {
-    if (!c.href || seen.has(c.href)) return;
-    seen.add(c.href);
-    out.push(c);
-  };
-
-  if (profile?.website) push({ label: "Website", href: profile.website, kind: "homepage", icon: Globe });
-  if (profile?.docs) push({ label: "Docs", href: profile.docs, kind: "docs", icon: BookOpen });
-  if (profile?.repo) push({ label: "Repository", href: profile.repo, kind: "source-repo", icon: Github });
-  if (profile?.dashboard)
-    push({ label: "Dashboard", href: profile.dashboard, kind: "dashboard", icon: LayoutDashboard });
-
-  for (const s of surfaces) {
-    if (!s.url) continue;
-    push({
-      label: s.name ?? s.kind ?? s.url,
-      href: s.url,
-      kind: s.kind ?? "surface",
-      icon: iconFor(s.kind),
-    });
-  }
-
-  const resources = out.slice(0, 8);
-  if (resources.length === 0) {
-    return <EmptyState title="No curated resources yet" description="See candidates for unverified leads." />;
-  }
-
-  return (
-    <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {resources.map((r) => {
-        const Icon = r.icon;
-        return (
-          <li key={r.href}>
-            <a
-              href={r.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex h-full items-start gap-3 rounded border border-border bg-card p-3 hover:border-ink/30 transition-colors"
-            >
-              <span className="inline-flex size-8 shrink-0 items-center justify-center rounded bg-surface text-ink-strong">
-                <Icon className="size-4" />
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-                  {r.kind}
-                </span>
-                <span className="block truncate text-sm font-medium text-ink-strong">{r.label}</span>
-                <span className="block truncate font-mono text-[10px] text-ink-muted">
-                  {hostFor(r.href)}
-                </span>
-              </span>
-            </a>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
 
 /* ----------------------------- right rail ----------------------------- */
 
