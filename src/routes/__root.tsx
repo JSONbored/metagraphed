@@ -13,6 +13,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme";
+import { DENSITY_BOOTSTRAP_SCRIPT } from "@/lib/density";
+import { HEALTH_PALETTE_BOOTSTRAP_SCRIPT } from "@/lib/health-palette";
 
 function NotFoundComponent() {
   return (
@@ -108,9 +110,11 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        {/* Pre-hydration: set .dark on <html> from localStorage/system so the
-            first paint matches the user's chosen theme — no flash. */}
+        {/* Pre-hydration: theme, density, and health palette set before
+            first paint to avoid flash / layout shift. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: DENSITY_BOOTSTRAP_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: HEALTH_PALETTE_BOOTSTRAP_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
