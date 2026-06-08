@@ -1,24 +1,29 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   AlertOctagon,
   ChevronRight,
+  Compass,
   Database,
   FileCode,
+  Home,
   Info,
   Layers,
   Menu,
   Network,
   Search,
   Server,
+  Wifi,
   Workflow,
   X,
 } from "lucide-react";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { CopyableCode } from "./copyable-code";
 import { classNames } from "@/lib/metagraphed/format";
+import { searchQuery } from "@/lib/metagraphed/queries";
 
 interface NavItem {
   to: string;
@@ -31,42 +36,53 @@ interface NavSection {
   items: NavItem[];
 }
 
+/**
+ * Sidebar grouped by user intent — what a builder is trying to *do*.
+ *
+ * Discover        Browse and find resources.
+ * Infrastructure  Public endpoints and the orgs running them.
+ * Operations      Live health and the API contract itself.
+ * Registry        Curation gaps and methodology.
+ */
 const SECTIONS: NavSection[] = [
   {
-    label: "Registry",
+    label: "Discover",
     items: [
+      { to: "/", label: "Home", icon: Home },
       { to: "/subnets", label: "Subnets", icon: Layers },
       { to: "/surfaces", label: "Surfaces", icon: Workflow },
-      { to: "/endpoints", label: "Endpoints", icon: Server },
     ],
   },
   {
     label: "Infrastructure",
     items: [
+      { to: "/endpoints", label: "Endpoints", icon: Server },
       { to: "/providers", label: "Providers", icon: Network },
-      { to: "/health", label: "Health", icon: Activity },
     ],
   },
   {
     label: "Operations",
     items: [
+      { to: "/health", label: "Health", icon: Activity },
       { to: "/schemas", label: "Schemas", icon: FileCode },
-      { to: "/gaps", label: "Gaps", icon: AlertOctagon },
     ],
   },
   {
-    label: "About",
-    items: [{ to: "/about", label: "Methodology", icon: Info }],
+    label: "Registry",
+    items: [
+      { to: "/gaps", label: "Gaps", icon: AlertOctagon },
+      { to: "/about", label: "About", icon: Info },
+    ],
   },
 ];
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <nav className="space-y-6">
+    <nav className="space-y-5" aria-label="Primary">
       {SECTIONS.map((section) => (
         <div key={section.label}>
-          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-2 px-2">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-ink-muted mb-1.5 px-2">
             {section.label}
           </div>
           <ul className="space-y-0.5">
@@ -80,8 +96,9 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                   <Link
                     to={item.to}
                     onClick={onNavigate}
+                    aria-current={active ? "page" : undefined}
                     className={classNames(
-                      "flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors",
+                      "flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors min-h-9",
                       active
                         ? "bg-ink-strong text-paper"
                         : "text-ink hover:bg-surface",
@@ -114,8 +131,8 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
             Metagraphed
           </span>
         </Link>
-        <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted">
-          Unofficial registry
+        <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-ink-muted flex items-center gap-1">
+          <Compass className="size-3" /> Unofficial registry
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-3 pb-4">
@@ -131,27 +148,175 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+interface SearchHit {
+  id: string;
+  kind?: string;
+  title?: string;
+  url?: string;
+  netuid?: number;
+  slug?: string;
+}
+
+function resolveHref(hit: SearchHit): { to: string; params?: Record<string, string> } | { external: string } {
+  const kind = (hit.kind ?? "").toLowerCase();
+  if (kind === "subnet" && hit.netuid != null)
+    return { to: "/subnets/$netuid", params: { netuid: String(hit.netuid) } };
+  if (kind === "provider" && hit.slug) return { to: "/providers/$slug", params: { slug: hit.slug } };
+  if (kind === "surface") return { to: "/surfaces" };
+  if (kind === "endpoint") return { to: "/endpoints" };
+  if (hit.netuid != null) return { to: "/subnets/$netuid", params: { netuid: String(hit.netuid) } };
+  if (hit.url) return { external: hit.url };
+  return { to: "/" };
+}
+
 function GlobalSearch() {
+  const router = useRouter();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const [debounced, setDebounced] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebounced(q.trim()), 180);
+    return () => window.clearTimeout(t);
+  }, [q]);
+
+  const { data, isFetching } = useQuery({
+    ...searchQuery(debounced, 12),
+    retry: 0,
+  });
+  const hits = (data?.data ?? []) as SearchHit[];
+
+  // Close on outside click and on Esc.
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      const t = e.target as Node;
+      if (popRef.current?.contains(t) || inputRef.current?.contains(t)) return;
+      setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  // Close popover on route change.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  function go(hit: SearchHit) {
+    const r = resolveHref(hit);
+    setOpen(false);
+    setQ("");
+    if ("external" in r) {
+      window.open(r.external, "_blank", "noopener,noreferrer");
+      return;
+    }
+    router.navigate({ to: r.to, params: r.params as never });
+  }
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
+        if (hits.length > 0) {
+          go(hits[0]);
+          return;
+        }
         const value = q.trim();
         if (!value) return;
         navigate({ to: "/subnets", search: { q: value } as never });
+        setOpen(false);
       }}
       className="relative flex-1 max-w-md"
+      role="search"
     >
       <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-ink-muted" />
       <input
+        ref={inputRef}
         value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Search netuids, symbols, providers, URLs…"
-        className="w-full rounded border border-border bg-card pl-8 pr-3 py-1.5 text-sm placeholder:text-ink-muted focus:outline-none focus:border-ink/30 transition-colors"
+        onChange={(e) => {
+          setQ(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        aria-label="Search registry"
+        aria-expanded={open}
+        aria-controls="mg-search-results"
+        placeholder="Search subnets, surfaces, providers, URLs…"
+        className="w-full rounded border border-border bg-card pl-8 pr-3 py-1.5 text-sm placeholder:text-ink-muted focus:outline-none focus:border-ink/30 transition-colors min-h-9"
       />
+      {open && debounced ? (
+        <div
+          id="mg-search-results"
+          ref={popRef}
+          role="listbox"
+          className="absolute left-0 right-0 top-full mt-1 max-h-[60vh] overflow-y-auto rounded border border-border bg-paper shadow-lg z-40"
+        >
+          {isFetching && hits.length === 0 ? (
+            <div className="p-3 text-xs text-ink-muted">Searching…</div>
+          ) : hits.length === 0 ? (
+            <div className="p-3 text-xs text-ink-muted">
+              No results. Press enter to filter /subnets by “{debounced}”.
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {hits.map((h) => (
+                <li key={h.id}>
+                  <button
+                    type="button"
+                    onClick={() => go(h)}
+                    className="w-full text-left px-3 py-2 hover:bg-surface flex items-center gap-2"
+                  >
+                    <KindBadge kind={h.kind} />
+                    <span className="flex-1 min-w-0">
+                      <span className="block truncate text-sm text-ink-strong">
+                        {h.title ?? h.url ?? h.id}
+                      </span>
+                      {h.url ? (
+                        <span className="block truncate font-mono text-[10px] text-ink-muted">{h.url}</span>
+                      ) : null}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
     </form>
+  );
+}
+
+function KindBadge({ kind }: { kind?: string }) {
+  const k = (kind ?? "result").toLowerCase();
+  const map: Record<string, { icon: typeof Activity; cls: string }> = {
+    subnet: { icon: Layers, cls: "text-ink" },
+    surface: { icon: Workflow, cls: "text-curation-verified" },
+    endpoint: { icon: Wifi, cls: "text-curation-pilot" },
+    provider: { icon: Network, cls: "text-curation-machine" },
+  };
+  const entry = map[k] ?? { icon: Search, cls: "text-ink-muted" };
+  const Icon = entry.icon;
+  return (
+    <span
+      className={classNames(
+        "inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest shrink-0",
+        entry.cls,
+      )}
+    >
+      <Icon className="size-3" />
+      {k}
+    </span>
   );
 }
 
@@ -169,10 +334,10 @@ function buildCrumbs(pathname: string) {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
-  const crumbs = buildCrumbs(pathname);
+  const crumbs = useMemo(() => buildCrumbs(pathname), [pathname]);
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
+    <div className="min-h-dvh bg-paper text-ink">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-border bg-paper md:block">
         <SidebarBody />
@@ -189,7 +354,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="flex justify-end p-2">
               <button
                 onClick={() => setMobileOpen(false)}
-                className="rounded p-1 text-ink-muted hover:bg-surface"
+                className="rounded p-2 text-ink-muted hover:bg-surface min-h-11 min-w-11 inline-flex items-center justify-center"
                 aria-label="Close menu"
               >
                 <X className="size-4" />
@@ -204,13 +369,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-20 border-b border-border bg-paper/85 backdrop-blur">
           <div className="flex h-14 items-center gap-3 px-4 md:px-8">
             <button
-              className="md:hidden rounded p-1.5 text-ink hover:bg-surface"
+              className="md:hidden rounded p-2 text-ink hover:bg-surface min-h-11 min-w-11 inline-flex items-center justify-center"
               onClick={() => setMobileOpen(true)}
               aria-label="Open menu"
             >
               <Menu className="size-4" />
             </button>
-            <nav className="hidden md:flex items-center gap-1.5 text-xs text-ink-muted min-w-0">
+            <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-1.5 text-xs text-ink-muted min-w-0">
               {crumbs.map((c, i) => (
                 <span key={c.to} className="flex items-center gap-1.5 min-w-0">
                   {i > 0 ? <ChevronRight className="size-3 opacity-50" /> : null}
