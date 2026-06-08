@@ -1,44 +1,71 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { evidenceQuery } from "@/lib/metagraphed/queries";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/metagraphed/client";
 import { ExternalLink } from "./external-link";
 import { HoverPreview } from "./hover-preview";
 import { EmptyState, Skeleton } from "./states";
 import { formatRelative } from "@/lib/metagraphed/format";
-import type { EvidenceItem } from "@/lib/metagraphed/types";
+import type { ApiMeta, EvidenceItem } from "@/lib/metagraphed/types";
 
 interface Props {
   netuid?: number;
-  limit?: number;
+  /** Page size sent as ?limit=… on each request. */
+  pageSize?: number;
 }
 
 type SortMode = "recent" | "source" | "count";
 
 /**
- * Grouped evidence/source panel. Groups by `source` and renders hover previews
- * for each item (note + recorded_at + URL).
+ * Grouped evidence/source panel.
  *
- * Supports filtering by source type and sorting by recency / source / group size.
+ * Uses cursor-based pagination (?limit=&cursor=) against /api/v1/evidence and
+ * exposes a "Load more" control that walks meta.pagination.next_cursor. The
+ * panel also supports a source-type filter and group sort.
  */
-export function EvidencePanel({ netuid, limit = 200 }: Props) {
-  const params: Record<string, string | number> = { limit };
-  if (netuid != null) params.netuid = netuid;
-  const opts = evidenceQuery(params);
-  const { data, isLoading, error } = useQuery({ ...opts, retry: 0 });
-
+export function EvidencePanel({ netuid, pageSize = 50 }: Props) {
   const [sourceFilter, setSourceFilter] = useState<string>("");
   const [sortMode, setSortMode] = useState<SortMode>("recent");
 
-  const rows = useMemo(() => (data?.data ?? []) as EvidenceItem[], [data]);
+  const query = useInfiniteQuery({
+    queryKey: ["metagraphed", "evidence", { netuid: netuid ?? null, pageSize }],
+    initialPageParam: 0 as number,
+    queryFn: async ({ pageParam, signal }) => {
+      const params: Record<string, string | number> = { limit: pageSize, cursor: pageParam };
+      if (netuid != null) params.netuid = netuid;
+      const res = await apiFetch<unknown>("/api/v1/evidence", { params, signal });
+      const raw = res.data as unknown;
+      let items: EvidenceItem[] = [];
+      if (Array.isArray(raw)) items = raw as EvidenceItem[];
+      else if (raw && typeof raw === "object") {
+        const obj = raw as Record<string, unknown>;
+        const candidate = obj.evidence ?? obj.entries ?? obj.items;
+        if (Array.isArray(candidate)) items = candidate as EvidenceItem[];
+      }
+      return { items, meta: res.meta as ApiMeta };
+    },
+    getNextPageParam: (last) => {
+      const next = last.meta?.pagination?.next_cursor;
+      return typeof next === "number" ? next : undefined;
+    },
+    retry: 0,
+    staleTime: 5 * 60_000,
+  });
+
+  const allRows = useMemo<EvidenceItem[]>(
+    () => (query.data?.pages.flatMap((p) => p.items) ?? []),
+    [query.data],
+  );
+
+  const totalKnown = query.data?.pages[0]?.meta?.pagination?.total;
 
   const sources = useMemo(() => {
     const set = new Set<string>();
-    for (const r of rows) set.add(r.source ?? "unknown");
+    for (const r of allRows) set.add(r.source ?? "unknown");
     return Array.from(set).sort();
-  }, [rows]);
+  }, [allRows]);
 
-  if (isLoading) return <Skeleton className="h-24 w-full" />;
-  if (error) {
+  if (query.isLoading) return <Skeleton className="h-24 w-full" />;
+  if (query.error) {
     return (
       <EmptyState
         title="No evidence index available"
@@ -46,11 +73,13 @@ export function EvidencePanel({ netuid, limit = 200 }: Props) {
       />
     );
   }
-  if (rows.length === 0) return <EmptyState title="No evidence recorded" />;
+  if (allRows.length === 0) return <EmptyState title="No evidence recorded" />;
 
-  const filtered = sourceFilter ? rows.filter((r) => (r.source ?? "unknown") === sourceFilter) : rows;
+  const filtered = sourceFilter
+    ? allRows.filter((r) => (r.source ?? "unknown") === sourceFilter)
+    : allRows;
 
-  // Group by source label.
+  // Group by source label, with items sorted by recency inside each group.
   const groups = new Map<string, EvidenceItem[]>();
   for (const r of filtered) {
     const key = r.source ?? "unknown";
@@ -58,15 +87,13 @@ export function EvidencePanel({ netuid, limit = 200 }: Props) {
     arr.push(r);
     groups.set(key, arr);
   }
-  // Sort items inside each group by recency for consistent display.
   for (const [, items] of groups) {
-    items.sort((a, b) => (recordedTime(b) - recordedTime(a)));
+    items.sort((a, b) => recordedTime(b) - recordedTime(a));
   }
 
   const sortedGroups = Array.from(groups.entries()).sort((a, b) => {
     if (sortMode === "count") return b[1].length - a[1].length;
     if (sortMode === "source") return a[0].localeCompare(b[0]);
-    // recent: order groups by their freshest evidence
     return recordedTime(b[1][0]) - recordedTime(a[1][0]);
   });
 
@@ -99,8 +126,10 @@ export function EvidencePanel({ netuid, limit = 200 }: Props) {
           <option value="source">source name</option>
         </select>
         <span className="ml-auto font-mono text-ink-muted">
-          {filtered.length} item{filtered.length === 1 ? "" : "s"} · {sortedGroups.length} source
-          {sortedGroups.length === 1 ? "" : "s"}
+          {filtered.length}
+          {totalKnown != null ? ` of ${totalKnown}` : ""} item{filtered.length === 1 ? "" : "s"}
+          {" · "}
+          {sortedGroups.length} source{sortedGroups.length === 1 ? "" : "s"}
         </span>
       </div>
 
@@ -154,6 +183,25 @@ export function EvidencePanel({ netuid, limit = 200 }: Props) {
           </ul>
         </div>
       ))}
+
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <span className="font-mono text-[10px] text-ink-muted">
+          loaded {allRows.length}
+          {totalKnown != null ? ` of ${totalKnown}` : ""}
+        </span>
+        {query.hasNextPage ? (
+          <button
+            type="button"
+            onClick={() => query.fetchNextPage()}
+            disabled={query.isFetchingNextPage}
+            className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink hover:border-ink/30 transition-colors disabled:opacity-60"
+          >
+            {query.isFetchingNextPage ? "Loading…" : `Load ${pageSize} more`}
+          </button>
+        ) : (
+          <span className="font-mono text-[10px] text-ink-muted">end of evidence</span>
+        )}
+      </div>
     </div>
   );
 }
