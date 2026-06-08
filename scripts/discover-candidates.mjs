@@ -1098,11 +1098,12 @@ async function fetchWithSafeRedirects(url, init, redirectCount = 0) {
 }
 
 function githubHeaders() {
-  if (!process.env.GITHUB_TOKEN) {
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  if (!token) {
     return {};
   }
   return {
-    authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+    authorization: `Bearer ${token}`,
     "x-github-api-version": "2022-11-28",
   };
 }
