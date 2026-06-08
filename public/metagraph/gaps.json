@@ -2354,7 +2354,6 @@
       "gaps": {
         "gap_notes": [
           "No verified source repository yet.",
-          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
@@ -2362,7 +2361,6 @@
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -2370,7 +2368,8 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
       "name": "Luminar Network",

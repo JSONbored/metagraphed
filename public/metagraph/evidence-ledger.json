@@ -12475,6 +12475,39 @@
       "verified_at": "1970-01-01T00:00:00.000Z"
     },
     {
+      "claim": "Luminar VMS demo is a public dashboard surface for SN87.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://luminar.network/",
+      "subject": "surface:sn-87-luminar-demo",
+      "support_summary": "Listed in curated overlay for sn-87.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Luminar Network docs is a public docs surface for SN87.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://luminar.network/",
+      "subject": "surface:sn-87-luminar-docs",
+      "support_summary": "Listed in curated overlay for sn-87.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
+      "claim": "Luminar Network website is a public website surface for SN87.",
+      "confidence": "high",
+      "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
+      "source_tier": "provider-claimed",
+      "source_type": "official",
+      "source_url": "https://luminar.network/",
+      "subject": "surface:sn-87-luminar-website",
+      "support_summary": "Listed in curated overlay for sn-87.",
+      "verified_at": "1970-01-01T00:00:00.000Z"
+    },
+    {
       "claim": "Luminar Network TaoMarketCap dashboard is a public dashboard surface for SN87.",
       "confidence": "medium",
       "limits": "Surface was recorded as public-safe; availability is tracked by health probes.",
@@ -13559,8 +13592,8 @@
   "schema_version": 1,
   "summary": {
     "candidate_claim_count": 250,
-    "claim_count": 1232,
+    "claim_count": 1235,
     "subnet_claim_count": 129,
-    "surface_claim_count": 853
+    "surface_claim_count": 856
   }
 }

@@ -3797,67 +3797,6 @@
       "verified_candidate_count": 15
     },
     {
-      "adapter_score": 0,
-      "candidate_count": 3,
-      "candidate_evidence_summary": {
-        "candidate_count": 0,
-        "kinds_with_candidates": [],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 20,
-      "contribution_hint": "Submit one official public website, source-repo candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "website",
-        "source-repo"
-      ],
-      "endpoint_count": 3,
-      "evidence_action": "submit-new-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "source-repo",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
-      "name": "Luminar Network",
-      "netuid": 87,
-      "operational_interface_count": 0,
-      "priority_score": 126,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-source-repo",
-        "missing-website"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "review_state": "maintainer-reviewed",
-      "sample_candidate_ids": [
-        "sn-87-taomarketcap-dashboard",
-        "sn-87-taopedia-article",
-        "sn-87-tensorplex-docs"
-      ],
-      "slug": "sn-87",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/87",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/87/subnet.json",
-        "https://taomarketcap.com/subnets/87"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 3,
-      "verified_candidate_count": 3
-    },
-    {
       "adapter_score": 5,
       "candidate_count": 21,
       "candidate_evidence_summary": {
@@ -8259,6 +8198,67 @@
       "verified_candidate_count": 10
     },
     {
+      "adapter_score": 0,
+      "candidate_count": 3,
+      "candidate_evidence_summary": {
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 35,
+      "contribution_hint": "Submit one official public source-repo candidate with npm run candidate:new.",
+      "curation_level": "machine-verified",
+      "direct_submission_kinds": [
+        "source-repo"
+      ],
+      "endpoint_count": 6,
+      "evidence_action": "submit-new-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "source-repo",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Luminar Network",
+      "netuid": 87,
+      "operational_interface_count": 0,
+      "priority_score": 100,
+      "profile_level": "directory-only",
+      "reason_codes": [
+        "directory-only-profile",
+        "missing-source-repo"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-87-taomarketcap-dashboard",
+        "sn-87-taopedia-article",
+        "sn-87-tensorplex-docs"
+      ],
+      "slug": "sn-87",
+      "source_urls": [
+        "https://api.taomarketcap.com/public/v1/subnets/87",
+        "https://demo.luminar.network/",
+        "https://docs.luminar.network/",
+        "https://docs.luminar.network/introduction.md",
+        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/87/subnet.json",
+        "https://luminar.network/"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 6,
+      "verified_candidate_count": 3
+    },
+    {
       "adapter_score": 27,
       "candidate_count": 11,
       "candidate_evidence_summary": {
@@ -8671,7 +8671,7 @@
       "openapi": 51,
       "source-repo": 21,
       "subnet-api": 51,
-      "website": 39
+      "website": 38
     }
   }
 }

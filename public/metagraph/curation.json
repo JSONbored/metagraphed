@@ -3655,7 +3655,6 @@
       "curation": {
         "gap_notes": [
           "No verified source repository yet.",
-          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
@@ -3664,14 +3663,13 @@
         "level": "machine-verified",
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-07T00:00:00.000Z",
-        "source_count": 3,
-        "verified_at": null
+        "source_count": 6,
+        "verified_at": "2026-06-08T06:48:46.000Z"
       },
-      "gap_count": 6,
+      "gap_count": 5,
       "gaps": {
         "gap_notes": [
           "No verified source repository yet.",
-          "No verified project website yet.",
           "No verified OpenAPI/Swagger surface yet.",
           "No verified subnet API surface yet.",
           "No verified SSE/event stream yet.",
@@ -3679,7 +3677,6 @@
         ],
         "missing_kinds": [
           "source-repo",
-          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -3687,13 +3684,14 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs"
+          "docs",
+          "website"
         ]
       },
       "name": "Luminar Network",
       "netuid": 87,
       "slug": "sn-87",
-      "surface_count": 3
+      "surface_count": 6
     },
     {
       "candidate_count": 19,

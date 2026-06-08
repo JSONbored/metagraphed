@@ -225,26 +225,6 @@
     {
       "candidate_count": 3,
       "completeness_score": 20,
-      "confidence": "high",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 6,
-      "name": "Luminar Network",
-      "netuid": 87,
-      "priority_score": 113,
-      "profile_level": "directory-only",
-      "slug": "sn-87",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 3,
-      "completeness_score": 20,
       "confidence": "medium",
       "gap_reasons": [
         "missing-source-repo",
@@ -847,6 +827,25 @@
       "profile_level": "identity-complete",
       "slug": "sn-118",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 3,
+      "completeness_score": 35,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 5,
+      "name": "Luminar Network",
+      "netuid": 87,
+      "priority_score": 93,
+      "profile_level": "directory-only",
+      "slug": "sn-87",
+      "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
       "candidate_count": 23,
@@ -2349,7 +2348,7 @@
       "missing-source-repo": 21,
       "missing-sse": 128,
       "missing-subnet-api": 117,
-      "missing-website": 39
+      "missing-website": 38
     },
     "needs_identity_count": 44,
     "needs_operational_count": 81,

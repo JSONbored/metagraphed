@@ -1,6 +1,6 @@
 {
   "contract_version": "2026-06-06.1",
-  "document_count": 996,
+  "document_count": 1000,
   "documents": [
     {
       "artifact_path": "/metagraph/providers.json",
@@ -87,6 +87,21 @@
       ],
       "type": "provider",
       "url": "https://gittensor.io"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
+      "id": "provider:luminar-network",
+      "subtitle": "subnet-team",
+      "title": "Luminar Network",
+      "tokens": [
+        "luminar",
+        "network",
+        "official",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://luminar.network/"
     },
     {
       "artifact_path": "/metagraph/providers.json",
@@ -1486,11 +1501,17 @@
         "87",
         "baseline",
         "curated",
+        "docs",
         "identity",
+        "intelligence",
         "luminar",
         "network",
+        "official",
         "reviewed",
-        "sn"
+        "sn",
+        "video",
+        "vision",
+        "website"
       ],
       "type": "subnet",
       "url": "/subnets/87"
@@ -11288,6 +11309,23 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-87-luminar-docs",
+      "netuid": 87,
+      "slug": "sn-87",
+      "subtitle": "docs / luminar-network",
+      "title": "Luminar Network docs",
+      "tokens": [
+        "87",
+        "docs",
+        "luminar",
+        "network",
+        "sn"
+      ],
+      "type": "surface",
+      "url": "https://docs.luminar.network/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-87-taomarketcap-dashboard",
       "netuid": 87,
       "slug": "sn-87",
@@ -11342,6 +11380,42 @@
       ],
       "type": "surface",
       "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/87"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-87-luminar-website",
+      "netuid": 87,
+      "slug": "sn-87",
+      "subtitle": "website / luminar-network",
+      "title": "Luminar Network website",
+      "tokens": [
+        "87",
+        "luminar",
+        "network",
+        "sn",
+        "website"
+      ],
+      "type": "surface",
+      "url": "https://luminar.network/"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-87-luminar-demo",
+      "netuid": 87,
+      "slug": "sn-87",
+      "subtitle": "dashboard / luminar-network",
+      "title": "Luminar VMS demo",
+      "tokens": [
+        "87",
+        "dashboard",
+        "demo",
+        "luminar",
+        "network",
+        "sn",
+        "vms"
+      ],
+      "type": "surface",
+      "url": "https://demo.luminar.network/"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

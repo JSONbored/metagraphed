@@ -7192,19 +7192,22 @@
       "candidate_count": 3,
       "categories": [
         "baseline-curated",
-        "identity-reviewed"
+        "identity-reviewed",
+        "official-docs",
+        "official-website",
+        "vision",
+        "video-intelligence"
       ],
       "completeness": {
         "confidence": "medium",
         "gap_reasons": [
           "missing-source-repo",
-          "missing-website",
           "missing-openapi",
           "missing-subnet-api",
           "missing-sse",
           "missing-data-artifact"
         ],
-        "missing_critical_count": 6,
+        "missing_critical_count": 5,
         "missing_operational": [
           "openapi",
           "subnet-api",
@@ -7212,19 +7215,18 @@
           "data-artifact"
         ],
         "missing_required": [
-          "source-repo",
-          "website"
+          "source-repo"
         ],
         "profile_level": "directory-only",
-        "score": 20
+        "score": 35
       },
-      "completeness_score": 20,
+      "completeness_score": 35,
       "confidence": "high",
       "curation_level": "machine-verified",
-      "endpoint_count": 3,
-      "interface_count": 2,
-      "missing_critical_count": 6,
-      "monitored_endpoint_count": 3,
+      "endpoint_count": 6,
+      "interface_count": 3,
+      "missing_critical_count": 5,
+      "monitored_endpoint_count": 6,
       "name": "Luminar Network",
       "native_name": "unknown",
       "native_name_quality": "placeholder",
@@ -7232,31 +7234,34 @@
       "operational_interface_count": 0,
       "operational_interface_kinds": [],
       "primary_app_surface": {
-        "id": "sn-87-taopedia-article",
-        "kind": "docs",
-        "name": "Luminar Network Taopedia article",
-        "provider": "taopedia-articles",
-        "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx"
+        "id": "sn-87-luminar-website",
+        "kind": "website",
+        "name": "Luminar Network website",
+        "provider": "luminar-network",
+        "url": "https://luminar.network/"
       },
       "primary_links": {
-        "dashboard_url": "https://taomarketcap.com/subnets/87",
-        "docs_url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx",
+        "dashboard_url": "https://demo.luminar.network/",
+        "docs_url": "https://docs.luminar.network/",
         "source_repo": null,
-        "website_url": null
+        "website_url": "https://luminar.network/"
       },
       "profile_level": "directory-only",
       "project_name": "Luminar Network",
       "provenance": {
         "curation_level": "machine-verified",
         "identity_source": "curated-overlay",
-        "interface_source_count": 4,
+        "interface_source_count": 7,
         "review_state": "maintainer-reviewed",
         "reviewed_at": "2026-06-07T00:00:00.000Z",
         "source_urls": [
           "https://api.taomarketcap.com/public/v1/subnets/87",
+          "https://demo.luminar.network/",
+          "https://docs.luminar.network/",
+          "https://docs.luminar.network/introduction.md",
           "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_87/index.mdx",
           "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/87/subnet.json",
-          "https://taomarketcap.com/subnets/87"
+          "https://luminar.network/"
         ]
       },
       "review_state": "maintainer-reviewed",
@@ -7265,9 +7270,10 @@
       "subnet_type": "application",
       "supported_interface_kinds": [
         "dashboard",
-        "docs"
+        "docs",
+        "website"
       ],
-      "surface_count": 3,
+      "surface_count": 6,
       "symbol": "Ы",
       "team": null
     },
