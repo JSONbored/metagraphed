@@ -208,6 +208,7 @@ export interface Provider {
   surfaces_count?: number;
   endpoint_summary?: ProviderEndpointSummary;
   generated_at?: string;
+  icon_url?: string;
   [key: string]: unknown;
 }
 
