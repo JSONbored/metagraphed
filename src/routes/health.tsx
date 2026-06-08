@@ -14,6 +14,7 @@ import {
   endpointIncidentsQuery,
 } from "@/lib/metagraphed/queries";
 import { formatNumber, formatRelative, isStaleFreshness } from "@/lib/metagraphed/format";
+import { AnimatedNumber } from "@/components/metagraphed/animated-number";
 import type { EndpointIncident } from "@/lib/metagraphed/types";
 
 const INTERVAL_OPTIONS: Array<{ label: string; value: number }> = [
