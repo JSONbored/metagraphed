@@ -151,7 +151,11 @@ function SubnetsTable() {
       (window as unknown as { requestIdleCallback?: (cb: () => void) => number })
         .requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1));
     const handle = ric(() => {
-      for (const s of rows) prefetchBrandIcon(s.website, 32);
+      for (const s of rows)
+        prefetchBrandIcon(s.website, 32, {
+          iconUrl: s.icon_url,
+          lookup: { netuid: s.netuid, subnetSlug: s.slug },
+        });
     });
     return () => {
       const cic =
