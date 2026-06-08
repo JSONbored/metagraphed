@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "tensorplex",
+  "name": "Tensorplex",
+  "kind": "subnet-team",
+  "website_url": "https://www.tensorplex.ai/",
+  "docs_url": "https://docs.tensorplex.ai/tensorplex-docs",
+  "github_url": "https://github.com/tensorplex-labs/dojo",
+  "authority": "official",
+  "notes": "Provider entry for Tensorplex Dojo SN52 docs, source repository, UI repository, and worker API repository."
+}

@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "netuid": 75,
+  "name": "Hippius",
+  "slug": "sn-75",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "depin",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website",
+    "storage"
+  ],
+  "docs_url": "https://docs.hippius.com/",
+  "source_repo": "https://github.com/thenervelab/hippius-validator",
+  "dashboard_url": "https://taomarketcap.com/subnets/75",
+  "website_url": "https://hippius.com/",
+  "notes": "Reviewed overlay for SN75 using the official Hippius website, docs, blockchain API docs, validator repository, and storage miner repository. Common API/OpenAPI paths on hippius.com currently return 404 and are not promoted as API surfaces.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "verified_at": "2026-06-08T09:25:00.000Z",
+    "source_count": 8,
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-75-hippius-website",
+      "name": "Hippius website",
+      "kind": "website",
+      "url": "https://hippius.com/",
+      "provider": "hippius",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://hippius.com/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Hippius website."
+    },
+    {
+      "id": "sn-75-hippius-docs",
+      "name": "Hippius docs",
+      "kind": "docs",
+      "url": "https://docs.hippius.com/",
+      "provider": "hippius",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://docs.hippius.com/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Hippius documentation."
+    },
+    {
+      "id": "sn-75-hippius-blockchain-api-docs",
+      "name": "Hippius blockchain API docs",
+      "kind": "docs",
+      "url": "https://docs.hippius.com/blockchain/api",
+      "provider": "hippius",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://docs.hippius.com/blockchain/api"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Hippius blockchain API documentation. This is documentation, not a promoted API endpoint."
+    },
+    {
+      "id": "sn-75-hippius-validator-source",
+      "name": "Hippius validator repository",
+      "kind": "source-repo",
+      "url": "https://github.com/thenervelab/hippius-validator",
+      "provider": "hippius",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/thenervelab/hippius-validator"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Hippius validator repository."
+    },
+    {
+      "id": "sn-75-hippius-storage-miner-source",
+      "name": "Hippius storage miner repository",
+      "kind": "source-repo",
+      "url": "https://github.com/thenervelab/hippius-storage-miner",
+      "provider": "hippius",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/thenervelab/hippius-storage-miner"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Hippius storage miner repository."
+    }
+  ]
+}

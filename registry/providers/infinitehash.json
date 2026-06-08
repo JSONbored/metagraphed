@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "infinitehash",
+  "name": "InfiniteHash",
+  "kind": "subnet-team",
+  "website_url": "https://github.com/backend-developers-ltd/InfiniteHash",
+  "github_url": "https://github.com/backend-developers-ltd/InfiniteHash",
+  "authority": "official",
+  "notes": "Provider entry for InfiniteHash SN89 source repository. The repository homepage points to infinitehash.xyz, but that deployment currently returns HTTP 402 and is not promoted as a monitored website surface."
+}

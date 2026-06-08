@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "netuid": 89,
+  "name": "InfiniteHash",
+  "slug": "sn-89",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo"
+  ],
+  "source_repo": "https://github.com/backend-developers-ltd/InfiniteHash",
+  "dashboard_url": "https://taomarketcap.com/subnets/89",
+  "notes": "Reviewed overlay for SN89 using the official InfiniteHash source repository and universal TaoMarketCap dashboard. The repository homepage points to infinitehash.xyz, but that deployment currently returns HTTP 402 and is not promoted as a monitored website/API surface.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "verified_at": "2026-06-08T09:25:00.000Z",
+    "source_count": 4,
+    "gap_notes": [
+      "Project homepage currently returns HTTP 402.",
+      "No verified docs site yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-89-infinitehash-source",
+      "name": "InfiniteHash source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/backend-developers-ltd/InfiniteHash",
+      "provider": "infinitehash",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/backend-developers-ltd/InfiniteHash"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official InfiniteHash source repository for SN89."
+    }
+  ]
+}

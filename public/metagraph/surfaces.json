@@ -9163,195 +9163,50 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-47-github-readme-openevolai-evolai-data-artifact-1",
-      "kind": "data-artifact",
-      "name": "EvolAI data artifact",
+      "authority": "official",
+      "id": "sn-47-evolai-source",
+      "kind": "source-repo",
+      "name": "EvolAI source repository",
       "netuid": 47,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "notes": "Official EvolAI source repository for SN47.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "evolai",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/openevolai/evolai/blob/main/README.md"
+        "https://github.com/openevolai/evolai"
+      ],
+      "subnet_name": "EvolAI",
+      "subnet_slug": "sn-47",
+      "url": "https://github.com/openevolai/evolai"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-47-evolai-universal-qa-dataset",
+      "kind": "data-artifact",
+      "name": "EvolAI Universal QA dataset",
+      "netuid": 47,
+      "notes": "Public Hugging Face dataset referenced by the EvolAI repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "evolai",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/openevolai/evolai",
+        "https://huggingface.co/datasets/evolai/universal_qa"
       ],
       "subnet_name": "EvolAI",
       "subnet_slug": "sn-47",
       "url": "https://huggingface.co/datasets/evolai/universal_qa"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-47-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "EvolAI TaoMarketCap dashboard",
-      "netuid": 47,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/47"
-      ],
-      "subnet_name": "EvolAI",
-      "subnet_slug": "sn-47",
-      "url": "https://taomarketcap.com/subnets/47"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-47-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "EvolAI source repository",
-      "netuid": 47,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/47"
-      ],
-      "subnet_name": "EvolAI",
-      "subnet_slug": "sn-47",
-      "url": "https://github.com/openevolai/evolai.git"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-47-taopedia-article",
-      "kind": "docs",
-      "name": "EvolAI Taopedia article",
-      "netuid": 47,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_47/index.mdx"
-      ],
-      "subnet_name": "EvolAI",
-      "subnet_slug": "sn-47",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_47/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-47-tensorplex-docs",
-      "kind": "docs",
-      "name": "EvolAI Tensorplex subnet docs",
-      "netuid": 47,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/47/subnet.json"
-      ],
-      "subnet_name": "EvolAI",
-      "subnet_slug": "sn-47",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/47"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-47-tensorplex-source-repo-1",
-      "kind": "source-repo",
-      "name": "EvolAI source repository",
-      "netuid": 47,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/47/subnet.json"
-      ],
-      "subnet_name": "EvolAI",
-      "subnet_slug": "sn-47",
-      "url": "https://github.com/reboot-org/reboot-subnet"
     },
     {
       "auth_required": false,
@@ -10205,31 +10060,22 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-52-github-readme-tensorplex-labs-dojo-docs-1",
+      "authority": "official",
+      "id": "sn-52-dojo-docs",
       "kind": "docs",
-      "name": "Dojo docs",
+      "name": "Dojo subnet mechanism docs",
       "netuid": 52,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "notes": "Official Tensorplex Dojo subnet mechanism documentation.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "tensorplex",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/tensorplex-labs/dojo/blob/main/README.md"
+        "https://docs.tensorplex.ai/tensorplex-docs/tensorplex-dojo-bittensor-subnet/subnet-mechanism"
       ],
       "subnet_name": "Dojo",
       "subnet_slug": "sn-52",
@@ -10237,63 +10083,22 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-52-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "Dojo TaoMarketCap dashboard",
-      "netuid": 52,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/52"
-      ],
-      "subnet_name": "Dojo",
-      "subnet_slug": "sn-52",
-      "url": "https://taomarketcap.com/subnets/52"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-52-taomarketcap-source-repo",
+      "authority": "official",
+      "id": "sn-52-dojo-source",
       "kind": "source-repo",
       "name": "Dojo source repository",
       "netuid": 52,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official Dojo source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "tensorplex",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/52"
+        "https://github.com/tensorplex-labs/dojo"
       ],
       "subnet_name": "Dojo",
       "subnet_slug": "sn-52",
@@ -10301,95 +10106,22 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-52-taopedia-article",
-      "kind": "docs",
-      "name": "Dojo Taopedia article",
-      "netuid": 52,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_52/index.mdx"
-      ],
-      "subnet_name": "Dojo",
-      "subnet_slug": "sn-52",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_52/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-52-tensorplex-docs",
-      "kind": "docs",
-      "name": "Dojo Tensorplex subnet docs",
-      "netuid": 52,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/52/subnet.json"
-      ],
-      "subnet_name": "Dojo",
-      "subnet_slug": "sn-52",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/52"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-52-tensorplex-source-repo-3",
+      "authority": "official",
+      "id": "sn-52-dojo-ui-source",
       "kind": "source-repo",
-      "name": "Dojo source repository",
+      "name": "Dojo UI repository",
       "netuid": 52,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Official Dojo UI repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "tensorplex",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/52/subnet.json"
+        "https://github.com/tensorplex-labs/dojo-ui"
       ],
       "subnet_name": "Dojo",
       "subnet_slug": "sn-52",
@@ -10397,35 +10129,50 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-52-tensorplex-source-repo-4",
+      "authority": "official",
+      "id": "sn-52-dojo-worker-api-source",
       "kind": "source-repo",
-      "name": "Dojo source repository",
+      "name": "Dojo worker API repository",
       "netuid": 52,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Official Dojo worker API repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "tensorplex",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/52/subnet.json"
+        "https://github.com/tensorplex-labs/dojo-worker-api"
       ],
       "subnet_name": "Dojo",
       "subnet_slug": "sn-52",
       "url": "https://github.com/tensorplex-labs/dojo-worker-api"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-52-tensorplex-website",
+      "kind": "website",
+      "name": "Tensorplex website",
+      "netuid": 52,
+      "notes": "Official Tensorplex website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.tensorplex.ai/",
+        "https://github.com/tensorplex-labs/dojo"
+      ],
+      "subnet_name": "Dojo",
+      "subnet_slug": "sn-52",
+      "url": "https://www.tensorplex.ai/"
     },
     {
       "auth_required": false,
@@ -12237,131 +11984,26 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-62-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "Ridges TaoMarketCap dashboard",
-      "netuid": 62,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/62"
-      ],
-      "subnet_name": "Ridges",
-      "subnet_slug": "sn-62",
-      "url": "https://taomarketcap.com/subnets/62"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-62-taomarketcap-source-repo",
+      "authority": "official",
+      "id": "sn-62-ridges-source",
       "kind": "source-repo",
       "name": "Ridges source repository",
       "netuid": 62,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official Ridges source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "ridges",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/62"
+        "https://github.com/ridgesai/ridges"
       ],
       "subnet_name": "Ridges",
       "subnet_slug": "sn-62",
       "url": "https://github.com/ridgesai/ridges"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-62-taopedia-article",
-      "kind": "docs",
-      "name": "Ridges Taopedia article",
-      "netuid": 62,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_62/index.mdx"
-      ],
-      "subnet_name": "Ridges",
-      "subnet_slug": "sn-62",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_62/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-62-tensorplex-docs",
-      "kind": "docs",
-      "name": "Ridges Tensorplex subnet docs",
-      "netuid": 62,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/62/subnet.json"
-      ],
-      "subnet_name": "Ridges",
-      "subnet_slug": "sn-62",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/62"
     },
     {
       "auth_required": false,
@@ -14647,255 +14289,45 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-75-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "Hippius TaoMarketCap dashboard",
-      "netuid": 75,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/75"
-      ],
-      "subnet_name": "Hippius",
-      "subnet_slug": "sn-75",
-      "url": "https://taomarketcap.com/subnets/75"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-75-taomarketcap-source-repo",
-      "kind": "source-repo",
-      "name": "Hippius source repository",
-      "netuid": 75,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/75"
-      ],
-      "subnet_name": "Hippius",
-      "subnet_slug": "sn-75",
-      "url": "https://github.com/thenervelab/thebrain"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-75-taomarketcap-website",
-      "kind": "website",
-      "name": "Hippius website",
-      "netuid": 75,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/75"
-      ],
-      "subnet_name": "Hippius",
-      "subnet_slug": "sn-75",
-      "url": "https://hippius.com/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-75-taopedia-article",
+      "authority": "official",
+      "id": "sn-75-hippius-blockchain-api-docs",
       "kind": "docs",
-      "name": "Hippius Taopedia article",
+      "name": "Hippius blockchain API docs",
       "netuid": 75,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
+      "notes": "Official Hippius blockchain API documentation. This is documentation, not a promoted API endpoint.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taopedia-articles",
+      "provider": "hippius",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_75/index.mdx"
+        "https://docs.hippius.com/blockchain/api"
       ],
       "subnet_name": "Hippius",
       "subnet_slug": "sn-75",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_75/index.mdx"
+      "url": "https://docs.hippius.com/blockchain/api"
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-75-tensorplex-docs",
-      "kind": "docs",
-      "name": "Hippius Tensorplex subnet docs",
-      "netuid": 75,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/75/subnet.json"
-      ],
-      "subnet_name": "Hippius",
-      "subnet_slug": "sn-75",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/75"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-75-tensorplex-source-repo-2",
-      "kind": "source-repo",
-      "name": "Hippius source repository",
-      "netuid": 75,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/75/subnet.json"
-      ],
-      "subnet_name": "Hippius",
-      "subnet_slug": "sn-75",
-      "url": "https://github.com/thenervelab/hippius-validator"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-75-tensorplex-source-repo-3",
-      "kind": "source-repo",
-      "name": "Hippius source repository",
-      "netuid": 75,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/75/subnet.json"
-      ],
-      "subnet_name": "Hippius",
-      "subnet_slug": "sn-75",
-      "url": "https://github.com/thenervelab/hippius-storage-miner"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-75-website-link-hippius-com-docs-8",
+      "authority": "official",
+      "id": "sn-75-hippius-docs",
       "kind": "docs",
       "name": "Hippius docs",
       "netuid": 75,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
+      "notes": "Official Hippius documentation.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "hippius",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://hippius.com/"
+        "https://docs.hippius.com/"
       ],
       "subnet_name": "Hippius",
       "subnet_slug": "sn-75",
@@ -14903,131 +14335,95 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-76-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "Byzantium TaoMarketCap dashboard",
-      "netuid": 76,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "authority": "official",
+      "id": "sn-75-hippius-storage-miner-source",
+      "kind": "source-repo",
+      "name": "Hippius storage miner repository",
+      "netuid": 75,
+      "notes": "Official Hippius storage miner repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "hippius",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/76"
+        "https://github.com/thenervelab/hippius-storage-miner"
       ],
-      "subnet_name": "Byzantium",
-      "subnet_slug": "sn-76",
-      "url": "https://taomarketcap.com/subnets/76"
+      "subnet_name": "Hippius",
+      "subnet_slug": "sn-75",
+      "url": "https://github.com/thenervelab/hippius-storage-miner"
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-76-taomarketcap-website",
-      "kind": "website",
-      "name": "Byzantium website",
-      "netuid": 76,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "authority": "official",
+      "id": "sn-75-hippius-validator-source",
+      "kind": "source-repo",
+      "name": "Hippius validator repository",
+      "netuid": 75,
+      "notes": "Official Hippius validator repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "hippius",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/76"
+        "https://github.com/thenervelab/hippius-validator"
+      ],
+      "subnet_name": "Hippius",
+      "subnet_slug": "sn-75",
+      "url": "https://github.com/thenervelab/hippius-validator"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-75-hippius-website",
+      "kind": "website",
+      "name": "Hippius website",
+      "netuid": 75,
+      "notes": "Official Hippius website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hippius",
+      "public_safe": true,
+      "source_urls": [
+        "https://hippius.com/"
+      ],
+      "subnet_name": "Hippius",
+      "subnet_slug": "sn-75",
+      "url": "https://hippius.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-76-byzantium-website",
+      "kind": "website",
+      "name": "Byzantium website",
+      "netuid": 76,
+      "notes": "Official Byzantium website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "byzantium",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.byzantiumai.net/"
       ],
       "subnet_name": "Byzantium",
       "subnet_slug": "sn-76",
       "url": "https://www.byzantiumai.net/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-76-taopedia-article",
-      "kind": "docs",
-      "name": "Byzantium Taopedia article",
-      "netuid": 76,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_76/index.mdx"
-      ],
-      "subnet_name": "Byzantium",
-      "subnet_slug": "sn-76",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_76/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-76-tensorplex-docs",
-      "kind": "docs",
-      "name": "Byzantium Tensorplex subnet docs",
-      "netuid": 76,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/76/subnet.json"
-      ],
-      "subnet_name": "Byzantium",
-      "subnet_slug": "sn-76",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/76"
     },
     {
       "auth_required": false,
@@ -17498,131 +16894,26 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-89-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "InfiniteHash TaoMarketCap dashboard",
-      "netuid": 89,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/89"
-      ],
-      "subnet_name": "InfiniteHash",
-      "subnet_slug": "sn-89",
-      "url": "https://taomarketcap.com/subnets/89"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-89-taomarketcap-source-repo",
+      "authority": "official",
+      "id": "sn-89-infinitehash-source",
       "kind": "source-repo",
       "name": "InfiniteHash source repository",
       "netuid": 89,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official InfiniteHash source repository for SN89.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "infinitehash",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/89"
+        "https://github.com/backend-developers-ltd/InfiniteHash"
       ],
       "subnet_name": "InfiniteHash",
       "subnet_slug": "sn-89",
       "url": "https://github.com/backend-developers-ltd/InfiniteHash"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-89-taopedia-article",
-      "kind": "docs",
-      "name": "InfiniteHash Taopedia article",
-      "netuid": 89,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_89/index.mdx"
-      ],
-      "subnet_name": "InfiniteHash",
-      "subnet_slug": "sn-89",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_89/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-89-tensorplex-docs",
-      "kind": "docs",
-      "name": "InfiniteHash Tensorplex subnet docs",
-      "netuid": 89,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/89/subnet.json"
-      ],
-      "subnet_name": "InfiniteHash",
-      "subnet_slug": "sn-89",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/89"
     },
     {
       "auth_required": false,
@@ -17722,131 +17013,49 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-91-taomarketcap-dashboard",
+      "authority": "official",
+      "id": "sn-91-bitstarter-app",
       "kind": "dashboard",
-      "name": "Bitstarter #1 TaoMarketCap dashboard",
+      "name": "Bitstarter app",
       "netuid": 91,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+      "notes": "Public Bitstarter app surface.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "bitstarter",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/91"
+        "https://app.bitstarter.ai/"
       ],
       "subnet_name": "Bitstarter #1",
       "subnet_slug": "sn-91",
-      "url": "https://taomarketcap.com/subnets/91"
+      "url": "https://app.bitstarter.ai/"
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-91-taomarketcap-website",
+      "authority": "official",
+      "id": "sn-91-bitstarter-website",
       "kind": "website",
-      "name": "Bitstarter #1 website",
+      "name": "Bitstarter website",
       "netuid": 91,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Public Bitstarter website.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "bitstarter",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/91"
+        "https://bitstarter.ai/"
       ],
       "subnet_name": "Bitstarter #1",
       "subnet_slug": "sn-91",
       "url": "https://bitstarter.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-91-taopedia-article",
-      "kind": "docs",
-      "name": "Bitstarter #1 Taopedia article",
-      "netuid": 91,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_91/index.mdx"
-      ],
-      "subnet_name": "Bitstarter #1",
-      "subnet_slug": "sn-91",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_91/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-91-tensorplex-docs",
-      "kind": "docs",
-      "name": "Bitstarter #1 Tensorplex subnet docs",
-      "netuid": 91,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/91/subnet.json"
-      ],
-      "subnet_name": "Bitstarter #1",
-      "subnet_slug": "sn-91",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/91"
     },
     {
       "auth_required": false,

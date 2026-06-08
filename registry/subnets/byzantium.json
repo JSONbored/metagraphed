@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "netuid": 76,
+  "name": "Byzantium",
+  "slug": "sn-76",
+  "status": "active",
+  "categories": ["baseline-curated", "identity-reviewed", "official-website"],
+  "dashboard_url": "https://taomarketcap.com/subnets/76",
+  "website_url": "https://www.byzantiumai.net/",
+  "notes": "Reviewed overlay for SN76 using the official Byzantium website and universal TaoMarketCap dashboard. Public docs/API/common-path candidates currently 404 and are not promoted.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "verified_at": "2026-06-08T09:25:00.000Z",
+    "source_count": 3,
+    "gap_notes": [
+      "No verified docs site yet.",
+      "No verified source repository yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-76-byzantium-website",
+      "name": "Byzantium website",
+      "kind": "website",
+      "url": "https://www.byzantiumai.net/",
+      "provider": "byzantium",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://www.byzantiumai.net/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Byzantium website."
+    }
+  ]
+}

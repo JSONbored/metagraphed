@@ -12,6 +12,15 @@
       "website_url": "https://all-ways.io"
     },
     {
+      "authority": "official",
+      "id": "bitstarter",
+      "kind": "subnet-team",
+      "name": "Bitstarter",
+      "notes": "Provider entry for Bitstarter SN91 public website and app surfaces. No verified source repository or machine-readable API schema has been found yet.",
+      "schema_version": 1,
+      "website_url": "https://bitstarter.ai/"
+    },
+    {
       "authority": "provider-claimed",
       "docs_url": "https://blockmachine.io/docs/integrate-rpc",
       "id": "blockmachine",
@@ -20,6 +29,15 @@
       "notes": "Bittensor subnet/provider for verifiable RPC infrastructure. Tracked as adjacent infra provider, not generic Metagraphed hosting.",
       "schema_version": 1,
       "website_url": "https://blockmachine.io"
+    },
+    {
+      "authority": "official",
+      "id": "byzantium",
+      "kind": "subnet-team",
+      "name": "Byzantium",
+      "notes": "Provider entry for Byzantium SN76 website. Public docs/API/common-path candidates are currently 404 and are not promoted.",
+      "schema_version": 1,
+      "website_url": "https://www.byzantiumai.net/"
     },
     {
       "authority": "official",
@@ -62,6 +80,16 @@
       "notes": "Bittensor RPC provider with documented HTTP/WSS examples. API-key URLs are not published as public registry endpoints.",
       "schema_version": 1,
       "website_url": "https://www.dwellir.com"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/openevolai/evolai",
+      "id": "evolai",
+      "kind": "subnet-team",
+      "name": "EvolAI",
+      "notes": "Provider entry for EvolAI SN47 source repository and referenced public Hugging Face dataset.",
+      "schema_version": 1,
+      "website_url": "https://evolai.ai/"
     },
     {
       "authority": "provider-claimed",
@@ -112,6 +140,27 @@
       "notes": "Provider entry for Handshake58 SN58 marketplace, API, OpenAPI, and subnet source repositories.",
       "schema_version": 1,
       "website_url": "https://handshake58.com"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://docs.hippius.com/",
+      "github_url": "https://github.com/thenervelab/hippius-validator",
+      "id": "hippius",
+      "kind": "subnet-team",
+      "name": "Hippius",
+      "notes": "Provider entry for Hippius SN75 website, docs, blockchain API docs, validator repository, and storage miner repository.",
+      "schema_version": 1,
+      "website_url": "https://hippius.com/"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/backend-developers-ltd/InfiniteHash",
+      "id": "infinitehash",
+      "kind": "subnet-team",
+      "name": "InfiniteHash",
+      "notes": "Provider entry for InfiniteHash SN89 source repository. The repository homepage points to infinitehash.xyz, but that deployment currently returns HTTP 402 and is not promoted as a monitored website surface.",
+      "schema_version": 1,
+      "website_url": "https://github.com/backend-developers-ltd/InfiniteHash"
     },
     {
       "authority": "official",
@@ -208,6 +257,16 @@
     },
     {
       "authority": "official",
+      "github_url": "https://github.com/ridgesai/ridges",
+      "id": "ridges",
+      "kind": "subnet-team",
+      "name": "Ridges",
+      "notes": "Provider entry for Ridges SN62 source repository. The public website currently rate-limits simple probes and is not promoted as a monitored surface in this overlay.",
+      "schema_version": 1,
+      "website_url": "https://www.ridges.ai/"
+    },
+    {
+      "authority": "official",
       "github_url": "https://github.com/SILX-LABS/QUASAR-SUBNET",
       "id": "silx-labs",
       "kind": "subnet-team",
@@ -255,6 +314,17 @@
       "notes": "Structured community-maintained subnet documentation. Used as enrichment and candidate discovery pending maintainer review.",
       "schema_version": 1,
       "website_url": "https://github.com/tensorplex-labs/subnet-docs"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://docs.tensorplex.ai/tensorplex-docs",
+      "github_url": "https://github.com/tensorplex-labs/dojo",
+      "id": "tensorplex",
+      "kind": "subnet-team",
+      "name": "Tensorplex",
+      "notes": "Provider entry for Tensorplex Dojo SN52 docs, source repository, UI repository, and worker API repository.",
+      "schema_version": 1,
+      "website_url": "https://www.tensorplex.ai/"
     },
     {
       "authority": "official",

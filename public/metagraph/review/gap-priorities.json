@@ -156,25 +156,6 @@
       "verified_candidate_count": 14
     },
     {
-      "candidate_count": 15,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Bitstarter #1",
-      "netuid": 91,
-      "priority_score": 71,
-      "review_state": "machine-generated",
-      "slug": "sn-91",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 8
-    },
-    {
       "candidate_count": 3,
       "curation_level": "machine-verified",
       "missing_kinds": [
@@ -371,24 +352,6 @@
       "verified_candidate_count": 20
     },
     {
-      "candidate_count": 6,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse"
-      ],
-      "name": "EvolAI",
-      "netuid": 47,
-      "priority_score": 70,
-      "review_state": "machine-generated",
-      "slug": "sn-47",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 6,
-      "verified_candidate_count": 6
-    },
-    {
       "candidate_count": 13,
       "curation_level": "machine-verified",
       "missing_kinds": [
@@ -459,81 +422,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 5,
       "verified_candidate_count": 5
-    },
-    {
-      "candidate_count": 23,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Hippius",
-      "netuid": 75,
-      "priority_score": 67,
-      "review_state": "machine-generated",
-      "slug": "sn-75",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 8,
-      "verified_candidate_count": 17
-    },
-    {
-      "candidate_count": 11,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Ridges",
-      "netuid": 62,
-      "priority_score": 67,
-      "review_state": "machine-generated",
-      "slug": "sn-62",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
-    },
-    {
-      "candidate_count": 11,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "source-repo",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Byzantium",
-      "netuid": 76,
-      "priority_score": 67,
-      "review_state": "machine-generated",
-      "slug": "sn-76",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 5
-    },
-    {
-      "candidate_count": 11,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "InfiniteHash",
-      "netuid": 89,
-      "priority_score": 67,
-      "review_state": "machine-generated",
-      "slug": "sn-89",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 4,
-      "verified_candidate_count": 4
     },
     {
       "candidate_count": 22,
@@ -804,25 +692,6 @@
       "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
       "surface_count": 7,
       "verified_candidate_count": 15
-    },
-    {
-      "candidate_count": 8,
-      "curation_level": "machine-verified",
-      "missing_kinds": [
-        "website",
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "name": "Dojo",
-      "netuid": 52,
-      "priority_score": 64,
-      "review_state": "machine-generated",
-      "slug": "sn-52",
-      "suggested_next_action": "review promoted surfaces and mark maintainer-reviewed where provenance is strong",
-      "surface_count": 7,
-      "verified_candidate_count": 7
     },
     {
       "candidate_count": 19,
@@ -2080,6 +1949,85 @@
       "candidate_count": 15,
       "curation_level": "maintainer-reviewed",
       "missing_kinds": [
+        "docs",
+        "source-repo",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Bitstarter #1",
+      "netuid": 91,
+      "priority_score": 38,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-91",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 2,
+      "verified_candidate_count": 8
+    },
+    {
+      "candidate_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse"
+      ],
+      "name": "EvolAI",
+      "netuid": 47,
+      "priority_score": 37,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-47",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 2,
+      "verified_candidate_count": 6
+    },
+    {
+      "candidate_count": 11,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "source-repo",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Byzantium",
+      "netuid": 76,
+      "priority_score": 34,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-76",
+      "suggested_next_action": "inspect source-repo/docs candidates for official provenance",
+      "surface_count": 1,
+      "verified_candidate_count": 5
+    },
+    {
+      "candidate_count": 11,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "website",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "InfiniteHash",
+      "netuid": 89,
+      "priority_score": 34,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-89",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 1,
+      "verified_candidate_count": 4
+    },
+    {
+      "candidate_count": 15,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
         "openapi",
         "subnet-api",
         "sse"
@@ -2126,6 +2074,43 @@
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 7,
       "verified_candidate_count": 15
+    },
+    {
+      "candidate_count": 23,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Hippius",
+      "netuid": 75,
+      "priority_score": 22,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-75",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 5,
+      "verified_candidate_count": 17
+    },
+    {
+      "candidate_count": 11,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "docs",
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Ridges",
+      "netuid": 62,
+      "priority_score": 22,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-62",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 1,
+      "verified_candidate_count": 4
     },
     {
       "candidate_count": 26,
@@ -2250,6 +2235,24 @@
       "suggested_next_action": "evaluate for subnet-specific adapter",
       "surface_count": 9,
       "verified_candidate_count": 12
+    },
+    {
+      "candidate_count": 8,
+      "curation_level": "maintainer-reviewed",
+      "missing_kinds": [
+        "openapi",
+        "subnet-api",
+        "sse",
+        "data-artifact"
+      ],
+      "name": "Dojo",
+      "netuid": 52,
+      "priority_score": 7,
+      "review_state": "maintainer-reviewed",
+      "slug": "sn-52",
+      "suggested_next_action": "keep baseline entry and wait for public-source or community intake",
+      "surface_count": 5,
+      "verified_candidate_count": 7
     },
     {
       "candidate_count": 6,

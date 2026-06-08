@@ -477,18 +477,6 @@
       "slug": "sn-29"
     },
     {
-      "candidate_api_count": 1,
-      "curation_level": "machine-verified",
-      "name": "EvolAI",
-      "netuid": 47,
-      "operational_kinds": [
-        "data-artifact"
-      ],
-      "operational_surface_count": 1,
-      "priority_score": 26,
-      "slug": "sn-47"
-    },
-    {
       "candidate_api_count": 6,
       "curation_level": "maintainer-reviewed",
       "name": "StreetVision by NATIX",
@@ -511,6 +499,18 @@
       "operational_surface_count": 1,
       "priority_score": 26,
       "slug": "sn-95"
+    },
+    {
+      "candidate_api_count": 1,
+      "curation_level": "maintainer-reviewed",
+      "name": "EvolAI",
+      "netuid": 47,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 22,
+      "slug": "sn-47"
     },
     {
       "candidate_api_count": 5,
@@ -581,16 +581,6 @@
       "operational_surface_count": 0,
       "priority_score": 8,
       "slug": "sn-25"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "machine-verified",
-      "name": "Hippius",
-      "netuid": 75,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 8,
-      "slug": "sn-75"
     },
     {
       "candidate_api_count": 5,
@@ -963,6 +953,16 @@
       "slug": "sn-63"
     },
     {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "Hippius",
+      "netuid": 75,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 5,
+      "slug": "sn-75"
+    },
+    {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "TalkHead",
@@ -1025,52 +1025,52 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "Ridges",
-      "netuid": 62,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 4,
-      "slug": "sn-62"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Byzantium",
-      "netuid": 76,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 4,
-      "slug": "sn-76"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "InfiniteHash",
-      "netuid": 89,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 4,
-      "slug": "sn-89"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Bitstarter #1",
-      "netuid": 91,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 4,
-      "slug": "sn-91"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
       "name": "Nodexo",
       "netuid": 27,
       "operational_kinds": [],
       "operational_surface_count": 0,
       "priority_score": 3,
       "slug": "sn-27"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Bitstarter #1",
+      "netuid": 91,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 2,
+      "slug": "sn-91"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Ridges",
+      "netuid": 62,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 1,
+      "slug": "sn-62"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Byzantium",
+      "netuid": 76,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 1,
+      "slug": "sn-76"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "InfiniteHash",
+      "netuid": 89,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 1,
+      "slug": "sn-89"
     }
   ],
   "contract_version": "2026-06-06.1",

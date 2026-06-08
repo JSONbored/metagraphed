@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "netuid": 52,
+  "name": "Dojo",
+  "slug": "sn-52",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website",
+    "tensorplex"
+  ],
+  "docs_url": "https://docs.tensorplex.ai/tensorplex-docs/tensorplex-dojo-bittensor-subnet/subnet-mechanism",
+  "source_repo": "https://github.com/tensorplex-labs/dojo",
+  "dashboard_url": "https://taomarketcap.com/subnets/52",
+  "website_url": "https://www.tensorplex.ai/",
+  "notes": "Reviewed overlay for SN52 using the official Tensorplex website, Dojo docs, source repository, UI repository, and worker API repository. The older dojo-synthetic-api repository candidate currently 404s and is intentionally not promoted.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "verified_at": "2026-06-08T09:25:00.000Z",
+    "source_count": 8,
+    "gap_notes": [
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-52-tensorplex-website",
+      "name": "Tensorplex website",
+      "kind": "website",
+      "url": "https://www.tensorplex.ai/",
+      "provider": "tensorplex",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.tensorplex.ai/",
+        "https://github.com/tensorplex-labs/dojo"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Tensorplex website."
+    },
+    {
+      "id": "sn-52-dojo-docs",
+      "name": "Dojo subnet mechanism docs",
+      "kind": "docs",
+      "url": "https://docs.tensorplex.ai/tensorplex-docs/tensorplex-dojo-bittensor-subnet/subnet-mechanism",
+      "provider": "tensorplex",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://docs.tensorplex.ai/tensorplex-docs/tensorplex-dojo-bittensor-subnet/subnet-mechanism"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Tensorplex Dojo subnet mechanism documentation."
+    },
+    {
+      "id": "sn-52-dojo-source",
+      "name": "Dojo source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/tensorplex-labs/dojo",
+      "provider": "tensorplex",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/tensorplex-labs/dojo"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Dojo source repository."
+    },
+    {
+      "id": "sn-52-dojo-ui-source",
+      "name": "Dojo UI repository",
+      "kind": "source-repo",
+      "url": "https://github.com/tensorplex-labs/dojo-ui",
+      "provider": "tensorplex",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/tensorplex-labs/dojo-ui"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Dojo UI repository."
+    },
+    {
+      "id": "sn-52-dojo-worker-api-source",
+      "name": "Dojo worker API repository",
+      "kind": "source-repo",
+      "url": "https://github.com/tensorplex-labs/dojo-worker-api",
+      "provider": "tensorplex",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/tensorplex-labs/dojo-worker-api"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Dojo worker API repository."
+    }
+  ]
+}

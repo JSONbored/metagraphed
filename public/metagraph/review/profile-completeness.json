@@ -23,6 +23,66 @@
       "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
+      "candidate_count": 15,
+      "completeness_score": 25,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 6,
+      "name": "Bitstarter #1",
+      "netuid": 91,
+      "priority_score": 120,
+      "profile_level": "directory-only",
+      "slug": "sn-91",
+      "suggested_next_action": "submit official docs, website, or source repository evidence"
+    },
+    {
+      "candidate_count": 11,
+      "completeness_score": 25,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-source-repo",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 6,
+      "name": "Byzantium",
+      "netuid": 76,
+      "priority_score": 116,
+      "profile_level": "directory-only",
+      "slug": "sn-76",
+      "suggested_next_action": "submit official docs, website, or source repository evidence"
+    },
+    {
+      "candidate_count": 11,
+      "completeness_score": 25,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-docs",
+        "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 6,
+      "name": "InfiniteHash",
+      "netuid": 89,
+      "priority_score": 116,
+      "profile_level": "directory-only",
+      "slug": "sn-89",
+      "suggested_next_action": "submit official docs, website, or source repository evidence"
+    },
+    {
       "candidate_count": 4,
       "completeness_score": 20,
       "confidence": "medium",
@@ -303,25 +363,6 @@
       "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
-      "candidate_count": 15,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "Bitstarter #1",
-      "netuid": 91,
-      "priority_score": 105,
-      "profile_level": "directory-only",
-      "slug": "sn-91",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
       "candidate_count": 13,
       "completeness_score": 35,
       "confidence": "medium",
@@ -360,11 +401,30 @@
       "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
-      "candidate_count": 11,
-      "completeness_score": 35,
-      "confidence": "medium",
+      "candidate_count": 6,
+      "completeness_score": 33,
+      "confidence": "high",
       "gap_reasons": [
+        "missing-docs",
         "missing-website",
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse"
+      ],
+      "missing_critical_count": 5,
+      "name": "EvolAI",
+      "netuid": 47,
+      "priority_score": 98,
+      "profile_level": "operational",
+      "slug": "sn-47",
+      "suggested_next_action": "submit official docs, website, or source repository evidence"
+    },
+    {
+      "candidate_count": 11,
+      "completeness_score": 40,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-docs",
         "missing-openapi",
         "missing-subnet-api",
         "missing-sse",
@@ -373,66 +433,9 @@
       "missing_critical_count": 5,
       "name": "Ridges",
       "netuid": 62,
-      "priority_score": 101,
+      "priority_score": 96,
       "profile_level": "directory-only",
       "slug": "sn-62",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 11,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-source-repo",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "Byzantium",
-      "netuid": 76,
-      "priority_score": 101,
-      "profile_level": "directory-only",
-      "slug": "sn-76",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 11,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "InfiniteHash",
-      "netuid": 89,
-      "priority_score": 101,
-      "profile_level": "directory-only",
-      "slug": "sn-89",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
-      "candidate_count": 8,
-      "completeness_score": 35,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 5,
-      "name": "Dojo",
-      "netuid": 52,
-      "priority_score": 98,
-      "profile_level": "directory-only",
-      "slug": "sn-52",
       "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
@@ -740,24 +743,6 @@
       "suggested_next_action": "submit official docs, website, or source repository evidence"
     },
     {
-      "candidate_count": 23,
-      "completeness_score": 50,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "name": "Hippius",
-      "netuid": 75,
-      "priority_score": 93,
-      "profile_level": "identity-complete",
-      "slug": "sn-75",
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
-    },
-    {
       "candidate_count": 22,
       "completeness_score": 50,
       "confidence": "medium",
@@ -1061,6 +1046,24 @@
       "priority_score": 88,
       "profile_level": "identity-complete",
       "slug": "sn-1",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 23,
+      "completeness_score": 55,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "name": "Hippius",
+      "netuid": 75,
+      "priority_score": 88,
+      "profile_level": "identity-complete",
+      "slug": "sn-75",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
@@ -1478,24 +1481,6 @@
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
-      "candidate_count": 6,
-      "completeness_score": 43,
-      "confidence": "medium",
-      "gap_reasons": [
-        "missing-website",
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse"
-      ],
-      "missing_critical_count": 4,
-      "name": "EvolAI",
-      "netuid": 47,
-      "priority_score": 83,
-      "profile_level": "operational",
-      "slug": "sn-47",
-      "suggested_next_action": "submit official docs, website, or source repository evidence"
-    },
-    {
       "candidate_count": 13,
       "completeness_score": 50,
       "confidence": "medium",
@@ -1671,6 +1656,24 @@
       "priority_score": 76,
       "profile_level": "operational",
       "slug": "sn-114",
+      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
+    },
+    {
+      "candidate_count": 8,
+      "completeness_score": 55,
+      "confidence": "high",
+      "gap_reasons": [
+        "missing-openapi",
+        "missing-subnet-api",
+        "missing-sse",
+        "missing-data-artifact"
+      ],
+      "missing_critical_count": 4,
+      "name": "Dojo",
+      "netuid": 52,
+      "priority_score": 73,
+      "profile_level": "identity-complete",
+      "slug": "sn-52",
       "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them"
     },
     {
@@ -2334,24 +2337,25 @@
   "summary": {
     "average_completeness_score": 49,
     "by_confidence": {
-      "high": 16,
-      "medium": 113
+      "high": 23,
+      "medium": 106
     },
     "by_profile_level": {
       "adapter-backed": 2,
-      "directory-only": 38,
-      "identity-complete": 49,
+      "directory-only": 37,
+      "identity-complete": 50,
       "operational": 40
     },
     "critical_gap_counts": {
       "missing-data-artifact": 118,
+      "missing-docs": 5,
       "missing-openapi": 102,
       "missing-source-repo": 21,
       "missing-sse": 128,
       "missing-subnet-api": 118,
-      "missing-website": 34
+      "missing-website": 32
     },
-    "needs_identity_count": 40,
+    "needs_identity_count": 39,
     "needs_operational_count": 87,
     "profile_count": 129
   }

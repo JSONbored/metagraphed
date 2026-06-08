@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "netuid": 47,
+  "name": "EvolAI",
+  "slug": "sn-47",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "data",
+    "identity-reviewed",
+    "official-source-repo"
+  ],
+  "source_repo": "https://github.com/openevolai/evolai",
+  "dashboard_url": "https://taomarketcap.com/subnets/47",
+  "notes": "Reviewed overlay for SN47 using the official EvolAI source repository, referenced public Hugging Face dataset, and universal TaoMarketCap dashboard. No verified official website, OpenAPI, safe public subnet API, or SSE surface has been promoted yet.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "verified_at": "2026-06-08T09:25:00.000Z",
+    "source_count": 4,
+    "gap_notes": [
+      "No verified official website yet.",
+      "No verified docs site yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-47-evolai-source",
+      "name": "EvolAI source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/openevolai/evolai",
+      "provider": "evolai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/openevolai/evolai"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official EvolAI source repository for SN47."
+    },
+    {
+      "id": "sn-47-evolai-universal-qa-dataset",
+      "name": "EvolAI Universal QA dataset",
+      "kind": "data-artifact",
+      "url": "https://huggingface.co/datasets/evolai/universal_qa",
+      "provider": "evolai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/openevolai/evolai",
+        "https://huggingface.co/datasets/evolai/universal_qa"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Hugging Face dataset referenced by the EvolAI repository."
+    }
+  ]
+}
