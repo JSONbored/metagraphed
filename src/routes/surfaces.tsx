@@ -7,6 +7,7 @@ import { CurationChip } from "@/components/metagraphed/chips";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { ShareButton } from "@/components/metagraphed/share-button";
 import {
   FilterBar,
   Pagination,

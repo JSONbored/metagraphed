@@ -6,6 +6,7 @@ import { AppShell } from "@/components/metagraphed/app-shell";
 import { CurationChip, HealthPill } from "@/components/metagraphed/chips";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { ShareButton } from "@/components/metagraphed/share-button";
 import {
   FilterBar,
   Pagination,
