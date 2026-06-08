@@ -99,21 +99,18 @@ function SubnetsTable() {
   const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
 
   // Mirror the most recently used cursor into the URL so refresh / sharing
-  // restores the same page. We replace history rather than push, so back
-  // navigation still moves between routes the user actually visited.
+  // restores the same starting page. `data.pageParams` is the canonical
+  // record of which cursors fetched which pages.
+  const lastPageParam = (data.pageParams[data.pageParams.length - 1] ?? "") as string;
   useEffect(() => {
-    const lastUsed = (lastPage?.meta as Record<string, unknown> | undefined)
-      ?._fetched_with_cursor as string | undefined;
-    const sentCursor =
-      pages.length > 1 ? (pages[pages.length - 1]?.meta?.pagination?.cursor as string | undefined) : "";
-    const wanted = lastUsed ?? sentCursor ?? "";
-    if (wanted !== search.cursor) {
+    if (lastPageParam !== search.cursor) {
       navigate({
-        search: (prev: Record<string, unknown>) => ({ ...prev, cursor: wanted }) as never,
+        search: (prev: Record<string, unknown>) =>
+          ({ ...prev, cursor: lastPageParam }) as never,
         replace: true,
       });
     }
-  }, [pages.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [lastPageParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
