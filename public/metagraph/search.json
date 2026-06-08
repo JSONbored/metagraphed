@@ -329,6 +329,22 @@
     },
     {
       "artifact_path": "/metagraph/providers.json",
+      "id": "provider:gopher-ai",
+      "subtitle": "subnet-team",
+      "title": "Gopher AI",
+      "tokens": [
+        "ai",
+        "claimed",
+        "gopher",
+        "provider",
+        "subnet",
+        "team"
+      ],
+      "type": "provider",
+      "url": "https://developers.gopher-ai.com/"
+    },
+    {
+      "artifact_path": "/metagraph/providers.json",
       "id": "provider:graphite-ai",
       "subtitle": "subnet-team",
       "title": "Graphite AI",
@@ -2039,6 +2055,32 @@
       "url": "/subnets/28"
     },
     {
+      "artifact_path": "/metagraph/subnets/42.json",
+      "id": "subnet:42",
+      "netuid": 42,
+      "slug": "sn-42",
+      "subtitle": "SN42 ס",
+      "title": "Gopher",
+      "tokens": [
+        "42",
+        "baseline",
+        "curated",
+        "data",
+        "docs",
+        "drift",
+        "gopher",
+        "identity",
+        "official",
+        "repo",
+        "reviewed",
+        "sn",
+        "source",
+        "tee"
+      ],
+      "type": "subnet",
+      "url": "/subnets/42"
+    },
+    {
       "artifact_path": "/metagraph/subnets/56.json",
       "id": "subnet:56",
       "netuid": 56,
@@ -3153,23 +3195,6 @@
       ],
       "type": "subnet",
       "url": "/subnets/72"
-    },
-    {
-      "artifact_path": "/metagraph/subnets/42.json",
-      "id": "subnet:42",
-      "netuid": 42,
-      "slug": "sn-42",
-      "subtitle": "SN42 ס",
-      "title": "Subnet 42",
-      "tokens": [
-        "42",
-        "baseline",
-        "curated",
-        "sn",
-        "subnet"
-      ],
-      "type": "subnet",
-      "url": "/subnets/42"
     },
     {
       "artifact_path": "/metagraph/subnets/86.json",
@@ -8567,6 +8592,45 @@
     },
     {
       "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-42-gopher-docs",
+      "netuid": 42,
+      "slug": "sn-42",
+      "subtitle": "docs / gopher-ai",
+      "title": "Gopher subnet documentation",
+      "tokens": [
+        "42",
+        "ai",
+        "docs",
+        "documentation",
+        "gopher",
+        "sn",
+        "subnet"
+      ],
+      "type": "surface",
+      "url": "https://developers.gopher-ai.com/docs/subnet/intro"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
+      "id": "surface:sn-42-gopher-source",
+      "netuid": 42,
+      "slug": "sn-42",
+      "subtitle": "source-repo / gopher-ai",
+      "title": "Gopher subnet source repository",
+      "tokens": [
+        "42",
+        "ai",
+        "gopher",
+        "repo",
+        "repository",
+        "sn",
+        "source",
+        "subnet"
+      ],
+      "type": "surface",
+      "url": "https://github.com/gopher-lab/subnet-42"
+    },
+    {
+      "artifact_path": "/metagraph/surfaces.json",
       "id": "surface:sn-56-website-link-www-gradients-io-data-artifact-9",
       "netuid": 56,
       "slug": "sn-56",
@@ -13375,59 +13439,6 @@
       ],
       "type": "surface",
       "url": "https://github.com/natixnetwork/streetvision-subnet"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-42-taomarketcap-dashboard",
-      "netuid": 42,
-      "slug": "sn-42",
-      "subtitle": "dashboard / taomarketcap",
-      "title": "Subnet 42 TaoMarketCap dashboard",
-      "tokens": [
-        "42",
-        "dashboard",
-        "sn",
-        "subnet",
-        "taomarketcap"
-      ],
-      "type": "surface",
-      "url": "https://taomarketcap.com/subnets/42"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-42-taopedia-article",
-      "netuid": 42,
-      "slug": "sn-42",
-      "subtitle": "docs / taopedia-articles",
-      "title": "Subnet 42 Taopedia article",
-      "tokens": [
-        "42",
-        "article",
-        "articles",
-        "docs",
-        "sn",
-        "subnet",
-        "taopedia"
-      ],
-      "type": "surface",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx"
-    },
-    {
-      "artifact_path": "/metagraph/surfaces.json",
-      "id": "surface:sn-42-tensorplex-docs",
-      "netuid": 42,
-      "slug": "sn-42",
-      "subtitle": "docs / tensorplex-subnet-docs",
-      "title": "Subnet 42 Tensorplex subnet docs",
-      "tokens": [
-        "42",
-        "docs",
-        "sn",
-        "subnet",
-        "tensorplex"
-      ],
-      "type": "surface",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/42"
     },
     {
       "artifact_path": "/metagraph/surfaces.json",

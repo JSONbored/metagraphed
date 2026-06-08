@@ -1,7 +1,16 @@
 {
   "artifacts": {
     "added": [],
-    "modified": [],
+    "modified": [
+      {
+        "hash": "fc2a6567d6b0fdd31ee4e6dbb140ce91d1fa11f45994c3dbb8661c9e2cf33b10",
+        "path": "providers.json"
+      },
+      {
+        "hash": "87bf02d214e57b9161d4e0b32a08836397cbbb777559f9b153c652b883db21d6",
+        "path": "search.json"
+      }
+    ],
     "removed": []
   },
   "contract_version": "2026-06-06.1",
@@ -19,7 +28,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 0,
+    "artifact_modified_count": 2,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
@@ -39,8 +48,8 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 663,
-        "before": 663,
+        "after": 662,
+        "before": 662,
         "delta": 0
       }
     },

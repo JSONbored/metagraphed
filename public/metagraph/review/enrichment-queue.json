@@ -693,68 +693,6 @@
         "subnet-api",
         "website"
       ],
-      "name": "Subnet 42",
-      "netuid": 42,
-      "operational_interface_count": 0,
-      "priority_score": 148,
-      "profile_level": "directory-only",
-      "reason_codes": [
-        "directory-only-profile",
-        "missing-source-repo",
-        "missing-website",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit official docs, website, or source repository evidence",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-42-taomarketcap-dashboard",
-        "sn-42-taopedia-article",
-        "sn-42-tensorplex-docs"
-      ],
-      "slug": "sn-42",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/42",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_42/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/42/subnet.json",
-        "https://taomarketcap.com/subnets/42"
-      ],
-      "stale_candidate_count": 0,
-      "surface_count": 3,
-      "verified_candidate_count": 3
-    },
-    {
-      "adapter_score": 0,
-      "candidate_count": 3,
-      "candidate_evidence_summary": {
-        "candidate_count": 0,
-        "kinds_with_candidates": [],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 0,
-        "stale_kinds": [],
-        "stale_or_failed_count": 0,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 20,
-      "contribution_hint": "Submit one official public website, source-repo candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "website",
-        "source-repo"
-      ],
-      "endpoint_count": 3,
-      "evidence_action": "submit-new-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "source-repo",
-        "sse",
-        "subnet-api",
-        "website"
-      ],
       "name": "ain",
       "netuid": 69,
       "operational_interface_count": 0,
@@ -3350,6 +3288,65 @@
       "stale_candidate_count": 5,
       "surface_count": 7,
       "verified_candidate_count": 10
+    },
+    {
+      "adapter_score": 0,
+      "candidate_count": 3,
+      "candidate_evidence_summary": {
+        "candidate_count": 0,
+        "kinds_with_candidates": [],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 0,
+        "stale_kinds": [],
+        "stale_or_failed_count": 0,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 40,
+      "contribution_hint": "Submit one official public website candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "website"
+      ],
+      "endpoint_count": 2,
+      "evidence_action": "submit-new-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api",
+        "website"
+      ],
+      "name": "Gopher",
+      "netuid": 42,
+      "operational_interface_count": 0,
+      "priority_score": 117,
+      "profile_level": "directory-only",
+      "reason_codes": [
+        "directory-only-profile",
+        "missing-website",
+        "needs-maintainer-review"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "review_state": "needs-review",
+      "sample_candidate_ids": [
+        "sn-42-taomarketcap-dashboard",
+        "sn-42-taopedia-article",
+        "sn-42-tensorplex-docs"
+      ],
+      "slug": "sn-42",
+      "source_urls": [
+        "https://developers.gopher-ai.com/docs/subnet/intro",
+        "https://developers.gopher-ai.com/docs/subnet/miners",
+        "https://github.com/gopher-lab/subnet-42",
+        "https://taomarketcap.com/subnets/42"
+      ],
+      "stale_candidate_count": 0,
+      "surface_count": 2,
+      "verified_candidate_count": 3
     },
     {
       "adapter_score": 0,
@@ -8673,7 +8670,7 @@
     "top_direct_submission_kinds": {
       "data-artifact": 58,
       "openapi": 68,
-      "source-repo": 22,
+      "source-repo": 21,
       "subnet-api": 68,
       "website": 23
     }
