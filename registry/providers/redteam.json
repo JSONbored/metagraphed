@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "redteam",
+  "name": "RedTeam",
+  "kind": "subnet-team",
+  "website_url": "https://www.theredteam.io/",
+  "docs_url": "https://docs.theredteam.io/",
+  "github_url": "https://github.com/RedTeamSubnet/RedTeam",
+  "authority": "official",
+  "notes": "Provider entry for RedTeam SN61 website, dashboard, documentation, and source repository."
+}

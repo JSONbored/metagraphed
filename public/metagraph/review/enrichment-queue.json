@@ -470,6 +470,79 @@
       "verified_candidate_count": 3
     },
     {
+      "adapter_score": 1,
+      "candidate_count": 21,
+      "candidate_evidence_summary": {
+        "candidate_count": 18,
+        "kinds_with_candidates": [
+          "docs",
+          "openapi",
+          "subnet-api",
+          "website"
+        ],
+        "live_kinds": [
+          "docs",
+          "website"
+        ],
+        "live_or_redirected_count": 10,
+        "reviewable_count": 18,
+        "stale_kinds": [
+          "docs",
+          "openapi",
+          "subnet-api"
+        ],
+        "stale_or_failed_count": 8,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 25,
+      "contribution_hint": "Submit one official public docs, website candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "docs",
+        "website"
+      ],
+      "endpoint_count": 1,
+      "evidence_action": "review-existing-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "docs",
+        "openapi",
+        "sse",
+        "subnet-api",
+        "website"
+      ],
+      "name": "Mainframe",
+      "netuid": 25,
+      "operational_interface_count": 0,
+      "priority_score": 148,
+      "profile_level": "directory-only",
+      "reason_codes": [
+        "directory-only-profile",
+        "missing-docs",
+        "missing-website"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-25-github-readme-macrocosm-os-mainframe-dashboard-1",
+        "sn-25-github-readme-macrocosm-os-mainframe-docs-2",
+        "sn-25-github-readme-macrocosm-os-mainframe-subnet-api-3",
+        "sn-25-taomarketcap-dashboard",
+        "sn-25-taomarketcap-source-repo"
+      ],
+      "slug": "sn-25",
+      "source_urls": [
+        "https://github.com/macrocosm-os/mainframe",
+        "https://taomarketcap.com/subnets/25"
+      ],
+      "stale_candidate_count": 8,
+      "surface_count": 1,
+      "verified_candidate_count": 13
+    },
+    {
       "adapter_score": 0,
       "candidate_count": 3,
       "candidate_evidence_summary": {
@@ -1561,79 +1634,6 @@
         "sse",
         "subnet-api"
       ],
-      "name": "MVTRX",
-      "netuid": 79,
-      "operational_interface_count": 0,
-      "priority_score": 128,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-79-github-readme-taos-im-sn-79-docs-1",
-        "sn-79-taomarketcap-dashboard",
-        "sn-79-taomarketcap-website",
-        "sn-79-taopedia-article",
-        "sn-79-tensorplex-docs"
-      ],
-      "slug": "sn-79",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/79",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_79/index.mdx",
-        "https://github.com/taos-im/sn-79",
-        "https://github.com/taos-im/sn-79/blob/main/README.md",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/79/subnet.json",
-        "https://simulate.trading/taos-im-paper",
-        "https://taomarketcap.com/subnets/79",
-        "https://taos.im/"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 6,
-      "verified_candidate_count": 16
-    },
-    {
-      "adapter_score": 6,
-      "candidate_count": 22,
-      "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 6,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
       "name": "Compelle",
       "netuid": 82,
       "operational_interface_count": 0,
@@ -1736,78 +1736,6 @@
       "verified_candidate_count": 10
     },
     {
-      "adapter_score": 9,
-      "candidate_count": 21,
-      "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 9,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "iota",
-      "netuid": 9,
-      "operational_interface_count": 0,
-      "priority_score": 127,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-9-github-readme-macrocosm-os-iota-dashboard-1",
-        "sn-9-github-readme-macrocosm-os-iota-docs-2",
-        "sn-9-taomarketcap-dashboard",
-        "sn-9-taomarketcap-source-repo",
-        "sn-9-taomarketcap-website"
-      ],
-      "slug": "sn-9",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/9",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_9/index.mdx",
-        "https://github.com/macrocosm-os/iota",
-        "https://github.com/macrocosm-os/iota/blob/main/README.md",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/9/subnet.json",
-        "https://iota.macrocosmos.ai/",
-        "https://iota.macrocosmos.ai/dashboard/mainnet"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 9,
-      "verified_candidate_count": 14
-    },
-    {
       "adapter_score": 4,
       "candidate_count": 5,
       "candidate_evidence_summary": {
@@ -1872,78 +1800,6 @@
       "stale_candidate_count": 0,
       "surface_count": 4,
       "verified_candidate_count": 5
-    },
-    {
-      "adapter_score": 8,
-      "candidate_count": 21,
-      "candidate_evidence_summary": {
-        "candidate_count": 6,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 6,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 6,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 8,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Mainframe",
-      "netuid": 25,
-      "operational_interface_count": 0,
-      "priority_score": 127,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-25-github-readme-macrocosm-os-mainframe-dashboard-1",
-        "sn-25-github-readme-macrocosm-os-mainframe-docs-2",
-        "sn-25-github-readme-macrocosm-os-mainframe-subnet-api-3",
-        "sn-25-taomarketcap-dashboard",
-        "sn-25-taomarketcap-source-repo"
-      ],
-      "slug": "sn-25",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/25",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_25/index.mdx",
-        "https://github.com/macrocosm-os/mainframe",
-        "https://github.com/macrocosm-os/mainframe/blob/main/README.md",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/25/subnet.json",
-        "https://macrocosmos.ai/sn25",
-        "https://www.macrocosmos.ai/sn25/dashboard"
-      ],
-      "stale_candidate_count": 6,
-      "surface_count": 8,
-      "verified_candidate_count": 13
     },
     {
       "adapter_score": 22,
@@ -2963,80 +2819,6 @@
       "verified_candidate_count": 4
     },
     {
-      "adapter_score": 9,
-      "candidate_count": 19,
-      "candidate_evidence_summary": {
-        "candidate_count": 6,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 6,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 1,
-        "unverified_kinds": [
-          "subnet-api"
-        ]
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 9,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "ORO",
-      "netuid": 15,
-      "operational_interface_count": 0,
-      "priority_score": 124,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-15-github-readme-oro-ai-oro-dashboard-1",
-        "sn-15-github-readme-oro-ai-oro-docs-2",
-        "sn-15-github-readme-oro-ai-oro-subnet-api-3",
-        "sn-15-taomarketcap-dashboard",
-        "sn-15-taomarketcap-source-repo"
-      ],
-      "slug": "sn-15",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/15",
-        "https://docs.oroagents.com/docs/miners/quick-start",
-        "https://github.com/ORO-AI/oro",
-        "https://github.com/ORO-AI/oro/blob/main/README.md",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_15/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json",
-        "https://oroagents.com/"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 9,
-      "verified_candidate_count": 12
-    },
-    {
       "adapter_score": 0,
       "candidate_count": 4,
       "candidate_evidence_summary": {
@@ -3657,77 +3439,74 @@
       "verified_candidate_count": 4
     },
     {
-      "adapter_score": 7,
-      "candidate_count": 18,
+      "adapter_score": 3,
+      "candidate_count": 21,
       "candidate_evidence_summary": {
-        "candidate_count": 5,
+        "candidate_count": 12,
         "kinds_with_candidates": [
+          "docs",
           "openapi",
           "subnet-api"
         ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 5,
+        "live_kinds": [
+          "docs"
+        ],
+        "live_or_redirected_count": 6,
+        "reviewable_count": 12,
         "stale_kinds": [
+          "docs",
           "openapi",
           "subnet-api"
         ],
-        "stale_or_failed_count": 5,
+        "stale_or_failed_count": 6,
         "unverified_count": 0,
         "unverified_kinds": []
       },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
+      "completeness_score": 40,
+      "contribution_hint": "Submit one official public docs candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
       "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
+        "docs"
       ],
-      "endpoint_count": 7,
-      "evidence_action": "replace-stale-evidence",
+      "endpoint_count": 3,
+      "evidence_action": "review-existing-evidence",
       "lane": "direct-submission",
       "manual_review_required": false,
       "missing_kinds": [
         "data-artifact",
+        "docs",
         "openapi",
         "sse",
         "subnet-api"
       ],
-      "name": "Apex",
-      "netuid": 1,
+      "name": "iota",
+      "netuid": 9,
       "operational_interface_count": 0,
-      "priority_score": 122,
-      "profile_level": "identity-complete",
+      "priority_score": 123,
+      "profile_level": "directory-only",
       "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
+        "directory-only-profile",
+        "missing-docs"
       ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "review_state": "maintainer-reviewed",
       "sample_candidate_ids": [
-        "sn-1-github-readme-macrocosm-os-apex-docs-1",
-        "sn-1-taomarketcap-dashboard",
-        "sn-1-taomarketcap-source-repo",
-        "sn-1-taomarketcap-website",
-        "sn-1-taopedia-article"
+        "sn-9-github-readme-macrocosm-os-iota-dashboard-1",
+        "sn-9-github-readme-macrocosm-os-iota-docs-2",
+        "sn-9-taomarketcap-dashboard",
+        "sn-9-taomarketcap-source-repo",
+        "sn-9-taomarketcap-website"
       ],
-      "slug": "sn-1",
+      "slug": "sn-9",
       "source_urls": [
-        "https://apex.macrocosmos.ai/",
-        "https://api.taomarketcap.com/public/v1/subnets/1",
-        "https://docs.macrocosmos.ai/subnets/subnet-1-apex",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_1_apex/index.mdx",
-        "https://github.com/macrocosm-os/apex",
-        "https://github.com/macrocosm-os/apex/blob/main/README.md",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json",
-        "https://taomarketcap.com/subnets/1"
+        "https://github.com/macrocosm-os/iota",
+        "https://github.com/macrocosm-os/iota/blob/main/README.md",
+        "https://iota.macrocosmos.ai/",
+        "https://iota.macrocosmos.ai/dashboard/mainnet"
       ],
-      "stale_candidate_count": 5,
-      "surface_count": 7,
-      "verified_candidate_count": 11
+      "stale_candidate_count": 6,
+      "surface_count": 3,
+      "verified_candidate_count": 14
     },
     {
       "adapter_score": 8,
@@ -4017,80 +3796,6 @@
       "verified_candidate_count": 11
     },
     {
-      "adapter_score": 9,
-      "candidate_count": 16,
-      "candidate_evidence_summary": {
-        "candidate_count": 6,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 6,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 1,
-        "unverified_kinds": [
-          "subnet-api"
-        ]
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 9,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Trishool",
-      "netuid": 23,
-      "operational_interface_count": 0,
-      "priority_score": 120,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-23-github-readme-trishoolai-trishool-phase2-dashboard-1",
-        "sn-23-github-readme-trishoolai-trishool-phase2-subnet-api-2",
-        "sn-23-taomarketcap-dashboard",
-        "sn-23-taomarketcap-source-repo",
-        "sn-23-taomarketcap-website"
-      ],
-      "slug": "sn-23",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/23",
-        "https://github.com/TrishoolAI/trishool-phase2",
-        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_23/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/23/subnet.json",
-        "https://trishool.ai/",
-        "https://trishool.ai/dashboard"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 9,
-      "verified_candidate_count": 9
-    },
-    {
       "adapter_score": 27,
       "candidate_count": 16,
       "candidate_evidence_summary": {
@@ -4158,79 +3863,6 @@
       "stale_candidate_count": 5,
       "surface_count": 7,
       "verified_candidate_count": 11
-    },
-    {
-      "adapter_score": 7,
-      "candidate_count": 17,
-      "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 7,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "TensorUSD",
-      "netuid": 113,
-      "operational_interface_count": 0,
-      "priority_score": 120,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-113-github-readme-tensorusd-subnet-docs-1",
-        "sn-113-taomarketcap-dashboard",
-        "sn-113-taomarketcap-source-repo",
-        "sn-113-taomarketcap-website",
-        "sn-113-taopedia-article"
-      ],
-      "slug": "sn-113",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/113",
-        "https://docs.tensorusd.com/components/subnet",
-        "https://github.com/TensorUSD/subnet",
-        "https://github.com/TensorUSD/subnet/blob/main/README.md",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_113/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/113/subnet.json",
-        "https://taomarketcap.com/subnets/113",
-        "https://tensorusd.com/"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 7,
-      "verified_candidate_count": 10
     },
     {
       "adapter_score": 7,
@@ -4445,151 +4077,6 @@
       ],
       "stale_candidate_count": 5,
       "surface_count": 6,
-      "verified_candidate_count": 10
-    },
-    {
-      "adapter_score": 6,
-      "candidate_count": 16,
-      "candidate_evidence_summary": {
-        "candidate_count": 6,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 6,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 1,
-        "unverified_kinds": [
-          "subnet-api"
-        ]
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 6,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "Investing",
-      "netuid": 88,
-      "operational_interface_count": 0,
-      "priority_score": 119,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-88-github-readme-mobiusfund-investing-dashboard-1",
-        "sn-88-github-readme-mobiusfund-investing-subnet-api-2",
-        "sn-88-taomarketcap-dashboard",
-        "sn-88-taomarketcap-source-repo",
-        "sn-88-taomarketcap-website"
-      ],
-      "slug": "sn-88",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/88",
-        "https://db.investing88.ai/",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_88/index.mdx",
-        "https://github.com/mobiusfund/investing",
-        "https://github.com/mobiusfund/investing/blob/main/README.md",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/88/subnet.json",
-        "https://investing88.ai/"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 6,
-      "verified_candidate_count": 9
-    },
-    {
-      "adapter_score": 7,
-      "candidate_count": 16,
-      "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 7,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "ConnitoAI",
-      "netuid": 102,
-      "operational_interface_count": 0,
-      "priority_score": 119,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-102-github-readme-connito-ai-connito-docs-1",
-        "sn-102-taomarketcap-dashboard",
-        "sn-102-taomarketcap-source-repo",
-        "sn-102-taomarketcap-website",
-        "sn-102-taopedia-article"
-      ],
-      "slug": "sn-102",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/102",
-        "https://connito.ai/",
-        "https://github.com/Connito-AI/Connito",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_102/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/102/subnet.json",
-        "https://taomarketcap.com/subnets/102"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 7,
       "verified_candidate_count": 10
     },
     {
@@ -4936,6 +4423,77 @@
       "stale_candidate_count": 5,
       "surface_count": 7,
       "verified_candidate_count": 10
+    },
+    {
+      "adapter_score": 24,
+      "candidate_count": 16,
+      "candidate_evidence_summary": {
+        "candidate_count": 9,
+        "kinds_with_candidates": [
+          "docs",
+          "openapi",
+          "subnet-api"
+        ],
+        "live_kinds": [
+          "docs"
+        ],
+        "live_or_redirected_count": 2,
+        "reviewable_count": 9,
+        "stale_kinds": [
+          "docs",
+          "openapi",
+          "subnet-api"
+        ],
+        "stale_or_failed_count": 6,
+        "unverified_count": 1,
+        "unverified_kinds": [
+          "subnet-api"
+        ]
+      },
+      "completeness_score": 48,
+      "contribution_hint": "Submit one official public docs candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "docs"
+      ],
+      "endpoint_count": 4,
+      "evidence_action": "review-existing-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "docs",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Investing",
+      "netuid": 88,
+      "operational_interface_count": 1,
+      "priority_score": 117,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate",
+        "missing-docs"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-88-github-readme-mobiusfund-investing-dashboard-1",
+        "sn-88-github-readme-mobiusfund-investing-subnet-api-2",
+        "sn-88-taomarketcap-dashboard",
+        "sn-88-taomarketcap-source-repo",
+        "sn-88-taomarketcap-website"
+      ],
+      "slug": "sn-88",
+      "source_urls": [
+        "https://db.investing88.ai/",
+        "https://github.com/mobiusfund/investing",
+        "https://github.com/mobiusfund/investing/blob/main/README.md",
+        "https://investing88.ai/"
+      ],
+      "stale_candidate_count": 6,
+      "surface_count": 4,
+      "verified_candidate_count": 9
     },
     {
       "adapter_score": 6,
@@ -5566,6 +5124,75 @@
       "verified_candidate_count": 8
     },
     {
+      "adapter_score": 2,
+      "candidate_count": 16,
+      "candidate_evidence_summary": {
+        "candidate_count": 11,
+        "kinds_with_candidates": [
+          "docs",
+          "openapi",
+          "subnet-api"
+        ],
+        "live_kinds": [
+          "docs"
+        ],
+        "live_or_redirected_count": 5,
+        "reviewable_count": 11,
+        "stale_kinds": [
+          "docs",
+          "openapi",
+          "subnet-api"
+        ],
+        "stale_or_failed_count": 6,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 40,
+      "contribution_hint": "Submit one official public docs candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "docs"
+      ],
+      "endpoint_count": 2,
+      "evidence_action": "review-existing-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "docs",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "ConnitoAI",
+      "netuid": 102,
+      "operational_interface_count": 0,
+      "priority_score": 115,
+      "profile_level": "directory-only",
+      "reason_codes": [
+        "directory-only-profile",
+        "missing-docs"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-102-github-readme-connito-ai-connito-docs-1",
+        "sn-102-taomarketcap-dashboard",
+        "sn-102-taomarketcap-source-repo",
+        "sn-102-taomarketcap-website",
+        "sn-102-taopedia-article"
+      ],
+      "slug": "sn-102",
+      "source_urls": [
+        "https://connito.ai/",
+        "https://github.com/Connito-AI/Connito",
+        "https://taomarketcap.com/subnets/102"
+      ],
+      "stale_candidate_count": 6,
+      "surface_count": 2,
+      "verified_candidate_count": 10
+    },
+    {
       "adapter_score": 5,
       "candidate_count": 14,
       "candidate_evidence_summary": {
@@ -5705,79 +5332,6 @@
       ],
       "stale_candidate_count": 5,
       "surface_count": 6,
-      "verified_candidate_count": 7
-    },
-    {
-      "adapter_score": 7,
-      "candidate_count": 13,
-      "candidate_evidence_summary": {
-        "candidate_count": 5,
-        "kinds_with_candidates": [
-          "openapi",
-          "subnet-api"
-        ],
-        "live_kinds": [],
-        "live_or_redirected_count": 0,
-        "reviewable_count": 5,
-        "stale_kinds": [
-          "openapi",
-          "subnet-api"
-        ],
-        "stale_or_failed_count": 5,
-        "unverified_count": 0,
-        "unverified_kinds": []
-      },
-      "completeness_score": 50,
-      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
-      "curation_level": "machine-verified",
-      "direct_submission_kinds": [
-        "openapi",
-        "subnet-api",
-        "data-artifact"
-      ],
-      "endpoint_count": 7,
-      "evidence_action": "replace-stale-evidence",
-      "lane": "direct-submission",
-      "manual_review_required": false,
-      "missing_kinds": [
-        "data-artifact",
-        "openapi",
-        "sse",
-        "subnet-api"
-      ],
-      "name": "RedTeam",
-      "netuid": 61,
-      "operational_interface_count": 0,
-      "priority_score": 114,
-      "profile_level": "identity-complete",
-      "reason_codes": [
-        "missing-data-artifact",
-        "missing-openapi",
-        "missing-subnet-api",
-        "needs-maintainer-review"
-      ],
-      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "review_state": "machine-generated",
-      "sample_candidate_ids": [
-        "sn-61-github-readme-redteamsubnet-redteam-dashboard-1",
-        "sn-61-github-readme-redteamsubnet-redteam-docs-2",
-        "sn-61-taomarketcap-dashboard",
-        "sn-61-taomarketcap-source-repo",
-        "sn-61-taomarketcap-website"
-      ],
-      "slug": "sn-61",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/61",
-        "https://dashboard.theredteam.io/",
-        "https://docs.theredteam.io/",
-        "https://github.com/RedTeamSubnet/RedTeam",
-        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_61/index.mdx",
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json",
-        "https://www.theredteam.io/"
-      ],
-      "stale_candidate_count": 5,
-      "surface_count": 7,
       "verified_candidate_count": 7
     },
     {
@@ -6849,6 +6403,73 @@
       "verified_candidate_count": 10
     },
     {
+      "adapter_score": 23,
+      "candidate_count": 16,
+      "candidate_evidence_summary": {
+        "candidate_count": 8,
+        "kinds_with_candidates": [
+          "docs",
+          "openapi"
+        ],
+        "live_kinds": [
+          "docs"
+        ],
+        "live_or_redirected_count": 4,
+        "reviewable_count": 8,
+        "stale_kinds": [
+          "docs",
+          "openapi"
+        ],
+        "stale_or_failed_count": 4,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 55,
+      "contribution_hint": "Submit one official public docs candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "docs"
+      ],
+      "endpoint_count": 3,
+      "evidence_action": "review-existing-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "docs",
+        "openapi",
+        "sse"
+      ],
+      "name": "Trishool",
+      "netuid": 23,
+      "operational_interface_count": 1,
+      "priority_score": 103,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate",
+        "missing-docs"
+      ],
+      "recommended_action": "submit official docs, website, or source repository evidence",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-23-github-readme-trishoolai-trishool-phase2-dashboard-1",
+        "sn-23-github-readme-trishoolai-trishool-phase2-subnet-api-2",
+        "sn-23-taomarketcap-dashboard",
+        "sn-23-taomarketcap-source-repo",
+        "sn-23-taomarketcap-website"
+      ],
+      "slug": "sn-23",
+      "source_urls": [
+        "https://github.com/TrishoolAI/trishool-phase2",
+        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md",
+        "https://trishool.ai/",
+        "https://trishool.ai/dashboard"
+      ],
+      "stale_candidate_count": 4,
+      "surface_count": 3,
+      "verified_candidate_count": 9
+    },
+    {
       "adapter_score": 28,
       "candidate_count": 13,
       "candidate_evidence_summary": {
@@ -7419,6 +7040,73 @@
       "stale_candidate_count": 0,
       "surface_count": 6,
       "verified_candidate_count": 3
+    },
+    {
+      "adapter_score": 23,
+      "candidate_count": 22,
+      "candidate_evidence_summary": {
+        "candidate_count": 5,
+        "kinds_with_candidates": [
+          "openapi",
+          "subnet-api"
+        ],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 5,
+        "stale_kinds": [
+          "openapi",
+          "subnet-api"
+        ],
+        "stale_or_failed_count": 5,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 63,
+      "contribution_hint": "Submit one official public openapi, subnet-api candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api"
+      ],
+      "endpoint_count": 3,
+      "evidence_action": "replace-stale-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "MVTRX",
+      "netuid": 79,
+      "operational_interface_count": 1,
+      "priority_score": 99,
+      "profile_level": "operational",
+      "reason_codes": [
+        "adapter-candidate",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-79-github-readme-taos-im-sn-79-docs-1",
+        "sn-79-taomarketcap-dashboard",
+        "sn-79-taomarketcap-website",
+        "sn-79-taopedia-article",
+        "sn-79-tensorplex-docs"
+      ],
+      "slug": "sn-79",
+      "source_urls": [
+        "https://github.com/taos-im/sn-79",
+        "https://github.com/taos-im/sn-79/blob/main/README.md",
+        "https://simulate.trading/taos-im-paper",
+        "https://taomarketcap.com/subnets/79",
+        "https://taos.im/"
+      ],
+      "stale_candidate_count": 5,
+      "surface_count": 3,
+      "verified_candidate_count": 16
     },
     {
       "adapter_score": 27,
@@ -8002,6 +7690,214 @@
       "verified_candidate_count": 5
     },
     {
+      "adapter_score": 3,
+      "candidate_count": 19,
+      "candidate_evidence_summary": {
+        "candidate_count": 6,
+        "kinds_with_candidates": [
+          "openapi",
+          "subnet-api"
+        ],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 6,
+        "stale_kinds": [
+          "openapi",
+          "subnet-api"
+        ],
+        "stale_or_failed_count": 5,
+        "unverified_count": 1,
+        "unverified_kinds": [
+          "subnet-api"
+        ]
+      },
+      "completeness_score": 55,
+      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
+      "endpoint_count": 3,
+      "evidence_action": "replace-stale-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "ORO",
+      "netuid": 15,
+      "operational_interface_count": 0,
+      "priority_score": 94,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-15-github-readme-oro-ai-oro-dashboard-1",
+        "sn-15-github-readme-oro-ai-oro-docs-2",
+        "sn-15-github-readme-oro-ai-oro-subnet-api-3",
+        "sn-15-taomarketcap-dashboard",
+        "sn-15-taomarketcap-source-repo"
+      ],
+      "slug": "sn-15",
+      "source_urls": [
+        "https://docs.oroagents.com/docs/miners/quick-start",
+        "https://github.com/ORO-AI/oro",
+        "https://github.com/ORO-AI/oro/blob/main/README.md",
+        "https://oroagents.com/"
+      ],
+      "stale_candidate_count": 5,
+      "surface_count": 3,
+      "verified_candidate_count": 12
+    },
+    {
+      "adapter_score": 3,
+      "candidate_count": 18,
+      "candidate_evidence_summary": {
+        "candidate_count": 5,
+        "kinds_with_candidates": [
+          "openapi",
+          "subnet-api"
+        ],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 5,
+        "stale_kinds": [
+          "openapi",
+          "subnet-api"
+        ],
+        "stale_or_failed_count": 5,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 55,
+      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
+      "endpoint_count": 3,
+      "evidence_action": "replace-stale-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "Apex",
+      "netuid": 1,
+      "operational_interface_count": 0,
+      "priority_score": 92,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-1-github-readme-macrocosm-os-apex-docs-1",
+        "sn-1-taomarketcap-dashboard",
+        "sn-1-taomarketcap-source-repo",
+        "sn-1-taomarketcap-website",
+        "sn-1-taopedia-article"
+      ],
+      "slug": "sn-1",
+      "source_urls": [
+        "https://apex.macrocosmos.ai/",
+        "https://docs.macrocosmos.ai/subnets/subnet-1-apex",
+        "https://github.com/macrocosm-os/apex",
+        "https://github.com/macrocosm-os/apex/blob/main/README.md",
+        "https://taomarketcap.com/subnets/1"
+      ],
+      "stale_candidate_count": 5,
+      "surface_count": 3,
+      "verified_candidate_count": 11
+    },
+    {
+      "adapter_score": 3,
+      "candidate_count": 17,
+      "candidate_evidence_summary": {
+        "candidate_count": 5,
+        "kinds_with_candidates": [
+          "openapi",
+          "subnet-api"
+        ],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 5,
+        "stale_kinds": [
+          "openapi",
+          "subnet-api"
+        ],
+        "stale_or_failed_count": 5,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 55,
+      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
+      "endpoint_count": 3,
+      "evidence_action": "replace-stale-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "TensorUSD",
+      "netuid": 113,
+      "operational_interface_count": 0,
+      "priority_score": 91,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-113-github-readme-tensorusd-subnet-docs-1",
+        "sn-113-taomarketcap-dashboard",
+        "sn-113-taomarketcap-source-repo",
+        "sn-113-taomarketcap-website",
+        "sn-113-taopedia-article"
+      ],
+      "slug": "sn-113",
+      "source_urls": [
+        "https://docs.tensorusd.com/components/subnet",
+        "https://github.com/TensorUSD/subnet",
+        "https://github.com/TensorUSD/subnet/blob/main/README.md",
+        "https://taomarketcap.com/subnets/113",
+        "https://tensorusd.com/"
+      ],
+      "stale_candidate_count": 5,
+      "surface_count": 3,
+      "verified_candidate_count": 10
+    },
+    {
       "adapter_score": 27,
       "candidate_count": 14,
       "candidate_evidence_summary": {
@@ -8134,6 +8030,75 @@
       "stale_candidate_count": 3,
       "surface_count": 7,
       "verified_candidate_count": 15
+    },
+    {
+      "adapter_score": 4,
+      "candidate_count": 13,
+      "candidate_evidence_summary": {
+        "candidate_count": 5,
+        "kinds_with_candidates": [
+          "openapi",
+          "subnet-api"
+        ],
+        "live_kinds": [],
+        "live_or_redirected_count": 0,
+        "reviewable_count": 5,
+        "stale_kinds": [
+          "openapi",
+          "subnet-api"
+        ],
+        "stale_or_failed_count": 5,
+        "unverified_count": 0,
+        "unverified_kinds": []
+      },
+      "completeness_score": 55,
+      "contribution_hint": "Submit one official public openapi, subnet-api, data-artifact candidate with npm run candidate:new.",
+      "curation_level": "maintainer-reviewed",
+      "direct_submission_kinds": [
+        "openapi",
+        "subnet-api",
+        "data-artifact"
+      ],
+      "endpoint_count": 4,
+      "evidence_action": "replace-stale-evidence",
+      "lane": "direct-submission",
+      "manual_review_required": false,
+      "missing_kinds": [
+        "data-artifact",
+        "openapi",
+        "sse",
+        "subnet-api"
+      ],
+      "name": "RedTeam",
+      "netuid": 61,
+      "operational_interface_count": 0,
+      "priority_score": 86,
+      "profile_level": "identity-complete",
+      "reason_codes": [
+        "missing-data-artifact",
+        "missing-openapi",
+        "missing-subnet-api"
+      ],
+      "recommended_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
+      "review_state": "maintainer-reviewed",
+      "sample_candidate_ids": [
+        "sn-61-github-readme-redteamsubnet-redteam-dashboard-1",
+        "sn-61-github-readme-redteamsubnet-redteam-docs-2",
+        "sn-61-taomarketcap-dashboard",
+        "sn-61-taomarketcap-source-repo",
+        "sn-61-taomarketcap-website"
+      ],
+      "slug": "sn-61",
+      "source_urls": [
+        "https://dashboard.theredteam.io/",
+        "https://docs.theredteam.io/",
+        "https://github.com/RedTeamSubnet/RedTeam",
+        "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md",
+        "https://www.theredteam.io/"
+      ],
+      "stale_candidate_count": 5,
+      "surface_count": 4,
+      "verified_candidate_count": 7
     },
     {
       "adapter_score": 29,
@@ -8629,8 +8594,8 @@
     "direct_submission_count": 97,
     "evidence_action_counts": {
       "maintainer-review-existing-evidence": 32,
-      "replace-stale-evidence": 61,
-      "review-existing-evidence": 5,
+      "replace-stale-evidence": 56,
+      "review-existing-evidence": 10,
       "submit-new-evidence": 29,
       "verify-existing-evidence": 2
     },
@@ -8645,12 +8610,12 @@
     "queue_count": 129,
     "subnet_count": 129,
     "top_direct_submission_kinds": {
-      "data-artifact": 50,
-      "docs": 5,
-      "openapi": 58,
+      "data-artifact": 44,
+      "docs": 10,
+      "openapi": 53,
       "source-repo": 21,
-      "subnet-api": 58,
-      "website": 32
+      "subnet-api": 53,
+      "website": 33
     }
   }
 }

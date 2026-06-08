@@ -3,51 +3,11 @@
     "added": [],
     "modified": [
       {
-        "hash": "d429e60f97976e65c6d744e86d34f3e43267c23d31e43b6708c3869b88c9fbc4",
-        "path": "coverage.json"
+        "hash": "a7924c397b1109ae7e5239615e3c7f2b75671a5f7379aa29528d59635b09255f",
+        "path": "providers.json"
       },
       {
-        "hash": "476678a24b25bce8a4db663f3a98fbdfdc37948f91ec2daea09fa9a975ff69b3",
-        "path": "curation.json"
-      },
-      {
-        "hash": "b34313073b2dee476ff605eafdade39368ee55e2fbc0a97e48444ee6e7c57108",
-        "path": "evidence-ledger.json"
-      },
-      {
-        "hash": "51aa14f1a76def4aabeb0d11ff59f2e30ce2f04fe5b6b290d00876c69591ffbf",
-        "path": "freshness.json"
-      },
-      {
-        "hash": "e6b4b366cb5eb84faabb8193899090421883d5e66e05f53e62405f64a5249923",
-        "path": "profiles.json"
-      },
-      {
-        "hash": "a274aea6fad1b77d33571089443df1b159700c609aff45525bb15a3b21c5b516",
-        "path": "review/adapter-candidates.json"
-      },
-      {
-        "hash": "6aff950780b4f81186f9e621f03e2ea85ea0254dc6e155f85145198d4689a134",
-        "path": "review/curation.json"
-      },
-      {
-        "hash": "c4601b298e5eb31ad33098562cf4eef9bba78670978e693bb0f38300a0a0096e",
-        "path": "review/enrichment-queue.json"
-      },
-      {
-        "hash": "d3892cc6325888db5419a36c822997c57182c831c3618312ec64eab730d391eb",
-        "path": "review/gap-priorities.json"
-      },
-      {
-        "hash": "dbb0822ae4a3ab582b42ecac81888eb3e661a6680fcd2069c67709b274e02629",
-        "path": "search.json"
-      },
-      {
-        "hash": "bd520c058d9f1dbc74527054e0d7955128a13cb7d359c7d9afe8e5605665759c",
-        "path": "subnets.json"
-      },
-      {
-        "hash": "fb92d59f43a55760bce46d11eb658ce11d629b3abce6e42df887e0f5bbd92263",
+        "hash": "34e3463bce7178b83079cfe7da450fbb0189b53caba28a73f843740c892a3fa1",
         "path": "surfaces.json"
       }
     ],
@@ -68,7 +28,7 @@
   },
   "summary": {
     "artifact_added_count": 0,
-    "artifact_modified_count": 12,
+    "artifact_modified_count": 2,
     "artifact_removed_count": 0,
     "coverage_delta": {
       "candidate_count": {
@@ -88,9 +48,9 @@
       },
       "provider_count": null,
       "surface_count": {
-        "after": 794,
-        "before": 801,
-        "delta": -7
+        "after": 748,
+        "before": 748,
+        "delta": 0
       }
     },
     "netuid_added_count": 0,

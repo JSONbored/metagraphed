@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "netuid": 79,
+  "name": "MVTRX",
+  "slug": "sn-79",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "docs_url": "https://simulate.trading/taos-im-paper",
+  "source_repo": "https://github.com/taos-im/sn-79",
+  "dashboard_url": "https://taomarketcap.com/subnets/79",
+  "website_url": "https://taos.im/",
+  "notes": "Reviewed overlay for SN79 using the TAOS IM website, source repository, and public paper link. The paper URL redirects to a public Proton Drive document, so it is tracked as a data artifact rather than a docs site.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:50:00.000Z",
+    "verified_at": "2026-06-08T09:50:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "Public paper link redirects to Proton Drive and is not a documentation site.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-79-mvtrx-website",
+      "name": "TAOS IM website",
+      "kind": "website",
+      "url": "https://taos.im/",
+      "provider": "taos-im",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/taos-im/sn-79"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official TAOS IM website for SN79."
+    },
+    {
+      "id": "sn-79-mvtrx-paper",
+      "name": "TAOS IM paper",
+      "kind": "data-artifact",
+      "url": "https://simulate.trading/taos-im-paper",
+      "provider": "taos-im",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/taos-im/sn-79/blob/main/README.md"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public TAOS IM paper link. The URL currently redirects to a public Proton Drive document."
+    },
+    {
+      "id": "sn-79-mvtrx-source",
+      "name": "MVTRX source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/taos-im/sn-79",
+      "provider": "taos-im",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/taos-im/sn-79"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official MVTRX source repository."
+    }
+  ]
+}

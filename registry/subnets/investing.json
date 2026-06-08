@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "netuid": 88,
+  "name": "Investing",
+  "slug": "sn-88",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "data-artifact",
+    "finance",
+    "identity-reviewed",
+    "official-dashboard",
+    "official-source-repo",
+    "official-website"
+  ],
+  "source_repo": "https://github.com/mobiusfund/investing",
+  "dashboard_url": "https://db.investing88.ai/",
+  "website_url": "https://investing88.ai/",
+  "notes": "Reviewed overlay for SN88 using the official Investing website, dashboard, source repository, and public asset-list data surface. The asset surface returns HTML/table content, not JSON or OpenAPI.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:50:00.000Z",
+    "verified_at": "2026-06-08T09:50:00.000Z",
+    "source_count": 6,
+    "gap_notes": [
+      "Public asset-list surface is HTML/table content, not a schema-backed API.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-88-investing-website",
+      "name": "Investing website",
+      "kind": "website",
+      "url": "https://investing88.ai/",
+      "provider": "mobiusfund",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/mobiusfund/investing"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Investing website."
+    },
+    {
+      "id": "sn-88-investing-dashboard",
+      "name": "Investing dashboard",
+      "kind": "dashboard",
+      "url": "https://db.investing88.ai/",
+      "provider": "mobiusfund",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/mobiusfund/investing/blob/main/README.md"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Investing dashboard."
+    },
+    {
+      "id": "sn-88-investing-assets",
+      "name": "Investing asset list",
+      "kind": "data-artifact",
+      "url": "https://api.investing88.ai/assets",
+      "provider": "mobiusfund",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/mobiusfund/investing/blob/main/README.md"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Investing asset-list surface. It currently returns HTML/table content rather than a JSON API contract."
+    },
+    {
+      "id": "sn-88-investing-source",
+      "name": "Investing source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/mobiusfund/investing",
+      "provider": "mobiusfund",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/mobiusfund/investing"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Investing source repository."
+    }
+  ]
+}

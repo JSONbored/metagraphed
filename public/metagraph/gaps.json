@@ -29,13 +29,14 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "The specific Apex docs URL resolves through the Macrocosmos docs site, but no machine-readable schema is available.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -243,15 +244,17 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Previously discovered IOTA docs URL currently returns 404.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -259,7 +262,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
           "website"
         ]
@@ -406,13 +408,13 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -620,24 +622,24 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Trishool API root is public, but `/openapi.json` and `/docs` currently return 401 and `/swagger.json` returns 404.",
+          "No verified machine-readable OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
-          "subnet-api",
           "sse",
           "data-artifact"
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
+          "subnet-api",
           "website"
         ]
       },
@@ -673,15 +675,20 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Previously discovered Mainframe docs URL currently returns 404.",
+          "Previously discovered Mainframe API documentation URL currently returns 404.",
+          "Previously discovered dashboard URL redirects to the general Macrocosmos homepage.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
+          "website",
           "openapi",
           "subnet-api",
           "sse",
@@ -689,9 +696,7 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
-          "source-repo",
-          "website"
+          "source-repo"
         ]
       },
       "name": "Mainframe",
@@ -1648,13 +1653,13 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",
@@ -2133,22 +2138,22 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "Public paper link redirects to Proton Drive and is not a documentation site.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
+          "data-artifact",
           "docs",
           "source-repo",
           "website"
@@ -2378,23 +2383,22 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
-          "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "Public asset-list surface is HTML/table content, not a schema-backed API.",
+          "No verified OpenAPI/Swagger schema yet.",
+          "No verified SSE/event stream yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
-          "sse",
-          "data-artifact"
+          "sse"
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
+          "data-artifact",
           "source-repo",
           "website"
         ]
@@ -2760,15 +2764,17 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "Previously discovered Connito miner docs URL currently returns 404.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
+          "docs",
           "openapi",
           "subnet-api",
           "sse",
@@ -2776,7 +2782,6 @@
         ],
         "supported_kinds": [
           "dashboard",
-          "docs",
           "source-repo",
           "website"
         ]
@@ -3058,13 +3063,13 @@
     },
     {
       "coverage_level": "probed",
-      "curation_level": "machine-verified",
+      "curation_level": "maintainer-reviewed",
       "gaps": {
         "gap_notes": [
-          "No verified OpenAPI/Swagger surface yet.",
-          "No verified subnet API surface yet.",
+          "No verified safe public subnet API endpoint yet.",
+          "No verified OpenAPI/Swagger schema yet.",
           "No verified SSE/event stream yet.",
-          "No verified data artifact yet."
+          "No verified standalone static data artifact yet."
         ],
         "missing_kinds": [
           "openapi",

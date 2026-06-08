@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "oro",
+  "name": "ORO",
+  "kind": "subnet-team",
+  "website_url": "https://oroagents.com/",
+  "docs_url": "https://docs.oroagents.com/",
+  "github_url": "https://github.com/ORO-AI/oro",
+  "authority": "official",
+  "notes": "Provider entry for ORO SN15 website, documentation, and source repository."
+}

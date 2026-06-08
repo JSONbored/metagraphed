@@ -264,29 +264,20 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-1-github-readme-macrocosm-os-apex-docs-1",
+      "authority": "official",
+      "id": "sn-1-apex-docs",
       "kind": "docs",
       "name": "Apex docs",
       "netuid": 1,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "notes": "Official Macrocosmos docs link referenced by the Apex README.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "macrocosmos",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/macrocosm-os/apex/blob/main/README.md"
       ],
@@ -296,63 +287,22 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-1-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "Apex TaoMarketCap dashboard",
-      "netuid": 1,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/1"
-      ],
-      "subnet_name": "Apex",
-      "subnet_slug": "sn-1",
-      "url": "https://taomarketcap.com/subnets/1"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-1-taomarketcap-source-repo",
+      "authority": "official",
+      "id": "sn-1-apex-source",
       "kind": "source-repo",
       "name": "Apex source repository",
       "netuid": 1,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official Apex source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "macrocosmos",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/1"
+        "https://github.com/macrocosm-os/apex"
       ],
       "subnet_name": "Apex",
       "subnet_slug": "sn-1",
@@ -360,131 +310,26 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-1-taomarketcap-website",
+      "authority": "official",
+      "id": "sn-1-apex-website",
       "kind": "website",
       "name": "Apex website",
       "netuid": 1,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official Apex product website listed by the source repository.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "macrocosmos",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/1"
+        "https://github.com/macrocosm-os/apex"
       ],
       "subnet_name": "Apex",
       "subnet_slug": "sn-1",
       "url": "https://apex.macrocosmos.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-1-taopedia-article",
-      "kind": "docs",
-      "name": "Apex Taopedia article",
-      "netuid": 1,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_1_apex/index.mdx"
-      ],
-      "subnet_name": "Apex",
-      "subnet_slug": "sn-1",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_1_apex/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-1-tensorplex-docs",
-      "kind": "docs",
-      "name": "Apex Tensorplex subnet docs",
-      "netuid": 1,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/1/subnet.json"
-      ],
-      "subnet_name": "Apex",
-      "subnet_slug": "sn-1",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/1"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-1-website-link-apex-macrocosmos-ai-docs-3",
-      "kind": "docs",
-      "name": "Apex docs",
-      "netuid": 1,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://apex.macrocosmos.ai/"
-      ],
-      "subnet_name": "Apex",
-      "subnet_slug": "sn-1",
-      "url": "https://macrocosmos.ai/delegation-guide"
     },
     {
       "auth_required": false,
@@ -2043,29 +1888,20 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-9-github-readme-macrocosm-os-iota-dashboard-1",
+      "authority": "official",
+      "id": "sn-9-iota-dashboard",
       "kind": "dashboard",
-      "name": "iota dashboard",
+      "name": "IOTA dashboard",
       "netuid": 9,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "notes": "Official public IOTA dashboard linked from the source repository.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "macrocosmos",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/macrocosm-os/iota/blob/main/README.md"
       ],
@@ -2075,63 +1911,22 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-9-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "iota TaoMarketCap dashboard",
-      "netuid": 9,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/9"
-      ],
-      "subnet_name": "iota",
-      "subnet_slug": "sn-9",
-      "url": "https://taomarketcap.com/subnets/9"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-9-taomarketcap-source-repo",
+      "authority": "official",
+      "id": "sn-9-iota-source",
       "kind": "source-repo",
-      "name": "iota source repository",
+      "name": "IOTA source repository",
       "netuid": 9,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official IOTA source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "macrocosmos",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/9"
+        "https://github.com/macrocosm-os/iota"
       ],
       "subnet_name": "iota",
       "subnet_slug": "sn-9",
@@ -2139,195 +1934,26 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-9-taomarketcap-website",
+      "authority": "official",
+      "id": "sn-9-iota-website",
       "kind": "website",
-      "name": "iota website",
+      "name": "IOTA website",
       "netuid": 9,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official IOTA website.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "macrocosmos",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/9"
+        "https://github.com/macrocosm-os/iota"
       ],
       "subnet_name": "iota",
       "subnet_slug": "sn-9",
       "url": "https://iota.macrocosmos.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-9-taopedia-article",
-      "kind": "docs",
-      "name": "iota Taopedia article",
-      "netuid": 9,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_9/index.mdx"
-      ],
-      "subnet_name": "iota",
-      "subnet_slug": "sn-9",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_9/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-9-tensorplex-docs",
-      "kind": "docs",
-      "name": "iota Tensorplex subnet docs",
-      "netuid": 9,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/9/subnet.json"
-      ],
-      "subnet_name": "iota",
-      "subnet_slug": "sn-9",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/9"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-9-website-common-docs",
-      "kind": "docs",
-      "name": "iota docs",
-      "netuid": 9,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://iota.macrocosmos.ai/"
-      ],
-      "subnet_name": "iota",
-      "subnet_slug": "sn-9",
-      "url": "https://iota.macrocosmos.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-9-website-link-iota-macrocosmos-ai-dashboard-1",
-      "kind": "dashboard",
-      "name": "iota dashboard",
-      "netuid": 9,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://iota.macrocosmos.ai/"
-      ],
-      "subnet_name": "iota",
-      "subnet_slug": "sn-9",
-      "url": "https://iota.macrocosmos.ai/dashboard"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-9-website-link-iota-macrocosmos-ai-docs-5",
-      "kind": "docs",
-      "name": "iota docs",
-      "netuid": 9,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://iota.macrocosmos.ai/"
-      ],
-      "subnet_name": "iota",
-      "subnet_slug": "sn-9",
-      "url": "https://docs.macrocosmos.ai/"
     },
     {
       "auth_required": false,
@@ -3287,61 +2913,20 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-15-github-readme-oro-ai-oro-dashboard-1",
-      "kind": "dashboard",
-      "name": "ORO dashboard",
-      "netuid": 15,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/ORO-AI/oro/blob/main/README.md"
-      ],
-      "subnet_name": "ORO",
-      "subnet_slug": "sn-15",
-      "url": "https://oroagents.com/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-15-github-readme-oro-ai-oro-docs-2",
+      "authority": "official",
+      "id": "sn-15-oro-docs",
       "kind": "docs",
-      "name": "ORO docs",
+      "name": "ORO miner quick-start docs",
       "netuid": 15,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "notes": "Official ORO miner quick-start documentation.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "oro",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/ORO-AI/oro/blob/main/README.md"
       ],
@@ -3351,63 +2936,22 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-15-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "ORO TaoMarketCap dashboard",
-      "netuid": 15,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/15"
-      ],
-      "subnet_name": "ORO",
-      "subnet_slug": "sn-15",
-      "url": "https://taomarketcap.com/subnets/15"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-15-taomarketcap-source-repo",
+      "authority": "official",
+      "id": "sn-15-oro-source",
       "kind": "source-repo",
       "name": "ORO source repository",
       "netuid": 15,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official ORO source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "oro",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/15"
+        "https://github.com/ORO-AI/oro"
       ],
       "subnet_name": "ORO",
       "subnet_slug": "sn-15",
@@ -3415,163 +2959,26 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-15-taomarketcap-website",
+      "authority": "official",
+      "id": "sn-15-oro-website",
       "kind": "website",
       "name": "ORO website",
       "netuid": 15,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official ORO website.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "oro",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/15"
+        "https://github.com/ORO-AI/oro"
       ],
       "subnet_name": "ORO",
       "subnet_slug": "sn-15",
       "url": "https://oroagents.com/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-15-taopedia-article",
-      "kind": "docs",
-      "name": "ORO Taopedia article",
-      "netuid": 15,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_15/index.mdx"
-      ],
-      "subnet_name": "ORO",
-      "subnet_slug": "sn-15",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_15/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-15-tensorplex-docs",
-      "kind": "docs",
-      "name": "ORO Tensorplex subnet docs",
-      "netuid": 15,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/15/subnet.json"
-      ],
-      "subnet_name": "ORO",
-      "subnet_slug": "sn-15",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/15"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-15-website-common-docs",
-      "kind": "docs",
-      "name": "ORO docs",
-      "netuid": 15,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://oroagents.com/"
-      ],
-      "subnet_name": "ORO",
-      "subnet_slug": "sn-15",
-      "url": "https://oroagents.com/docs"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-15-website-link-oroagents-com-dashboard-4",
-      "kind": "dashboard",
-      "name": "ORO dashboard",
-      "netuid": 15,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://oroagents.com/"
-      ],
-      "subnet_name": "ORO",
-      "subnet_slug": "sn-15",
-      "url": "https://oroagents.com/leaderboard"
     },
     {
       "auth_required": false,
@@ -4969,29 +4376,43 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-23-github-readme-trishoolai-trishool-phase2-dashboard-1",
-      "kind": "dashboard",
-      "name": "Trishool dashboard",
+      "authority": "official",
+      "id": "sn-23-trishool-api-root",
+      "kind": "subnet-api",
+      "name": "Trishool API landing",
       "netuid": 23,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "notes": "Public Trishool API landing surface. This is not schema-backed and should not be treated as an OpenAPI surface.",
       "probe": {
         "enabled": true,
         "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "trishool",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md"
+      ],
+      "subnet_name": "Trishool",
+      "subnet_slug": "sn-23",
+      "url": "https://api.trishool.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-23-trishool-dashboard",
+      "kind": "dashboard",
+      "name": "Trishool dashboard",
+      "netuid": 23,
+      "notes": "Official Trishool dashboard.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "trishool",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/TrishoolAI/trishool-phase2/blob/main/README.md"
       ],
@@ -5001,259 +4422,26 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-23-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "Trishool TaoMarketCap dashboard",
-      "netuid": 23,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/23"
-      ],
-      "subnet_name": "Trishool",
-      "subnet_slug": "sn-23",
-      "url": "https://taomarketcap.com/subnets/23"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-23-taomarketcap-source-repo",
+      "authority": "official",
+      "id": "sn-23-trishool-source",
       "kind": "source-repo",
-      "name": "Trishool source repository",
+      "name": "Trishool phase two source repository",
       "netuid": 23,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official Trishool phase two source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "trishool",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/23"
+        "https://github.com/TrishoolAI/trishool-phase2"
       ],
       "subnet_name": "Trishool",
       "subnet_slug": "sn-23",
       "url": "https://github.com/TrishoolAI/trishool-phase2"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-23-taomarketcap-website",
-      "kind": "website",
-      "name": "Trishool website",
-      "netuid": 23,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/23"
-      ],
-      "subnet_name": "Trishool",
-      "subnet_slug": "sn-23",
-      "url": "https://trishool.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-23-taopedia-article",
-      "kind": "docs",
-      "name": "Trishool Taopedia article",
-      "netuid": 23,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_23/index.mdx"
-      ],
-      "subnet_name": "Trishool",
-      "subnet_slug": "sn-23",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_23/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-23-tensorplex-docs",
-      "kind": "docs",
-      "name": "Trishool Tensorplex subnet docs",
-      "netuid": 23,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/23/subnet.json"
-      ],
-      "subnet_name": "Trishool",
-      "subnet_slug": "sn-23",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/23"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-23-tensorplex-source-repo-1",
-      "kind": "source-repo",
-      "name": "Trishool source repository",
-      "netuid": 23,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/23/subnet.json"
-      ],
-      "subnet_name": "Trishool",
-      "subnet_slug": "sn-23",
-      "url": "https://github.com/TrishoolAI/trishool-subnet"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-23-website-link-trishool-ai-docs-1",
-      "kind": "docs",
-      "name": "Trishool docs",
-      "netuid": 23,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://trishool.ai/"
-      ],
-      "subnet_name": "Trishool",
-      "subnet_slug": "sn-23",
-      "url": "https://docs.trishool.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-23-website-link-trishool-ai-docs-2",
-      "kind": "docs",
-      "name": "Trishool docs",
-      "netuid": 23,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://trishool.ai/"
-      ],
-      "subnet_name": "Trishool",
-      "subnet_slug": "sn-23",
-      "url": "https://litepaper.trishool.ai/"
     },
     {
       "auth_required": false,
@@ -5443,259 +4631,26 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-25-github-readme-macrocosm-os-mainframe-dashboard-1",
-      "kind": "dashboard",
-      "name": "Mainframe dashboard",
-      "netuid": 25,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/macrocosm-os/mainframe/blob/main/README.md"
-      ],
-      "subnet_name": "Mainframe",
-      "subnet_slug": "sn-25",
-      "url": "https://www.macrocosmos.ai/sn25/dashboard"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-25-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "Mainframe TaoMarketCap dashboard",
-      "netuid": 25,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/25"
-      ],
-      "subnet_name": "Mainframe",
-      "subnet_slug": "sn-25",
-      "url": "https://taomarketcap.com/subnets/25"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-25-taomarketcap-source-repo",
+      "authority": "official",
+      "id": "sn-25-mainframe-source",
       "kind": "source-repo",
       "name": "Mainframe source repository",
       "netuid": 25,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official Mainframe source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "macrocosmos",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/25"
+        "https://github.com/macrocosm-os/mainframe"
       ],
       "subnet_name": "Mainframe",
       "subnet_slug": "sn-25",
       "url": "https://github.com/macrocosm-os/mainframe"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-25-taomarketcap-website",
-      "kind": "website",
-      "name": "Mainframe website",
-      "netuid": 25,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/25"
-      ],
-      "subnet_name": "Mainframe",
-      "subnet_slug": "sn-25",
-      "url": "https://macrocosmos.ai/sn25"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-25-taopedia-article",
-      "kind": "docs",
-      "name": "Mainframe Taopedia article",
-      "netuid": 25,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_25/index.mdx"
-      ],
-      "subnet_name": "Mainframe",
-      "subnet_slug": "sn-25",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_25/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-25-tensorplex-docs",
-      "kind": "docs",
-      "name": "Mainframe Tensorplex subnet docs",
-      "netuid": 25,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/25/subnet.json"
-      ],
-      "subnet_name": "Mainframe",
-      "subnet_slug": "sn-25",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/25"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-25-website-link-macrocosmos-ai-docs-3",
-      "kind": "docs",
-      "name": "Mainframe docs",
-      "netuid": 25,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://macrocosmos.ai/sn25"
-      ],
-      "subnet_name": "Mainframe",
-      "subnet_slug": "sn-25",
-      "url": "https://docs.macrocosmos.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-25-website-link-macrocosmos-ai-docs-6",
-      "kind": "docs",
-      "name": "Mainframe docs",
-      "netuid": 25,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://macrocosmos.ai/sn25"
-      ],
-      "subnet_name": "Mainframe",
-      "subnet_slug": "sn-25",
-      "url": "https://macrocosmos.ai/delegation-guide"
     },
     {
       "auth_required": false,
@@ -11760,29 +10715,20 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-61-github-readme-redteamsubnet-redteam-dashboard-1",
+      "authority": "official",
+      "id": "sn-61-redteam-dashboard",
       "kind": "dashboard",
       "name": "RedTeam dashboard",
       "netuid": 61,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "notes": "Official RedTeam dashboard.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "redteam",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
@@ -11792,29 +10738,20 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-61-github-readme-redteamsubnet-redteam-docs-2",
+      "authority": "official",
+      "id": "sn-61-redteam-docs",
       "kind": "docs",
       "name": "RedTeam docs",
       "netuid": 61,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "notes": "Official RedTeam documentation.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "redteam",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/RedTeamSubnet/RedTeam/blob/main/README.md"
       ],
@@ -11824,63 +10761,22 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-61-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "RedTeam TaoMarketCap dashboard",
-      "netuid": 61,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/61"
-      ],
-      "subnet_name": "RedTeam",
-      "subnet_slug": "sn-61",
-      "url": "https://taomarketcap.com/subnets/61"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-61-taomarketcap-source-repo",
+      "authority": "official",
+      "id": "sn-61-redteam-source",
       "kind": "source-repo",
       "name": "RedTeam source repository",
       "netuid": 61,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official RedTeam source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "redteam",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/61"
+        "https://github.com/RedTeamSubnet/RedTeam"
       ],
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
@@ -11888,99 +10784,26 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-61-taomarketcap-website",
+      "authority": "official",
+      "id": "sn-61-redteam-website",
       "kind": "website",
       "name": "RedTeam website",
       "netuid": 61,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official RedTeam website.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "redteam",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/61"
+        "https://github.com/RedTeamSubnet/RedTeam"
       ],
       "subnet_name": "RedTeam",
       "subnet_slug": "sn-61",
       "url": "https://www.theredteam.io/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-61-taopedia-article",
-      "kind": "docs",
-      "name": "RedTeam Taopedia article",
-      "netuid": 61,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_61/index.mdx"
-      ],
-      "subnet_name": "RedTeam",
-      "subnet_slug": "sn-61",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_61/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-61-tensorplex-docs",
-      "kind": "docs",
-      "name": "RedTeam Tensorplex subnet docs",
-      "netuid": 61,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/61/subnet.json"
-      ],
-      "subnet_name": "RedTeam",
-      "subnet_slug": "sn-61",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/61"
     },
     {
       "auth_required": false,
@@ -14941,29 +13764,20 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-github-readme-taos-im-sn-79-docs-1",
-      "kind": "docs",
-      "name": "MVTRX docs",
+      "authority": "official",
+      "id": "sn-79-mvtrx-paper",
+      "kind": "data-artifact",
+      "name": "TAOS IM paper",
       "netuid": 79,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "notes": "Public TAOS IM paper link. The URL currently redirects to a public Proton Drive document.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taos-im",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/taos-im/sn-79/blob/main/README.md"
       ],
@@ -14973,163 +13787,49 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "MVTRX TaoMarketCap dashboard",
-      "netuid": 79,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/79"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://taomarketcap.com/subnets/79"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-taomarketcap-website",
-      "kind": "website",
-      "name": "MVTRX website",
-      "netuid": 79,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/79"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://taos.im/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-taopedia-article",
-      "kind": "docs",
-      "name": "MVTRX Taopedia article",
-      "netuid": 79,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_79/index.mdx"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_79/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-tensorplex-docs",
-      "kind": "docs",
-      "name": "MVTRX Tensorplex subnet docs",
-      "netuid": 79,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/79/subnet.json"
-      ],
-      "subnet_name": "MVTRX",
-      "subnet_slug": "sn-79",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/79"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-79-tensorplex-source-repo-1",
+      "authority": "official",
+      "id": "sn-79-mvtrx-source",
       "kind": "source-repo",
       "name": "MVTRX source repository",
       "netuid": 79,
-      "notes": "Discovered from Tensorplex subnet-docs. Not probed or verified by Metagraphed.",
+      "notes": "Official MVTRX source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "tensorplex-subnet-docs",
+      "provider": "taos-im",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/79/subnet.json"
+        "https://github.com/taos-im/sn-79"
       ],
       "subnet_name": "MVTRX",
       "subnet_slug": "sn-79",
       "url": "https://github.com/taos-im/sn-79"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-79-mvtrx-website",
+      "kind": "website",
+      "name": "TAOS IM website",
+      "netuid": 79,
+      "notes": "Official TAOS IM website for SN79.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taos-im",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/taos-im/sn-79"
+      ],
+      "subnet_name": "MVTRX",
+      "subnet_slug": "sn-79",
+      "url": "https://taos.im/"
     },
     {
       "auth_required": false,
@@ -16702,29 +15402,43 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-88-github-readme-mobiusfund-investing-dashboard-1",
+      "authority": "official",
+      "id": "sn-88-investing-assets",
+      "kind": "data-artifact",
+      "name": "Investing asset list",
+      "netuid": 88,
+      "notes": "Public Investing asset-list surface. It currently returns HTML/table content rather than a JSON API contract.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "mobiusfund",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/mobiusfund/investing/blob/main/README.md"
+      ],
+      "subnet_name": "Investing",
+      "subnet_slug": "sn-88",
+      "url": "https://api.investing88.ai/assets"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-88-investing-dashboard",
       "kind": "dashboard",
       "name": "Investing dashboard",
       "netuid": 88,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "notes": "Official Investing dashboard.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "mobiusfund",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/mobiusfund/investing/blob/main/README.md"
       ],
@@ -16734,63 +15448,22 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-88-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "Investing TaoMarketCap dashboard",
-      "netuid": 88,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/88"
-      ],
-      "subnet_name": "Investing",
-      "subnet_slug": "sn-88",
-      "url": "https://taomarketcap.com/subnets/88"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-88-taomarketcap-source-repo",
+      "authority": "official",
+      "id": "sn-88-investing-source",
       "kind": "source-repo",
       "name": "Investing source repository",
       "netuid": 88,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official Investing source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "mobiusfund",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/88"
+        "https://github.com/mobiusfund/investing"
       ],
       "subnet_name": "Investing",
       "subnet_slug": "sn-88",
@@ -16798,99 +15471,26 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-88-taomarketcap-website",
+      "authority": "official",
+      "id": "sn-88-investing-website",
       "kind": "website",
       "name": "Investing website",
       "netuid": 88,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official Investing website.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "mobiusfund",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/88"
+        "https://github.com/mobiusfund/investing"
       ],
       "subnet_name": "Investing",
       "subnet_slug": "sn-88",
       "url": "https://investing88.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-88-taopedia-article",
-      "kind": "docs",
-      "name": "Investing Taopedia article",
-      "netuid": 88,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_88/index.mdx"
-      ],
-      "subnet_name": "Investing",
-      "subnet_slug": "sn-88",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_88/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-88-tensorplex-docs",
-      "kind": "docs",
-      "name": "Investing Tensorplex subnet docs",
-      "netuid": 88,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/88/subnet.json"
-      ],
-      "subnet_name": "Investing",
-      "subnet_slug": "sn-88",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/88"
     },
     {
       "auth_required": false,
@@ -19261,63 +17861,22 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-102-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "ConnitoAI TaoMarketCap dashboard",
-      "netuid": 102,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/102"
-      ],
-      "subnet_name": "ConnitoAI",
-      "subnet_slug": "sn-102",
-      "url": "https://taomarketcap.com/subnets/102"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-102-taomarketcap-source-repo",
+      "authority": "official",
+      "id": "sn-102-connito-source",
       "kind": "source-repo",
       "name": "ConnitoAI source repository",
       "netuid": 102,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official ConnitoAI source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "connito",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/102"
+        "https://github.com/Connito-AI/Connito"
       ],
       "subnet_name": "ConnitoAI",
       "subnet_slug": "sn-102",
@@ -19325,163 +17884,26 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-102-taomarketcap-website",
+      "authority": "official",
+      "id": "sn-102-connito-website",
       "kind": "website",
       "name": "ConnitoAI website",
       "netuid": 102,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official ConnitoAI website.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "connito",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/102"
+        "https://github.com/Connito-AI/Connito"
       ],
       "subnet_name": "ConnitoAI",
       "subnet_slug": "sn-102",
       "url": "https://connito.ai/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-102-taopedia-article",
-      "kind": "docs",
-      "name": "ConnitoAI Taopedia article",
-      "netuid": 102,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_102/index.mdx"
-      ],
-      "subnet_name": "ConnitoAI",
-      "subnet_slug": "sn-102",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_102/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-102-tensorplex-docs",
-      "kind": "docs",
-      "name": "ConnitoAI Tensorplex subnet docs",
-      "netuid": 102,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/102/subnet.json"
-      ],
-      "subnet_name": "ConnitoAI",
-      "subnet_slug": "sn-102",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/102"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-102-website-common-docs",
-      "kind": "docs",
-      "name": "ConnitoAI docs",
-      "netuid": 102,
-      "notes": "Common read-only path discovered from a public project website root. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": true,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://connito.ai/"
-      ],
-      "subnet_name": "ConnitoAI",
-      "subnet_slug": "sn-102",
-      "url": "https://connito.ai/docs"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-102-website-link-connito-ai-docs-1",
-      "kind": "docs",
-      "name": "ConnitoAI docs",
-      "netuid": 102,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://connito.ai/"
-      ],
-      "subnet_name": "ConnitoAI",
-      "subnet_slug": "sn-102",
-      "url": "https://connito.ai/docs/miner/prerequisites"
     },
     {
       "auth_required": false,
@@ -21242,29 +19664,20 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-113-github-readme-tensorusd-subnet-docs-1",
+      "authority": "official",
+      "id": "sn-113-tensorusd-docs",
       "kind": "docs",
-      "name": "TensorUSD docs",
+      "name": "TensorUSD subnet docs",
       "netuid": 113,
-      "notes": "Discovered from a project-affiliated public GitHub README link after README noise filters. Requires verification before promotion.",
+      "notes": "Official TensorUSD subnet documentation.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "tensorusd",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
         "https://github.com/TensorUSD/subnet/blob/main/README.md"
       ],
@@ -21274,63 +19687,22 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-113-taomarketcap-dashboard",
-      "kind": "dashboard",
-      "name": "TensorUSD TaoMarketCap dashboard",
-      "netuid": 113,
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/113"
-      ],
-      "subnet_name": "TensorUSD",
-      "subnet_slug": "sn-113",
-      "url": "https://taomarketcap.com/subnets/113"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-113-taomarketcap-source-repo",
+      "authority": "official",
+      "id": "sn-113-tensorusd-source",
       "kind": "source-repo",
       "name": "TensorUSD source repository",
       "netuid": 113,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official TensorUSD source repository.",
       "probe": {
         "enabled": true,
         "expect": "any",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "tensorusd",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/113"
+        "https://github.com/TensorUSD/subnet"
       ],
       "subnet_name": "TensorUSD",
       "subnet_slug": "sn-113",
@@ -21338,131 +19710,26 @@
     },
     {
       "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-113-taomarketcap-website",
+      "authority": "official",
+      "id": "sn-113-tensorusd-website",
       "kind": "website",
       "name": "TensorUSD website",
       "netuid": 113,
-      "notes": "Discovered from TaoMarketCap subnet identity metadata. Not probed or verified by Metagraphed.",
+      "notes": "Official TensorUSD website.",
       "probe": {
         "enabled": true,
-        "expect": "any",
+        "expect": "html",
         "method": "HEAD",
         "timeout_ms": 10000
       },
-      "provider": "taomarketcap",
+      "provider": "tensorusd",
       "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "third-party-index",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": [
-        "https://api.taomarketcap.com/public/v1/subnets/113"
+        "https://github.com/TensorUSD/subnet"
       ],
       "subnet_name": "TensorUSD",
       "subnet_slug": "sn-113",
       "url": "https://tensorusd.com/"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-113-taopedia-article",
-      "kind": "docs",
-      "name": "TensorUSD Taopedia article",
-      "netuid": 113,
-      "notes": "Discovered from the public Taopedia article repository. Not verified as an operational interface.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taopedia-articles",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_113/index.mdx"
-      ],
-      "subnet_name": "TensorUSD",
-      "subnet_slug": "sn-113",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_113/index.mdx"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-113-tensorplex-docs",
-      "kind": "docs",
-      "name": "TensorUSD Tensorplex subnet docs",
-      "netuid": 113,
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "tensorplex-subnet-docs",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "community-docs",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/113/subnet.json"
-      ],
-      "subnet_name": "TensorUSD",
-      "subnet_slug": "sn-113",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/113"
-    },
-    {
-      "auth_required": false,
-      "authority": "registry-observed",
-      "id": "sn-113-website-link-tensorusd-com-docs-1",
-      "kind": "docs",
-      "name": "TensorUSD docs",
-      "netuid": 113,
-      "notes": "Discovered from a public project website link. Requires verification before promotion.",
-      "probe": {
-        "enabled": true,
-        "expect": "any",
-        "method": "HEAD",
-        "timeout_ms": 10000
-      },
-      "provider": "taomarketcap",
-      "public_safe": true,
-      "quality_signals": {
-        "content_type_matches_kind": true,
-        "public_safe": true,
-        "rate_limited": false,
-        "redirected": false,
-        "source_tier": "provider-claimed",
-        "transient_failure": false
-      },
-      "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
-      "source_urls": [
-        "https://tensorusd.com/"
-      ],
-      "subnet_name": "TensorUSD",
-      "subnet_slug": "sn-113",
-      "url": "https://docs.tensorusd.com/"
     },
     {
       "auth_required": false,

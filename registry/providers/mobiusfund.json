@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "mobiusfund",
+  "name": "Mobius Fund",
+  "kind": "subnet-team",
+  "website_url": "https://investing88.ai/",
+  "github_url": "https://github.com/mobiusfund/investing",
+  "authority": "official",
+  "notes": "Provider entry for Mobius Fund Investing SN88 public dashboard, data surface, and source repository."
+}

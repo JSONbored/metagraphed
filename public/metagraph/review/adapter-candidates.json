@@ -501,6 +501,42 @@
       "slug": "sn-95"
     },
     {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "Investing",
+      "netuid": 88,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 24,
+      "slug": "sn-88"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "Trishool",
+      "netuid": 23,
+      "operational_kinds": [
+        "subnet-api"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 23,
+      "slug": "sn-23"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "MVTRX",
+      "netuid": 79,
+      "operational_kinds": [
+        "data-artifact"
+      ],
+      "operational_surface_count": 1,
+      "priority_score": 23,
+      "slug": "sn-79"
+    },
+    {
       "candidate_api_count": 1,
       "curation_level": "maintainer-reviewed",
       "name": "EvolAI",
@@ -511,36 +547,6 @@
       "operational_surface_count": 1,
       "priority_score": 22,
       "slug": "sn-47"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "iota",
-      "netuid": 9,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 9,
-      "slug": "sn-9"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "machine-verified",
-      "name": "ORO",
-      "netuid": 15,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 9,
-      "slug": "sn-15"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "machine-verified",
-      "name": "Trishool",
-      "netuid": 23,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 9,
-      "slug": "sn-23"
     },
     {
       "candidate_api_count": 5,
@@ -573,16 +579,6 @@
       "slug": "sn-14"
     },
     {
-      "candidate_api_count": 6,
-      "curation_level": "machine-verified",
-      "name": "Mainframe",
-      "netuid": 25,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 8,
-      "slug": "sn-25"
-    },
-    {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "ForeverMoney",
@@ -611,16 +607,6 @@
       "operational_surface_count": 0,
       "priority_score": 8,
       "slug": "sn-118"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "Apex",
-      "netuid": 1,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 7,
-      "slug": "sn-1"
     },
     {
       "candidate_api_count": 6,
@@ -695,16 +681,6 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "RedTeam",
-      "netuid": 61,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 7,
-      "slug": "sn-61"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
       "name": "Harnyx",
       "netuid": 67,
       "operational_kinds": [],
@@ -725,32 +701,12 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "ConnitoAI",
-      "netuid": 102,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 7,
-      "slug": "sn-102"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
       "name": "Djinn",
       "netuid": 103,
       "operational_kinds": [],
       "operational_surface_count": 0,
       "priority_score": 7,
       "slug": "sn-103"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
-      "name": "TensorUSD",
-      "netuid": 113,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 7,
-      "slug": "sn-113"
     },
     {
       "candidate_api_count": 5,
@@ -815,32 +771,12 @@
     {
       "candidate_api_count": 5,
       "curation_level": "machine-verified",
-      "name": "MVTRX",
-      "netuid": 79,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 6,
-      "slug": "sn-79"
-    },
-    {
-      "candidate_api_count": 5,
-      "curation_level": "machine-verified",
       "name": "Compelle",
       "netuid": 82,
       "operational_kinds": [],
       "operational_surface_count": 0,
       "priority_score": 6,
       "slug": "sn-82"
-    },
-    {
-      "candidate_api_count": 6,
-      "curation_level": "machine-verified",
-      "name": "Investing",
-      "netuid": 88,
-      "operational_kinds": [],
-      "operational_surface_count": 0,
-      "priority_score": 6,
-      "slug": "sn-88"
     },
     {
       "candidate_api_count": 5,
@@ -1024,6 +960,46 @@
     },
     {
       "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "RedTeam",
+      "netuid": 61,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 4,
+      "slug": "sn-61"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "Apex",
+      "netuid": 1,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 3,
+      "slug": "sn-1"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "iota",
+      "netuid": 9,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 3,
+      "slug": "sn-9"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "ORO",
+      "netuid": 15,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 3,
+      "slug": "sn-15"
+    },
+    {
+      "candidate_api_count": 5,
       "curation_level": "machine-verified",
       "name": "Nodexo",
       "netuid": 27,
@@ -1035,12 +1011,42 @@
     {
       "candidate_api_count": 5,
       "curation_level": "maintainer-reviewed",
+      "name": "TensorUSD",
+      "netuid": 113,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 3,
+      "slug": "sn-113"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
       "name": "Bitstarter #1",
       "netuid": 91,
       "operational_kinds": [],
       "operational_surface_count": 0,
       "priority_score": 2,
       "slug": "sn-91"
+    },
+    {
+      "candidate_api_count": 5,
+      "curation_level": "maintainer-reviewed",
+      "name": "ConnitoAI",
+      "netuid": 102,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 2,
+      "slug": "sn-102"
+    },
+    {
+      "candidate_api_count": 6,
+      "curation_level": "maintainer-reviewed",
+      "name": "Mainframe",
+      "netuid": 25,
+      "operational_kinds": [],
+      "operational_surface_count": 0,
+      "priority_score": 1,
+      "slug": "sn-25"
     },
     {
       "candidate_api_count": 5,

@@ -62,6 +62,16 @@
     },
     {
       "authority": "official",
+      "github_url": "https://github.com/Connito-AI/Connito",
+      "id": "connito",
+      "kind": "subnet-team",
+      "name": "Connito",
+      "notes": "Provider entry for ConnitoAI SN102 website and source repository.",
+      "schema_version": 1,
+      "website_url": "https://connito.ai/"
+    },
+    {
+      "authority": "official",
       "docs_url": "https://www.desearch.ai/docs",
       "github_url": "https://github.com/Desearch-ai/subnet-22",
       "id": "desearch",
@@ -195,6 +205,16 @@
     },
     {
       "authority": "official",
+      "github_url": "https://github.com/mobiusfund/investing",
+      "id": "mobiusfund",
+      "kind": "subnet-team",
+      "name": "Mobius Fund",
+      "notes": "Provider entry for Mobius Fund Investing SN88 public dashboard, data surface, and source repository.",
+      "schema_version": 1,
+      "website_url": "https://investing88.ai/"
+    },
+    {
+      "authority": "official",
       "docs_url": "https://docs.natix.network/whitepaper",
       "github_url": "https://github.com/natixnetwork/streetvision-subnet",
       "id": "natix",
@@ -247,6 +267,17 @@
     },
     {
       "authority": "official",
+      "docs_url": "https://docs.oroagents.com/",
+      "github_url": "https://github.com/ORO-AI/oro",
+      "id": "oro",
+      "kind": "subnet-team",
+      "name": "ORO",
+      "notes": "Provider entry for ORO SN15 website, documentation, and source repository.",
+      "schema_version": 1,
+      "website_url": "https://oroagents.com/"
+    },
+    {
+      "authority": "official",
       "github_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
       "id": "readyai",
       "kind": "subnet-team",
@@ -254,6 +285,17 @@
       "notes": "Provider entry for ReadyAI SN33 website, Conversation Genome source repository, public dataset, and generated llms.txt data repository.",
       "schema_version": 1,
       "website_url": "https://readyai.ai/"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://docs.theredteam.io/",
+      "github_url": "https://github.com/RedTeamSubnet/RedTeam",
+      "id": "redteam",
+      "kind": "subnet-team",
+      "name": "RedTeam",
+      "notes": "Provider entry for RedTeam SN61 website, dashboard, documentation, and source repository.",
+      "schema_version": 1,
+      "website_url": "https://www.theredteam.io/"
     },
     {
       "authority": "official",
@@ -296,6 +338,17 @@
       "website_url": "https://github.com/e35ventura/taopedia-articles"
     },
     {
+      "authority": "official",
+      "docs_url": "https://simulate.trading/taos-im-paper",
+      "github_url": "https://github.com/taos-im/sn-79",
+      "id": "taos-im",
+      "kind": "subnet-team",
+      "name": "TAOS IM",
+      "notes": "Provider entry for MVTRX SN79 website, source repository, and public paper link.",
+      "schema_version": 1,
+      "website_url": "https://taos.im/"
+    },
+    {
       "authority": "provider-claimed",
       "docs_url": "https://docs.taostats.io",
       "id": "taostats",
@@ -325,6 +378,27 @@
       "notes": "Provider entry for Tensorplex Dojo SN52 docs, source repository, UI repository, and worker API repository.",
       "schema_version": 1,
       "website_url": "https://www.tensorplex.ai/"
+    },
+    {
+      "authority": "official",
+      "docs_url": "https://docs.tensorusd.com/",
+      "github_url": "https://github.com/TensorUSD/subnet",
+      "id": "tensorusd",
+      "kind": "subnet-team",
+      "name": "TensorUSD",
+      "notes": "Provider entry for TensorUSD SN113 website, subnet docs, and source repository.",
+      "schema_version": 1,
+      "website_url": "https://tensorusd.com/"
+    },
+    {
+      "authority": "official",
+      "github_url": "https://github.com/TrishoolAI/trishool-phase2",
+      "id": "trishool",
+      "kind": "subnet-team",
+      "name": "Trishool",
+      "notes": "Provider entry for Trishool SN23 dashboard, source repository, and public API landing surface.",
+      "schema_version": 1,
+      "website_url": "https://trishool.ai/"
     },
     {
       "authority": "official",
