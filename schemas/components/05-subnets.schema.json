@@ -458,7 +458,11 @@
           "confidence",
           "profile_level",
           "completeness_score",
-          "missing_critical_count"
+          "missing_required",
+          "missing_operational",
+          "missing_critical_count",
+          "gap_reasons",
+          "suggested_submission_kinds"
         ],
         "properties": {
           "netuid": {
@@ -568,9 +572,33 @@
             "minimum": 0,
             "maximum": 100
           },
+          "missing_required": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "missing_operational": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
           "missing_critical_count": {
             "type": "integer",
             "minimum": 0
+          },
+          "gap_reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "suggested_submission_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
           }
         },
         "additionalProperties": false

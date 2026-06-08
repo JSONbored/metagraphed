@@ -4089,44 +4089,6 @@
       ]
     },
     {
-      "candidate_count": 5,
-      "completeness_score": 55,
-      "confidence": "high",
-      "curation_level": "maintainer-reviewed",
-      "gap_reasons": [
-        "missing-openapi",
-        "missing-subnet-api",
-        "missing-sse",
-        "missing-data-artifact"
-      ],
-      "missing_critical_count": 4,
-      "missing_operational": [
-        "openapi",
-        "subnet-api",
-        "sse",
-        "data-artifact"
-      ],
-      "missing_required": [],
-      "name": "root",
-      "native_name_quality": "chain",
-      "netuid": 0,
-      "operational_interface_count": 0,
-      "priority_score": 70,
-      "profile_level": "identity-complete",
-      "review_state": "maintainer-reviewed",
-      "slug": "root",
-      "source_count": 12,
-      "suggested_next_action": "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them",
-      "supported_interface_kinds": [
-        "dashboard",
-        "docs",
-        "source-repo",
-        "subtensor-rpc",
-        "subtensor-wss",
-        "website"
-      ]
-    },
-    {
       "candidate_count": 18,
       "completeness_score": 63,
       "confidence": "high",
@@ -4676,11 +4638,40 @@
         "subnet-api",
         "website"
       ]
+    },
+    {
+      "candidate_count": 5,
+      "completeness_score": 100,
+      "confidence": "high",
+      "curation_level": "maintainer-reviewed",
+      "gap_reasons": [],
+      "missing_critical_count": 0,
+      "missing_operational": [],
+      "missing_required": [],
+      "name": "root",
+      "native_name_quality": "chain",
+      "netuid": 0,
+      "operational_interface_count": 3,
+      "priority_score": 5,
+      "profile_level": "operational",
+      "review_state": "maintainer-reviewed",
+      "slug": "root",
+      "source_count": 12,
+      "suggested_next_action": "evaluate whether a subnet-specific adapter would add useful public metrics",
+      "supported_interface_kinds": [
+        "archive",
+        "dashboard",
+        "docs",
+        "source-repo",
+        "subtensor-rpc",
+        "subtensor-wss",
+        "website"
+      ]
     }
   ],
   "schema_version": 1,
   "summary": {
-    "average_completeness_score": 52,
+    "average_completeness_score": 53,
     "by_confidence": {
       "high": 74,
       "low": 6,
@@ -4689,19 +4680,19 @@
     "by_profile_level": {
       "adapter-backed": 2,
       "directory-only": 27,
-      "identity-complete": 75,
-      "operational": 25
+      "identity-complete": 74,
+      "operational": 26
     },
     "critical_gap_counts": {
-      "missing-data-artifact": 115,
-      "missing-openapi": 120,
+      "missing-data-artifact": 114,
+      "missing-openapi": 119,
       "missing-source-repo": 21,
-      "missing-sse": 128,
-      "missing-subnet-api": 116,
+      "missing-sse": 127,
+      "missing-subnet-api": 115,
       "missing-website": 16
     },
     "needs_identity_count": 28,
-    "needs_operational_count": 102,
+    "needs_operational_count": 101,
     "profile_count": 129
   }
 }

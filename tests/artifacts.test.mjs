@@ -432,7 +432,12 @@ test("public artifacts are internally consistent", () => {
       (profile) =>
         Number.isInteger(profile.completeness_score) &&
         profile.completeness_score >= 0 &&
-        profile.completeness_score <= 100,
+        profile.completeness_score <= 100 &&
+        Array.isArray(profile.missing_required) &&
+        Array.isArray(profile.missing_operational) &&
+        Array.isArray(profile.gap_reasons) &&
+        Array.isArray(profile.suggested_submission_kinds) &&
+        profile.gap_reasons.length === profile.completeness.gap_reasons.length,
     ),
     true,
   );

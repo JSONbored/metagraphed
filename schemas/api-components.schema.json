@@ -5150,6 +5150,12 @@
             "minimum": 0,
             "type": "integer"
           },
+          "gap_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "interface_count": {
             "minimum": 0,
             "type": "integer"
@@ -5157,6 +5163,18 @@
           "missing_critical_count": {
             "minimum": 0,
             "type": "integer"
+          },
+          "missing_operational": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "missing_required": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
           },
           "monitored_endpoint_count": {
             "minimum": 0,
@@ -5224,6 +5242,12 @@
           "subnet_type": {
             "$ref": "#/components/schemas/SubnetType"
           },
+          "suggested_submission_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
           "supported_interface_kinds": {
             "items": {
               "$ref": "#/components/schemas/SurfaceKind"
@@ -5271,7 +5295,11 @@
           "confidence",
           "profile_level",
           "completeness_score",
-          "missing_critical_count"
+          "missing_required",
+          "missing_operational",
+          "missing_critical_count",
+          "gap_reasons",
+          "suggested_submission_kinds"
         ],
         "type": "object"
       },
