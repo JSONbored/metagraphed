@@ -1,135 +1,94 @@
-# Rebuild profile pages (subnet + provider)
 
-## Why the current pages look empty
+# Metagraphed UX/Design Overhaul
 
-The API returns the profile envelope nested:
+## 1. Design system swap — "Soft Lime on Graphite"
 
-```
-GET /api/v1/subnets/7/profile → { data: { profile: {...}, subnet: {...},
-                                          surfaces, endpoints,
-                                          candidate_surfaces, gaps } }
-```
+Rewrite `src/styles.css` tokens (keep variable names so nothing else changes):
 
-`subnetProfileQuery` returns `data` as-is, but `SubnetDetailPage` reads
-`profile.name`, `profile.symbol`, `profile.participants`, `profile.docs`,
-`profile.repo`, `profile.homepage`, `profile.completeness` directly from
-that top-level wrapper. None of those keys exist there — they live under
-`data.subnet.*` (chain identity) and `data.profile.*` (curation/completeness)
-and `data.profile.primary_links.*` (website/docs/repo/dashboard). Result:
-hero shows "—" everywhere, Quick Access is empty, completeness is wrong,
-description is missing.
+- Light (default, paper-white + citron)
+  - `--paper #FFFFFF`, `--surface #F4F5F7`, `--ink-strong #0B0F14`, `--ink-muted` ~ slate-500, `--ink-subtle` ~ slate-400
+  - `--accent #B8E000` (muted citron), `--accent-foreground #0B0F14`
+  - `--border` = 8% ink, `--ring` = 40% accent
+- Dark (graphite + soft lime)
+  - `--paper #0F1115`, `--surface #1A1D23`, `--card #161A20`, `--ink-strong #E7E9EC`
+  - `--accent #C8F26C`, `--accent-foreground #0F1115`
+- Health stays traffic-light (green / amber / red / slate-unknown), tuned for both modes
+- Curation: native = ink, verified = accent (lime), pilot = green, machine = soft violet, candidate = muted
+- Typography unchanged (Space Grotesk display + DM Sans body + JetBrains Mono)
+- Default density bumped to **Spacious**: increase base card padding, table row height, KPI tile size. Compact mode in Settings still works via existing `data-density="compact"` hook.
 
-The same bug exists on `/providers/$slug` — API returns
-`data: { provider: {...}, endpoint_summary }`, the page reads
-`data.name`, `data.homepage`, `data.docs` directly, so the provider header
-shows just the slug.
+## 2. Decongestion + modern-minimal pass (global)
 
-## What I'll do
+Component-level refinements (no business-logic changes):
 
-### 1. Fix data normalization (`src/lib/metagraphed/queries.ts`)
+- `ProfileHero`: drop redundant subline chips that repeat KPI strip values; merge chips into a single line; move "Last checked" + share button to a quiet meta row.
+- `KPI strip`: max 4 tiles per row, larger numerals, smaller labels, hairline dividers only.
+- Cards: remove double borders, switch to single 1px hairline + subtle elevation only on hover.
+- Replace inline definitions with `Tooltip` icons (info `i` next to titles for: Curation, Completeness, Drift, Freshness, Surfaces, Candidates, Pool eligibility).
+- Add `MetricChip` micro-component with hover tooltip for numeric badges.
+- Add subtle row hover + focus rings using accent at 25% alpha.
+- Empty/stale/error states reuse `EmptyState` / `ErrorState` / `StaleBanner` with consistent "Last checked <TimeAgo/>" + "Open API URL" + back-link recovery.
 
-- Add `normalizeSubnetProfile()` that flattens the envelope into one object
-  the UI can consume:
-  - identity: `name`, `native_name`, `slug`, `symbol`, `description/notes`,
-    `subnet_type`, `categories`, `block`, `registered_at_block`, `tempo`,
-    `participants` (← `subnet.participant_count`), `mechanism_count`.
-  - curation: `curation_level`, `coverage_level`, `review_state`,
-    `reviewed_at`, `confidence`, `completeness` (0-1 from
-    `profile.completeness.score / 100` or `completeness_score / 100`).
-  - primary links: `website`, `docs`, `repo`, `dashboard` from
-    `profile.primary_links` with fallback to `subnet.{website_url,
-    docs_url, source_repo, dashboard_url}`.
-  - counts: `surface_count`, `endpoint_count`, `candidate_count`,
-    `monitored_endpoint_count`, `operational_interface_kinds`,
-    `supported_interface_kinds`, `missing_kinds`, `gap_notes`,
-    `primary_app_surface`.
-  - embedded `surfaces`, `endpoints`, `candidate_surfaces` so the
-    detail page can render them without extra fetches.
-- Add `normalizeProvider()` to flatten `data.provider` + `endpoint_summary`.
-- Update `SubnetProfile` and `Provider` types in
-  `src/lib/metagraphed/types.ts` to match.
+## 3. Provider profile (`/providers/$slug`) cleanup
 
-### 2. Rebuild `/subnets/$netuid` as a clean profile page
+- Audit every tab section (Overview, Endpoints, Surfaces, Schemas, Evidence, API). Each section MUST render exactly one of: data, `EmptyState`, `StaleBanner`, `ErrorState` — no placeholder blocks.
+- Add "Last checked" line to Overview, Endpoints, Schemas, Evidence cards.
+- Recovery links: EmptyState → `/providers`, ErrorState → API URL + retry; Schemas drift empty → `/schemas`.
+- Remove the duplicated provider description appearing in both hero and overview card.
 
-Layout (taostats/cosmos-directory inspired):
+## 4. "Endpoints at a glance" compact card
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ Eyebrow: NETUID 007 · subnet-type · categories              │
-│ H1: Allways  ·  symbol  ·  CurationChip · HealthPill        │
-│ One-line description / notes                                 │
-│ Primary-link rail: [Website] [Docs] [Repo] [Dashboard]      │
-├──────────────────────────────────────────────────────────────┤
-│ Stat strip: Participants · Tempo · Block · Surfaces ·       │
-│             Endpoints · Completeness · Uptime 24h           │
-├──────────────────────────────────────────────────────────────┤
-│ Sticky tabs:  Overview · Surfaces · Endpoints · Schemas ·   │
-│               Candidates · Gaps · Evidence · API            │
-├──────────────────────────────────────────────────────────────┤
-│ Two-column: main content (tab panel) + right rail           │
-│ Right rail: Live health card · Provider card · Coverage     │
-│             card (curation level, completeness bar, missing │
-│             kinds chips) · Provenance/last reviewed         │
-└──────────────────────────────────────────────────────────────┘
-```
+New `EndpointsGlance` component used on `/subnets/$netuid` (top of Overview, above current Endpoints table) and `/providers/$slug` Overview:
 
-Details:
-- Replace anchor `SectionNav` with real tabs that swap panels (URL search
-  param `?tab=` so it's deep-linkable and shareable). Overview keeps a
-  condensed view of every section.
-- New `PrimaryLinksRail` component: pill buttons with brand icon, host,
-  and external-link affordance. Hidden when a link is missing — never
-  shows "—".
-- New `CoverageCard`: completeness bar, curation chip, review state,
-  reviewed-at, missing-kinds chips, gap notes.
-- New `ProviderCard` in right rail: name, authority, link to
-  `/providers/{slug}` for the primary surface's provider.
-- `SurfacesList`: group by `kind`, show authority, auth_required,
-  public_safe, probe enabled, copyable URL, evidence link.
-- `EndpointsList`: keep table but add score, classification, monitoring
-  status; collapse low-priority columns under "more" on narrow widths.
-- `SchemasPanel`: surfaces with `kind=openapi` get a "View schema"
-  link plus copyable `schema_url`; link to `/schemas` filtered by netuid.
-- `CandidatesList`: explicit "Unverified — community lead" banner at top,
-  group by confidence, show source_tier and review_notes.
-- `GapsPanel` (new): renders `missing_kinds` and `gap_notes` with a
-  CTA linking to `/gaps` and the GitHub contribution path.
-- Empty states everywhere stop saying "—"; they show a one-line reason
-  ("This subnet has no verified dashboard yet — see candidates.").
+- 3 mini-rows: Root RPC/WSS, SSE/Data streams, Incidents (24h)
+- Each shows: count, top 1 example endpoint (host masked), health dot
+- Right-side "Expand" toggle → smoothly reveals the full endpoint table inline (no nav). Closed by default on mobile.
+- Honors current endpoint source (`subnetEndpointsQuery` / `providerEndpointsQuery`); no new API calls.
 
-### 3. Rebuild `/providers/$slug` with the same profile pattern
+## 5. Mobile-friendly tables (stacked cards)
 
-- Header with name, authority, kind, homepage/docs link rail.
-- Stat strip: endpoint count, monitored count, pool-eligible count,
-  by-status (ok/warn/down) using `endpoint_summary`.
-- Tabs: Overview · Endpoints · Subnets served (derived by grouping
-  `endpoints[].netuid`).
-- Right rail: notes, authority chip, links to filtered
-  `/endpoints?provider={slug}` and `/surfaces?provider={slug}`.
+New shared `ResponsiveTable` wrapper (or `useBreakpoint('md')` switch) in `src/components/metagraphed/`:
 
-### 4. Consistent "profile page" primitives
+- ≥ md: existing table layout (kept).
+- < md: each row becomes a card with label : value pairs, primary cell as card title, secondary chips below, action row at bottom.
+- Filters / sort controls move into a sticky `TableControls` bar that wraps and stacks: search input full-width, then chip-style filter dropdowns, then a sort `Select`. No horizontal scroll required.
+- Applied to: subnets index, providers index, endpoints, surfaces, schemas, gaps, plus inline tables on subnet/provider profile pages.
 
-Extract three small shared components used by both routes (and reusable
-for any future entity profile page):
-- `src/components/metagraphed/profile-hero.tsx` — eyebrow, title, chips,
-  link rail, stat strip.
-- `src/components/metagraphed/profile-tabs.tsx` — URL-driven tabs.
-- `src/components/metagraphed/coverage-card.tsx` — completeness bar +
-  curation/review chips + missing-kinds.
+## 6. Deep-linkable section anchors on profile pages
 
-## Out of scope
+- Each major section inside the active profile tab gets a stable `id` (`endpoints`, `surfaces`, `schema-drift`, `gaps`, `evidence`, `candidates`, `api`).
+- Section headers render an "anchor" copy-icon button that:
+  - sets `location.hash` (`#endpoints`)
+  - copies the absolute URL to clipboard with a toast
+- On mount + on hash change, smooth-scroll to the matching `id`. Plays nicely with existing `?tab=` deep links (`/subnets/7?tab=overview#endpoints`).
+- If the hash references a section that lives under a different tab, the page auto-switches tabs before scrolling.
 
-- No backend changes; this is pure frontend normalization + layout.
-- No new routes; tabs use search params on existing routes.
-- Other list pages (`/subnets`, `/surfaces`, `/endpoints`, `/providers`,
-  `/schemas`, `/gaps`, `/about`, `/health`) keep their current layout —
-  the user's complaint is specifically about *individual profile pages*.
+## 7. Files to add / edit
 
-## Files touched
+Add:
+- `src/components/metagraphed/endpoints-glance.tsx`
+- `src/components/metagraphed/responsive-table.tsx`
+- `src/components/metagraphed/section-anchor.tsx`
+- `src/components/metagraphed/metric-chip.tsx`
+- `src/components/metagraphed/info-tooltip.tsx`
 
-- `src/lib/metagraphed/queries.ts` — add normalizers, rewire `subnetProfileQuery` and `providerQuery`.
-- `src/lib/metagraphed/types.ts` — extend `SubnetProfile`, `Provider`.
-- `src/routes/subnets.$netuid.tsx` — rewrite to new layout.
-- `src/routes/providers.$slug.tsx` — rewrite to new layout.
-- New: `src/components/metagraphed/profile-hero.tsx`,
-  `profile-tabs.tsx`, `coverage-card.tsx`, `primary-links-rail.tsx`.
+Edit:
+- `src/styles.css` — full token rewrite (Soft Lime on Graphite + paper-white)
+- `src/components/metagraphed/profile-hero.tsx`, `profile-tabs.tsx`, `coverage-card.tsx`, `primary-links-rail.tsx`, `states.tsx`, `table-controls.tsx`, `freshness.tsx`
+- `src/routes/subnets.$netuid.tsx`, `providers.$slug.tsx`, `providers.index.tsx`, `subnets.index.tsx`, `endpoints.tsx`, `surfaces.tsx`, `schemas.tsx`, `gaps.tsx`, `health.tsx`, `index.tsx`, `about.tsx`
+
+## 8. Out of scope (intentionally)
+
+- No changes to `src/lib/metagraphed/queries.ts` or API contracts.
+- No new data sources; "Endpoints at a glance" reuses existing endpoint payloads.
+- No in-app contribution forms; gap recovery links continue pointing to GitHub.
+- Routing topology (`subnets.index.tsx`, `subnets.$netuid.tsx`, etc.) stays as-is.
+
+## Verification
+
+After build:
+- Toggle light/dark — confirm accent renders as citron/soft-lime, contrast passes on text.
+- Visit `/subnets/5`, `/subnets/1`, `/providers/<slug>` — every section shows data or a proper state; no empty rectangles.
+- Resize to mobile — tables collapse to cards, filters/sort remain reachable without horizontal scroll.
+- Hit `/subnets/7?tab=overview#endpoints` directly — scrolls to Endpoints section.
+- Click section anchor icon — clipboard receives the deep link, toast fires.
